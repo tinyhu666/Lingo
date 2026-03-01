@@ -34,6 +34,27 @@ async fn get_settings(app_handle: tauri::AppHandle) -> Result<store::AppSettings
     store::get_settings(&app_handle).map_err(|e| e.to_string())
 }
 
+#[tauri::command]
+async fn set_app_enabled(
+    app_handle: tauri::AppHandle,
+    enabled: bool,
+) -> Result<store::AppSettings, String> {
+    store::update_settings_field(&app_handle, |settings| {
+        settings.app_enabled = enabled;
+    })
+    .map_err(|e| e.to_string())?;
+
+    store::get_settings(&app_handle).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn update_phrases(
+    app_handle: tauri::AppHandle,
+    phrases: Vec<store::Phrase>,
+) -> Result<Vec<store::Phrase>, String> {
+    shortcut::update_phrases(&app_handle, phrases)
+}
+
 pub fn run() {
     println!("Starting application...");
 
@@ -74,7 +95,9 @@ pub fn run() {
             update_translator_shortcut,
             log_to_backend,
             get_settings,
-            get_version
+            get_version,
+            set_app_enabled,
+            update_phrases
         ]);
 
     // 只在非Windows系统上添加窗口事件监听

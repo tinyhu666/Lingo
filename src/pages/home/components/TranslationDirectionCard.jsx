@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Translate, Repeat01, CheckTick, ArrowRight } from '../../../icons';
+import { Translate, ArrowRight } from '../../../icons';
 import { useState } from 'react';
 import { useStore } from '../../../components/StoreProvider';
 import DropdownMenu from '../../../components/DropdownMenu';
@@ -62,19 +62,13 @@ export default function TranslationDirectionCard() {
         }
     };
 
-    const handleSwapDirection = async () => {
-        await updateSettings({
-            translation_from: to,
-            translation_to: from
-        });
-    };
-
     const renderLanguageButton = (lang, onClick) => {
         const FlagIcon = FlagIcons[LANGUAGES[lang].code];
         return (
             <button
+                type="button"
                 onClick={onClick}
-                className="px-4 py-1.5 rounded-lg bg-zinc-50 hover:bg-[#EAEAEA] transition-colors flex items-center gap-2 shadow-sm"
+                className="tool-btn shrink-0 whitespace-nowrap px-4 py-2 flex items-center gap-2 text-xl font-semibold leading-none shadow-sm"
             >
                 <div className="w-5 h-5 rounded-full overflow-hidden flex items-center justify-center bg-gray-100">
                     <FlagIcon className="w-7 h-7 scale-[1.8]" />
@@ -86,29 +80,24 @@ export default function TranslationDirectionCard() {
 
     return (
         <motion.div
-            className="relative h-full flex flex-col bg-white rounded-2xl p-6 border border-zinc-200 hover:border-zinc-300 transition-all duration-200 text-left shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] backdrop-blur-sm"
+            className="dota-card relative h-full flex flex-col rounded-2xl p-6 transition-all duration-200 text-left"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
         >
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3 text-sm text-zinc-500">
-                    <Translate className="w-6 h-6" />
-                    翻译模式
-                </div>
-                <button onClick={handleSwapDirection}>
-                    <Repeat01 className="w-6 h-6 text-zinc-400 hover:text-zinc-600 transition-colors" />
-                </button>
+            <div className="flex items-center gap-3 text-sm text-zinc-500">
+                <Translate className="w-6 h-6" />
+                翻译语言
             </div>
             <div className="flex-1 flex flex-col justify-between mt-4">
                 <div>
                     <div className="text-sm text-zinc-400">
-                        设置你的翻译方向
+                        设置你的翻译语言。
                     </div>
                     <div className="text-sm text-zinc-400 mt-2">
-                        如果前后方向相同，也可以增强语气和语言战斗力。
+                        语言相同也可用于润色或增强表达语气。
                     </div>
                 </div>
-                <div className="flex items-center gap-3 text-2xl font-semibold text-zinc-900">
+                <div className="flex items-center gap-3 text-zinc-900">
                     <div className="relative">
                         {renderLanguageButton(from, () => setShowFromMenu(true))}
                         <DropdownMenu
@@ -132,7 +121,7 @@ export default function TranslationDirectionCard() {
                             }}
                         />
                     </div>
-                    <ArrowRight />
+                    <ArrowRight className="w-6 h-6 shrink-0 text-zinc-700" />
                     <div className="relative">
                         {renderLanguageButton(to, () => setShowToMenu(true))}
                         <DropdownMenu

@@ -6,6 +6,10 @@ use tauri_plugin_shell::ShellExt;
 
 pub async fn trans_and_replace_text(app: &AppHandle) -> Result<()> {
     let settings = crate::store::get_settings(app)?;
+    if !settings.app_enabled {
+        println!("应用已禁用，跳过翻译动作");
+        return Ok(());
+    }
 
     // 1. 复制选中文本
     if !settings.daily_mode {
@@ -15,11 +19,15 @@ pub async fn trans_and_replace_text(app: &AppHandle) -> Result<()> {
     // 2. 读取剪贴板内容
     let original_text = app.clipboard().read_text()?;
     println!("原始文本: {:?}", original_text);
+    if original_text.trim().is_empty() {
+        println!("剪贴板为空，跳过翻译");
+        return Ok(());
+    }
 
     if !settings.daily_mode {
         // 3. 如果是游戏模式 -> 显示翻译状态
         let status_text = format!(
-            "DeepRant翻译中... ({}→{} | 场景:{} | 模式:{})",
+            "AutoGG 翻译中... ({}→{} | 场景:{} | 模式:{})",
             settings.translation_from,
             settings.translation_to,
             settings.game_scene,
@@ -114,6 +122,12 @@ async fn simulate_keyboard_shortcut(app: &AppHandle, key: &str) -> Result<()> {
 }
 
 pub async fn send_phrase(app: &AppHandle, phrase: &str) -> Result<()> {
+    let settings = crate::store::get_settings(app)?;
+    if !settings.app_enabled {
+        println!("应用已禁用，跳过常用语发送");
+        return Ok(());
+    }
+
     // 将短语写入剪贴板
     app.clipboard().write_text(phrase)?;
 

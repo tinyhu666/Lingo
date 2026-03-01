@@ -1,31 +1,32 @@
-name: 'Release'
+name: Build Installers
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - release
+    tags:
+      - 'v*'
 
 jobs:
-  publish-tauri:
+  build:
     permissions:
       contents: write
     strategy:
       fail-fast: false
       matrix:
         include:
-          - platform: 'macos-latest'
-            args: '--target aarch64-apple-darwin'
-            name: 'macOS ARM64'
-          - platform: 'macos-latest'
-            args: '--target x86_64-apple-darwin'
-            name: 'macOS Intel'
-          - platform: 'windows-latest'
+          - os: windows-latest
             args: ''
-            name: 'Windows'
+            label: Windows
+          - os: macos-latest
+            args: ''
+            label: macOS
 
-    runs-on: ${{ matrix.platform }}
+    runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -35,85 +36,21 @@ jobs:
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
 
-      - name: Install dependencies
-        run: npm install
+      - name: Install Dependencies
+        run: npm ci
 
-      - name: Import Apple Developer Certificate
-        if: matrix.platform == 'macos-latest'
-        env:
-          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
-        run: |
-          echo $APPLE_CERTIFICATE | base64 --decode > certificate.p12
-          security create-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
-          security default-keychain -s build.keychain
-          security unlock-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
-          security import certificate.p12 -k build.keychain -P "$APPLE_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
-          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" build.keychain
-          security find-identity -v -p codesigning build.keychain
-
-      - name: Verify Certificate
-        if: matrix.platform == 'macos-latest'
-        run: |
-          CERT_INFO=$(security find-identity -v -p codesigning build.keychain | grep "Developer ID Application")
-          CERT_ID=$(echo "$CERT_INFO" | awk -F'"' '{print $2}')
-          echo "CERT_ID=$CERT_ID" >> $GITHUB_ENV
-          echo "Certificate imported."
-
-      - name: Build and Release
+      - name: Build And Publish Release
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          APPLE_SIGNING_IDENTITY: ${{ env.CERT_ID }}
         with:
           tagName: v__VERSION__
-          releaseName: 'DeepRant v__VERSION__'
+          releaseName: 'AutoGG v__VERSION__'
           releaseBody: |
-            请查看附件下载对应系统的安装包：
-            - Windows: .msi 安装包
-            - macOS Intel: .dmg (x64) 安装包
-            - macOS Apple Silicon: .dmg (arm64) 安装包
-          releaseDraft: true
+            AutoGG 安装包下载：
+            - Windows: `.msi`
+            - macOS: `.dmg`
+          releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}
-
-      - name: Notarize DMG (macOS)
-        if: matrix.platform == 'macos-latest'
-        env:
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-        run: |
-          if [[ "${{ matrix.args }}" == *"aarch64"* ]]; then
-            xcrun notarytool submit "src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/DeepRant_"*"_aarch64.dmg" \
-              --apple-id "$APPLE_ID" \
-              --password "$APPLE_ID_PASSWORD" \
-              --team-id "$APPLE_TEAM_ID" \
-              --wait
-          else
-            xcrun notarytool submit "src-tauri/target/x86_64-apple-darwin/release/bundle/dmg/DeepRant_"*"_x64.dmg" \
-              --apple-id "$APPLE_ID" \
-              --password "$APPLE_ID_PASSWORD" \
-              --team-id "$APPLE_TEAM_ID" \
-              --wait
-          fi
-
-      - name: Staple DMG (macOS)
-        if: matrix.platform == 'macos-latest'
-        run: |
-          if [[ "${{ matrix.args }}" == *"aarch64"* ]]; then
-            xcrun stapler staple "src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/DeepRant_"*"_aarch64.dmg"
-          else
-            xcrun stapler staple "src-tauri/target/x86_64-apple-darwin/release/bundle/dmg/DeepRant_"*"_x64.dmg"
-          fi

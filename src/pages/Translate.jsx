@@ -1,120 +1,107 @@
 import { motion } from 'framer-motion';
-import { useState, useEffect } from 'react';
-import { GamingPad, ChatBubbleMessage, FaceOldFace, Whistle } from '../icons';
+import { useEffect, useMemo, useState } from 'react';
+import { GamingPad, FaceOldFace, Whistle } from '../icons';
 import { useStore } from '../components/StoreProvider';
 
+const MODE_OPTIONS = [
+  {
+    id: 'auto',
+    title: '自动模式',
+    desc: '平衡准确、自然和可读性，适合大部分对局沟通。',
+    icon: FaceOldFace,
+  },
+  {
+    id: 'pro',
+    title: '职业模式',
+    desc: '术语更集中，指令更短，适合团队配合与节奏交流。',
+    icon: GamingPad,
+  },
+  {
+    id: 'toxic',
+    title: '竞技模式',
+    desc: '语气更直接，保持高压感但不过线，适合高强度对局。',
+    icon: Whistle,
+  },
+];
+
+const MODE_LABELS = {
+  auto: '自动',
+  pro: '职业',
+  toxic: '竞技',
+};
+
 export default function Translate() {
-    const { settings, updateSettings } = useStore();
-    const [activeMode, setActiveMode] = useState(settings?.translation_mode || 'auto');
+  const { settings, updateSettings } = useStore();
+  const [activeMode, setActiveMode] = useState(settings?.translation_mode || 'auto');
 
-    useEffect(() => {
-        if (settings?.translation_mode) {
-            setActiveMode(settings.translation_mode);
-        }
-    }, [settings?.translation_mode]);
+  useEffect(() => {
+    if (settings?.translation_mode) {
+      setActiveMode(settings.translation_mode);
+    }
+  }, [settings?.translation_mode]);
 
-    const handleModeChange = async (mode) => {
-        const newMode = activeMode === mode ? 'auto' : mode;
-        setActiveMode(newMode);
-        await updateSettings({ translation_mode: newMode });
-    };
+  const currentLabel = useMemo(() => MODE_LABELS[activeMode] || '自动', [activeMode]);
 
-    const getCardClassName = (isActive) => `
-        flex flex-col bg-white dark:bg-zinc-900 rounded-2xl p-6 border 
-        cursor-pointer transition-all 
-        ${isActive ? 'border-zinc-900 dark:border-zinc-100 shadow-lg' : 'border-zinc-200 dark:border-zinc-800'}
-        shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.1)] 
-        backdrop-blur-sm
-    `;
+  const handleModeChange = async (mode) => {
+    if (mode === activeMode) return;
+    setActiveMode(mode);
+    await updateSettings({ translation_mode: mode });
+  };
 
-    return (
-        <div className="h-full flex flex-col gap-6">
-            {/* 头部说明区域 */}
-            <motion.div
-                className="w-full bg-white dark:bg-zinc-900 rounded-2xl p-6 border border-zinc-200 dark:border-zinc-800 shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.1)] backdrop-blur-sm"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-            >
-                <h1 className="text-2xl font-bold text-zinc-900 dark:text-white mb-4">翻译模式</h1>
-                <p className="text-zinc-600 dark:text-zinc-400">
-                    选择一个翻译模式来适应不同的游戏场景。这些模式是互斥的，一次只能启用一个模式。
-                </p>
-            </motion.div>
-
-            {/* 模式选择卡片 */}
-            <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-6">
-                {/* 嘴臭模式 */}
-                <motion.div
-                    className={getCardClassName(activeMode === 'toxic')}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.1 }}
-                    onClick={() => handleModeChange('toxic')}
-                >
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3 text-sm text-zinc-500">
-                            <Whistle className="w-6 h-6 stroke-zinc-500" />
-                            嘴臭模式
-                        </div>
-                        <div className={`w-10 h-6 rounded-full transition-colors ${activeMode === 'toxic' ? 'bg-zinc-900 dark:bg-zinc-100' : 'bg-zinc-200 dark:bg-zinc-700'
-                            } relative`}>
-                            <div className={`absolute w-4 h-4 rounded-full bg-white dark:bg-zinc-900 top-1 transition-all ${activeMode === 'toxic' ? 'left-5' : 'left-1'
-                                }`} />
-                        </div>
-                    </div>
-                    <div className="mt-4 text-sm text-zinc-400">
-                        将友好的对话转换为富有火药味的表达，适合竞技游戏的氛围。
-                    </div>
-                </motion.div>
-
-                {/* 职业玩家模式 */}
-                <motion.div
-                    className={getCardClassName(activeMode === 'pro')}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.2 }}
-                    onClick={() => handleModeChange('pro')}
-                >
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3 text-sm text-zinc-500">
-                            <GamingPad className="w-6 h-6 stroke-zinc-500" />
-                            职业玩家模式
-                        </div>
-                        <div className={`w-10 h-6 rounded-full transition-colors ${activeMode === 'pro' ? 'bg-zinc-900 dark:bg-zinc-100' : 'bg-zinc-200 dark:bg-zinc-700'
-                            } relative`}>
-                            <div className={`absolute w-4 h-4 rounded-full bg-white dark:bg-zinc-900 top-1 transition-all ${activeMode === 'pro' ? 'left-5' : 'left-1'
-                                }`} />
-                        </div>
-                    </div>
-                    <div className="mt-4 text-sm text-zinc-400">
-                        使用专业的游戏术语和简短指令，提高团队配合效率。
-                    </div>
-                </motion.div>
-
-                {/* 自动模式 */}
-                <motion.div
-                    className={getCardClassName(activeMode === 'auto')}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.3 }}
-                    onClick={() => handleModeChange('auto')}
-                >
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3 text-sm text-zinc-500">
-                            <FaceOldFace className="w-6 h-6 stroke-zinc-500" />
-                            自动模式
-                        </div>
-                        <div className={`w-10 h-6 rounded-full transition-colors ${activeMode === 'auto' ? 'bg-zinc-900 dark:bg-zinc-100' : 'bg-zinc-200 dark:bg-zinc-700'
-                            } relative`}>
-                            <div className={`absolute w-4 h-4 rounded-full bg-white dark:bg-zinc-900 top-1 transition-all ${activeMode === 'auto' ? 'left-5' : 'left-1'
-                                }`} />
-                        </div>
-                    </div>
-                    <div className="mt-4 text-sm text-zinc-400">
-                        智能识别场景，自动选择最适合的翻译模式。
-                    </div>
-                </motion.div>
-            </div>
+  return (
+    <div className='h-full flex flex-col gap-6'>
+      <motion.section
+        className='dota-card w-full rounded-2xl p-6'
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}>
+        <div className='flex items-start justify-between gap-3'>
+          <div>
+            <h1 className='text-2xl font-bold text-zinc-900'>翻译模式</h1>
+            <p className='mt-2 text-sm text-zinc-500'>
+              选择一个输出风格。只会生效一个模式，改动后立即用于剪贴板翻译。
+            </p>
+          </div>
+          <div className='tool-pill'>当前：{currentLabel}</div>
         </div>
-    );
-} 
+      </motion.section>
+
+      <div className='grid grid-cols-1 md:grid-cols-3 gap-6'>
+        {MODE_OPTIONS.map((mode, idx) => {
+          const Icon = mode.icon;
+          const isActive = activeMode === mode.id;
+          return (
+            <motion.button
+              key={mode.id}
+              type='button'
+              className={`dota-card rounded-2xl p-6 min-h-[214px] text-left transition-all ${
+                isActive
+                  ? 'border-blue-300 bg-blue-50/70 shadow-[0_10px_24px_rgba(37,99,235,0.16)]'
+                  : 'hover:shadow-[0_12px_24px_rgba(15,23,42,0.1)]'
+              }`}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.05 * (idx + 1) }}
+              onClick={() => handleModeChange(mode.id)}>
+              <div className='flex items-center justify-between'>
+                <div className='flex items-center gap-2.5 text-zinc-700'>
+                  <Icon className='w-5 h-5 stroke-zinc-600' />
+                  <span className='text-base font-semibold'>{mode.title}</span>
+                </div>
+                <span
+                  className={`text-xs rounded-full px-2 py-1 border ${
+                    isActive
+                      ? 'border-blue-300 text-blue-700 bg-blue-100'
+                      : 'border-zinc-200 text-zinc-500 bg-zinc-50'
+                  }`}>
+                  {isActive ? '已启用' : '点击启用'}
+                </span>
+              </div>
+
+              <p className='mt-4 text-sm text-zinc-500 leading-relaxed'>{mode.desc}</p>
+            </motion.button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}

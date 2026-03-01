@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "DeepRant",
-  "version": "1.1.9",
-  "identifier": "com.DeepRant.app",
+  "productName": "AutoGG",
+  "version": "0.1.0",
+  "identifier": "com.autogg.app",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "DeepRant",
+        "title": "AutoGG",
         "width": 1280,
         "height": 720,
         "minWidth": 1280,
@@ -26,7 +26,7 @@
     ]
   },
   "bundle": {
-    "createUpdaterArtifacts": true,
+    "createUpdaterArtifacts": false,
     "targets": [
       "app",
       "dmg",
@@ -49,9 +49,8 @@
         }
       },
       "files": {},
-      "hardenedRuntime": true,
-      "minimumSystemVersion": "10.13",
-      "signingIdentity": "Developer ID Application: Shanghai Diyu Network Technology Co., Ltd (6UB6WM6VQR)"
+      "hardenedRuntime": false,
+      "minimumSystemVersion": "10.13"
     },
     "windows": {
       "certificateThumbprint": null,
@@ -76,7 +75,7 @@
     "updater": {
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDEyRUQyRTlGMEZGRjZCNUQKUldSZGEvOFBueTd0RXB1eStiY2ovR1c0M2lIK0JzTXR0TW9nTjR1QXNsbU9VOGNndG12VHg5L3UK",
       "endpoints": [
-        "https://github.com/liseami/DeepRant/releases/latest/download/latest.json"
+        "https://example.com/autogg/latest.json"
       ],
       "windows": {
         "installMode": "passive"

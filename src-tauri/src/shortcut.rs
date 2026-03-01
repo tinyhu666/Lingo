@@ -1,6 +1,6 @@
-// 导入所需的 Tauri 相关模块
 use crate::shell_helper::{send_phrase, trans_and_replace_text};
-use crate::store::{get_settings, update_settings_field, HotkeyConfig};
+use crate::store::{get_settings, update_settings_field, HotkeyConfig, Phrase};
+use std::collections::HashSet;
 use std::str::FromStr;
 use std::sync::Arc;
 use tauri::AppHandle;
@@ -8,7 +8,6 @@ use tauri_plugin_global_shortcut::{
     Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutEvent, ShortcutState,
 };
 
-/// 从字符串转换为修饰键
 fn parse_modifiers(modifiers: &[String]) -> Modifiers {
     let mut result = Modifiers::empty();
     for modifier in modifiers {
@@ -23,7 +22,30 @@ fn parse_modifiers(modifiers: &[String]) -> Modifiers {
     result
 }
 
-/// 注册单个快捷键
+fn is_modifier_key(key: &str) -> bool {
+    matches!(
+        key,
+        "Control" | "ControlLeft" | "ControlRight" | "Alt" | "AltLeft" | "AltRight"
+            | "Shift" | "ShiftLeft" | "ShiftRight" | "Meta" | "MetaLeft" | "MetaRight"
+    )
+}
+
+fn normalize_modifiers(modifiers: &[String]) -> Vec<String> {
+    let mut normalized = modifiers
+        .iter()
+        .map(|m| m.replace("Left", "").replace("Right", ""))
+        .filter(|m| matches!(m.as_str(), "Control" | "Alt" | "Shift" | "Meta"))
+        .collect::<Vec<_>>();
+
+    normalized.sort();
+    normalized.dedup();
+    normalized
+}
+
+fn shortcut_signature(modifiers: &[String], key: &str) -> String {
+    format!("{}+{}", modifiers.join("+"), key)
+}
+
 fn register_shortcut<F>(
     app: &AppHandle,
     modifiers: &[String],
@@ -33,250 +55,50 @@ fn register_shortcut<F>(
 where
     F: Fn(&AppHandle, &Shortcut, ShortcutEvent) + Send + Sync + 'static,
 {
-    println!("开始注册快捷键...");
-    println!("修饰键: {:?}", modifiers);
-    println!("主键: {}", key);
+    let code = Code::from_str(key).map_err(|_| format!("无效的按键代码: {}", key))?;
+    let shortcut = Shortcut::new(Some(parse_modifiers(modifiers)), code);
 
-    let code = match Code::from_str(key) {
-        Ok(c) => {
-            println!("成功解析按键代码");
-            c
-        }
-        Err(_) => {
-            let err = format!("无效的按键代码: {}", key);
-            println!("错误: {}", err);
-            return Err(err);
-        }
-    };
-
-    let parsed_modifiers = parse_modifiers(modifiers);
-    println!("解析后的修饰键: {:?}", parsed_modifiers);
-
-    let shortcut = Shortcut::new(Some(parsed_modifiers), code);
-    println!("创建快捷键组合: {:?}", shortcut);
-
-    let global_shortcut = app.global_shortcut();
-    match global_shortcut.on_shortcut(shortcut, handler) {
-        Ok(_) => {
-            println!("快捷键注册成功");
-            Ok(())
-        }
-        Err(e) => {
-            let err = format!("注册快捷键失败: {}", e);
-            println!("错误: {}", err);
-            Err(err)
-        }
-    }
+    app.global_shortcut()
+        .on_shortcut(shortcut, handler)
+        .map_err(|e| format!("注册快捷键失败: {}", e))
 }
 
-/// 更新快捷键
-///
-/// # 参数
-/// * `app` - Tauri应用句柄
-/// * `old_modifiers` - 旧的修饰键列表
-/// * `old_key` - 旧的主键
-/// * `new_modifiers` - 新的修饰键列表
-/// * `new_key` - 新的主键
-/// * `handler` - 快捷键触发时的处理函数
-///
-/// # 返回值
-/// * `Result<(), String>` - 成功返回 Ok(()), 失败返回错误信息
-fn update_shortcut<F>(
-    app: &AppHandle,
-    old_modifiers: &[String],
-    old_key: &str,
-    new_modifiers: &[String],
-    new_key: &str,
-    handler: F,
-) -> Result<(), String>
-where
-    F: Fn(&AppHandle, &Shortcut, ShortcutEvent) + Send + Sync + 'static,
-{
-    println!("开始更新快捷键...");
-    println!("旧快捷键: 修饰键={:?}, 主键={}", old_modifiers, old_key);
-    println!("新快捷键: 修饰键={:?}, 主键={}", new_modifiers, new_key);
-
-    let global_shortcut = app.global_shortcut();
-
-    // 注销旧快捷键
-    if let Ok(old_code) = Code::from_str(old_key) {
-        println!("正在注销旧快捷键...");
-        let old_shortcut = Shortcut::new(Some(parse_modifiers(old_modifiers)), old_code);
-        match global_shortcut.unregister(old_shortcut) {
-            Ok(_) => println!("成功注销旧快捷键"),
-            Err(e) => {
-                println!("注销现有快捷键失败: {}", e);
-                // 继续执行,因为旧快捷键可能本来就不存在
-            }
-        }
-    } else {
-        println!("旧快捷键格式无效,跳过注销步骤");
-    }
-
-    // 注册新快捷键
-    println!("正在注册新快捷键...");
-    match register_shortcut(app, new_modifiers, new_key, handler) {
-        Ok(_) => {
-            println!("新快捷键注册成功");
-            Ok(())
-        }
-        Err(e) => {
-            println!("新快捷键注册失败: {}", e);
-            Err(e)
-        }
-    }
-}
-
-/// 初始化所有快捷键
-pub fn init_shortcuts(app: &AppHandle) -> Result<(), String> {
-    let settings = get_settings(app).map_err(|e| e.to_string())?;
-
-    // 注册翻译快捷键
-    register_shortcut(
-        app,
-        &settings.trans_hotkey.modifiers,
-        &settings.trans_hotkey.key,
-        create_trans_handler(app.clone()),
-    )?;
-
-    // 注册常用语快捷键
-    for phrase in settings.phrases {
-        let phrase_text = phrase.phrase.clone();
-        let app_handle = app.clone();
-
-        register_shortcut(
-            app,
-            &phrase.hotkey.modifiers,
-            &phrase.hotkey.key,
-            move |_app, _shortcut, event| {
-                if event.state() == ShortcutState::Pressed {
-                    let app_handle = app_handle.clone();
-                    let phrase_text = phrase_text.clone();
-                    tauri::async_runtime::spawn(async move {
-                        if let Err(e) = send_phrase(&app_handle, &phrase_text).await {
-                            println!("发送常用语失败: {:?}", e);
-                        }
-                    });
-                }
-            },
-        )?;
-    }
-
-    Ok(())
-}
-
-/// 更新翻译快捷键
-pub fn update_translator_shortcut(
-    app: &AppHandle,
-    keys: Vec<String>, // 直接接收按键数组
-) -> Result<(), String> {
-    println!("正在更新翻译快捷键...");
-    println!("接收到的按键数组: {:?}", keys);
-
-    // 验证快捷键组合
-    let has_modifier = keys.iter().any(|k| {
-        k.contains("Control") || k.contains("Alt") || k.contains("Shift") || k.contains("Meta")
-    });
-
-    let has_non_modifier = keys.iter().any(|k| {
-        !k.contains("Control") && !k.contains("Alt") && !k.contains("Shift") && !k.contains("Meta")
-    });
-
-    if !has_modifier || !has_non_modifier || keys.len() < 2 {
-        return Err(
-            "快捷键必须包含至少一个修饰键(Control/Alt/Shift/Command)和一个其他按键".to_string(),
-        );
-    }
-
-    let settings = get_settings(app).map_err(|e| {
-        println!("获取设置失败: {}", e);
-        e.to_string()
-    })?;
-
-    // 分离修饰键和主键
-    let (modifiers, key) = if keys.is_empty() {
-        (Vec::new(), String::new())
-    } else {
-        let mods: Vec<String> = keys[..keys.len() - 1]
+fn build_shortcut_text(modifiers: &[String], key: &str) -> String {
+    format!(
+        "{}+{}",
+        modifiers
             .iter()
-            .map(|k| k.replace("Left", "").replace("Right", ""))
-            .collect();
-        let k = keys.last().unwrap_or(&String::new()).to_string();
-        (mods, k)
-    };
-
-    println!("解析后的按键: {}", key);
-    println!("解析后的修饰键: {:?}", modifiers);
-
-    // 更新快捷键
-    let result = update_shortcut(
-        app,
-        &settings.trans_hotkey.modifiers,
-        &settings.trans_hotkey.key,
-        &modifiers,
-        &key,
-        create_trans_handler(app.clone()),
-    );
-
-    // 如果快捷键更新成功，则更新存储
-    if result.is_ok() {
-        // 创建新的快捷键配置
-        let shortcut_text = format!(
-            "{}+{}",
-            modifiers
-                .iter()
-                .map(|m| match m.as_str() {
-                    "Control" =>
-                        if cfg!(target_os = "macos") {
-                            "⌃"
-                        } else {
-                            "Ctrl"
-                        },
-                    "Alt" =>
-                        if cfg!(target_os = "macos") {
-                            "⌥"
-                        } else {
-                            "Alt"
-                        },
-                    "Shift" => "⇧",
-                    "Meta" =>
-                        if cfg!(target_os = "macos") {
-                            "⌘"
-                        } else {
-                            "Win"
-                        },
-                    _ => m,
-                })
-                .collect::<Vec<_>>()
-                .join("+"),
-            format_key_display(&key)
-        );
-
-        let new_hotkey = HotkeyConfig {
-            modifiers,
-            key,
-            shortcut: shortcut_text,
-        };
-
-        // 更新存储
-        if let Err(e) = update_settings_field(app, |settings| {
-            settings.trans_hotkey = new_hotkey;
-        }) {
-            println!("保存设置失败: {}", e);
-            return Err(format!("快捷键已更新，但保存设置失败: {}", e));
-        }
-        println!("快捷键设置已保存到存储");
-    }
-
-    match &result {
-        Ok(_) => println!("翻译快捷键更新成功"),
-        Err(e) => println!("翻译快捷键更新失败: {}", e),
-    }
-
-    result
+            .map(|m| match m.as_str() {
+                "Control" => {
+                    if cfg!(target_os = "macos") {
+                        "⌃"
+                    } else {
+                        "Ctrl"
+                    }
+                }
+                "Alt" => {
+                    if cfg!(target_os = "macos") {
+                        "⌥"
+                    } else {
+                        "Alt"
+                    }
+                }
+                "Shift" => "⇧",
+                "Meta" => {
+                    if cfg!(target_os = "macos") {
+                        "⌘"
+                    } else {
+                        "Win"
+                    }
+                }
+                _ => m,
+            })
+            .collect::<Vec<_>>()
+            .join("+"),
+        format_key_display(key)
+    )
 }
 
-/// 创建翻译快捷键处理函数
 fn create_trans_handler(
     app: AppHandle,
 ) -> impl Fn(&AppHandle, &Shortcut, ShortcutEvent) + Send + Sync + 'static {
@@ -293,7 +115,171 @@ fn create_trans_handler(
     }
 }
 
-/// 格式化键盘代码为用户友好的显示文本
+fn create_phrase_handler(
+    app: AppHandle,
+    phrase_text: String,
+) -> impl Fn(&AppHandle, &Shortcut, ShortcutEvent) + Send + Sync + 'static {
+    let app = Arc::new(app);
+    move |_app, _shortcut, event| {
+        if event.state() == ShortcutState::Pressed {
+            let app_clone = Arc::clone(&app);
+            let phrase_text = phrase_text.clone();
+            tauri::async_runtime::spawn(async move {
+                if let Err(e) = send_phrase(app_clone.as_ref(), &phrase_text).await {
+                    println!("发送常用语失败: {:?}", e);
+                }
+            });
+        }
+    }
+}
+
+fn register_phrase_shortcuts(app: &AppHandle, phrases: &[Phrase]) -> Result<(), String> {
+    for phrase in phrases {
+        register_shortcut(
+            app,
+            &phrase.hotkey.modifiers,
+            &phrase.hotkey.key,
+            create_phrase_handler(app.clone(), phrase.phrase.clone()),
+        )?;
+    }
+    Ok(())
+}
+
+fn rebind_all_shortcuts(app: &AppHandle, settings: &crate::store::AppSettings) -> Result<(), String> {
+    let global_shortcut = app.global_shortcut();
+    if let Err(e) = global_shortcut.unregister_all() {
+        println!("清理旧快捷键失败(忽略): {}", e);
+    }
+
+    register_shortcut(
+        app,
+        &settings.trans_hotkey.modifiers,
+        &settings.trans_hotkey.key,
+        create_trans_handler(app.clone()),
+    )?;
+
+    register_phrase_shortcuts(app, &settings.phrases)?;
+    Ok(())
+}
+
+pub fn init_shortcuts(app: &AppHandle) -> Result<(), String> {
+    let settings = get_settings(app).map_err(|e| e.to_string())?;
+    rebind_all_shortcuts(app, &settings)
+}
+
+pub fn update_translator_shortcut(app: &AppHandle, keys: Vec<String>) -> Result<(), String> {
+    let raw_modifiers = keys
+        .iter()
+        .filter(|k| is_modifier_key(k))
+        .cloned()
+        .collect::<Vec<_>>();
+    let modifiers = normalize_modifiers(&raw_modifiers);
+    let key = keys
+        .iter()
+        .rev()
+        .find(|k| !is_modifier_key(k))
+        .cloned()
+        .unwrap_or_default();
+
+    if modifiers.is_empty() || key.is_empty() {
+        return Err("快捷键必须包含至少一个修饰键(Control/Alt/Shift/Command)和一个其他按键".to_string());
+    }
+
+    Code::from_str(&key).map_err(|_| "快捷键主键无效，请重试".to_string())?;
+
+    let settings = get_settings(app).map_err(|e| e.to_string())?;
+    let trans_sig = shortcut_signature(&modifiers, &key);
+
+    for phrase in &settings.phrases {
+        let sig = shortcut_signature(
+            &normalize_modifiers(&phrase.hotkey.modifiers),
+            &phrase.hotkey.key,
+        );
+        if sig == trans_sig {
+            return Err("该快捷键已被常用语占用，请更换组合".to_string());
+        }
+    }
+
+    let new_hotkey = HotkeyConfig {
+        shortcut: build_shortcut_text(&modifiers, &key),
+        modifiers,
+        key,
+    };
+
+    update_settings_field(app, |settings| {
+        settings.trans_hotkey = new_hotkey;
+    })
+    .map_err(|e| e.to_string())?;
+
+    let new_settings = get_settings(app).map_err(|e| e.to_string())?;
+    rebind_all_shortcuts(app, &new_settings)
+}
+
+pub fn update_phrases(app: &AppHandle, phrases: Vec<Phrase>) -> Result<Vec<Phrase>, String> {
+    if phrases.is_empty() {
+        return Err("请至少保留一条常用语".to_string());
+    }
+    if phrases.len() > 20 {
+        return Err("常用语最多 20 条".to_string());
+    }
+
+    let settings = get_settings(app).map_err(|e| e.to_string())?;
+    let trans_sig = shortcut_signature(
+        &normalize_modifiers(&settings.trans_hotkey.modifiers),
+        &settings.trans_hotkey.key,
+    );
+
+    let mut seen_hotkeys = HashSet::new();
+    let mut normalized = Vec::with_capacity(phrases.len());
+
+    for (idx, phrase) in phrases.into_iter().enumerate() {
+        let text = phrase.phrase.trim().to_string();
+        if text.is_empty() {
+            return Err(format!("第 {} 条常用语为空", idx + 1));
+        }
+        if text.chars().count() > 120 {
+            return Err(format!("第 {} 条常用语超过 120 字", idx + 1));
+        }
+
+        let modifiers = normalize_modifiers(&phrase.hotkey.modifiers);
+        if modifiers.is_empty() || phrase.hotkey.key.trim().is_empty() {
+            return Err(format!("第 {} 条常用语的快捷键无效", idx + 1));
+        }
+
+        let key = phrase.hotkey.key.trim().to_string();
+        Code::from_str(&key).map_err(|_| format!("第 {} 条常用语的按键代码无效", idx + 1))?;
+
+        let sig = shortcut_signature(&modifiers, &key);
+        if sig == trans_sig {
+            return Err(format!("第 {} 条常用语与翻译快捷键冲突", idx + 1));
+        }
+        if !seen_hotkeys.insert(sig) {
+            return Err(format!("第 {} 条常用语与其他常用语快捷键重复", idx + 1));
+        }
+
+        normalized.push(Phrase {
+            id: (idx + 1) as i32,
+            phrase: text,
+            hotkey: HotkeyConfig {
+                shortcut: build_shortcut_text(&modifiers, &key),
+                modifiers,
+                key,
+            },
+        });
+    }
+
+    let normalized_for_store = normalized.clone();
+    update_settings_field(app, move |settings| {
+        settings.phrases = normalized_for_store;
+    })
+    .map_err(|e| e.to_string())?;
+
+    let new_settings = get_settings(app).map_err(|e| e.to_string())?;
+    rebind_all_shortcuts(app, &new_settings)?;
+
+    Ok(new_settings.phrases)
+}
+
 fn format_key_display(key: &str) -> String {
     if key.starts_with("Key") {
         key[3..].to_string()

@@ -23,7 +23,7 @@ function App() {
   const CurrentPage = pages[activeItem];
 
   return (
-    <div className="min-h-screen bg-white text-zinc-900">
+    <div className="dota-theme min-h-screen text-zinc-900">
       <Layout activeItem={activeItem} setActiveItem={setActiveItem}>
         <CurrentPage />
       </Layout>
