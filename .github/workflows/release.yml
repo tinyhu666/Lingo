@@ -17,10 +17,10 @@ jobs:
       matrix:
         include:
           - os: windows-latest
-            args: ''
+            args: '--bundles msi'
             label: Windows
           - os: macos-latest
-            args: ''
+            args: '--bundles app,dmg'
             label: macOS
 
     runs-on: ${{ matrix.os }}
@@ -39,6 +39,18 @@ jobs:
 
       - name: Install Dependencies
         run: npm ci
+
+      - name: Install WiX Toolset (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          choco install wixtoolset -y --no-progress
+          $wix = Get-ChildItem 'C:\Program Files (x86)' -Directory | Where-Object { $_.Name -like 'WiX Toolset*' } | Select-Object -First 1
+          if ($null -eq $wix) {
+            throw "WiX Toolset installation not found."
+          }
+          "$($wix.FullName)\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          candle.exe -?
 
       - name: Build And Publish Release
         uses: tauri-apps/tauri-action@v0
