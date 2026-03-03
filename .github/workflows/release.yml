@@ -53,21 +53,12 @@ jobs:
           "$($wix.FullName)\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
           candle.exe -?
 
-      - name: Load Updater Signing Key
-        shell: bash
-        run: |
-          {
-            echo "TAURI_SIGNING_PRIVATE_KEY<<EOF"
-            cat .github/updater/updater.key
-            echo
-            echo "EOF"
-            echo "TAURI_SIGNING_PRIVATE_KEY_PASSWORD=autogg-v013-updater"
-          } >> "$GITHUB_ENV"
-
       - name: Build And Publish Release
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: "dW50cnVzdGVkIGNvbW1lbnQ6IHJzaWduIGVuY3J5cHRlZCBzZWNyZXQga2V5ClJXUlRZMEl5TnMwa2pvR1RZaWRxQWxVOVkxand1WllDeWZyRGtyYk9lSEZKTFRQMW1JWUFBQkFBQUFBQUFBQUFBQUlBQUFBQStaZ2pBUWFaTlFtSlBGRStPYjFlVGVzRmV6SDRqTWNtc2NmaUZnWDFnemJJZWJDVHBhNlZzMFRWMG82L0VpNk8vNTV5QUIyYUJPRC9UcWlGV1dMZG1LUTMzRmhCQWs2N2VjekVROC9GV0xwcjVRNmtRZmt6Ri9YRk4rbDFDbjJSU1l5dkNnR05rTXc9Cg=="
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: "autogg-v013-updater"
         with:
           tagName: v__VERSION__
           releaseName: 'AutoGG v__VERSION__'
