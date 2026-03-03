@@ -74,7 +74,7 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDEyRUQyRTlGMEZGRjZCNUQKUldSZGEvOFBueTd0RXB1eStiY2ovR1c0M2lIK0JzTXR0TW9nTjR1QXNsbU9VOGNndG12VHg5L3UK",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEY4QTY4MTNDQzEwNkEwNEUKUldST29BYkJQSUdtK0V1MXpvZ3BzWWI2Wk84SktEUXl2Y2lrWHhFL29iU1d5eXZrVzNxK3kwWUIK",
       "endpoints": [
         "https://github.com/tinyhu666/AutoGG/releases/latest/download/latest.json"
       ],
