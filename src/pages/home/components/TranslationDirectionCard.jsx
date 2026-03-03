@@ -19,11 +19,11 @@ function LanguageChip({ value, onClick }) {
     <button
       type='button'
       onClick={onClick}
-      className='tool-btn min-w-[156px] max-w-[178px] h-14 px-3 py-2 flex items-center gap-2.5 rounded-xl text-[14px] font-semibold leading-none whitespace-nowrap'>
+      className='tool-btn h-14 w-full min-w-0 px-3 py-2 flex items-center gap-2.5 rounded-xl text-[14px] font-semibold leading-none whitespace-nowrap overflow-hidden'>
       <span className='w-5 h-5 rounded-full overflow-hidden flex items-center justify-center bg-gray-100 shrink-0'>
         {FlagIcon ? <FlagIcon className='w-7 h-7 scale-[1.8]' /> : null}
       </span>
-      <span className='truncate'>{meta.label}</span>
+      <span className='min-w-0 truncate'>{meta.label}</span>
     </button>
   );
 }
@@ -76,8 +76,8 @@ export default function TranslationDirectionCard() {
           <p className='text-sm text-zinc-400 mt-2'>语言相同也可用于润色或增强表达语气。</p>
         </div>
 
-        <div className='flex items-center gap-3 text-zinc-900'>
-          <div className='relative'>
+        <div className='grid w-full grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 text-zinc-900'>
+          <div className='relative min-w-0'>
             <LanguageChip value={from} onClick={() => setActiveMenu('from')} />
             <DropdownMenu
               show={activeMenu === 'from'}
@@ -91,7 +91,7 @@ export default function TranslationDirectionCard() {
 
           <ArrowRight className='w-6 h-6 shrink-0 text-zinc-700' />
 
-          <div className='relative'>
+          <div className='relative min-w-0'>
             <LanguageChip value={to} onClick={() => setActiveMenu('to')} />
             <DropdownMenu
               show={activeMenu === 'to'}

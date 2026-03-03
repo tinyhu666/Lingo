@@ -64,8 +64,7 @@ jobs:
           releaseName: 'AutoGG v__VERSION__'
           releaseBody: |
             更新日志：
-            1. 新增应用内更新功能
-            2. 优化页面显示效果
+            修复已知问题。
 
             安装包：
             - Windows: `.msi` / `.exe`

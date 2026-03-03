@@ -63,7 +63,7 @@ export default function EnableStatusCard() {
       </div>
 
       <div className='mt-5 flex items-center justify-between'>
-        <span className='text-sm text-zinc-500'>总开关</span>
+        <span className='text-sm text-zinc-500'>开关</span>
         <button
           type='button'
           onClick={handleToggle}

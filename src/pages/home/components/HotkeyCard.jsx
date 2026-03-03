@@ -169,7 +169,9 @@ export default function HotkeyCard() {
             : `点击此卡片设置快捷键（默认 ${defaultTranslatorHotkeyLabel()}）。`}
         </p>
 
-        <div className='text-2xl font-semibold text-zinc-900 flex items-center gap-2'>{hotkeyDisplay}</div>
+        <div className='max-w-full min-w-0 overflow-hidden break-all text-2xl font-semibold text-zinc-900 flex items-center gap-2'>
+          {hotkeyDisplay}
+        </div>
       </div>
     </motion.button>
   );

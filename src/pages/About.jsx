@@ -27,7 +27,6 @@ const formatReleaseDate = (value) => {
 
 export default function About() {
   const {
-    supportsUpdater,
     currentVersion,
     latestVersion,
     hasUpdate,
@@ -42,7 +41,7 @@ export default function About() {
     installUpdate,
   } = useUpdater();
 
-  const versionLabel = currentVersion ? `V${currentVersion}` : 'V0.1.6';
+  const versionLabel = currentVersion ? `V${currentVersion}` : 'V0.1.7';
   const latestVersionLabel = latestVersion ? `V${latestVersion}` : '暂未获取';
   const actionLabel = checking
     ? '检查中...'
@@ -98,11 +97,7 @@ export default function About() {
               <div className='rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-600'>
                 发现新版本 {latestVersionLabel}，点击“立即更新”即可在应用内下载并安装。
               </div>
-            ) : (
-              <div className='rounded-xl border border-zinc-200 bg-zinc-50 p-3 text-sm text-zinc-500'>
-                {supportsUpdater ? '当前未检测到可用更新。' : '当前环境不支持自动更新。'}
-              </div>
-            )}
+            ) : null}
 
             {releaseBody ? (
               <div className='rounded-xl border border-zinc-200 bg-white p-3'>
