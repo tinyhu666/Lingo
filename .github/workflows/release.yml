@@ -59,6 +59,7 @@ jobs:
           {
             echo "TAURI_SIGNING_PRIVATE_KEY<<EOF"
             cat .github/updater/updater.key
+            echo
             echo "EOF"
             echo "TAURI_SIGNING_PRIVATE_KEY_PASSWORD=autogg-v013-updater"
           } >> "$GITHUB_ENV"
