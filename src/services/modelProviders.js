@@ -20,6 +20,39 @@ export const MODEL_OPTIONS = [
   { id: 'custom', name: '自定义', modelName: 'your-model-name', provider: 'openai', tag: '自定义' },
 ];
 
+export const PROVIDER_OPTIONS = [
+  { id: 'openai', label: 'OpenAI Compatible（/v1/chat/completions）' },
+  { id: 'anthropic', label: 'Anthropic Messages（/v1/messages）' },
+];
+
+const OPENAI_PATH = '/v1/chat/completions';
+const ANTHROPIC_PATH = '/v1/messages';
+
+export const normalizeProvider = (provider = '') => {
+  const value = String(provider || '').trim().toLowerCase();
+  return value === 'anthropic' ? 'anthropic' : 'openai';
+};
+
+export const normalizeApiUrlByProvider = (apiUrl = '', provider = 'openai') => {
+  const normalizedProvider = normalizeProvider(provider);
+  const url = String(apiUrl || '').trim();
+  if (!url) {
+    return normalizedProvider === 'anthropic'
+      ? 'https://api.anthropic.com/v1/messages'
+      : 'https://api.openai.com/v1/chat/completions';
+  }
+
+  if (normalizedProvider === 'anthropic' && url.endsWith(OPENAI_PATH)) {
+    return `${url.slice(0, -OPENAI_PATH.length)}${ANTHROPIC_PATH}`;
+  }
+
+  if (normalizedProvider === 'openai' && url.endsWith(ANTHROPIC_PATH)) {
+    return `${url.slice(0, -ANTHROPIC_PATH.length)}${OPENAI_PATH}`;
+  }
+
+  return url;
+};
+
 const parseJsonResponse = async (response) => {
   const text = await response.text();
   try {
@@ -97,13 +130,19 @@ const testOpenAICompatible = async (config) => {
 };
 
 export const testModelConnection = async (config) => {
-  validateConfig(config);
+  const normalizedConfig = {
+    ...config,
+    provider: normalizeProvider(config?.provider),
+    api_url: normalizeApiUrlByProvider(config?.api_url, config?.provider),
+  };
 
-  if (config.provider === 'anthropic') {
-    await testAnthropic(config);
+  validateConfig(normalizedConfig);
+
+  if (normalizedConfig.provider === 'anthropic') {
+    await testAnthropic(normalizedConfig);
     return true;
   }
 
-  await testOpenAICompatible(config);
+  await testOpenAICompatible(normalizedConfig);
   return true;
 };

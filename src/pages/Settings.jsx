@@ -2,7 +2,13 @@ import { motion } from 'framer-motion';
 import { useEffect, useMemo, useState } from 'react';
 import { Server, Crown, Sparkles } from '../icons';
 import { useStore } from '../components/StoreProvider';
-import { MODEL_OPTIONS, testModelConnection } from '../services/modelProviders';
+import {
+  MODEL_OPTIONS,
+  PROVIDER_OPTIONS,
+  normalizeApiUrlByProvider,
+  normalizeProvider,
+  testModelConnection,
+} from '../services/modelProviders';
 import { showSuccess, showError } from '../utils/toast';
 
 const getModelName = (id) => MODEL_OPTIONS.find((item) => item.id === id)?.name || id;
@@ -45,6 +51,15 @@ export default function Settings() {
     }
 
     await updateSettings(payload);
+  };
+
+  const updateProvider = async (provider) => {
+    const normalizedProvider = normalizeProvider(provider);
+    const normalizedUrl = normalizeApiUrlByProvider(activeConfig?.api_url, normalizedProvider);
+    await patchActiveConfig({
+      provider: normalizedProvider,
+      api_url: normalizedUrl,
+    });
   };
 
   const verifyConnection = async () => {
@@ -148,7 +163,11 @@ export default function Settings() {
                 value={activeConfig?.api_url || ''}
                 onChange={(event) => patchActiveConfig({ api_url: event.target.value })}
                 className='tool-input'
-                placeholder='例如：https://api.openai.com/v1/chat/completions'
+                placeholder={
+                  normalizeProvider(activeConfig?.provider) === 'anthropic'
+                    ? '例如：https://api.anthropic.com/v1/messages'
+                    : '例如：https://api.openai.com/v1/chat/completions'
+                }
               />
             </div>
 
@@ -166,17 +185,17 @@ export default function Settings() {
             <div>
               <label className='tool-label block'>Provider 类型</label>
               <select
-                value={activeConfig?.provider || 'openai'}
-                disabled={activeModel !== 'custom'}
-                onChange={(event) => patchActiveConfig({ provider: event.target.value })}
-                className='tool-input disabled:opacity-50'>
-                <option value='openai'>OpenAI Compatible</option>
-                <option value='anthropic'>Anthropic Messages</option>
+                value={normalizeProvider(activeConfig?.provider)}
+                onChange={(event) => updateProvider(event.target.value)}
+                className='tool-input'>
+                {PROVIDER_OPTIONS.map((provider) => (
+                  <option key={provider.id} value={provider.id}>
+                    {provider.label}
+                  </option>
+                ))}
               </select>
 
-              <p className='text-xs text-zinc-400 mt-2'>
-                非自定义厂商已内置 provider 类型；自定义可手动切换。
-              </p>
+              <p className='text-xs text-zinc-400 mt-2'>切换后会自动修正常见默认端点，避免接口不匹配。</p>
             </div>
 
             <div className='pt-2 flex items-center justify-between'>

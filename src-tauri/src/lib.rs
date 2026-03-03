@@ -63,6 +63,7 @@ pub fn run() {
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_store::Builder::default().build())
         .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_process::init())
         // 剪贴板插件
         .plugin(tauri_plugin_clipboard_manager::init())
         // opener插件

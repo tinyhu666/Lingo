@@ -17,6 +17,7 @@
     "store:default",
     "shell:allow-spawn",
     "shell:allow-stdin-write",
+    "process:default",
     "opener:allow-open-url",
     "updater:default",
     {

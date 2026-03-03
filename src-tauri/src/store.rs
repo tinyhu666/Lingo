@@ -238,6 +238,47 @@ fn normalize_model_type(model_type: &str) -> String {
     }
 }
 
+fn normalize_provider(provider: &str) -> String {
+    match provider.trim().to_lowercase().as_str() {
+        "anthropic" => "anthropic".to_string(),
+        _ => "openai".to_string(),
+    }
+}
+
+fn normalize_api_url_by_provider(api_url: &str, provider: &str) -> String {
+    let trimmed = api_url.trim();
+    let normalized_provider = normalize_provider(provider);
+
+    if trimmed.is_empty() {
+        return if normalized_provider == "anthropic" {
+            "https://api.anthropic.com/v1/messages".to_string()
+        } else {
+            "https://api.openai.com/v1/chat/completions".to_string()
+        };
+    }
+
+    let openai_path = "/v1/chat/completions";
+    let anthropic_path = "/v1/messages";
+
+    if normalized_provider == "anthropic" && trimmed.ends_with(openai_path) {
+        return format!(
+            "{}{}",
+            &trimmed[..trimmed.len() - openai_path.len()],
+            anthropic_path
+        );
+    }
+
+    if normalized_provider == "openai" && trimmed.ends_with(anthropic_path) {
+        return format!(
+            "{}{}",
+            &trimmed[..trimmed.len() - anthropic_path.len()],
+            openai_path
+        );
+    }
+
+    trimmed.to_string()
+}
+
 fn normalize_settings(settings: &mut AppSettings) {
     settings.model_type = normalize_model_type(&settings.model_type);
 
@@ -247,15 +288,19 @@ fn normalize_settings(settings: &mut AppSettings) {
             .entry(key)
             .or_insert_with(|| default_config.clone());
 
-        if current.provider.is_empty() {
-            current.provider = default_config.provider.clone();
-        }
+        current.provider = if current.provider.is_empty() {
+            normalize_provider(&default_config.provider)
+        } else {
+            normalize_provider(&current.provider)
+        };
         if current.api_url.is_empty() {
             current.api_url = default_config.api_url.clone();
         }
         if current.model_name.is_empty() {
             current.model_name = default_config.model_name.clone();
         }
+
+        current.api_url = normalize_api_url_by_provider(&current.api_url, &current.provider);
     }
 
     if settings.custom_model.api_url.is_empty() {

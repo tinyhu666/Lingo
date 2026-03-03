@@ -238,8 +238,9 @@ pub async fn translate_with_gpt(app: &AppHandle, original: &str) -> Result<Strin
     );
 
     let client = Client::new();
+    let provider = model_config.provider.trim().to_lowercase();
 
-    let translated = if model_config.provider == "anthropic" {
+    let translated = if provider == "anthropic" {
         request_anthropic(&client, &model_config, &system_prompt, raw).await?
     } else {
         request_openai_compatible(&client, &model_config, &system_prompt, raw).await?

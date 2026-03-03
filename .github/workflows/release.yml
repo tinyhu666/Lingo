@@ -17,7 +17,7 @@ jobs:
       matrix:
         include:
           - os: windows-latest
-            args: '--bundles msi'
+            args: '--bundles msi,nsis'
             label: Windows
           - os: macos-latest
             args: '--bundles app,dmg'
@@ -45,6 +45,7 @@ jobs:
         shell: pwsh
         run: |
           choco install wixtoolset -y --no-progress
+          choco install nsis -y --no-progress
           $wix = Get-ChildItem 'C:\Program Files (x86)' -Directory | Where-Object { $_.Name -like 'WiX Toolset*' } | Select-Object -First 1
           if ($null -eq $wix) {
             throw "WiX Toolset installation not found."
@@ -56,6 +57,8 @@ jobs:
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           tagName: v__VERSION__
           releaseName: 'AutoGG v__VERSION__'
@@ -63,6 +66,7 @@ jobs:
             AutoGG 安装包下载：
             - Windows: `.msi`
             - macOS: `.dmg`
+            - 自动更新：`latest.json` + 签名包
           releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}
