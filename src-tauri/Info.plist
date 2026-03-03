@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- 自动化操作权限 -->
+    <key>NSAppleEventsUsageDescription</key>
+    <string>AutoGG 需要使用 AppleScript 来模拟键盘操作，以实现剪贴板翻译快捷键功能</string>
+    
+    <!-- System Events 特定权限 -->
+    <key>NSSystemEventsUsageDescription</key>
+    <string>AutoGG 需要访问 System Events 来执行自动化操作</string>
+    
+    <!-- 辅助功能权限 -->
+    <key>NSAccessibilityUsageDescription</key>
+    <string>AutoGG 需要辅助功能权限来模拟键盘操作和文本选择</string>
+
+    <!-- 允许作为Agent运行 -->
+    <key>LSUIElement</key>
+    <true/>
+    
+    <!-- 声明应用支持Retina显示 -->
+    <key>NSHighResolutionCapable</key>
+    <true/>
+</dict>
+</plist>
