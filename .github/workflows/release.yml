@@ -64,8 +64,9 @@ jobs:
           releaseName: 'AutoGG v__VERSION__'
           releaseBody: |
             更新日志：
-            1. 修复 mac 客户端安装问题
-            2. 新增 anthropic 模型支持
+            1. 全新简洁图标（应用内与安装包统一）
+            2. README 头图与仓库展示升级
+            3. 版本升级与文案统一（powerby 萌新）
 
             安装包：
             - Windows: `.msi` / `.exe`

@@ -4,7 +4,7 @@ import { hasTauriRuntime } from '../services/tauriRuntime';
 import { showError } from '../utils/toast';
 
 export default function DeveloperNote() {
-  const currentVersion = 'V0.1.4';
+  const currentVersion = 'V0.1.5';
 
   const open = async (url) => {
     try {
@@ -27,7 +27,7 @@ export default function DeveloperNote() {
 
       <div className='flex flex-col gap-4 text-zinc-600'>
         <div className='text-lg font-medium text-zinc-900'>AutoGG {currentVersion}</div>
-        <div className='text-sm text-zinc-500'>Powerby tinyhu</div>
+        <div className='text-sm text-zinc-500'>powerby 萌新</div>
         <p className='leading-relaxed'>
           AutoGG 专注 Dota2 游戏内剪贴板翻译：快捷键触发后自动复制、翻译并粘贴回当前输入框，支持 Win 与 macOS。
         </p>

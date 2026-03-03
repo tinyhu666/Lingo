@@ -42,7 +42,8 @@ export default function About() {
     installUpdate,
   } = useUpdater();
 
-  const versionLabel = currentVersion ? `V${currentVersion}` : 'V0.1.4';
+  const versionLabel = currentVersion ? `V${currentVersion}` : 'V0.1.5';
+  const latestVersionLabel = latestVersion ? `V${latestVersion}` : '暂未获取';
 
   return (
     <div className='h-full flex flex-col gap-6'>
@@ -52,40 +53,54 @@ export default function About() {
         animate={{ opacity: 1, y: 0 }}>
         <h1 className='text-2xl font-bold text-zinc-900 mb-4'>关于 AutoGG</h1>
         <p className='text-zinc-600'>
-          当前版本：{versionLabel}。Powerby tinyhu。AutoGG 聚焦 Dota2 游戏内即时沟通翻译，支持全局快捷键、剪贴板翻译回填以及多厂商大模型 API。
+          当前版本：{versionLabel}。powerby 萌新。AutoGG 聚焦 Dota2 游戏内即时沟通翻译，支持全局快捷键、剪贴板翻译回填以及多厂商大模型 API。
         </p>
-      </motion.section>
 
-      <div className='grid grid-cols-1 md:grid-cols-3 gap-6'>
-        <motion.section
-          className='dota-card rounded-2xl p-6 md:col-span-2'
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}>
-          <div className='flex items-center gap-3 text-sm text-zinc-500'>
+        <div className='mt-5 rounded-xl border border-zinc-200 bg-white/80 p-4 space-y-3'>
+          <div className='flex items-center gap-2 text-sm text-zinc-500'>
             <Sparkles className='w-5 h-5 stroke-zinc-500' />
-            检查更新
+            版本更新
           </div>
 
-          <div className='mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3'>
-            <div className='rounded-xl border border-zinc-200 bg-white/80 p-3'>
-              <div className='text-xs text-zinc-500'>当前版本</div>
-              <div className='mt-1 text-base font-semibold text-zinc-900'>{versionLabel}</div>
-            </div>
-
-            <div className='rounded-xl border border-zinc-200 bg-white/80 p-3'>
-              <div className='text-xs text-zinc-500'>最新版本</div>
-              <div className='mt-1 text-base font-semibold text-zinc-900'>
-                {latestVersion ? `V${latestVersion}` : '暂未获取'}
+          <div className='flex flex-col gap-3 md:flex-row md:items-center md:justify-between'>
+            <div className='space-y-1'>
+              <div className='text-sm text-zinc-700'>
+                当前版本 <span className='font-semibold text-zinc-900'>{versionLabel}</span>，最新版本{' '}
+                <span className='font-semibold text-zinc-900'>{latestVersionLabel}</span>
               </div>
-              <div className='mt-1 text-xs text-zinc-500'>发布时间：{formatReleaseDate(releaseDate)}</div>
+              <div className='text-xs text-zinc-500'>
+                发布日期：{formatReleaseDate(releaseDate)}，上次检查：{formatTime(checkedAt)}
+              </div>
+            </div>
+
+            <div className='flex items-center gap-3'>
+              <button
+                type='button'
+                onClick={() => checkForUpdates({ silent: false })}
+                disabled={checking || downloading}
+                className={`tool-btn px-4 py-2 text-sm ${
+                  checking || downloading ? 'opacity-70 cursor-not-allowed' : ''
+                }`}>
+                {checking ? '检查中...' : '检查更新'}
+              </button>
+              {hasUpdate ? (
+                <button
+                  type='button'
+                  onClick={installUpdate}
+                  disabled={checking || downloading}
+                  className={`tool-btn-primary px-4 py-2 text-sm ${
+                    checking || downloading ? 'opacity-70 cursor-not-allowed' : ''
+                  }`}>
+                  {downloading ? '下载并安装中...' : '立即更新'}
+                </button>
+              ) : null}
             </div>
           </div>
 
-          <div className='mt-3 space-y-3'>
+          <div className='space-y-3'>
             {hasUpdate ? (
               <div className='rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700'>
-                检测到新版本，可直接在客户端下载并安装覆盖更新。
+                检测到新版本，可点击“立即更新”在客户端内下载并安装。
               </div>
             ) : (
               <div className='rounded-xl border border-zinc-200 bg-zinc-50 p-3 text-sm text-zinc-500'>
@@ -121,36 +136,15 @@ export default function About() {
               </div>
             ) : null}
           </div>
+        </div>
+      </motion.section>
 
-          <div className='mt-4 flex items-center gap-3'>
-            <button
-              type='button'
-              onClick={() => checkForUpdates({ silent: false })}
-              disabled={checking || downloading}
-              className={`tool-btn px-4 py-2 text-sm ${
-                checking || downloading ? 'opacity-70 cursor-not-allowed' : ''
-              }`}>
-              {checking ? '检查中...' : '检查更新'}
-            </button>
-
-            <button
-              type='button'
-              onClick={installUpdate}
-              disabled={!hasUpdate || checking || downloading}
-              className={`tool-btn-primary px-4 py-2 text-sm ${
-                !hasUpdate || checking || downloading ? 'opacity-70 cursor-not-allowed' : ''
-              }`}>
-              {downloading ? '下载并安装中...' : '下载并安装'}
-            </button>
-
-            <span className='text-xs text-zinc-500'>上次检查：{formatTime(checkedAt)}</span>
-          </div>
-        </motion.section>
+      <div className='grid grid-cols-1 md:grid-cols-3 gap-6'>
 
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.16 }}>
+          transition={{ delay: 0.1 }}>
           <DeveloperNote />
         </motion.div>
 
@@ -158,7 +152,7 @@ export default function About() {
           className='dota-card rounded-2xl p-6'
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}>
+          transition={{ delay: 0.14 }}>
           <div className='flex items-center gap-3 text-sm text-zinc-500'>
             <GamingPad className='w-6 h-6 stroke-zinc-500' />
             Dota2 场景优化
@@ -172,7 +166,7 @@ export default function About() {
           className='dota-card rounded-2xl p-6'
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.24 }}>
+          transition={{ delay: 0.18 }}>
           <div className='flex items-center gap-3 text-sm text-zinc-500'>
             <Globe className='w-6 h-6 stroke-zinc-500' />
             多语言互译
