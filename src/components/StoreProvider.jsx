@@ -1,86 +1,106 @@
-import { createContext, useContext, useState, useEffect } from 'react';
-import { load } from '@tauri-apps/plugin-store';
-import { invoke } from '@tauri-apps/api/core';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  loadInitialSettings,
+  readSettingsFromBackend,
+  writePreviewSettings,
+  writeSettingsToStore,
+} from '../services/settingsStore';
 
 const StoreContext = createContext(null);
-const WEB_SETTINGS_KEY = 'autogg.settings';
 
 export function StoreProvider({ children }) {
-    const [store, setStore] = useState(null);
-    const [settings, setSettings] = useState(null);
-    const [loading, setLoading] = useState(true);
+  const [settings, setSettings] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const latestSettingsRef = useRef(null);
+  const commitQueueRef = useRef(Promise.resolve());
 
-    useEffect(() => {
-        const initStore = async () => {
-            try {
-                const storeInstance = await load('store.json', {
-                    autoSave: 100
-                });
-                setStore(storeInstance);
-                try {
-                    const latestSettings = await invoke('get_settings');
-                    setSettings(latestSettings);
-                } catch (error) {
-                    const storedSettings = await storeInstance.get('settings');
-                    if (storedSettings) {
-                        setSettings(storedSettings);
-                    }
-                }
-            } catch (error) {
-                // 浏览器预览环境下 tauri store 不可用，使用本地存储兜底
-                try {
-                    const fallback = localStorage.getItem(WEB_SETTINGS_KEY);
-                    if (fallback) {
-                        setSettings(JSON.parse(fallback));
-                    }
-                } catch (fallbackError) {
-                    console.error('读取本地预览设置失败:', fallbackError);
-                }
-            } finally {
-                setLoading(false);
-            }
-        };
-        initStore();
-    }, []);
-
-    const updateSettings = async (newSettings) => {
-        const updatedSettings = { ...(settings || {}), ...newSettings };
-
-        if (!store) {
-            setSettings(updatedSettings);
-            try {
-                localStorage.setItem(WEB_SETTINGS_KEY, JSON.stringify(updatedSettings));
-            } catch (error) {
-                console.error('写入本地预览设置失败:', error);
-            }
-            return;
-        }
-
-        try {
-            await store.set('settings', updatedSettings);
-            await store.save();
-            const storedSettings = await store.get('settings');
-            if (storedSettings) {
-                setSettings(storedSettings);
-            }
-        } catch (error) {
-            console.error('更新设置失败:', error);
-            // 即使持久化失败，也保持当前会话可用
-            setSettings(updatedSettings);
-        }
+  const enqueueCommit = useCallback((producer) => {
+    const run = async () => {
+      const nextSettings = producer(latestSettingsRef.current || {});
+      latestSettingsRef.current = nextSettings;
+      setSettings(nextSettings);
+      await writeSettingsToStore(nextSettings);
+      writePreviewSettings(nextSettings);
+      return nextSettings;
     };
 
-    return (
-        <StoreContext.Provider value={{ store, settings, updateSettings, loading }}>
-            {children}
-        </StoreContext.Provider>
-    );
+    commitQueueRef.current = commitQueueRef.current.then(run, run);
+    return commitQueueRef.current;
+  }, []);
+
+  const replaceSettings = useCallback(
+    async (nextSettings) => {
+      const normalized = nextSettings || {};
+      return enqueueCommit(() => normalized);
+    },
+    [enqueueCommit],
+  );
+
+  const updateSettings = useCallback(
+    async (patch) => {
+      return enqueueCommit((current) => ({
+        ...current,
+        ...(patch || {}),
+      }));
+    },
+    [enqueueCommit],
+  );
+
+  const reloadSettings = useCallback(async () => {
+    const latestFromBackend = await readSettingsFromBackend();
+    if (!latestFromBackend) {
+      return latestSettingsRef.current;
+    }
+
+    await replaceSettings(latestFromBackend);
+    return latestFromBackend;
+  }, [replaceSettings]);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const initialize = async () => {
+      try {
+        const initial = await loadInitialSettings();
+        if (!mounted) {
+          return;
+        }
+        latestSettingsRef.current = initial;
+        setSettings(initial);
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    void initialize();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const contextValue = useMemo(
+    () => ({
+      settings,
+      loading,
+      updateSettings,
+      replaceSettings,
+      reloadSettings,
+      // 兼容旧代码结构，避免其他页面读取 store 字段时报错
+      store: null,
+    }),
+    [settings, loading, updateSettings, replaceSettings, reloadSettings],
+  );
+
+  return <StoreContext.Provider value={contextValue}>{children}</StoreContext.Provider>;
 }
 
 export const useStore = () => {
-    const context = useContext(StoreContext);
-    if (!context) {
-        throw new Error('useStore 必须在 StoreProvider 内部使用');
-    }
-    return context;
-}; 
+  const context = useContext(StoreContext);
+  if (!context) {
+    throw new Error('useStore 必须在 StoreProvider 内部使用');
+  }
+  return context;
+};

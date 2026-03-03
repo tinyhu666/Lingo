@@ -1,18 +1,14 @@
 import { Coffee, Globe } from '../icons';
 import { openUrl } from '@tauri-apps/plugin-opener';
+import { hasTauriRuntime } from '../services/tauriRuntime';
 import { showError } from '../utils/toast';
 
-const hasTauriInvoke = () =>
-  typeof window !== 'undefined' &&
-  typeof window.__TAURI_INTERNALS__ !== 'undefined' &&
-  typeof window.__TAURI_INTERNALS__.invoke === 'function';
-
 export default function DeveloperNote() {
-  const currentVersion = 'V0.1.0';
+  const currentVersion = 'V0.1.1';
 
   const open = async (url) => {
     try {
-      if (hasTauriInvoke()) {
+      if (hasTauriRuntime()) {
         await openUrl(url);
       } else {
         window.open(url, '_blank', 'noopener,noreferrer');
@@ -40,6 +36,7 @@ export default function DeveloperNote() {
         </p>
 
         <button
+          type='button'
           onClick={() => open('https://tauri.app')}
           className='tool-btn self-start flex items-center gap-2 px-4 py-2 text-sm'>
           <Globe className='w-4 h-4 stroke-zinc-500' />

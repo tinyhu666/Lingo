@@ -3,7 +3,7 @@ import { GamingPad, Globe } from '../icons';
 import DeveloperNote from '../components/DeveloperNote';
 
 export default function About() {
-  const currentVersion = 'V0.1.0';
+  const currentVersion = 'V0.1.1';
 
   return (
     <div className='h-full flex flex-col gap-6'>
