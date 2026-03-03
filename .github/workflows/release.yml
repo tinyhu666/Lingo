@@ -63,8 +63,12 @@ jobs:
           tagName: v__VERSION__
           releaseName: 'AutoGG v__VERSION__'
           releaseBody: |
-            AutoGG 安装包下载：
-            - Windows: `.msi`
+            更新日志：
+            1. 修复 mac 客户端安装问题
+            2. 新增 anthropic 模型支持
+
+            安装包：
+            - Windows: `.msi` / `.exe`
             - macOS: `.dmg`
             - 自动更新：`latest.json` + 签名包
           releaseDraft: false

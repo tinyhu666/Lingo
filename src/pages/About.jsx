@@ -42,7 +42,7 @@ export default function About() {
     installUpdate,
   } = useUpdater();
 
-  const versionLabel = currentVersion ? `V${currentVersion}` : 'V0.1.3';
+  const versionLabel = currentVersion ? `V${currentVersion}` : 'V0.1.4';
 
   return (
     <div className='h-full flex flex-col gap-6'>
