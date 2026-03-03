@@ -42,8 +42,17 @@ export default function About() {
     installUpdate,
   } = useUpdater();
 
-  const versionLabel = currentVersion ? `V${currentVersion}` : 'V0.1.5';
+  const versionLabel = currentVersion ? `V${currentVersion}` : 'V0.1.6';
   const latestVersionLabel = latestVersion ? `V${latestVersion}` : '暂未获取';
+  const actionLabel = checking
+    ? '检查中...'
+    : downloading
+      ? '下载并安装中...'
+      : hasUpdate
+        ? '立即更新'
+        : '检查更新';
+  const actionHandler = hasUpdate ? installUpdate : () => checkForUpdates({ silent: false });
+  const actionDisabled = checking || downloading;
 
   return (
     <div className='h-full flex flex-col gap-6'>
@@ -73,34 +82,21 @@ export default function About() {
               </div>
             </div>
 
-            <div className='flex items-center gap-3'>
-              <button
-                type='button'
-                onClick={() => checkForUpdates({ silent: false })}
-                disabled={checking || downloading}
-                className={`tool-btn px-4 py-2 text-sm ${
-                  checking || downloading ? 'opacity-70 cursor-not-allowed' : ''
-                }`}>
-                {checking ? '检查中...' : '检查更新'}
-              </button>
-              {hasUpdate ? (
-                <button
-                  type='button'
-                  onClick={installUpdate}
-                  disabled={checking || downloading}
-                  className={`tool-btn-primary px-4 py-2 text-sm ${
-                    checking || downloading ? 'opacity-70 cursor-not-allowed' : ''
-                  }`}>
-                  {downloading ? '下载并安装中...' : '立即更新'}
-                </button>
-              ) : null}
-            </div>
+            <button
+              type='button'
+              onClick={actionHandler}
+              disabled={actionDisabled}
+              className={`px-4 py-2 text-sm ${actionDisabled ? 'opacity-70 cursor-not-allowed' : ''} ${
+                hasUpdate ? 'tool-btn-primary' : 'tool-btn'
+              }`}>
+              {actionLabel}
+            </button>
           </div>
 
           <div className='space-y-3'>
             {hasUpdate ? (
-              <div className='rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700'>
-                检测到新版本，可点击“立即更新”在客户端内下载并安装。
+              <div className='rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-600'>
+                发现新版本 {latestVersionLabel}，点击“立即更新”即可在应用内下载并安装。
               </div>
             ) : (
               <div className='rounded-xl border border-zinc-200 bg-zinc-50 p-3 text-sm text-zinc-500'>
