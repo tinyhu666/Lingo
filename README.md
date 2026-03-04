@@ -2,20 +2,14 @@
   <img src="./docs/branding/autogg-readme-header.png" alt="AutoGG Header" width="100%" />
 </p>
 
-# AutoGG - Dota2 游戏内剪贴板翻译客户端
+# AutoGG - Dota2 游戏内聊天翻译客户端
 
-AutoGG 是一个基于 **Tauri 2 + React** 的桌面客户端，面向 Dota2 国际服沟通场景。当前版本：**V0.1.8 · powerby 萌新**。
+AutoGG 是一个基于 AI 大模型的 Dota2 游戏内聊天翻译工具，面向 Dota2 国际服沟通场景。它加入了 Dota2 专业术语，并针对翻译内容进行润色，更加符合 Dota2 玩家的交流习惯。输入聊天内容后，只需要按下快捷键，即可自动完成翻译，并将翻译后的文本显示在对话窗口中，点击后即可发送翻译后的内容。
 
-- 支持 **Windows / macOS**
-- 支持 **全局快捷键** 一键复制 -> 翻译 -> 粘贴
+- 支持 Windows / macOS
+- 支持全局快捷键。自动复制 -> 翻译 -> 自动粘贴
 - 支持填写多家模型 API（OpenAI / DeepSeek / Qwen / Moonshot / SiliconFlow / Anthropic / 自定义）
 - 支持在设置中切换不同模型厂商
-
-## 仓库展示资源
-
-- README 头图：`docs/branding/autogg-readme-header.png`
-- GitHub Social Preview：`docs/branding/autogg-social-preview.png`
-- 设置入口：仓库 `Settings -> General -> Social preview` 上传 `autogg-social-preview.png`
 
 ## 功能说明
 
@@ -64,12 +58,6 @@ npm run tauri build
 > 自定义厂商支持两种 provider：
 > - OpenAI Compatible（`/v1/chat/completions`）
 > - Anthropic Messages（`/v1/messages`）
-
-## 技术栈
-
-- Tauri 2 (Rust)
-- React 18 + Vite
-- TailwindCSS
 
 ## 许可证
 
