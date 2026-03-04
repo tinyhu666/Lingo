@@ -87,18 +87,6 @@ export default function Phrases() {
     return `${modifiers}+${hotkey.key}`;
   }, [settings?.trans_hotkey]);
 
-  const signatureCounts = useMemo(() => {
-    const map = new Map();
-    rows.forEach((row) => {
-      if (!row.keyCode) {
-        return;
-      }
-      const signature = rowSignature(row.keyCode);
-      map.set(signature, (map.get(signature) || 0) + 1);
-    });
-    return map;
-  }, [rows]);
-
   const usedSignatures = useMemo(() => {
     const signatures = new Set();
     rows.forEach((row) => {
@@ -212,110 +200,92 @@ export default function Phrases() {
     }
   };
 
-  const validationMessage = validateRows();
-
   return (
-    <div className='h-full flex flex-col gap-5 ui-animate-in'>
-      <motion.section
-        className='ui-card ui-card-glass rounded-2xl p-6'
+    <div className='h-full flex flex-col gap-6'>
+      <motion.div
+        className='dota-card w-full rounded-2xl p-6'
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}>
-        <div className='flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between'>
+        <div className='flex items-start justify-between gap-4'>
           <div>
-            <h1 className='ui-page-title'>常用语</h1>
-            <p className='ui-body mt-2'>
-              使用固定前缀快捷键配置战术短句。新增、删除、保存后会立即同步到客户端配置。
+            <h1 className='tool-page-title'>常用语</h1>
+            <p className='tool-body mt-2'>
+              支持新增、修改、删除常用语。快捷键统一使用 {MODIFIER_LABEL} + 键位，减少误触。
             </p>
           </div>
 
-          <div className='flex flex-wrap items-center gap-2'>
-            <span className='ui-chip'>共 {rows.length} / {MAX_PHRASE_COUNT}</span>
-            <button type='button' onClick={addRow} className='ui-btn'>
+          <div className='flex items-center gap-2'>
+            <button type='button' onClick={addRow} className='tool-btn px-3 py-2 text-sm'>
               新增常用语
             </button>
             <button
               type='button'
               onClick={saveRows}
               disabled={saving}
-              className={`ui-btn-primary ${saving ? 'opacity-70 cursor-not-allowed' : ''}`}>
+              className={`tool-btn-primary px-4 py-2 text-sm ${
+                saving ? 'opacity-70 cursor-not-allowed' : ''
+              }`}>
               {saving ? '保存中...' : '保存'}
             </button>
           </div>
         </div>
 
-        <div className='mt-4'>
-          {validationMessage ? (
-            <div className='ui-danger'>{validationMessage}</div>
-          ) : (
-            <div className='ui-soft-card px-3 py-2 ui-body'>校验通过，可直接保存。</div>
-          )}
+        <div className='mt-5 overflow-auto'>
+          <table className='min-w-full'>
+            <thead>
+              <tr className='border-b border-zinc-200'>
+                <th className='py-3 pr-2 text-left tool-control-text text-zinc-500 w-[64px]'>#</th>
+                <th className='py-3 px-2 text-left tool-control-text text-zinc-500'>常用语内容</th>
+                <th className='py-3 px-2 text-left tool-control-text text-zinc-500 w-[190px]'>快捷键</th>
+                <th className='py-3 pl-2 text-left tool-control-text text-zinc-500 w-[90px]'>操作</th>
+              </tr>
+            </thead>
+
+            <tbody className='divide-y divide-zinc-200'>
+              {rows.map((row) => (
+                <tr key={row.id} className='hover:bg-zinc-50/80'>
+                  <td className='py-3 pr-2 text-sm text-zinc-500'>{row.id}</td>
+
+                  <td className='py-3 px-2'>
+                    <input
+                      value={row.phrase}
+                      onChange={(event) => patchRow(row.id, { phrase: event.target.value })}
+                      className='tool-input'
+                      placeholder='输入常用语内容'
+                      maxLength={MAX_PHRASE_LENGTH}
+                    />
+                  </td>
+
+                  <td className='py-3 px-2'>
+                    <div className='flex items-center gap-2'>
+                      <span className='tool-chip'>{MODIFIER_LABEL}</span>
+                      <select
+                        value={row.keyCode}
+                        onChange={(event) => patchRow(row.id, { keyCode: event.target.value })}
+                        className='tool-input'>
+                        {KEY_OPTIONS.map((option) => (
+                          <option key={option.code} value={option.code}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </td>
+
+                  <td className='py-3 pl-2'>
+                    <button
+                      type='button'
+                      onClick={() => removeRow(row.id)}
+                      className='tool-btn px-2.5 py-1.5 text-xs text-red-600 border-red-200 bg-red-50 hover:bg-red-100'>
+                      删除
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
-      </motion.section>
-
-      <motion.section
-        className='ui-card rounded-2xl p-4 flex-1 min-h-0 overflow-auto'
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.08 }}>
-        <div className='space-y-3'>
-          {rows.map((row) => {
-            const signature = rowSignature(row.keyCode);
-            const duplicate = (signatureCounts.get(signature) || 0) > 1;
-            const translatorConflict = signature === translatorSignature;
-            const hasConflict = duplicate || translatorConflict;
-
-            return (
-              <article key={row.id} className='ui-soft-card rounded-xl p-4 space-y-3'>
-                <div className='flex items-center justify-between gap-3'>
-                  <div className='flex items-center gap-2'>
-                    <span className='ui-chip'>#{row.id}</span>
-                    <span className='ui-caption'>快捷键：{formatShortcutLabel(row.keyCode)}</span>
-                  </div>
-
-                  <button
-                    type='button'
-                    onClick={() => removeRow(row.id)}
-                    className='ui-btn !h-9 !px-3 !text-xs !border-[#6f3b45] !text-[#ffc2c8] !bg-[#4a2228] hover:!bg-[#5b2a31]'>
-                    删除
-                  </button>
-                </div>
-
-                <div className='grid grid-cols-1 gap-3 lg:grid-cols-[1fr_220px]'>
-                  <input
-                    value={row.phrase}
-                    onChange={(event) => patchRow(row.id, { phrase: event.target.value })}
-                    className='ui-control'
-                    placeholder='输入常用语内容'
-                    maxLength={MAX_PHRASE_LENGTH}
-                  />
-
-                  <div className='flex items-center gap-2'>
-                    <span className='ui-chip shrink-0'>{MODIFIER_LABEL}</span>
-                    <select
-                      value={row.keyCode}
-                      onChange={(event) => patchRow(row.id, { keyCode: event.target.value })}
-                      className='ui-control'>
-                      {KEY_OPTIONS.map((option) => (
-                        <option key={option.code} value={option.code}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                <div className={`ui-caption ${hasConflict ? '!text-[#ff9aa5]' : ''}`}>
-                  {translatorConflict
-                    ? '与翻译快捷键冲突，请更换键位。'
-                    : duplicate
-                      ? '存在重复快捷键，请调整。'
-                      : `长度 ${row.phrase.trim().length}/${MAX_PHRASE_LENGTH}，状态正常。`}
-                </div>
-              </article>
-            );
-          })}
-        </div>
-      </motion.section>
+      </motion.div>
     </div>
   );
 }

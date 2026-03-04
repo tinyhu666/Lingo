@@ -29,9 +29,6 @@ export default function Settings() {
     return allConfigs[activeModel] || {};
   }, [settings?.model_configs, activeModel]);
 
-  const currentProvider = normalizeProvider(activeConfig?.provider);
-  const normalizedUrlPreview = normalizeApiUrlByProvider(activeConfig?.api_url, currentProvider);
-
   const selectModel = async (modelId) => {
     setActiveModel(modelId);
     await updateSettings({ model_type: modelId });
@@ -57,10 +54,10 @@ export default function Settings() {
   };
 
   const updateProvider = async (provider) => {
-    const normalized = normalizeProvider(provider);
-    const normalizedUrl = normalizeApiUrlByProvider(activeConfig?.api_url, normalized);
+    const normalizedProvider = normalizeProvider(provider);
+    const normalizedUrl = normalizeApiUrlByProvider(activeConfig?.api_url, normalizedProvider);
     await patchActiveConfig({
-      provider: normalized,
+      provider: normalizedProvider,
       api_url: normalizedUrl,
     });
   };
@@ -80,25 +77,28 @@ export default function Settings() {
   };
 
   return (
-    <div className='h-full flex flex-col gap-5 ui-animate-in'>
+    <div className='h-full flex flex-col gap-6'>
       <motion.section
-        className='ui-card ui-card-glass rounded-2xl p-6'
+        className='dota-card w-full rounded-2xl p-6'
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}>
-        <h1 className='ui-page-title'>AI 模型配置</h1>
-        <p className='ui-body mt-2'>按厂商独立维护认证参数，切换后立即作用于剪贴板翻译链路。</p>
+        <h1 className='tool-page-title mb-4'>AutoGG 模型设置</h1>
+        <p className='tool-body text-zinc-600'>
+          可为不同厂商分别填写 API Key、URL、模型名称。翻译时按当前选中厂商发起请求。
+        </p>
       </motion.section>
 
-      <div className='grid grid-cols-1 gap-5 xl:grid-cols-[292px_1fr] min-h-0 flex-1'>
+      <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
         <motion.section
-          className='ui-card rounded-2xl p-4 space-y-3'
+          className='dota-card flex flex-col rounded-2xl p-6'
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}>
-          <div className='flex items-center gap-2 px-2'>
-            <Crown className='h-5 w-5 text-[#a8b6d7]' />
-            <h2 className='ui-card-title'>模型厂商</h2>
+          <div className='flex items-center gap-3 mb-6'>
+            <Crown className='w-5 h-5 stroke-zinc-500' />
+            <h2 className='tool-card-title'>模型厂商</h2>
           </div>
-          <div className='space-y-2'>
+
+          <div className='space-y-3'>
             {MODEL_OPTIONS.map((model) => {
               const active = activeModel === model.id;
               return (
@@ -106,17 +106,27 @@ export default function Settings() {
                   key={model.id}
                   type='button'
                   onClick={() => selectModel(model.id)}
-                  className={`w-full rounded-xl border px-3 py-3 text-left transition-all ${
+                  className={`w-full flex items-center justify-between p-4 rounded-xl border transition-all ${
                     active
-                      ? 'ui-state-enabled bg-[#283451]'
-                      : 'border-[#36445f] bg-[#1d2536] hover:border-[#4c628a]'
+                      ? 'border-blue-300 bg-blue-50/70 shadow-[0_6px_16px_rgba(37,99,235,0.12)]'
+                      : 'border-zinc-200 hover:bg-zinc-50'
                   }`}>
-                  <div className='flex items-center justify-between gap-2'>
-                    <div className='min-w-0'>
-                      <div className='ui-control-text truncate'>{model.name}</div>
-                      <div className='ui-caption mt-1 truncate'>{model.modelName}</div>
-                    </div>
-                    <span className='ui-chip shrink-0'>{model.tag}</span>
+                  <div className='min-w-0 text-left'>
+                    <div className='tool-control-text text-zinc-700 truncate'>{model.name}</div>
+                    <div className='tool-caption mt-1 truncate'>{model.modelName}</div>
+                  </div>
+
+                  <div className='flex items-center gap-2 pl-3'>
+                    <span className='tool-chip'>
+                      <Sparkles className='w-3.5 h-3.5 stroke-emerald-500' />
+                      <span className='tool-caption text-emerald-600'>{model.tag}</span>
+                    </span>
+
+                    <span
+                      className={`w-4 h-4 rounded-full border transition-all ${
+                        active ? 'border-blue-600 bg-blue-600' : 'border-zinc-300'
+                      }`}
+                    />
                   </div>
                 </button>
               );
@@ -125,118 +135,86 @@ export default function Settings() {
         </motion.section>
 
         <motion.section
-          className='ui-card rounded-2xl p-5 space-y-4 overflow-auto'
+          className='dota-card flex flex-col rounded-2xl p-6'
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.05 }}>
-          <div className='flex items-center justify-between gap-2'>
-            <div className='flex items-center gap-2'>
-              <Server className='h-5 w-5 text-[#a8b6d7]' />
-              <h2 className='ui-card-title'>配置详情（{getModelName(activeModel)}）</h2>
-            </div>
-            <span className='ui-chip'>Provider：{currentProvider}</span>
+          transition={{ delay: 0.1 }}>
+          <div className='flex items-center gap-3 mb-6'>
+            <Server className='w-5 h-5 stroke-zinc-500' />
+            <h2 className='tool-card-title'>API 配置（{getModelName(activeModel)}）</h2>
           </div>
 
-          <div className='grid grid-cols-1 gap-4 2xl:grid-cols-2'>
-            <section className='ui-soft-card p-4 space-y-3'>
-              <h3 className='ui-card-title text-[15px]'>认证</h3>
-              <div>
-                <label className='tool-label'>API Key</label>
-                <input
-                  type='password'
-                  value={activeConfig?.auth || ''}
-                  onChange={(event) => patchActiveConfig({ auth: event.target.value })}
-                  className='ui-control'
-                  placeholder='输入 API Key'
-                />
-              </div>
-            </section>
-
-            <section className='ui-soft-card p-4 space-y-3'>
-              <h3 className='ui-card-title text-[15px]'>Provider</h3>
-              <div>
-                <label className='tool-label'>接口类型</label>
-                <select
-                  value={currentProvider}
-                  onChange={(event) => updateProvider(event.target.value)}
-                  className='ui-control'>
-                  {PROVIDER_OPTIONS.map((provider) => (
-                    <option key={provider.id} value={provider.id}>
-                      {provider.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className='ui-caption'>
-                切换 Provider 后会自动修正 URL 后缀，避免 `/v1/chat/completions` 与 `/v1/messages` 不匹配。
-              </div>
-            </section>
-
-            <section className='ui-soft-card p-4 space-y-3 2xl:col-span-2'>
-              <h3 className='ui-card-title text-[15px]'>端点与模型</h3>
-              <div className='grid grid-cols-1 gap-3 2xl:grid-cols-2'>
-                <div>
-                  <label className='tool-label'>API URL</label>
-                  <input
-                    type='text'
-                    value={activeConfig?.api_url || ''}
-                    onChange={(event) => patchActiveConfig({ api_url: event.target.value })}
-                    className='ui-control'
-                    placeholder={
-                      currentProvider === 'anthropic'
-                        ? '例如：https://api.anthropic.com/v1/messages'
-                        : '例如：https://api.openai.com/v1/chat/completions'
-                    }
-                  />
-                </div>
-
-                <div>
-                  <label className='tool-label'>Model Name</label>
-                  <input
-                    type='text'
-                    value={activeConfig?.model_name || ''}
-                    onChange={(event) => patchActiveConfig({ model_name: event.target.value })}
-                    className='ui-control'
-                    placeholder='例如：gpt-4.1-mini'
-                  />
-                </div>
-              </div>
-            </section>
-          </div>
-
-          <section className='ui-soft-card p-4 space-y-3'>
-            <div className='flex items-center gap-2'>
-              <Sparkles className='h-5 w-5 text-[#a8b6d7]' />
-              <h3 className='ui-card-title text-[15px]'>当前生效摘要</h3>
+          <div className='space-y-4'>
+            <div>
+              <label className='tool-label block'>API Key</label>
+              <input
+                type='password'
+                value={activeConfig?.auth || ''}
+                onChange={(event) => patchActiveConfig({ auth: event.target.value })}
+                className='tool-input'
+                placeholder='输入 API Key'
+              />
             </div>
 
-            <div className='grid grid-cols-1 gap-3 lg:grid-cols-3'>
-              <div className='ui-soft-card p-3'>
-                <div className='ui-caption'>模型厂商</div>
-                <div className='ui-control-text mt-1'>{getModelName(activeModel)}</div>
-              </div>
-              <div className='ui-soft-card p-3'>
-                <div className='ui-caption'>Provider</div>
-                <div className='ui-control-text mt-1'>{currentProvider}</div>
-              </div>
-              <div className='ui-soft-card p-3'>
-                <div className='ui-caption'>URL 规范化</div>
-                <div className='ui-control-text mt-1 truncate' title={normalizedUrlPreview}>
-                  {normalizedUrlPreview || '未设置'}
-                </div>
-              </div>
+            <div>
+              <label className='tool-label block'>API URL</label>
+              <input
+                type='text'
+                value={activeConfig?.api_url || ''}
+                onChange={(event) => patchActiveConfig({ api_url: event.target.value })}
+                className='tool-input'
+                placeholder={
+                  normalizeProvider(activeConfig?.provider) === 'anthropic'
+                    ? '例如：https://api.anthropic.com/v1/messages'
+                    : '例如：https://api.openai.com/v1/chat/completions'
+                }
+              />
             </div>
 
-            <div className='flex justify-end pt-1'>
+            <div>
+              <label className='tool-label block'>Model Name</label>
+              <input
+                type='text'
+                value={activeConfig?.model_name || ''}
+                onChange={(event) => patchActiveConfig({ model_name: event.target.value })}
+                className='tool-input'
+                placeholder='例如：gpt-4.1-mini'
+              />
+            </div>
+
+            <div>
+              <label className='tool-label block'>Provider 类型</label>
+              <select
+                value={normalizeProvider(activeConfig?.provider)}
+                onChange={(event) => updateProvider(event.target.value)}
+                className='tool-input'>
+                {PROVIDER_OPTIONS.map((provider) => (
+                  <option key={provider.id} value={provider.id}>
+                    {provider.label}
+                  </option>
+                ))}
+              </select>
+
+              <p className='tool-caption text-zinc-400 mt-2'>切换后会自动修正常见默认端点，避免接口不匹配。</p>
+            </div>
+
+            <div className='pt-2 flex items-center justify-between'>
+              <p className='tool-caption text-zinc-400'>
+                当前翻译使用：
+                <span className='font-medium text-zinc-500'> {getModelName(activeModel)}</span>
+              </p>
+
               <button
                 type='button'
                 onClick={verifyConnection}
                 disabled={testing}
-                className={`ui-btn-primary ${testing ? 'opacity-70 cursor-not-allowed' : ''}`}>
+                className={`tool-btn-primary px-4 py-2 text-sm ${
+                  testing ? 'opacity-70 cursor-not-allowed' : ''
+                }`}>
                 {testing ? '测试中...' : '测试连接'}
               </button>
             </div>
-          </section>
+          </div>
         </motion.section>
       </div>
     </div>

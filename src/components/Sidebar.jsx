@@ -1,85 +1,122 @@
 import { motion } from 'framer-motion';
 import { twMerge } from 'tailwind-merge';
-import { HomeHLine, Settings02, Translate, ChatBubbleMessage, InfoCircle } from '../icons';
+import {
+  HomeHLine,
+  Settings02,
+  Translate,
+  ChatBubbleMessage,
+  AT,
+} from '../icons';
 import appIcon from '../assets/app-icon.png';
 import { useUpdater } from './UpdateProvider';
+// import LoginModal from './LoginModal';
 
-const NAV_GROUPS = [
-  {
-    label: '主控',
-    items: [
-      { id: 'home', name: '主页', icon: HomeHLine },
-      { id: 'translate', name: '模式', icon: Translate },
-      { id: 'phrases', name: '常用语', icon: ChatBubbleMessage },
-      { id: 'settings', name: 'AI 模型', icon: Settings02 },
-    ],
-  },
-  {
-    label: '系统',
-    items: [{ id: 'about', name: '关于', icon: InfoCircle }],
-  },
+const sidebarItems = [
+  { name: '主页', icon: HomeHLine, id: 'home' },
+  { name: '模式', icon: Translate, id: 'translate' },
+  { name: '常用语', icon: ChatBubbleMessage, id: 'phrases' },
+  { name: 'AI模型', icon: Settings02, id: 'settings' },
+  { name: '关于', icon: AT, id: 'about' },
 ];
 
 export default function Sidebar({ activeItem, setActiveItem }) {
   const { hasUpdate } = useUpdater();
+  // const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
 
   return (
-    <aside className='ui-nav-panel'>
-      <div className='px-4 py-4 border-b border-[#2a3242]'>
-        <button
-          type='button'
-          className='w-full rounded-2xl border border-[#34415b] bg-[#1b2333] px-3 py-3 flex items-center gap-3 hover:border-[#4a5e85] transition-colors'
-          onClick={() => setActiveItem('home')}>
-          <img src={appIcon} alt='AutoGG' className='h-11 w-11 rounded-xl object-cover border border-[#415171]' />
-          <div className='text-left min-w-0'>
-            <div className='dota-logo-title text-[28px] leading-none'>AutoGG</div>
-            <div className='ui-caption mt-1'>Dota2 沟通翻译控制台</div>
+    <div className='dota-sidebar h-full flex flex-col'>
+      {/* Logo区域 */}
+      <div className='px-5 py-5 border-b border-zinc-200/60'>
+        <div className='flex items-center space-x-3'>
+          <div className='rounded-xl flex items-center justify-center overflow-hidden w-[46px] h-[46px] min-w-[46px] border border-zinc-200'>
+            <img
+              src={appIcon}
+              alt='AutoGG Logo'
+              width='46'
+              height='46'
+              className='object-cover w-[46px] h-[46px]'
+            />
           </div>
-        </button>
+          <h3 className='dota-logo-title text-[21px] font-semibold'>AutoGG</h3>
+        </div>
       </div>
 
-      <nav className='flex-1 overflow-auto px-3 py-4 space-y-4'>
-        {NAV_GROUPS.map((group) => (
-          <section key={group.label} className='space-y-2'>
-            <div className='px-2 ui-caption tracking-[0.1em] uppercase'>{group.label}</div>
-            <div className='space-y-1'>
-              {group.items.map((item) => {
-                const Icon = item.icon;
-                const isActive = activeItem === item.id;
-                return (
-                  <button
-                    key={item.id}
-                    type='button'
-                    className={twMerge('ui-nav-item w-full justify-between', isActive && 'ui-nav-item-active')}
-                    onClick={() => setActiveItem(item.id)}>
-                    {isActive ? <span className='ui-nav-dot' /> : null}
-                    <span className='flex min-w-0 items-center gap-3 pl-1'>
-                      <Icon className='h-[18px] w-[18px] shrink-0' />
-                      <span className='truncate'>{item.name}</span>
-                    </span>
-                    {item.id === 'about' && hasUpdate ? (
-                      <span className='ml-2 rounded-full bg-[#ff5d6c] px-2.5 py-0.5 text-[11px] font-semibold leading-none text-white'>
-                        可更新
-                      </span>
-                    ) : null}
-                  </button>
-                );
-              })}
+      {/* 导航菜单 */}
+      <nav className='flex-1 px-2 py-3'>
+        {sidebarItems.map((item) => {
+          const isActive = activeItem === item.id;
+          return (
+            <div
+              key={item.id}
+              onClick={() => setActiveItem(item.id)}
+              className='relative'>
+              {isActive && (
+                <motion.div
+                  layoutId='activeTab'
+                  className='absolute inset-0 rounded-xl'
+                  style={{
+                    background:
+                      'linear-gradient(105deg, rgba(37,99,235,0.18), rgba(59,130,246,0.08))',
+                    boxShadow:
+                      'inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 8px 18px rgba(30, 64, 175, 0.1)',
+                  }}
+                  initial={false}
+                  transition={{
+                    type: 'spring',
+                    stiffness: 500,
+                    damping: 35,
+                  }}
+                />
+              )}
+              <div
+                className={twMerge(
+                  'flex items-center justify-between px-3.5 py-2.5 cursor-pointer rounded-xl',
+                  'text-sm font-medium relative z-10',
+                  isActive
+                    ? 'text-zinc-900 font-semibold'
+                    : 'text-zinc-500 hover:text-zinc-700 hover:bg-zinc-100/80'
+                )}>
+                <div className='flex items-center min-w-0'>
+                  <item.icon
+                    className={twMerge(
+                      'w-[18px] h-[18px] mr-3',
+                      isActive ? 'stroke-zinc-900' : 'stroke-zinc-500'
+                    )}
+                  />
+                  <span>{item.name}</span>
+                </div>
+                {item.id === 'about' && hasUpdate ? (
+                  <span className='ml-2 whitespace-nowrap rounded-full bg-red-500 px-2.5 py-0.5 text-[10px] font-semibold leading-none text-white'>
+                    可更新
+                  </span>
+                ) : null}
+              </div>
             </div>
-          </section>
-        ))}
+          );
+        })}
       </nav>
 
-      <div className='border-t border-[#2a3242] px-4 py-3'>
-        <motion.div
-          className='ui-soft-card px-3 py-2'
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}>
-          <div className='ui-caption'>版本</div>
-          <div className='ui-control-text mt-1'>V1.2.0</div>
-          <div className='ui-caption mt-1'>powerby 萌新</div>
-        </motion.div>
+      <div className='px-4 pb-4 pt-2 border-t border-zinc-200/70'>
+        <div className='tool-caption'>
+          <div className='font-semibold text-zinc-600'>V1.0.1</div>
+          <div className='mt-0.5'>powerby 萌新</div>
+        </div>
       </div>
-    </aside>
+
+      {/* 用户信息 */}
+      {/* <div className='px-2 pb-3'>
+        <div
+          className='flex items-center px-3.5 py-2.5 cursor-pointer text-[#666666] hover:text-[#1a1a1a]'
+          onClick={() => setIsLoginModalOpen(true)}>
+          <UserUser01 className='w-[18px] h-[18px] mr-3 stroke-[#666666]' />
+          <span className='text-[14px] font-medium'>未登录</span>
+        </div>
+      </div> */}
+
+      {/* <LoginModal
+        isOpen={isLoginModalOpen}
+        onClose={() => setIsLoginModalOpen(false)}
+      /> */}
+    </div>
   );
 }
