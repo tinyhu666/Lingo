@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
 import { useStore } from '../../../components/StoreProvider';
+import { PowerToggle } from '../../../icons';
 import { invokeCommand, hasTauriRuntime } from '../../../services/tauriRuntime';
 import { showError, showSuccess } from '../../../utils/toast';
 
@@ -56,7 +57,10 @@ export default function EnableStatusCard() {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.06 }}>
-      <h3 className='tool-card-title'>启用状态</h3>
+      <div className='flex items-center gap-3'>
+        <PowerToggle className='w-6 h-6 stroke-zinc-500' />
+        <h3 className='tool-card-title'>启用状态</h3>
+      </div>
       <p className='tool-body mt-1'>通过软件状态下拉控制 AutoGG 开关。</p>
 
       <div className='flex-1 flex flex-col mt-4'>
@@ -67,7 +71,7 @@ export default function EnableStatusCard() {
               value={isEnabled ? 'enabled' : 'paused'}
               onChange={handleStatusChange}
               disabled={pending}
-              className={`tool-input tool-control-text h-14 ${pending ? 'cursor-not-allowed opacity-70' : ''}`}>
+              className={`home-top-control-shell tool-control-text px-3 pr-10 ${pending ? 'cursor-not-allowed opacity-70' : ''}`}>
               <option value='enabled'>已启用（可正常翻译）</option>
               <option value='paused'>已暂停（不响应快捷键）</option>
             </select>

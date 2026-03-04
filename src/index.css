@@ -47,6 +47,26 @@
   .tool-control-slot {
     @apply h-14 flex items-end;
   }
+
+  .home-top-control-shell {
+    @apply h-14 w-full rounded-xl border border-[#d4dce8] bg-white;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95);
+  }
+
+  .home-top-control-shell-soft {
+    @apply h-14 w-full rounded-xl border border-[#d4dce8] bg-[#f7faff];
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95);
+  }
+
+  .home-language-chip {
+    @apply h-11 min-w-0 rounded-lg border border-[#d4dbe6] bg-[#f7faff] px-3 py-2 flex items-center gap-2.5 whitespace-nowrap overflow-hidden;
+    transition: all 0.16s ease;
+  }
+
+  .home-language-chip:hover {
+    background: #eef4ff;
+    border-color: #c5d4eb;
+  }
 }
 
 html,

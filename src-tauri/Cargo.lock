@@ -4,7 +4,7 @@ version = 4
 
 [[package]]
 name = "AutoGG"
-version = "0.1.4"
+version = "1.0.1"
 dependencies = [
  "anyhow",
  "reqwest 0.12.12",

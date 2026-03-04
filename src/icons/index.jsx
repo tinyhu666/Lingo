@@ -605,3 +605,23 @@ export function XClose(props) {
     </svg>
   );
 }
+
+export function PowerToggle(props) {
+  return (
+    <svg
+      {...props}
+      xmlns='http://www.w3.org/2000/svg'
+      viewBox='0 0 24 24'
+      width='24'
+      height='24'
+      fill='none'
+      stroke='currentColor'
+      strokeLinecap='round'
+      strokeLinejoin='round'
+      strokeWidth='2'>
+      <path d='M12 3v8' />
+      <path d='M7.46 5.526A8 8 0 1 0 16.54 5.53' />
+      <path d='M8.5 14.5h7' />
+    </svg>
+  );
+}

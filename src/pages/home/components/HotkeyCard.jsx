@@ -171,7 +171,7 @@ export default function HotkeyCard() {
 
         <div className='mt-auto'>
           <div className='tool-control-slot mt-4'>
-            <div className='tool-btn h-14 w-full rounded-xl px-4 flex items-center justify-center'>
+            <div className='home-top-control-shell-soft px-4 flex items-center justify-center'>
               {typeof hotkeyDisplay === 'string' ? (
                 <span className='tool-control-text text-xl leading-none whitespace-nowrap overflow-hidden text-ellipsis'>
                   {hotkeyDisplay}

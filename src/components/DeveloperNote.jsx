@@ -4,7 +4,7 @@ import { hasTauriRuntime } from '../services/tauriRuntime';
 import { showError } from '../utils/toast';
 
 export default function DeveloperNote() {
-  const currentVersion = 'V1.0.0';
+  const currentVersion = 'V1.0.1';
 
   const open = async (url) => {
     try {

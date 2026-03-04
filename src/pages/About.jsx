@@ -41,7 +41,7 @@ export default function About() {
     installUpdate,
   } = useUpdater();
 
-  const versionLabel = currentVersion ? `V${currentVersion}` : 'V1.0.0';
+  const versionLabel = currentVersion ? `V${currentVersion}` : 'V1.0.1';
   const latestVersionLabel = latestVersion ? `V${latestVersion}` : '暂未获取';
   const actionLabel = checking
     ? '检查中...'
