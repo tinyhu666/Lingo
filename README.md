@@ -4,7 +4,8 @@
 
 # AutoGG - Dota2 游戏内剪贴板翻译客户端
 
-AutoGG 是一个基于 **Tauri 2 + React** 的桌面客户端，面向 Dota2 国际服沟通场景。当前版本：**V1.0.0 · powerby 萌新**。
+AutoGG 是一个基于 **Tauri 2 + React** 的桌面客户端，面向 Dota2 国际服沟通场景。
+当前版本：**V1.0.0 · powerby 萌新**。
 
 - 支持 **Windows / macOS**
 - 支持 **全局快捷键** 一键复制 -> 翻译 -> 粘贴
