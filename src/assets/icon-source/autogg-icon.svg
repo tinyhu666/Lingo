@@ -1,44 +1,45 @@
 <svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <linearGradient id="tile" x1="186" y1="150" x2="838" y2="874" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#262A34"/>
-      <stop offset="1" stop-color="#12151C"/>
+    <linearGradient id="tile" x1="208" y1="176" x2="824" y2="848" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#3A4A66"/>
+      <stop offset="1" stop-color="#202B3E"/>
     </linearGradient>
-    <linearGradient id="tileStroke" x1="186" y1="150" x2="838" y2="874" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#6D7484" stop-opacity="0.58"/>
-      <stop offset="1" stop-color="#3B4250" stop-opacity="0.48"/>
+    <linearGradient id="tileStroke" x1="208" y1="176" x2="824" y2="848" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#BFCFE8" stop-opacity="0.7"/>
+      <stop offset="1" stop-color="#9FB0CE" stop-opacity="0.35"/>
     </linearGradient>
-    <linearGradient id="diamond" x1="512" y1="302" x2="512" y2="736" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#D64343"/>
-      <stop offset="1" stop-color="#8F1D22"/>
+    <linearGradient id="bubbleA" x1="296" y1="348" x2="628" y2="660" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F7FBFF"/>
+      <stop offset="1" stop-color="#E2ECFA"/>
     </linearGradient>
-    <linearGradient id="accent" x1="392" y1="512" x2="632" y2="512" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#E6E9F0"/>
-      <stop offset="1" stop-color="#B8BFCD"/>
+    <linearGradient id="bubbleB" x1="414" y1="310" x2="746" y2="626" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#D9E8FD"/>
+      <stop offset="1" stop-color="#BCD3F7"/>
     </linearGradient>
-    <filter id="shadow" x="126" y="120" width="772" height="796" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+    <filter id="shadow" x="136" y="132" width="752" height="772" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
       <feFlood flood-opacity="0" result="BackgroundImageFix"/>
       <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
-      <feOffset dy="16"/>
-      <feGaussianBlur stdDeviation="24"/>
+      <feOffset dy="14"/>
+      <feGaussianBlur stdDeviation="20"/>
       <feComposite in2="hardAlpha" operator="out"/>
-      <feColorMatrix type="matrix" values="0 0 0 0 0.04 0 0 0 0 0.05 0 0 0 0 0.08 0 0 0 0.52 0"/>
+      <feColorMatrix type="matrix" values="0 0 0 0 0.09 0 0 0 0 0.13 0 0 0 0 0.22 0 0 0 0.34 0"/>
       <feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow_1_1"/>
       <feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow_1_1" result="shape"/>
     </filter>
   </defs>
 
   <g filter="url(#shadow)">
-    <rect x="186" y="150" width="652" height="652" rx="178" fill="url(#tile)"/>
-    <rect x="186.75" y="150.75" width="650.5" height="650.5" rx="177.25" stroke="url(#tileStroke)" stroke-width="1.5"/>
+    <rect x="208" y="176" width="608" height="608" rx="166" fill="url(#tile)"/>
+    <rect x="209" y="177" width="606" height="606" rx="165" stroke="url(#tileStroke)" stroke-width="2"/>
 
-    <path d="M512 302L690 480L512 736L334 480L512 302Z" fill="url(#diamond)"/>
-    <path d="M512 334L660 484L512 698L364 484L512 334Z" fill="#C73038" fill-opacity="0.22"/>
-    <path d="M420 470L564 614L620 558L476 414L420 470Z" fill="#14181F" fill-opacity="0.9"/>
+    <path d="M314 374C314 334.235 346.235 302 386 302H530C569.765 302 602 334.235 602 374V498C602 537.765 569.765 570 530 570H430L372 624V570H386C346.235 570 314 537.765 314 498V374Z" fill="url(#bubbleA)"/>
+    <path d="M422 352C422 316.654 450.654 288 486 288H630C665.346 288 694 316.654 694 352V472C694 507.346 665.346 536 630 536H566L512 584V536H486C450.654 536 422 507.346 422 472V352Z" fill="url(#bubbleB)"/>
 
-    <path d="M358 512L412 474V498H470V526H412V550L358 512Z" fill="url(#accent)"/>
-    <path d="M666 512L612 550V526H554V498H612V474L666 512Z" fill="url(#accent)"/>
+    <path d="M470 458C470 442.536 482.536 430 498 430H535V404L588 448L535 492V466H498C482.536 466 470 453.464 470 438V458Z" fill="#2D62D9"/>
+    <path d="M536 500C536 515.464 523.464 528 508 528H471V554L418 510L471 466V492H508C523.464 492 536 504.536 536 520V500Z" fill="#8AA8E8"/>
 
-    <rect x="326" y="684" width="372" height="10" rx="5" fill="#8A90A1" fill-opacity="0.42"/>
+    <circle cx="384" cy="436" r="10" fill="#6F88B5"/>
+    <circle cx="420" cy="436" r="10" fill="#6F88B5"/>
+    <circle cx="456" cy="436" r="10" fill="#6F88B5"/>
   </g>
 </svg>

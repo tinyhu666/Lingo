@@ -56,8 +56,8 @@ export default function Translate() {
         animate={{ opacity: 1, y: 0 }}>
         <div className='flex items-start justify-between gap-3'>
           <div>
-            <h1 className='text-2xl font-bold text-zinc-900'>翻译模式</h1>
-            <p className='mt-2 text-sm text-zinc-500'>
+            <h1 className='tool-page-title'>翻译模式</h1>
+            <p className='tool-body mt-2'>
               选择一个输出风格。只会生效一个模式，改动后立即用于剪贴板翻译。
             </p>
           </div>
@@ -85,7 +85,7 @@ export default function Translate() {
               <div className='flex items-center justify-between'>
                 <div className='flex items-center gap-2.5 text-zinc-700'>
                   <Icon className='w-5 h-5 stroke-zinc-600' />
-                  <span className='text-base font-semibold'>{mode.title}</span>
+                  <span className='tool-card-title'>{mode.title}</span>
                 </div>
                 <span
                   className={`text-xs rounded-full px-2 py-1 border ${
@@ -97,7 +97,7 @@ export default function Translate() {
                 </span>
               </div>
 
-              <p className='mt-4 text-sm text-zinc-500 leading-relaxed'>{mode.desc}</p>
+              <p className='tool-body mt-4'>{mode.desc}</p>
             </motion.button>
           );
         })}

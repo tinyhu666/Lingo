@@ -19,6 +19,36 @@
   --font-body: 'Source Sans 3', 'SF Pro Text', 'PingFang SC', 'Microsoft YaHei', sans-serif;
 }
 
+@layer components {
+  .tool-page-title {
+    @apply text-2xl font-bold text-zinc-900;
+    font-family: var(--font-display);
+    letter-spacing: 0.01em;
+  }
+
+  .tool-card-title {
+    @apply text-base font-semibold text-zinc-900;
+    font-family: var(--font-display);
+    letter-spacing: 0.006em;
+  }
+
+  .tool-body {
+    @apply text-sm text-zinc-500 leading-relaxed;
+  }
+
+  .tool-caption {
+    @apply text-xs text-zinc-500 leading-relaxed;
+  }
+
+  .tool-control-text {
+    @apply text-sm font-semibold leading-none text-zinc-900;
+  }
+
+  .tool-control-slot {
+    @apply h-14 flex items-end;
+  }
+}
+
 html,
 body,
 #root {
@@ -101,6 +131,8 @@ body {
   background: #f7faff;
   color: #334155;
   font-weight: 600;
+  font-size: 14px;
+  line-height: 1;
   transition: all 0.16s ease;
 }
 
@@ -119,6 +151,8 @@ body {
   background: linear-gradient(180deg, #3b82f6 0%, #2563eb 100%);
   color: #ffffff;
   font-weight: 700;
+  font-size: 14px;
+  line-height: 1;
   box-shadow: 0 6px 14px rgba(37, 99, 235, 0.22);
   transition: all 0.16s ease;
 }
@@ -143,6 +177,7 @@ body {
   background: #ffffff;
   color: #1f2937;
   font-size: 14px;
+  font-weight: 600;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 

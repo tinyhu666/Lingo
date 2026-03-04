@@ -208,8 +208,8 @@ export default function Phrases() {
         animate={{ opacity: 1, y: 0 }}>
         <div className='flex items-start justify-between gap-4'>
           <div>
-            <h1 className='text-2xl font-bold text-zinc-900'>常用语</h1>
-            <p className='mt-2 text-sm text-zinc-500'>
+            <h1 className='tool-page-title'>常用语</h1>
+            <p className='tool-body mt-2'>
               支持新增、修改、删除常用语。快捷键统一使用 {MODIFIER_LABEL} + 键位，减少误触。
             </p>
           </div>
@@ -234,10 +234,10 @@ export default function Phrases() {
           <table className='min-w-full'>
             <thead>
               <tr className='border-b border-zinc-200'>
-                <th className='py-3 pr-2 text-left text-sm font-semibold text-zinc-500 w-[64px]'>#</th>
-                <th className='py-3 px-2 text-left text-sm font-semibold text-zinc-500'>常用语内容</th>
-                <th className='py-3 px-2 text-left text-sm font-semibold text-zinc-500 w-[190px]'>快捷键</th>
-                <th className='py-3 pl-2 text-left text-sm font-semibold text-zinc-500 w-[90px]'>操作</th>
+                <th className='py-3 pr-2 text-left tool-control-text text-zinc-500 w-[64px]'>#</th>
+                <th className='py-3 px-2 text-left tool-control-text text-zinc-500'>常用语内容</th>
+                <th className='py-3 px-2 text-left tool-control-text text-zinc-500 w-[190px]'>快捷键</th>
+                <th className='py-3 pl-2 text-left tool-control-text text-zinc-500 w-[90px]'>操作</th>
               </tr>
             </thead>
 

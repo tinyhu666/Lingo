@@ -157,20 +157,31 @@ export default function HotkeyCard() {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.2 }}>
-      <div className='flex items-center gap-3 text-sm text-zinc-500'>
+      <div className='flex items-center gap-3'>
         <KeyboardAlt className='w-6 h-6 stroke-zinc-500' />
-        快捷键
+        <h3 className='tool-card-title'>快捷键</h3>
       </div>
 
-      <div className='flex-1 flex flex-col justify-between mt-4'>
-        <p className='text-sm text-zinc-400'>
+      <div className='flex-1 flex flex-col mt-4'>
+        <p className='tool-body'>
           {recording
             ? '按下组合键，松开任意键完成设置。'
             : `点击此卡片设置快捷键（默认 ${defaultTranslatorHotkeyLabel()}）。`}
         </p>
 
-        <div className='max-w-full min-w-0 overflow-hidden break-all text-2xl font-semibold text-zinc-900 flex items-center gap-2'>
-          {hotkeyDisplay}
+        <div className='mt-auto'>
+          <div className='tool-control-slot mt-4'>
+            <div className='tool-btn h-14 w-full rounded-xl px-4 flex items-center justify-center'>
+              {typeof hotkeyDisplay === 'string' ? (
+                <span className='tool-control-text text-xl leading-none whitespace-nowrap overflow-hidden text-ellipsis'>
+                  {hotkeyDisplay}
+                </span>
+              ) : (
+                hotkeyDisplay
+              )}
+            </div>
+          </div>
+          <div className='mt-2 h-4' aria-hidden='true' />
         </div>
       </div>
     </motion.button>

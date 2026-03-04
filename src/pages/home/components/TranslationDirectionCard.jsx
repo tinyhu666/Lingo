@@ -19,7 +19,7 @@ function LanguageChip({ value, onClick }) {
     <button
       type='button'
       onClick={onClick}
-      className='tool-btn h-14 w-full min-w-0 px-3 py-2 flex items-center gap-2.5 rounded-xl text-[14px] font-semibold leading-none whitespace-nowrap overflow-hidden'>
+      className='tool-btn tool-control-text h-14 w-full min-w-0 px-3 py-2 flex items-center gap-2.5 rounded-xl whitespace-nowrap overflow-hidden'>
       <span className='w-5 h-5 rounded-full overflow-hidden flex items-center justify-center bg-gray-100 shrink-0'>
         {FlagIcon ? <FlagIcon className='w-7 h-7 scale-[1.8]' /> : null}
       </span>
@@ -62,47 +62,54 @@ export default function TranslationDirectionCard() {
 
   return (
     <motion.section
-      className='dota-card relative h-full flex flex-col rounded-2xl p-6 text-left'
+      className='dota-card relative h-full min-h-[248px] flex flex-col rounded-2xl p-6 text-left'
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}>
-      <div className='flex items-center gap-3 text-sm text-zinc-500'>
+      <div className='flex items-center gap-3'>
         <Translate className='w-6 h-6' />
-        翻译语言
+        <h3 className='tool-card-title'>翻译语言</h3>
       </div>
 
-      <div className='flex-1 flex flex-col justify-between mt-4'>
+      <div className='flex-1 flex flex-col mt-4'>
         <div>
-          <p className='text-sm text-zinc-400'>设置你的翻译语言。</p>
-          <p className='text-sm text-zinc-400 mt-2'>语言相同也可用于润色或增强表达语气。</p>
+          <p className='tool-body'>设置你的翻译语言。</p>
+          <p className='tool-body mt-2'>语言相同也可用于润色或增强表达语气。</p>
         </div>
 
-        <div className='grid w-full grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 text-zinc-900'>
-          <div className='relative min-w-0'>
-            <LanguageChip value={from} onClick={() => setActiveMenu('from')} />
-            <DropdownMenu
-              show={activeMenu === 'from'}
-              onClose={() => setActiveMenu(null)}
-              options={options}
-              currentValue={from}
-              onSelect={(lang) => handleLanguageChange(lang, 'translation_from')}
-              renderOption={renderOption}
-            />
-          </div>
+        <div className='mt-auto'>
+          <div className='tool-control-slot mt-4'>
+            <div className='grid w-full grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-end gap-3 text-zinc-900'>
+              <div className='relative min-w-0'>
+                <LanguageChip value={from} onClick={() => setActiveMenu('from')} />
+                <DropdownMenu
+                  show={activeMenu === 'from'}
+                  onClose={() => setActiveMenu(null)}
+                  options={options}
+                  currentValue={from}
+                  onSelect={(lang) => handleLanguageChange(lang, 'translation_from')}
+                  renderOption={renderOption}
+                />
+              </div>
 
-          <ArrowRight className='w-6 h-6 shrink-0 text-zinc-700' />
+              <div className='h-14 flex items-center justify-center'>
+                <ArrowRight className='w-6 h-6 shrink-0 text-zinc-700' />
+              </div>
 
-          <div className='relative min-w-0'>
-            <LanguageChip value={to} onClick={() => setActiveMenu('to')} />
-            <DropdownMenu
-              show={activeMenu === 'to'}
-              onClose={() => setActiveMenu(null)}
-              options={options}
-              currentValue={to}
-              onSelect={(lang) => handleLanguageChange(lang, 'translation_to')}
-              anchorPosition='right-0'
-              renderOption={renderOption}
-            />
+              <div className='relative min-w-0'>
+                <LanguageChip value={to} onClick={() => setActiveMenu('to')} />
+                <DropdownMenu
+                  show={activeMenu === 'to'}
+                  onClose={() => setActiveMenu(null)}
+                  options={options}
+                  currentValue={to}
+                  onSelect={(lang) => handleLanguageChange(lang, 'translation_to')}
+                  anchorPosition='right-0'
+                  renderOption={renderOption}
+                />
+              </div>
+            </div>
           </div>
+          <div className='mt-2 h-4' aria-hidden='true' />
         </div>
       </div>
     </motion.section>

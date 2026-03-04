@@ -33,7 +33,7 @@ export default function DropdownMenu({
                         <button
                             key={value}
                             className={twMerge(
-                                'w-full flex items-center px-3.5 py-2.5 text-[14px] relative rounded-lg transition-colors',
+                                'w-full flex items-center px-3.5 py-2.5 text-sm font-semibold relative rounded-lg transition-colors',
                                 isActive
                                     ? 'text-zinc-900 font-semibold bg-blue-50'
                                     : 'text-zinc-600 hover:bg-zinc-100'

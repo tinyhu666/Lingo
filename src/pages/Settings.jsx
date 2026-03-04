@@ -82,8 +82,8 @@ export default function Settings() {
         className='dota-card w-full rounded-2xl p-6'
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}>
-        <h1 className='text-2xl font-bold text-zinc-900 mb-4'>AutoGG 模型设置</h1>
-        <p className='text-zinc-600'>
+        <h1 className='tool-page-title mb-4'>AutoGG 模型设置</h1>
+        <p className='tool-body text-zinc-600'>
           可为不同厂商分别填写 API Key、URL、模型名称。翻译时按当前选中厂商发起请求。
         </p>
       </motion.section>
@@ -93,9 +93,9 @@ export default function Settings() {
           className='dota-card flex flex-col rounded-2xl p-6'
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}>
-          <div className='flex items-center gap-3 text-sm text-zinc-500 mb-6'>
+          <div className='flex items-center gap-3 mb-6'>
             <Crown className='w-5 h-5 stroke-zinc-500' />
-            模型厂商
+            <h2 className='tool-card-title'>模型厂商</h2>
           </div>
 
           <div className='space-y-3'>
@@ -112,14 +112,14 @@ export default function Settings() {
                       : 'border-zinc-200 hover:bg-zinc-50'
                   }`}>
                   <div className='min-w-0 text-left'>
-                    <div className='text-sm font-semibold text-zinc-700 truncate'>{model.name}</div>
-                    <div className='mt-1 text-xs text-zinc-500 truncate'>{model.modelName}</div>
+                    <div className='tool-control-text text-zinc-700 truncate'>{model.name}</div>
+                    <div className='tool-caption mt-1 truncate'>{model.modelName}</div>
                   </div>
 
                   <div className='flex items-center gap-2 pl-3'>
                     <span className='tool-chip'>
                       <Sparkles className='w-3.5 h-3.5 stroke-emerald-500' />
-                      <span className='text-xs text-emerald-600'>{model.tag}</span>
+                      <span className='tool-caption text-emerald-600'>{model.tag}</span>
                     </span>
 
                     <span
@@ -139,9 +139,9 @@ export default function Settings() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}>
-          <div className='flex items-center gap-3 text-sm text-zinc-500 mb-6'>
+          <div className='flex items-center gap-3 mb-6'>
             <Server className='w-5 h-5 stroke-zinc-500' />
-            API 配置 ({getModelName(activeModel)})
+            <h2 className='tool-card-title'>API 配置（{getModelName(activeModel)}）</h2>
           </div>
 
           <div className='space-y-4'>
@@ -195,11 +195,11 @@ export default function Settings() {
                 ))}
               </select>
 
-              <p className='text-xs text-zinc-400 mt-2'>切换后会自动修正常见默认端点，避免接口不匹配。</p>
+              <p className='tool-caption text-zinc-400 mt-2'>切换后会自动修正常见默认端点，避免接口不匹配。</p>
             </div>
 
             <div className='pt-2 flex items-center justify-between'>
-              <p className='text-xs text-zinc-400'>
+              <p className='tool-caption text-zinc-400'>
                 当前翻译使用：
                 <span className='font-medium text-zinc-500'> {getModelName(activeModel)}</span>
               </p>

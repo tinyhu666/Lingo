@@ -71,7 +71,7 @@ export default function Sidebar({ activeItem, setActiveItem }) {
               <div
                 className={twMerge(
                   'flex items-center justify-between px-3.5 py-2.5 cursor-pointer rounded-xl',
-                  'text-[14px] font-medium relative z-10',
+                  'text-sm font-medium relative z-10',
                   isActive
                     ? 'text-zinc-900 font-semibold'
                     : 'text-zinc-500 hover:text-zinc-700 hover:bg-zinc-100/80'
@@ -97,9 +97,9 @@ export default function Sidebar({ activeItem, setActiveItem }) {
       </nav>
 
       <div className='px-4 pb-4 pt-2 border-t border-zinc-200/70'>
-        <div className='text-[12px] text-zinc-500 leading-relaxed'>
-          <div className='font-semibold text-zinc-600'>V0.1.8</div>
-          <div>powerby 萌新</div>
+        <div className='tool-caption'>
+          <div className='font-semibold text-zinc-600'>V1.0.0</div>
+          <div className='mt-0.5'>powerby 萌新</div>
         </div>
       </div>
 
