@@ -64,7 +64,8 @@ jobs:
           releaseName: 'AutoGG v__VERSION__'
           releaseBody: |
             更新日志：
-            修复已知问题。
+            1. 调整icon；
+            2. 修复已知问题。
 
             安装包：
             - Windows: `.msi` / `.exe`

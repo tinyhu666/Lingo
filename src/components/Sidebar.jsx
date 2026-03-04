@@ -98,7 +98,7 @@ export default function Sidebar({ activeItem, setActiveItem }) {
 
       <div className='px-4 pb-4 pt-2 border-t border-zinc-200/70'>
         <div className='text-[12px] text-zinc-500 leading-relaxed'>
-          <div className='font-semibold text-zinc-600'>V0.1.7</div>
+          <div className='font-semibold text-zinc-600'>V0.1.8</div>
           <div>powerby 萌新</div>
         </div>
       </div>
