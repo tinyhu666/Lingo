@@ -1,23 +1,18 @@
-# AutoGG - Dota2 游戏内剪贴板翻译客户端
+# AutoGG - Dota2 游戏内聊天翻译工具
 
-AutoGG 是一个基于 **Tauri 2 + React** 的桌面客户端，面向 Dota2 国际服沟通场景。
+AutoGG 是一个基于大模型的聊天翻译工具，主要面向 Dota2 国际服沟通场景，加入了很多Dota2 专用交流语（BKB、开雾、反眼等）。
 
 - 支持 **Windows / macOS**
-- 支持 **全局快捷键** 一键复制 -> 翻译 -> 粘贴
+- 支持 **全局快捷键** 自动复制 -> 翻译 -> 粘贴
 - 支持填写多家模型 API（OpenAI / DeepSeek / Qwen / Moonshot / SiliconFlow / Anthropic / 自定义）
 - 支持在设置中切换不同模型厂商
 
 ## 功能说明
 
-1. 在 Dota2 聊天框中选中或输入要翻译的文本。
+1. 在 Dota2 聊天框中输入发言内容。
 2. 按下翻译快捷键（默认：macOS `⌘+T`，Windows `Alt+T`）。
 3. AutoGG 自动读取剪贴板内容并翻译，随后自动粘贴回当前输入框。
-
-## 环境要求
-
-- Node.js 18+
-- Rust 1.77+
-- Tauri 构建依赖
+4. 将翻译后的内容发出。
 
 ### macOS
 
@@ -54,12 +49,6 @@ npm run tauri build
 > 自定义厂商支持两种 provider：
 > - OpenAI Compatible（`/v1/chat/completions`）
 > - Anthropic Messages（`/v1/messages`）
-
-## 技术栈
-
-- Tauri 2 (Rust)
-- React 18 + Vite
-- TailwindCSS
 
 ## 许可证
 
