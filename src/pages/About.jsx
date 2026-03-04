@@ -41,7 +41,7 @@ export default function About() {
     installUpdate,
   } = useUpdater();
 
-  const versionLabel = currentVersion ? `V${currentVersion}` : 'V1.0.1';
+  const versionLabel = currentVersion ? `V${currentVersion}` : 'V1.2.0';
   const latestVersionLabel = latestVersion ? `V${latestVersion}` : '暂未获取';
   const actionLabel = checking
     ? '检查中...'
@@ -54,117 +54,111 @@ export default function About() {
   const actionDisabled = checking || downloading;
 
   return (
-    <div className='h-full flex flex-col gap-6'>
+    <div className='h-full flex flex-col gap-5 ui-animate-in'>
       <motion.section
-        className='dota-card w-full rounded-2xl p-6'
+        className='ui-card ui-card-glass rounded-2xl p-6 space-y-4'
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}>
-        <h1 className='tool-page-title mb-4'>关于 AutoGG</h1>
-        <p className='tool-body text-zinc-600'>
-          当前版本：{versionLabel}。powerby 萌新。AutoGG 聚焦 Dota2 游戏内即时沟通翻译，支持全局快捷键、剪贴板翻译回填以及多厂商大模型 API。
-        </p>
-
-        <div className='mt-5 rounded-xl border border-zinc-200 bg-white/80 p-4 space-y-3'>
-          <div className='flex items-center gap-2'>
-            <Sparkles className='w-5 h-5 stroke-zinc-500' />
-            <h2 className='tool-card-title'>版本更新</h2>
+        <div className='flex items-start justify-between gap-4'>
+          <div>
+            <h1 className='ui-page-title'>关于 AutoGG</h1>
+            <p className='ui-body mt-2'>
+              当前版本：{versionLabel}。powerby 萌新。AutoGG 聚焦 Dota2 游戏内即时沟通翻译，支持全局快捷键、剪贴板翻译回填以及多厂商大模型 API。
+            </p>
           </div>
+          {hasUpdate ? <span className='ui-chip !bg-[#6c1e2e] !border-[#a54a5c]'>可更新</span> : null}
+        </div>
 
-          <div className='flex flex-col gap-3 md:flex-row md:items-center md:justify-between'>
-            <div className='space-y-1'>
-              <div className='tool-body text-zinc-700'>
-                当前版本 <span className='font-semibold text-zinc-900'>{versionLabel}</span>，最新版本{' '}
-                <span className='font-semibold text-zinc-900'>{latestVersionLabel}</span>
-              </div>
-              <div className='tool-caption'>
-                发布日期：{formatReleaseDate(releaseDate)}，上次检查：{formatTime(checkedAt)}
-              </div>
+        <div className='ui-soft-card p-4 space-y-3'>
+          <div className='flex flex-wrap items-center justify-between gap-2'>
+            <div className='flex items-center gap-2'>
+              <Sparkles className='h-5 w-5 text-[#a8b6d7]' />
+              <h2 className='ui-card-title text-[15px]'>版本更新</h2>
             </div>
-
             <button
               type='button'
               onClick={actionHandler}
               disabled={actionDisabled}
-              className={`px-4 py-2 tool-control-text ${actionDisabled ? 'opacity-70 cursor-not-allowed' : ''} ${
-                hasUpdate ? 'tool-btn-primary' : 'tool-btn'
+              className={`${hasUpdate ? 'ui-btn-primary' : 'ui-btn'} !h-10 !px-4 ${
+                actionDisabled ? 'opacity-70 cursor-not-allowed' : ''
               }`}>
               {actionLabel}
             </button>
           </div>
 
-          <div className='space-y-3'>
-            {hasUpdate ? (
-              <div className='rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-600'>
-                发现新版本 {latestVersionLabel}，点击“立即更新”即可在应用内下载并安装。
-              </div>
-            ) : null}
-
-            {releaseBody ? (
-              <div className='rounded-xl border border-zinc-200 bg-white p-3'>
-                <div className='tool-caption mb-1'>更新说明</div>
-                <div className='tool-body text-zinc-700 whitespace-pre-wrap'>{releaseBody}</div>
-              </div>
-            ) : null}
-
-            {downloading ? (
-              <div className='rounded-xl border border-blue-200 bg-blue-50 p-3'>
-                <div className='flex items-center justify-between text-xs text-blue-700'>
-                  <span>下载进度</span>
-                  <span>{progressPercent}%</span>
-                </div>
-                <div className='mt-2 h-2 rounded-full bg-blue-100'>
-                  <div
-                    className='h-2 rounded-full bg-blue-600 transition-all'
-                    style={{ width: `${progressPercent}%` }}
-                  />
-                </div>
-              </div>
-            ) : null}
-
-            {errorMessage ? (
-              <div className='rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-600'>
-                {errorMessage}
-              </div>
-            ) : null}
+          <div className='grid grid-cols-1 gap-3 md:grid-cols-2'>
+            <div className='ui-soft-card p-3'>
+              <div className='ui-caption'>当前版本</div>
+              <div className='ui-control-text mt-1'>{versionLabel}</div>
+            </div>
+            <div className='ui-soft-card p-3'>
+              <div className='ui-caption'>最新版本</div>
+              <div className='ui-control-text mt-1'>{latestVersionLabel}</div>
+              <div className='ui-caption mt-1'>发布日期：{formatReleaseDate(releaseDate)}</div>
+            </div>
           </div>
+
+          {hasUpdate ? (
+            <div className='ui-danger'>发现新版本 {latestVersionLabel}，点击“立即更新”即可在应用内下载并安装。</div>
+          ) : null}
+
+          {downloading ? (
+            <div className='ui-soft-card p-3'>
+              <div className='flex items-center justify-between ui-caption'>
+                <span>下载进度</span>
+                <span>{progressPercent}%</span>
+              </div>
+              <div className='mt-2 h-2 rounded-full bg-[#223048]'>
+                <div
+                  className='h-2 rounded-full bg-[#6dd3ff] transition-all'
+                  style={{ width: `${progressPercent}%` }}
+                />
+              </div>
+            </div>
+          ) : null}
+
+          {releaseBody ? (
+            <div className='ui-soft-card p-3'>
+              <div className='ui-caption mb-1'>更新日志</div>
+              <div className='ui-body whitespace-pre-wrap'>{releaseBody}</div>
+            </div>
+          ) : null}
+
+          <div className='ui-caption'>上次检查：{formatTime(checkedAt)}</div>
+
+          {errorMessage ? <div className='ui-danger'>{errorMessage}</div> : null}
         </div>
       </motion.section>
 
-      <div className='grid grid-cols-1 md:grid-cols-3 gap-6'>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}>
+      <div className='grid grid-cols-1 gap-5 lg:grid-cols-3'>
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
           <DeveloperNote />
         </motion.div>
 
         <motion.section
-          className='dota-card rounded-2xl p-6'
+          className='ui-card rounded-2xl p-6'
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.14 }}>
+          transition={{ delay: 0.08 }}>
           <div className='flex items-center gap-3'>
-            <GamingPad className='w-6 h-6 stroke-zinc-500' />
-            <h3 className='tool-card-title'>Dota2 场景优化</h3>
+            <GamingPad className='w-6 h-6 text-[#a8b6d7]' />
+            <h3 className='ui-card-title'>Dota2 场景优化</h3>
           </div>
-          <p className='tool-body mt-4 text-zinc-400'>
+          <p className='ui-body mt-4'>
             针对游戏内对话做短句化输出，尽量保留技能、装备和指挥术语，减少“翻译腔”。
           </p>
         </motion.section>
 
         <motion.section
-          className='dota-card rounded-2xl p-6'
+          className='ui-card rounded-2xl p-6'
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.18 }}>
+          transition={{ delay: 0.12 }}>
           <div className='flex items-center gap-3'>
-            <Globe className='w-6 h-6 stroke-zinc-500' />
-            <h3 className='tool-card-title'>多语言互译</h3>
+            <Globe className='w-6 h-6 text-[#a8b6d7]' />
+            <h3 className='ui-card-title'>多语言互译</h3>
           </div>
-          <p className='tool-body mt-4 text-zinc-400'>
-            支持中文、英文、俄文等主流语言的双向翻译，满足国际服沟通需求。
-          </p>
+          <p className='ui-body mt-4'>支持中文、英文、俄文等主流语言的双向翻译，满足国际服沟通需求。</p>
         </motion.section>
       </div>
     </div>

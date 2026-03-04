@@ -1,25 +1,25 @@
-import { useState } from "react";
-import Layout from "./components/Layout";
-import Home from "./pages/home";
-import Translate from "./pages/Translate";
-import Settings from "./pages/Settings";
-import About from "./pages/About";
-import Phrases from "./pages/Phrases";
+import { useMemo, useState } from 'react';
+import Layout from './components/Layout';
+import Home from './pages/home';
+import Translate from './pages/Translate';
+import Settings from './pages/Settings';
+import About from './pages/About';
+import Phrases from './pages/Phrases';
 
 const pages = {
   home: Home,
   translate: Translate,
   settings: Settings,
   about: About,
-  phrases: Phrases
+  phrases: Phrases,
 };
 
 function App() {
-  const [activeItem, setActiveItem] = useState("home");
-  const CurrentPage = pages[activeItem];
+  const [activeItem, setActiveItem] = useState('home');
+  const CurrentPage = useMemo(() => pages[activeItem] || Home, [activeItem]);
 
   return (
-    <div className="dota-theme min-h-screen text-zinc-900">
+    <div className='dota-theme ui-app'>
       <Layout activeItem={activeItem} setActiveItem={setActiveItem}>
         <CurrentPage />
       </Layout>

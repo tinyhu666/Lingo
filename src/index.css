@@ -1,72 +1,26 @@
-@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=Source+Sans+3:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700;800&family=Source+Sans+3:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --tool-bg: #f3f5f8;
-  --tool-bg-soft: #eef2f6;
-  --tool-surface: #ffffff;
-  --tool-surface-2: #f9fbfd;
-  --tool-border: #d7dde6;
-  --tool-border-strong: #c4ceda;
-  --tool-text: #1f2937;
-  --tool-text-soft: #5d6b7f;
-  --tool-accent: #2563eb;
-  --tool-accent-soft: #e8f0ff;
-  --font-display: 'Manrope', 'SF Pro Display', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  --bg-0: #0f1117;
+  --bg-1: #161a22;
+  --bg-2: #1e2430;
+  --bg-3: #242b38;
+  --line: #2a3242;
+  --line-soft: #313b4e;
+  --text-1: #eef2ff;
+  --text-2: #9aa6bf;
+  --text-3: #7d889f;
+  --accent: #5b7cff;
+  --accent-2: #6dd3ff;
+  --danger: #ff5d6c;
+  --success: #42d392;
+  --glow-accent: 0 0 0 1px rgba(91, 124, 255, 0.42), 0 8px 24px rgba(91, 124, 255, 0.26);
+  --font-display: 'Sora', 'SF Pro Display', 'PingFang SC', 'Microsoft YaHei', sans-serif;
   --font-body: 'Source Sans 3', 'SF Pro Text', 'PingFang SC', 'Microsoft YaHei', sans-serif;
-}
-
-@layer components {
-  .tool-page-title {
-    @apply text-2xl font-bold text-zinc-900;
-    font-family: var(--font-display);
-    letter-spacing: 0.01em;
-  }
-
-  .tool-card-title {
-    @apply text-base font-semibold text-zinc-900;
-    font-family: var(--font-display);
-    letter-spacing: 0.006em;
-  }
-
-  .tool-body {
-    @apply text-sm text-zinc-500 leading-relaxed;
-  }
-
-  .tool-caption {
-    @apply text-xs text-zinc-500 leading-relaxed;
-  }
-
-  .tool-control-text {
-    @apply text-sm font-semibold leading-none text-zinc-900;
-  }
-
-  .tool-control-slot {
-    @apply h-14 flex items-end;
-  }
-
-  .home-top-control-shell {
-    @apply h-14 w-full rounded-xl border border-[#d4dce8] bg-white;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95);
-  }
-
-  .home-top-control-shell-soft {
-    @apply h-14 w-full rounded-xl border border-[#d4dce8] bg-[#f7faff];
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95);
-  }
-
-  .home-language-chip {
-    @apply h-11 min-w-0 rounded-lg border border-[#d4dbe6] bg-[#f7faff] px-3 py-2 flex items-center gap-2.5 whitespace-nowrap overflow-hidden;
-    transition: all 0.16s ease;
-  }
-
-  .home-language-chip:hover {
-    background: #eef4ff;
-    border-color: #c5d4eb;
-  }
 }
 
 html,
@@ -78,234 +32,313 @@ body,
 body {
   margin: 0;
   font-family: var(--font-body);
-  color: var(--tool-text);
+  color: var(--text-1);
   line-height: 1.45;
   background:
-    radial-gradient(1100px 420px at -8% -12%, rgba(37, 99, 235, 0.08), transparent 65%),
-    radial-gradient(1200px 500px at 108% 112%, rgba(12, 74, 110, 0.06), transparent 66%),
-    linear-gradient(180deg, #f6f8fb 0%, #edf2f7 100%);
+    radial-gradient(1200px 720px at -15% -20%, rgba(109, 211, 255, 0.1), transparent 68%),
+    radial-gradient(1400px 820px at 120% 120%, rgba(91, 124, 255, 0.14), transparent 70%),
+    linear-gradient(180deg, #0f1117 0%, #0d1016 100%);
+}
+
+@layer components {
+  .ui-app {
+    @apply h-full w-full p-3;
+  }
+
+  .ui-shell {
+    @apply h-full w-full rounded-2xl overflow-hidden border;
+    border-color: var(--line);
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.02) 0%, rgba(255, 255, 255, 0) 100%),
+      var(--bg-0);
+    box-shadow: 0 20px 48px rgba(3, 6, 14, 0.5);
+  }
+
+  .ui-server-rail {
+    @apply h-full w-[72px] flex flex-col items-center py-3 gap-3 border-r;
+    border-color: var(--line);
+    background: linear-gradient(180deg, #0d1016 0%, #0a0d12 100%);
+  }
+
+  .ui-nav-panel {
+    @apply h-full w-[240px] border-r flex flex-col;
+    border-color: var(--line);
+    background: linear-gradient(180deg, #141924 0%, #101520 100%);
+  }
+
+  .ui-workspace {
+    @apply flex-1 min-w-0 h-full flex flex-col;
+    background: linear-gradient(180deg, rgba(23, 28, 39, 0.84) 0%, rgba(16, 21, 32, 0.88) 100%);
+  }
+
+  .ui-topbar {
+    @apply h-[64px] px-5 border-b flex items-center justify-between gap-4;
+    border-color: var(--line);
+    background: linear-gradient(180deg, rgba(27, 34, 48, 0.9) 0%, rgba(21, 27, 39, 0.88) 100%);
+    backdrop-filter: blur(14px);
+  }
+
+  .ui-workspace-body {
+    @apply flex-1 min-h-0 flex;
+  }
+
+  .ui-main {
+    @apply flex-1 min-w-0 min-h-0;
+  }
+
+  .ui-main-scroll {
+    @apply h-full overflow-auto p-5;
+  }
+
+  .ui-context-panel {
+    @apply w-[300px] min-w-[300px] border-l;
+    border-color: var(--line);
+    background: linear-gradient(180deg, rgba(18, 24, 35, 0.95) 0%, rgba(14, 19, 29, 0.95) 100%);
+  }
+
+  .ui-context-scroll {
+    @apply h-full overflow-auto p-4;
+  }
+
+  .ui-card {
+    @apply rounded-2xl border;
+    border-color: var(--line-soft);
+    background:
+      linear-gradient(180deg, rgba(35, 44, 60, 0.78) 0%, rgba(23, 30, 44, 0.88) 100%),
+      var(--bg-2);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.05),
+      0 14px 28px rgba(4, 8, 15, 0.35);
+  }
+
+  .ui-card-glass {
+    background:
+      radial-gradient(420px 160px at 8% -12%, rgba(109, 211, 255, 0.12), transparent 68%),
+      linear-gradient(180deg, rgba(34, 43, 60, 0.86) 0%, rgba(19, 26, 40, 0.94) 100%);
+  }
+
+  .ui-soft-card {
+    @apply rounded-xl border;
+    border-color: #36425a;
+    background: linear-gradient(180deg, rgba(34, 43, 59, 0.86) 0%, rgba(27, 34, 48, 0.9) 100%);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  }
+
+  .ui-page-title {
+    @apply text-[28px] font-bold tracking-[-0.01em];
+    color: var(--text-1);
+    font-family: var(--font-display);
+  }
+
+  .ui-card-title {
+    @apply text-base font-semibold tracking-[0.01em];
+    color: var(--text-1);
+    font-family: var(--font-display);
+  }
+
+  .ui-body {
+    @apply text-sm;
+    color: var(--text-2);
+  }
+
+  .ui-caption {
+    @apply text-xs;
+    color: var(--text-3);
+  }
+
+  .ui-pill {
+    @apply inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-semibold;
+    color: #d4dcf7;
+    border-color: #3f4f74;
+    background: rgba(91, 124, 255, 0.16);
+  }
+
+  .ui-control-text {
+    @apply text-sm font-semibold leading-none;
+    color: var(--text-1);
+  }
+
+  .ui-control-slot {
+    @apply h-11 flex items-end;
+  }
+
+  .ui-control {
+    @apply h-11 w-full rounded-xl border px-3;
+    color: var(--text-1);
+    border-color: #3a4762;
+    background: linear-gradient(180deg, rgba(40, 51, 71, 0.92) 0%, rgba(32, 41, 58, 0.94) 100%);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+  }
+
+  .ui-control:hover {
+    border-color: #4a5f86;
+  }
+
+  .ui-control:focus {
+    outline: none;
+    border-color: #6991ff;
+    box-shadow: var(--glow-accent);
+  }
+
+  .ui-btn {
+    @apply h-11 rounded-xl border px-4 text-sm font-semibold;
+    color: #dce6ff;
+    border-color: #3e4b67;
+    background: linear-gradient(180deg, rgba(47, 58, 80, 0.95) 0%, rgba(36, 46, 66, 0.97) 100%);
+    transition: all 0.14s ease;
+  }
+
+  .ui-btn:hover {
+    border-color: #50648a;
+    background: linear-gradient(180deg, rgba(57, 70, 95, 0.95) 0%, rgba(40, 51, 72, 0.97) 100%);
+  }
+
+  .ui-btn-primary {
+    @apply h-11 rounded-xl px-4 text-sm font-semibold border;
+    color: #f5f8ff;
+    border-color: #5b7cff;
+    background: linear-gradient(180deg, #6a8aff 0%, #526fff 100%);
+    box-shadow: 0 8px 20px rgba(91, 124, 255, 0.3);
+    transition: all 0.14s ease;
+  }
+
+  .ui-btn-primary:hover {
+    filter: brightness(1.06);
+  }
+
+  .ui-state-enabled {
+    @apply border;
+    border-color: rgba(109, 211, 255, 0.5) !important;
+    box-shadow: 0 0 0 1px rgba(109, 211, 255, 0.2), 0 8px 22px rgba(109, 211, 255, 0.14) !important;
+  }
+
+  .ui-state-paused {
+    @apply border;
+    border-color: rgba(122, 137, 163, 0.45) !important;
+  }
+
+  .ui-danger {
+    @apply rounded-xl border px-3 py-2 text-sm;
+    color: #ffc2c8;
+    border-color: rgba(255, 93, 108, 0.5);
+    background: rgba(101, 30, 41, 0.46);
+  }
+
+  .ui-nav-item {
+    @apply relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold cursor-pointer select-none;
+    color: var(--text-2);
+    transition: color 0.14s ease, background 0.14s ease;
+  }
+
+  .ui-nav-item:hover {
+    color: var(--text-1);
+    background: rgba(65, 78, 105, 0.34);
+  }
+
+  .ui-nav-item-active {
+    color: #f0f4ff;
+    background: linear-gradient(105deg, rgba(91, 124, 255, 0.42), rgba(109, 211, 255, 0.24));
+    box-shadow: inset 0 0 0 1px rgba(147, 174, 255, 0.42);
+  }
+
+  .ui-nav-dot {
+    @apply absolute left-0 top-1/2 -translate-y-1/2 h-5 w-1 rounded-r;
+    background: var(--accent-2);
+    box-shadow: 0 0 14px rgba(109, 211, 255, 0.5);
+  }
+
+  .ui-section-divider {
+    @apply h-px my-3;
+    background: linear-gradient(90deg, transparent 0%, #34415b 20%, #34415b 80%, transparent 100%);
+  }
+
+  .ui-chip {
+    @apply inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold;
+    color: #cdd7ef;
+    border-color: #3d4d6e;
+    background: rgba(46, 61, 88, 0.5);
+  }
+
+  .tool-page-title {
+    @apply ui-page-title;
+  }
+
+  .tool-card-title {
+    @apply ui-card-title;
+  }
+
+  .tool-body {
+    @apply ui-body;
+  }
+
+  .tool-caption {
+    @apply ui-caption;
+  }
+
+  .tool-control-text {
+    @apply ui-control-text;
+  }
+
+  .tool-control-slot {
+    @apply ui-control-slot;
+  }
+
+  .tool-btn {
+    @apply ui-btn;
+  }
+
+  .tool-btn-primary {
+    @apply ui-btn-primary;
+  }
+
+  .tool-input {
+    @apply ui-control;
+  }
+
+  .tool-subcard {
+    @apply ui-soft-card;
+  }
+
+  .tool-pill {
+    @apply ui-pill;
+  }
+
+  .tool-chip {
+    @apply ui-chip;
+  }
+
+  .tool-label {
+    @apply block text-xs font-semibold mb-1.5;
+    color: var(--text-3);
+  }
+
+  .home-top-control-shell,
+  .home-top-control-shell-soft {
+    @apply ui-control;
+  }
+
+  .home-language-chip {
+    @apply h-9 min-w-0 rounded-lg border px-3 py-2 flex items-center gap-2.5 whitespace-nowrap overflow-hidden;
+    border-color: #435271;
+    background: rgba(39, 49, 69, 0.86);
+    transition: all 0.14s ease;
+  }
+
+  .home-language-chip:hover {
+    border-color: #5872a1;
+    background: rgba(49, 62, 88, 0.9);
+  }
+
+  .dota-logo-title {
+    color: #edf2ff;
+    font-family: var(--font-display);
+    letter-spacing: 0.01em;
+  }
 }
 
 .dota-theme {
-  min-height: 100%;
-  color: var(--tool-text);
-}
-
-.dota-shell {
-  border: 1px solid var(--tool-border);
-  background: linear-gradient(180deg, #f8fafc 0%, #f2f6fb 100%);
-  box-shadow:
-    0 20px 44px rgba(15, 23, 42, 0.08),
-    inset 0 1px 0 rgba(255, 255, 255, 0.95);
-}
-
-.dota-main-panel {
-  border: 1px solid var(--tool-border);
-  background: linear-gradient(180deg, #ffffff 0%, #f9fbfe 100%);
-  box-shadow:
-    0 14px 30px rgba(15, 23, 42, 0.08),
-    inset 0 1px 0 rgba(255, 255, 255, 0.96);
-}
-
-.dota-sidebar {
-  border-right: 1px solid var(--tool-border);
-  background: linear-gradient(180deg, #f7f9fc 0%, #eef3f8 100%);
-}
-
-.dota-logo-title {
-  font-family: var(--font-display);
-  color: #1e3a8a;
-  letter-spacing: 0.02em;
-}
-
-.dota-card {
-  border: 1px solid var(--tool-border);
-  background: linear-gradient(180deg, var(--tool-surface) 0%, var(--tool-surface-2) 100%);
-  box-shadow:
-    0 10px 24px rgba(15, 23, 42, 0.06),
-    inset 0 1px 0 rgba(255, 255, 255, 0.95);
-}
-
-.tool-subcard {
-  border: 1px solid #dde5ef;
-  background: #f9fbfd;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.96);
-}
-
-.tool-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  border-radius: 999px;
-  border: 1px solid #d4dbe6;
-  background: #f4f7fb;
-  color: #51627b;
-  font-size: 12px;
-  line-height: 1;
-  padding: 7px 12px;
-}
-
-.tool-btn {
-  border: 1px solid #d4dbe6;
-  border-radius: 10px;
-  background: #f7faff;
-  color: #334155;
-  font-weight: 600;
-  font-size: 14px;
-  line-height: 1;
-  transition: all 0.16s ease;
-}
-
-.tool-btn:hover {
-  background: #eef4ff;
-  border-color: #c5d4eb;
-}
-
-.tool-btn:active {
-  transform: translateY(1px);
-}
-
-.tool-btn-primary {
-  border: 1px solid #2563eb;
-  border-radius: 10px;
-  background: linear-gradient(180deg, #3b82f6 0%, #2563eb 100%);
-  color: #ffffff;
-  font-weight: 700;
-  font-size: 14px;
-  line-height: 1;
-  box-shadow: 0 6px 14px rgba(37, 99, 235, 0.22);
-  transition: all 0.16s ease;
-}
-
-.tool-btn-primary:hover {
-  filter: brightness(1.03);
-  box-shadow: 0 8px 16px rgba(37, 99, 235, 0.25);
-}
-
-.tool-label {
-  font-size: 13px;
-  font-weight: 600;
-  color: #58687f;
-  margin-bottom: 8px;
-}
-
-.tool-input {
-  width: 100%;
-  padding: 10px 12px;
-  border: 1px solid #d4dce8;
-  border-radius: 10px;
-  background: #ffffff;
-  color: #1f2937;
-  font-size: 14px;
-  font-weight: 600;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
-}
-
-.tool-input:focus {
-  outline: none;
-  border-color: #7fa9e8;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.14);
-}
-
-.tool-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 2px 8px;
-  border-radius: 999px;
-  font-size: 11px;
-  border: 1px solid #d5deea;
-  color: #5f6f85;
-  background: #f4f8fd;
-}
-
-.dota-theme h1,
-.dota-theme h2 {
-  font-family: var(--font-display);
-  letter-spacing: 0.01em;
-}
-
-.dota-theme input,
-.dota-theme select,
-.dota-theme textarea {
-  border-color: var(--tool-border) !important;
-  color: var(--tool-text) !important;
-  background: #ffffff !important;
-}
-
-.dota-theme button {
-  font-family: var(--font-body);
-}
-
-.dota-theme button:focus-visible,
-.dota-theme input:focus-visible,
-.dota-theme select:focus-visible,
-.dota-theme textarea:focus-visible {
-  outline: 2px solid rgba(37, 99, 235, 0.28);
-  outline-offset: 1px;
-}
-
-.dota-theme input::placeholder,
-.dota-theme textarea::placeholder {
-  color: #8a96a8;
-}
-
-.dota-theme .text-zinc-900,
-.dota-theme .text-\[\#1a1a1a\] {
-  color: var(--tool-text) !important;
-}
-
-.dota-theme .text-zinc-700,
-.dota-theme .text-zinc-600 {
-  color: #44556c !important;
-}
-
-.dota-theme .text-zinc-500,
-.dota-theme .text-zinc-400,
-.dota-theme .text-\[\#666666\] {
-  color: var(--tool-text-soft) !important;
-}
-
-.dota-theme .bg-white,
-.dota-theme .bg-\[\#F9F9F9\],
-.dota-theme .bg-zinc-50 {
-  background-color: #ffffff !important;
-}
-
-.dota-theme .bg-zinc-100 {
-  background-color: #f1f5fb !important;
-}
-
-.dota-theme .bg-zinc-200 {
-  background-color: #e7edf6 !important;
-}
-
-.dota-theme .border-zinc-200,
-.dota-theme .border-zinc-300,
-.dota-theme .border-\[\#dddddd\] {
-  border-color: var(--tool-border) !important;
-}
-
-.dota-theme .hover\:bg-zinc-50:hover,
-.dota-theme .hover\:bg-zinc-100:hover,
-.dota-theme .hover\:bg-zinc-200:hover,
-.dota-theme .hover\:bg-\[\#EAEAEA\]:hover {
-  background-color: #eef4fc !important;
-}
-
-@keyframes tool-rise {
-  0% {
-    opacity: 0;
-    transform: translateY(6px);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.dota-main-panel > * {
-  animation: tool-rise 0.28s ease-out both;
+  height: 100%;
 }
 
 .dota-theme ::-webkit-scrollbar {
@@ -314,14 +347,42 @@ body {
 }
 
 .dota-theme ::-webkit-scrollbar-track {
-  background: #eef2f7;
+  background: #131a26;
 }
 
 .dota-theme ::-webkit-scrollbar-thumb {
-  background: #c8d3e1;
-  border-radius: 6px;
+  background: #3b4963;
+  border-radius: 999px;
 }
 
 .dota-theme ::-webkit-scrollbar-thumb:hover {
-  background: #b3c1d4;
+  background: #526482;
+}
+
+.dota-theme button:focus-visible,
+.dota-theme input:focus-visible,
+.dota-theme select:focus-visible,
+.dota-theme textarea:focus-visible {
+  outline: 2px solid rgba(109, 211, 255, 0.45);
+  outline-offset: 1px;
+}
+
+.dota-theme input::placeholder,
+.dota-theme textarea::placeholder {
+  color: #8f9cb8;
+}
+
+@keyframes ui-rise {
+  0% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.ui-animate-in {
+  animation: ui-rise 0.22s ease-out both;
 }

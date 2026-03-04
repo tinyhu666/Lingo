@@ -137,7 +137,7 @@ export default function HotkeyCard() {
           initial={{ rotate: 0 }}
           animate={{ rotate: 360 }}
           transition={{ repeat: Infinity, duration: 1 }}>
-          <Spinner className='w-6 h-6 text-zinc-400' />
+          <Spinner className='w-6 h-6 text-[#a8b6d7]' />
         </motion.div>
       );
     }
@@ -153,27 +153,27 @@ export default function HotkeyCard() {
     <motion.button
       type='button'
       onClick={beginRecording}
-      className='dota-card w-full h-full min-h-[248px] flex flex-col rounded-2xl p-6 text-left transition-all duration-200 hover:shadow-[0_14px_30px_rgba(15,23,42,0.1)]'
+      className='ui-card ui-card-glass w-full h-full min-h-[248px] flex flex-col rounded-2xl p-6 text-left transition-all duration-200 hover:shadow-[0_14px_30px_rgba(7,11,22,0.4)]'
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.2 }}>
       <div className='flex items-center gap-3'>
-        <KeyboardAlt className='w-6 h-6 stroke-zinc-500' />
-        <h3 className='tool-card-title'>快捷键</h3>
+        <KeyboardAlt className='w-5 h-5 text-[#a8b6d7]' />
+        <h3 className='ui-card-title'>快捷键</h3>
       </div>
 
       <div className='flex-1 flex flex-col mt-4'>
-        <p className='tool-body'>
+        <p className='ui-body'>
           {recording
             ? '按下组合键，松开任意键完成设置。'
             : `点击此卡片设置快捷键（默认 ${defaultTranslatorHotkeyLabel()}）。`}
         </p>
 
         <div className='mt-auto'>
-          <div className='tool-control-slot mt-4'>
-            <div className='home-top-control-shell-soft px-4 flex items-center justify-center'>
+          <div className='ui-control-slot mt-4'>
+            <div className='home-top-control-shell-soft h-11 px-4 flex items-center justify-center'>
               {typeof hotkeyDisplay === 'string' ? (
-                <span className='tool-control-text text-xl leading-none whitespace-nowrap overflow-hidden text-ellipsis'>
+                <span className='ui-control-text text-xl leading-none whitespace-nowrap overflow-hidden text-ellipsis'>
                   {hotkeyDisplay}
                 </span>
               ) : (

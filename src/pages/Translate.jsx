@@ -49,23 +49,23 @@ export default function Translate() {
   };
 
   return (
-    <div className='h-full flex flex-col gap-6'>
+    <div className='h-full flex flex-col gap-5 ui-animate-in'>
       <motion.section
-        className='dota-card w-full rounded-2xl p-6'
+        className='ui-card ui-card-glass w-full rounded-2xl p-6'
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}>
         <div className='flex items-start justify-between gap-3'>
           <div>
-            <h1 className='tool-page-title'>翻译模式</h1>
-            <p className='tool-body mt-2'>
+            <h1 className='ui-page-title'>翻译模式</h1>
+            <p className='ui-body mt-2'>
               选择一个输出风格。只会生效一个模式，改动后立即用于剪贴板翻译。
             </p>
           </div>
-          <div className='tool-pill'>当前：{currentLabel}</div>
+          <div className='ui-pill'>当前：{currentLabel}</div>
         </div>
       </motion.section>
 
-      <div className='grid grid-cols-1 md:grid-cols-3 gap-6'>
+      <div className='grid grid-cols-1 md:grid-cols-3 gap-5'>
         {MODE_OPTIONS.map((mode, idx) => {
           const Icon = mode.icon;
           const isActive = activeMode === mode.id;
@@ -73,31 +73,31 @@ export default function Translate() {
             <motion.button
               key={mode.id}
               type='button'
-              className={`dota-card rounded-2xl p-6 min-h-[214px] text-left transition-all ${
+              className={`ui-card rounded-2xl p-6 min-h-[220px] text-left transition-all ${
                 isActive
-                  ? 'border-blue-300 bg-blue-50/70 shadow-[0_10px_24px_rgba(37,99,235,0.16)]'
-                  : 'hover:shadow-[0_12px_24px_rgba(15,23,42,0.1)]'
+                  ? 'ui-state-enabled'
+                  : 'hover:shadow-[0_14px_26px_rgba(2,7,16,0.45)]'
               }`}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.05 * (idx + 1) }}
               onClick={() => handleModeChange(mode.id)}>
               <div className='flex items-center justify-between'>
-                <div className='flex items-center gap-2.5 text-zinc-700'>
-                  <Icon className='w-5 h-5 stroke-zinc-600' />
-                  <span className='tool-card-title'>{mode.title}</span>
+                <div className='flex items-center gap-2.5'>
+                  <Icon className='w-5 h-5 text-[#a8b6d7]' />
+                  <span className='ui-card-title'>{mode.title}</span>
                 </div>
                 <span
-                  className={`text-xs rounded-full px-2 py-1 border ${
+                  className={`text-xs rounded-full px-2 py-1 border font-semibold ${
                     isActive
-                      ? 'border-blue-300 text-blue-700 bg-blue-100'
-                      : 'border-zinc-200 text-zinc-500 bg-zinc-50'
+                      ? 'border-[#6dd3ff] text-[#d9f5ff] bg-[#284464]'
+                      : 'border-[#3a4762] text-[#9aa6bf] bg-[#243049]'
                   }`}>
                   {isActive ? '已启用' : '点击启用'}
                 </span>
               </div>
 
-              <p className='tool-body mt-4'>{mode.desc}</p>
+              <p className='ui-body mt-4'>{mode.desc}</p>
             </motion.button>
           );
         })}
