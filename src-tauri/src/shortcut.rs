@@ -2,11 +2,14 @@ use crate::shell_helper::{send_phrase, trans_and_replace_text};
 use crate::store::{get_settings, update_settings_field, HotkeyConfig, Phrase};
 use std::collections::HashSet;
 use std::str::FromStr;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use tauri::AppHandle;
 use tauri_plugin_global_shortcut::{
     Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutEvent, ShortcutState,
 };
+
+static TRANSLATION_IN_FLIGHT: AtomicBool = AtomicBool::new(false);
 
 fn parse_modifiers(modifiers: &[String]) -> Modifiers {
     let mut result = Modifiers::empty();
@@ -25,8 +28,18 @@ fn parse_modifiers(modifiers: &[String]) -> Modifiers {
 fn is_modifier_key(key: &str) -> bool {
     matches!(
         key,
-        "Control" | "ControlLeft" | "ControlRight" | "Alt" | "AltLeft" | "AltRight"
-            | "Shift" | "ShiftLeft" | "ShiftRight" | "Meta" | "MetaLeft" | "MetaRight"
+        "Control"
+            | "ControlLeft"
+            | "ControlRight"
+            | "Alt"
+            | "AltLeft"
+            | "AltRight"
+            | "Shift"
+            | "ShiftLeft"
+            | "ShiftRight"
+            | "Meta"
+            | "MetaLeft"
+            | "MetaRight"
     )
 }
 
@@ -105,11 +118,20 @@ fn create_trans_handler(
     let app = Arc::new(app);
     move |_app, _shortcut, event| {
         if event.state() == ShortcutState::Pressed {
+            if TRANSLATION_IN_FLIGHT
+                .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
+                .is_err()
+            {
+                println!("翻译任务进行中，忽略重复触发");
+                return;
+            }
+
             let app_clone = Arc::clone(&app);
             tauri::async_runtime::spawn(async move {
                 if let Err(e) = trans_and_replace_text(app_clone.as_ref()).await {
                     println!("翻译替换失败: {:?}", e);
                 }
+                TRANSLATION_IN_FLIGHT.store(false, Ordering::Release);
             });
         }
     }
@@ -145,7 +167,10 @@ fn register_phrase_shortcuts(app: &AppHandle, phrases: &[Phrase]) -> Result<(), 
     Ok(())
 }
 
-fn rebind_all_shortcuts(app: &AppHandle, settings: &crate::store::AppSettings) -> Result<(), String> {
+fn rebind_all_shortcuts(
+    app: &AppHandle,
+    settings: &crate::store::AppSettings,
+) -> Result<(), String> {
     let global_shortcut = app.global_shortcut();
     if let Err(e) = global_shortcut.unregister_all() {
         println!("清理旧快捷键失败(忽略): {}", e);
@@ -182,7 +207,9 @@ pub fn update_translator_shortcut(app: &AppHandle, keys: Vec<String>) -> Result<
         .unwrap_or_default();
 
     if modifiers.is_empty() || key.is_empty() {
-        return Err("快捷键必须包含至少一个修饰键(Control/Alt/Shift/Command)和一个其他按键".to_string());
+        return Err(
+            "快捷键必须包含至少一个修饰键(Control/Alt/Shift/Command)和一个其他按键".to_string(),
+        );
     }
 
     Code::from_str(&key).map_err(|_| "快捷键主键无效，请重试".to_string())?;

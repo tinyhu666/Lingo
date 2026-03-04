@@ -56,7 +56,6 @@ export const writeSettingsToStore = async (settings) => {
   try {
     const store = await getStore();
     await store.set(SETTINGS_KEY, settings);
-    await store.save();
     return true;
   } catch {
     writePreviewSettings(settings);

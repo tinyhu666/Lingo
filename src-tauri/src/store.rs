@@ -232,8 +232,9 @@ fn normalize_model_type(model_type: &str) -> String {
     match model_type {
         "deepseek-R1" => "deepseek".to_string(),
         "custom" => "custom".to_string(),
-        "openai" | "deepseek" | "qwen" | "moonshot" | "siliconflow" | "anthropic"
-        | "stepfun" => model_type.to_string(),
+        "openai" | "deepseek" | "qwen" | "moonshot" | "siliconflow" | "anthropic" | "stepfun" => {
+            model_type.to_string()
+        }
         _ => "openai".to_string(),
     }
 }
@@ -352,34 +353,40 @@ fn normalize_settings(settings: &mut AppSettings) {
     }
 }
 
-pub fn initialize_settings(app: &AppHandle) -> Result<(), anyhow::Error> {
+fn load_settings_from_store(app: &AppHandle) -> Result<(AppSettings, bool), anyhow::Error> {
     let store = app.store(STORE_FILENAME)?;
-
-    let mut settings = match store.get("settings") {
-        Some(value) => serde_json::from_value::<AppSettings>(value).unwrap_or_default(),
+    let value = store.get("settings");
+    let settings = match value.clone() {
+        Some(raw) => serde_json::from_value::<AppSettings>(raw).unwrap_or_default(),
         None => AppSettings::default(),
     };
 
-    normalize_settings(&mut settings);
+    Ok((settings, value.is_some()))
+}
+
+fn save_settings_to_store(app: &AppHandle, settings: &AppSettings) -> Result<(), anyhow::Error> {
+    let store = app.store(STORE_FILENAME)?;
     store.set("settings", json!(settings));
     store.save()?;
-    store.close_resource();
+    Ok(())
+}
+
+pub fn initialize_settings(app: &AppHandle) -> Result<(), anyhow::Error> {
+    let (mut settings, has_existing) = load_settings_from_store(app)?;
+    let original = serde_json::to_value(&settings)?;
+
+    normalize_settings(&mut settings);
+    let normalized = serde_json::to_value(&settings)?;
+    if !has_existing || original != normalized {
+        save_settings_to_store(app, &settings)?;
+    }
 
     Ok(())
 }
 
 pub fn get_settings(app: &AppHandle) -> Result<AppSettings, anyhow::Error> {
-    let store = app.store(STORE_FILENAME)?;
-
-    let mut settings = match store.get("settings") {
-        Some(value) => serde_json::from_value::<AppSettings>(value).unwrap_or_default(),
-        None => AppSettings::default(),
-    };
-
+    let (mut settings, _) = load_settings_from_store(app)?;
     normalize_settings(&mut settings);
-    store.set("settings", json!(settings.clone()));
-    store.save()?;
-
     Ok(settings)
 }
 
@@ -387,14 +394,12 @@ pub fn update_settings_field<T: serde::Serialize>(
     app: &AppHandle,
     field_updater: impl FnOnce(&mut AppSettings) -> T,
 ) -> Result<T, anyhow::Error> {
-    let store = app.store(STORE_FILENAME)?;
-    let mut settings = get_settings(app)?;
+    let (mut settings, _) = load_settings_from_store(app)?;
+    normalize_settings(&mut settings);
 
     let result = field_updater(&mut settings);
     normalize_settings(&mut settings);
-
-    store.set("settings", json!(settings));
-    store.save()?;
+    save_settings_to_store(app, &settings)?;
 
     Ok(result)
 }

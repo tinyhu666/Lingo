@@ -1,7 +1,22 @@
 use anyhow::{anyhow, Result};
 use reqwest::Client;
 use serde_json::{json, Value};
+use std::sync::OnceLock;
+use std::time::{Duration, Instant};
 use tauri::AppHandle;
+
+static HTTP_CLIENT: OnceLock<Client> = OnceLock::new();
+
+fn shared_http_client() -> &'static Client {
+    HTTP_CLIENT.get_or_init(|| {
+        Client::builder()
+            .connect_timeout(Duration::from_secs(5))
+            .timeout(Duration::from_secs(20))
+            .pool_idle_timeout(Duration::from_secs(60))
+            .build()
+            .unwrap_or_else(|_| Client::new())
+    })
+}
 
 fn get_system_prompt(from: &str, to: &str, mode: &str, daily_mode: bool) -> String {
     if daily_mode {
@@ -223,6 +238,7 @@ async fn request_anthropic(
 }
 
 pub async fn translate_with_gpt(app: &AppHandle, original: &str) -> Result<String> {
+    let started = Instant::now();
     let raw = original.trim();
     if raw.is_empty() {
         return Ok(String::new());
@@ -237,14 +253,24 @@ pub async fn translate_with_gpt(app: &AppHandle, original: &str) -> Result<Strin
         settings.daily_mode,
     );
 
-    let client = Client::new();
+    let client = shared_http_client();
     let provider = model_config.provider.trim().to_lowercase();
+    let request_started = Instant::now();
 
     let translated = if provider == "anthropic" {
-        request_anthropic(&client, &model_config, &system_prompt, raw).await?
+        request_anthropic(client, &model_config, &system_prompt, raw).await?
     } else {
-        request_openai_compatible(&client, &model_config, &system_prompt, raw).await?
+        request_openai_compatible(client, &model_config, &system_prompt, raw).await?
     };
+    println!(
+        "[perf] model_request provider={} elapsed_ms={}",
+        provider,
+        request_started.elapsed().as_millis()
+    );
+    println!(
+        "[perf] translate_total elapsed_ms={}",
+        started.elapsed().as_millis()
+    );
 
     Ok(translated)
 }

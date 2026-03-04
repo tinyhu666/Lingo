@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Server, Crown, Sparkles } from '../icons';
 import { useStore } from '../components/StoreProvider';
 import {
@@ -17,6 +17,13 @@ export default function Settings() {
   const { settings, updateSettings } = useStore();
   const [activeModel, setActiveModel] = useState(settings?.model_type || 'openai');
   const [testing, setTesting] = useState(false);
+  const [draftConfig, setDraftConfig] = useState({
+    auth: '',
+    api_url: '',
+    model_name: '',
+  });
+  const debounceTimerRef = useRef(null);
+  const pendingPatchRef = useRef({});
 
   useEffect(() => {
     if (settings?.model_type) {
@@ -29,31 +36,92 @@ export default function Settings() {
     return allConfigs[activeModel] || {};
   }, [settings?.model_configs, activeModel]);
 
+  const patchActiveConfig = useCallback(
+    async (patch) => {
+      await updateSettings((current) => {
+        const allConfigs = current?.model_configs || {};
+        const nextModelConfigs = {
+          ...allConfigs,
+          [activeModel]: {
+            ...(allConfigs[activeModel] || {}),
+            ...patch,
+          },
+        };
+
+        const payload = { model_configs: nextModelConfigs };
+        if (activeModel === 'custom') {
+          payload.custom_model = nextModelConfigs.custom;
+        }
+
+        return payload;
+      });
+    },
+    [activeModel, updateSettings],
+  );
+
+  const flushDraftPatch = useCallback(async () => {
+    const pendingPatch = pendingPatchRef.current;
+    if (!Object.keys(pendingPatch).length) {
+      return;
+    }
+
+    pendingPatchRef.current = {};
+    await patchActiveConfig(pendingPatch);
+  }, [patchActiveConfig]);
+
+  const scheduleDraftPatch = useCallback(
+    (field, value) => {
+      setDraftConfig((prev) => ({ ...prev, [field]: value }));
+      pendingPatchRef.current = {
+        ...pendingPatchRef.current,
+        [field]: value,
+      };
+
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+
+      debounceTimerRef.current = setTimeout(() => {
+        debounceTimerRef.current = null;
+        void flushDraftPatch();
+      }, 400);
+    },
+    [flushDraftPatch],
+  );
+
+  const commitDraftImmediately = useCallback(() => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+      debounceTimerRef.current = null;
+    }
+    void flushDraftPatch();
+  }, [flushDraftPatch]);
+
+  useEffect(() => {
+    setDraftConfig({
+      auth: activeConfig?.auth || '',
+      api_url: activeConfig?.api_url || '',
+      model_name: activeConfig?.model_name || '',
+    });
+  }, [activeModel, activeConfig?.auth, activeConfig?.api_url, activeConfig?.model_name]);
+
+  useEffect(
+    () => () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    },
+    [],
+  );
+
   const selectModel = async (modelId) => {
+    await flushDraftPatch();
     setActiveModel(modelId);
     await updateSettings({ model_type: modelId });
   };
 
-  const patchActiveConfig = async (patch) => {
-    const allConfigs = settings?.model_configs || {};
-    const nextModelConfigs = {
-      ...allConfigs,
-      [activeModel]: {
-        ...(allConfigs[activeModel] || {}),
-        ...patch,
-      },
-    };
-
-    const payload = { model_configs: nextModelConfigs };
-
-    if (activeModel === 'custom') {
-      payload.custom_model = nextModelConfigs.custom;
-    }
-
-    await updateSettings(payload);
-  };
-
   const updateProvider = async (provider) => {
+    await flushDraftPatch();
     const normalizedProvider = normalizeProvider(provider);
     const normalizedUrl = normalizeApiUrlByProvider(activeConfig?.api_url, normalizedProvider);
     await patchActiveConfig({
@@ -63,9 +131,15 @@ export default function Settings() {
   };
 
   const verifyConnection = async () => {
+    await flushDraftPatch();
     setTesting(true);
     try {
-      const ok = await testModelConnection(activeConfig);
+      const ok = await testModelConnection({
+        ...activeConfig,
+        auth: draftConfig.auth,
+        api_url: draftConfig.api_url,
+        model_name: draftConfig.model_name,
+      });
       if (ok) {
         showSuccess('API 连接测试成功');
       }
@@ -149,8 +223,9 @@ export default function Settings() {
               <label className='tool-label block'>API Key</label>
               <input
                 type='password'
-                value={activeConfig?.auth || ''}
-                onChange={(event) => patchActiveConfig({ auth: event.target.value })}
+                value={draftConfig.auth}
+                onChange={(event) => scheduleDraftPatch('auth', event.target.value)}
+                onBlur={commitDraftImmediately}
                 className='tool-input'
                 placeholder='输入 API Key'
               />
@@ -160,8 +235,9 @@ export default function Settings() {
               <label className='tool-label block'>API URL</label>
               <input
                 type='text'
-                value={activeConfig?.api_url || ''}
-                onChange={(event) => patchActiveConfig({ api_url: event.target.value })}
+                value={draftConfig.api_url}
+                onChange={(event) => scheduleDraftPatch('api_url', event.target.value)}
+                onBlur={commitDraftImmediately}
                 className='tool-input'
                 placeholder={
                   normalizeProvider(activeConfig?.provider) === 'anthropic'
@@ -175,8 +251,9 @@ export default function Settings() {
               <label className='tool-label block'>Model Name</label>
               <input
                 type='text'
-                value={activeConfig?.model_name || ''}
-                onChange={(event) => patchActiveConfig({ model_name: event.target.value })}
+                value={draftConfig.model_name}
+                onChange={(event) => scheduleDraftPatch('model_name', event.target.value)}
+                onBlur={commitDraftImmediately}
                 className='tool-input'
                 placeholder='例如：gpt-4.1-mini'
               />

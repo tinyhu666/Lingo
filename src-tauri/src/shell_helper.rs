@@ -1,21 +1,30 @@
 use crate::ai_translator;
 use anyhow::Result;
+use std::time::Instant;
 use tauri::AppHandle;
 use tauri_plugin_clipboard_manager::ClipboardExt;
 use tauri_plugin_shell::ShellExt;
 
 pub async fn trans_and_replace_text(app: &AppHandle) -> Result<()> {
+    let total_started = Instant::now();
     let settings = crate::store::get_settings(app)?;
     if !settings.app_enabled {
         println!("应用已禁用，跳过翻译动作");
         return Ok(());
     }
 
+    let copy_started = Instant::now();
     // 1. 复制选中文本
     if !settings.daily_mode {
-        simulate_keyboard_shortcut(app, "a").await?;
+        simulate_keyboard_shortcuts(app, &["a", "c"]).await?;
+    } else {
+        simulate_keyboard_shortcut(app, "c").await?;
     }
-    simulate_keyboard_shortcut(app, "c").await?;
+    println!(
+        "[perf] copy_phase elapsed_ms={}",
+        copy_started.elapsed().as_millis()
+    );
+
     // 2. 读取剪贴板内容
     let original_text = app.clipboard().read_text()?;
     println!("原始文本: {:?}", original_text);
@@ -36,20 +45,34 @@ pub async fn trans_and_replace_text(app: &AppHandle) -> Result<()> {
         app.clipboard().write_text(&status_text)?;
 
         // 4. 粘贴状态文本
-        simulate_keyboard_shortcut(app, "a").await?;
-        simulate_keyboard_shortcut(app, "v").await?;
+        simulate_keyboard_shortcuts(app, &["a", "v"]).await?;
     }
 
     // 5. 调用AI翻译
+    let model_started = Instant::now();
     let translated = ai_translator::translate_with_gpt(app, &original_text).await?;
+    println!(
+        "[perf] translate_request elapsed_ms={}",
+        model_started.elapsed().as_millis()
+    );
     println!("翻译结果: {:?}", translated);
 
     // 6. 粘贴翻译结果
+    let paste_started = Instant::now();
     app.clipboard().write_text(translated)?;
     if !settings.daily_mode {
-        simulate_keyboard_shortcut(app, "a").await?;
+        simulate_keyboard_shortcuts(app, &["a", "v"]).await?;
+    } else {
+        simulate_keyboard_shortcut(app, "v").await?;
     }
-    simulate_keyboard_shortcut(app, "v").await?;
+    println!(
+        "[perf] paste_phase elapsed_ms={}",
+        paste_started.elapsed().as_millis()
+    );
+    println!(
+        "[perf] pipeline_total elapsed_ms={}",
+        total_started.elapsed().as_millis()
+    );
 
     Ok(())
 }
@@ -69,18 +92,23 @@ pub async fn has_text_selection(app: &AppHandle) -> Result<bool> {
 
 /// 模拟键盘组合键按下
 async fn simulate_keyboard_shortcut(app: &AppHandle, key: &str) -> Result<()> {
+    simulate_keyboard_shortcuts(app, &[key]).await
+}
+
+async fn simulate_keyboard_shortcuts(app: &AppHandle, keys: &[&str]) -> Result<()> {
+    if keys.is_empty() {
+        return Ok(());
+    }
+
     #[cfg(target_os = "macos")]
     {
         let shell = app.shell();
-        let script = format!(
-            r#"
-            tell application "System Events"
-                keystroke "{}" using command down
-                delay 0.1
-            end tell
-            "#,
-            key
-        );
+        let mut script = String::from("tell application \"System Events\"\n");
+        for key in keys {
+            script.push_str(&format!("    keystroke \"{}\" using command down\n", key));
+            script.push_str("    delay 0.03\n");
+        }
+        script.push_str("end tell\n");
 
         let output = shell
             .command("osascript")
@@ -97,14 +125,14 @@ async fn simulate_keyboard_shortcut(app: &AppHandle, key: &str) -> Result<()> {
     #[cfg(target_os = "windows")]
     {
         let shell = app.shell();
-        let script = format!(
-            r#"
-            Add-Type -AssemblyName System.Windows.Forms
-            [System.Windows.Forms.SendKeys]::SendWait("^{}")
-            Start-Sleep -Milliseconds 100
-            "#,
-            key
-        );
+        let mut script = String::from("Add-Type -AssemblyName System.Windows.Forms\n");
+        for key in keys {
+            script.push_str(&format!(
+                "[System.Windows.Forms.SendKeys]::SendWait(\"^{}\")\n",
+                key
+            ));
+            script.push_str("Start-Sleep -Milliseconds 30\n");
+        }
 
         let output = shell
             .command("powershell")

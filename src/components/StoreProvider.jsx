@@ -7,6 +7,7 @@ import {
 } from '../services/settingsStore';
 
 const StoreContext = createContext(null);
+const isEqualSettings = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 
 export function StoreProvider({ children }) {
   const [settings, setSettings] = useState(null);
@@ -16,7 +17,12 @@ export function StoreProvider({ children }) {
 
   const enqueueCommit = useCallback((producer) => {
     const run = async () => {
-      const nextSettings = producer(latestSettingsRef.current || {});
+      const currentSettings = latestSettingsRef.current || {};
+      const nextSettings = producer(currentSettings);
+      if (isEqualSettings(currentSettings, nextSettings)) {
+        return currentSettings;
+      }
+
       latestSettingsRef.current = nextSettings;
       setSettings(nextSettings);
       await writeSettingsToStore(nextSettings);
@@ -37,10 +43,10 @@ export function StoreProvider({ children }) {
   );
 
   const updateSettings = useCallback(
-    async (patch) => {
+    async (patchOrUpdater) => {
       return enqueueCommit((current) => ({
         ...current,
-        ...(patch || {}),
+        ...(typeof patchOrUpdater === 'function' ? patchOrUpdater(current || {}) : (patchOrUpdater || {})),
       }));
     },
     [enqueueCommit],
