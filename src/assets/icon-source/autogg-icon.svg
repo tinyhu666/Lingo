@@ -1,45 +1,52 @@
 <svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <linearGradient id="tile" x1="208" y1="176" x2="824" y2="848" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#3A4A66"/>
-      <stop offset="1" stop-color="#202B3E"/>
+    <linearGradient id="bg" x1="512" y1="56" x2="512" y2="968" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#242630" />
+      <stop offset="1" stop-color="#0A0A11" />
     </linearGradient>
-    <linearGradient id="tileStroke" x1="208" y1="176" x2="824" y2="848" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#BFCFE8" stop-opacity="0.7"/>
-      <stop offset="1" stop-color="#9FB0CE" stop-opacity="0.35"/>
+    <radialGradient id="redGlow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(500 410) rotate(90) scale(420 420)">
+      <stop stop-color="#B72D25" stop-opacity="0.55" />
+      <stop offset="1" stop-color="#B72D25" stop-opacity="0" />
+    </radialGradient>
+    <linearGradient id="emblem" x1="512" y1="214" x2="512" y2="650" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#AE312A" />
+      <stop offset="1" stop-color="#591310" />
     </linearGradient>
-    <linearGradient id="bubbleA" x1="296" y1="348" x2="628" y2="660" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#F7FBFF"/>
-      <stop offset="1" stop-color="#E2ECFA"/>
-    </linearGradient>
-    <linearGradient id="bubbleB" x1="414" y1="310" x2="746" y2="626" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#D9E8FD"/>
-      <stop offset="1" stop-color="#BCD3F7"/>
-    </linearGradient>
-    <filter id="shadow" x="136" y="132" width="752" height="772" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
-      <feFlood flood-opacity="0" result="BackgroundImageFix"/>
-      <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
-      <feOffset dy="14"/>
-      <feGaussianBlur stdDeviation="20"/>
-      <feComposite in2="hardAlpha" operator="out"/>
-      <feColorMatrix type="matrix" values="0 0 0 0 0.09 0 0 0 0 0.13 0 0 0 0 0.22 0 0 0 0.34 0"/>
-      <feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow_1_1"/>
-      <feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow_1_1" result="shape"/>
+    <filter id="shadow" x="24" y="24" width="976" height="976" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feFlood flood-opacity="0" result="BackgroundImageFix" />
+      <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha" />
+      <feOffset dy="12" />
+      <feGaussianBlur stdDeviation="16" />
+      <feComposite in2="hardAlpha" operator="out" />
+      <feColorMatrix type="matrix" values="0 0 0 0 0.03 0 0 0 0 0.03 0 0 0 0 0.06 0 0 0 0.35 0" />
+      <feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow_1_1" />
+      <feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow_1_1" result="shape" />
     </filter>
   </defs>
 
   <g filter="url(#shadow)">
-    <rect x="208" y="176" width="608" height="608" rx="166" fill="url(#tile)"/>
-    <rect x="209" y="177" width="606" height="606" rx="165" stroke="url(#tileStroke)" stroke-width="2"/>
+    <rect x="56" y="56" width="912" height="912" rx="178" fill="url(#bg)" />
+    <rect x="56" y="56" width="912" height="912" rx="178" fill="url(#redGlow)" />
+    <rect x="60" y="60" width="904" height="904" rx="174" stroke="#D1735F" stroke-width="7" />
+    <rect x="72" y="72" width="880" height="880" rx="164" stroke="#777687" stroke-opacity="0.6" stroke-width="3" />
 
-    <path d="M314 374C314 334.235 346.235 302 386 302H530C569.765 302 602 334.235 602 374V498C602 537.765 569.765 570 530 570H430L372 624V570H386C346.235 570 314 537.765 314 498V374Z" fill="url(#bubbleA)"/>
-    <path d="M422 352C422 316.654 450.654 288 486 288H630C665.346 288 694 316.654 694 352V472C694 507.346 665.346 536 630 536H566L512 584V536H486C450.654 536 422 507.346 422 472V352Z" fill="url(#bubbleB)"/>
+    <rect x="284" y="204" width="456" height="456" rx="48" fill="#0B0C12" fill-opacity="0.82" />
+    <rect x="300" y="220" width="424" height="424" rx="40" fill="url(#emblem)" stroke="#F48A75" stroke-width="8" />
+    <path d="M366 314L454 272L672 536L584 578L366 314Z" fill="#2C0F18" fill-opacity="0.72" />
+    <path d="M410 538L488 496L638 392L560 434L410 538Z" fill="#32111A" fill-opacity="0.68" />
+    <rect x="550" y="278" width="84" height="84" rx="10" fill="#34121C" fill-opacity="0.78" />
+    <rect x="404" y="502" width="84" height="84" rx="10" fill="#34121C" fill-opacity="0.78" />
 
-    <path d="M470 458C470 442.536 482.536 430 498 430H535V404L588 448L535 492V466H498C482.536 466 470 453.464 470 438V458Z" fill="#2D62D9"/>
-    <path d="M536 500C536 515.464 523.464 528 508 528H471V554L418 510L471 466V492H508C523.464 492 536 504.536 536 520V500Z" fill="#8AA8E8"/>
+    <circle cx="710" cy="760" r="138" fill="#0E1D41" stroke="#DCA37B" stroke-width="8" />
+    <circle cx="710" cy="760" r="122" stroke="#6378A2" stroke-opacity="0.65" stroke-width="3" />
+    <rect x="624" y="728" width="144" height="76" rx="24" fill="#152B56" stroke="#E8BF8E" stroke-width="5" />
+    <path d="M728 804H748L734 824L728 804Z" fill="#152B56" stroke="#E8BF8E" stroke-width="2" />
+    <path d="M644 758H722V740L758 770L722 800V782H644V758Z" fill="#F2CD8D" />
+    <path d="M772 722H694V704L658 734L694 764V746H772V722Z" fill="#D8855F" />
 
-    <circle cx="384" cy="436" r="10" fill="#6F88B5"/>
-    <circle cx="420" cy="436" r="10" fill="#6F88B5"/>
-    <circle cx="456" cy="436" r="10" fill="#6F88B5"/>
+    <rect x="170" y="796" width="288" height="98" rx="26" fill="#0B1A34" fill-opacity="0.72" stroke="#917768" stroke-opacity="0.7" stroke-width="2" />
+    <text x="314" y="864" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="66" font-weight="700" fill="#F2E1BF" stroke="#7A5142" stroke-width="5" paint-order="stroke">
+      AutoGG
+    </text>
   </g>
 </svg>
