@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "ClipLingo",
+  "productName": "Lingo",
   "version": "0.1.0",
-  "identifier": "com.cliplingo.app",
+  "identifier": "com.lingo.app",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "ClipLingo",
+        "title": "Lingo",
         "width": 1280,
         "height": 720,
         "minWidth": 1280,
@@ -77,7 +77,7 @@
     "updater": {
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEY4QTY4MTNDQzEwNkEwNEUKUldST29BYkJQSUdtK0V1MXpvZ3BzWWI2Wk84SktEUXl2Y2lrWHhFL29iU1d5eXZrVzNxK3kwWUIK",
       "endpoints": [
-        "https://github.com/tinyhu666/ClipLingo/releases/latest/download/latest.json"
+        "https://github.com/tinyhu666/Lingo/releases/latest/download/latest.json"
       ],
       "windows": {
         "installMode": "passive"

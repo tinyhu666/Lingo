@@ -31,13 +31,13 @@ export default function Sidebar({ activeItem, setActiveItem }) {
           <div className='rounded-xl flex items-center justify-center overflow-hidden w-[46px] h-[46px] min-w-[46px] border border-zinc-200'>
             <img
               src={appIcon}
-              alt='ClipLingo Logo'
+              alt='Lingo Logo'
               width='46'
               height='46'
               className='object-cover w-[46px] h-[46px]'
             />
           </div>
-          <h3 className='dota-logo-title text-[21px] font-semibold'>ClipLingo</h3>
+          <h3 className='dota-logo-title text-[21px] font-semibold'>Lingo</h3>
         </div>
       </div>
 

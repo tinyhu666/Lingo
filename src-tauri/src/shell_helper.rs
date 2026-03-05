@@ -36,7 +36,7 @@ pub async fn trans_and_replace_text(app: &AppHandle) -> Result<()> {
     if !settings.daily_mode {
         // 3. 如果是游戏模式 -> 显示翻译状态
         let status_text = format!(
-            "ClipLingo 翻译中... ({}→{} | 场景:{} | 模式:{})",
+            "Lingo 翻译中... ({}→{} | 场景:{} | 模式:{})",
             settings.translation_from,
             settings.translation_to,
             settings.game_scene,

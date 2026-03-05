@@ -59,9 +59,9 @@ export default function About() {
         className='dota-card w-full rounded-2xl p-6'
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}>
-        <h1 className='tool-page-title mb-4'>关于 ClipLingo</h1>
+        <h1 className='tool-page-title mb-4'>关于 Lingo</h1>
         <p className='tool-body text-zinc-600'>
-          当前版本：{versionLabel}。powerby 萌新。ClipLingo 聚焦 Dota2 游戏内即时沟通翻译，支持全局快捷键、剪贴板翻译回填以及多厂商大模型 API。
+          当前版本：{versionLabel}。powerby 萌新。Lingo 聚焦 Dota2 游戏内即时沟通翻译，支持全局快捷键、剪贴板翻译回填以及多厂商大模型 API。
         </p>
 
         <div className='mt-5 rounded-xl border border-zinc-200 bg-white/80 p-4 space-y-3'>

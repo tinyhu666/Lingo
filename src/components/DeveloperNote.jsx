@@ -26,10 +26,10 @@ export default function DeveloperNote() {
       </div>
 
       <div className='flex flex-col gap-4 text-zinc-600'>
-        <div className='tool-card-title'>ClipLingo {currentVersion}</div>
+        <div className='tool-card-title'>Lingo {currentVersion}</div>
         <div className='tool-body'>powerby 萌新</div>
         <p className='tool-body'>
-          ClipLingo 专注 Dota2 游戏内剪贴板翻译：快捷键触发后自动复制、翻译并粘贴回当前输入框，支持 Win 与 macOS。
+          Lingo 专注 Dota2 游戏内剪贴板翻译：快捷键触发后自动复制、翻译并粘贴回当前输入框，支持 Win 与 macOS。
         </p>
         <p className='tool-body'>
           你的 API Key 保存在本地 `store.json`，不会上传到项目服务器。你可以按厂商分别填写配置并随时切换。

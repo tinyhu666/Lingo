@@ -61,10 +61,10 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           tagName: v__VERSION__
-          releaseName: 'ClipLingo v__VERSION__'
+          releaseName: 'Lingo v__VERSION__'
           releaseBody: |
             更新日志：
-            1. 品牌升级为 ClipLingo，客户端文案与图标全量统一。
+            1. 品牌升级为 Lingo，客户端文案与图标全量统一。
             2. 完成旧品牌残留清理并优化发布链路。
             3. 保持翻译、快捷键、模型配置与更新功能不变。
 
