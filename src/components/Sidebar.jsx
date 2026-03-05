@@ -31,13 +31,13 @@ export default function Sidebar({ activeItem, setActiveItem }) {
           <div className='rounded-xl flex items-center justify-center overflow-hidden w-[46px] h-[46px] min-w-[46px] border border-zinc-200'>
             <img
               src={appIcon}
-              alt='AutoGG Logo'
+              alt='ClipLingo Logo'
               width='46'
               height='46'
               className='object-cover w-[46px] h-[46px]'
             />
           </div>
-          <h3 className='dota-logo-title text-[21px] font-semibold'>AutoGG</h3>
+          <h3 className='dota-logo-title text-[21px] font-semibold'>ClipLingo</h3>
         </div>
       </div>
 
@@ -98,7 +98,7 @@ export default function Sidebar({ activeItem, setActiveItem }) {
 
       <div className='px-4 pb-4 pt-2 border-t border-zinc-200/70'>
         <div className='tool-caption'>
-          <div className='font-semibold text-zinc-600'>V1.2.1</div>
+          <div className='font-semibold text-zinc-600'>V0.1.0</div>
           <div className='mt-0.5'>powerby 萌新</div>
         </div>
       </div>

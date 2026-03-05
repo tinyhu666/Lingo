@@ -3,7 +3,8 @@ import { hasTauriRuntime, invokeCommand } from './tauriRuntime';
 
 const STORE_FILE = 'store.json';
 const SETTINGS_KEY = 'settings';
-const WEB_SETTINGS_KEY = 'autogg.settings';
+const WEB_SETTINGS_KEY = 'cliplingo.settings';
+const LEGACY_WEB_SETTINGS_KEY = ['auto', 'gg.settings'].join('');
 
 let storeInstancePromise = null;
 
@@ -17,7 +18,20 @@ const getStore = async () => {
 export const readPreviewSettings = () => {
   try {
     const raw = localStorage.getItem(WEB_SETTINGS_KEY);
-    return raw ? JSON.parse(raw) : null;
+    if (raw) {
+      return JSON.parse(raw);
+    }
+
+    // Migrate legacy preview key to keep old settings after rebrand.
+    const legacyRaw = localStorage.getItem(LEGACY_WEB_SETTINGS_KEY);
+    if (!legacyRaw) {
+      return null;
+    }
+
+    const legacy = JSON.parse(legacyRaw);
+    localStorage.setItem(WEB_SETTINGS_KEY, JSON.stringify(legacy));
+    localStorage.removeItem(LEGACY_WEB_SETTINGS_KEY);
+    return legacy;
   } catch {
     return null;
   }

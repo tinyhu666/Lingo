@@ -2,5 +2,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
-    autogg_lib::run()
+    cliplingo_lib::run()
 }

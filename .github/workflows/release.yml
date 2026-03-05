@@ -57,15 +57,16 @@ jobs:
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAURI_SIGNING_PRIVATE_KEY: "dW50cnVzdGVkIGNvbW1lbnQ6IHJzaWduIGVuY3J5cHRlZCBzZWNyZXQga2V5ClJXUlRZMEl5TnMwa2pvR1RZaWRxQWxVOVkxand1WllDeWZyRGtyYk9lSEZKTFRQMW1JWUFBQkFBQUFBQUFBQUFBQUlBQUFBQStaZ2pBUWFaTlFtSlBGRStPYjFlVGVzRmV6SDRqTWNtc2NmaUZnWDFnemJJZWJDVHBhNlZzMFRWMG82L0VpNk8vNTV5QUIyYUJPRC9UcWlGV1dMZG1LUTMzRmhCQWs2N2VjekVROC9GV0xwcjVRNmtRZmt6Ri9YRk4rbDFDbjJSU1l5dkNnR05rTXc9Cg=="
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: "autogg-v013-updater"
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           tagName: v__VERSION__
-          releaseName: 'AutoGG v__VERSION__'
+          releaseName: 'ClipLingo v__VERSION__'
           releaseBody: |
             更新日志：
-            1. 优化翻译性能与响应速度，减少卡顿。
-            2. 修复已知问题，提升整体稳定性。
+            1. 品牌升级为 ClipLingo，客户端文案与图标全量统一。
+            2. 完成旧品牌残留清理并优化发布链路。
+            3. 保持翻译、快捷键、模型配置与更新功能不变。
 
             安装包：
             - Windows: `.msi` / `.exe`

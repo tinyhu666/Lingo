@@ -42,7 +42,7 @@ export default function EnableStatusCard() {
         await updateSettings({ app_enabled: nextEnabled });
       }
 
-      showSuccess(nextEnabled ? 'AutoGG 已启用' : 'AutoGG 已暂停');
+      showSuccess(nextEnabled ? 'ClipLingo 已启用' : 'ClipLingo 已暂停');
     } catch (error) {
       setDraftState(null);
       showError(`切换失败: ${error}`);
@@ -61,7 +61,7 @@ export default function EnableStatusCard() {
         <PowerToggle className='w-6 h-6 stroke-zinc-500' />
         <h3 className='tool-card-title'>启用状态</h3>
       </div>
-      <p className='tool-body mt-1'>通过软件状态下拉控制 AutoGG 开关。</p>
+      <p className='tool-body mt-1'>通过软件状态下拉控制 ClipLingo 开关。</p>
 
       <div className='flex-1 flex flex-col mt-4'>
         <div className='mt-auto'>

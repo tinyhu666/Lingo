@@ -156,7 +156,7 @@ export default function Settings() {
         className='dota-card w-full rounded-2xl p-6'
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}>
-        <h1 className='tool-page-title mb-4'>AutoGG 模型设置</h1>
+        <h1 className='tool-page-title mb-4'>ClipLingo 模型设置</h1>
         <p className='tool-body text-zinc-600'>
           可为不同厂商分别填写 API Key、URL、模型名称。翻译时按当前选中厂商发起请求。
         </p>
