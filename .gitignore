@@ -27,5 +27,10 @@ dist-ssr
 *.p8
 *.p12
 
-# supabase
-supabase
+# supabase local cache (keep functions/migrations tracked)
+supabase/.branches
+supabase/.temp
+supabase/.cache
+supabase/.output
+supabase/.env
+supabase/.env.*

@@ -1,226 +1,174 @@
-// import { useState } from 'react';
-// import { Dialog, Transition } from '@headlessui/react';
-// import { XClose } from '../icons';
-// import { supabase } from '../lib/supabase';
-// import toast from 'react-hot-toast';
-// import { Spinner } from '../icons';
-// import appIcon from '../assets/app-icon.png';
-// import { Fragment } from 'react';
+import { useMemo, useState } from 'react';
+import { XClose, UserUser01, Spinner } from '../icons';
+import { useAuth } from './AuthProvider';
+import appIcon from '../assets/app-icon.png';
 
-// export default function LoginModal({ isOpen, onClose }) {
-//   const [phone, setPhone] = useState('');
-//   const [code, setCode] = useState('');
-//   const [step, setStep] = useState('phone'); // 'phone' or 'code'
-//   const [countdown, setCountdown] = useState(0);
-//   const [loading, setLoading] = useState(false);
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-//   const handleSendCode = async () => {
-//     try {
-//       setLoading(true);
-//       const { data, error } = await supabase.functions.invoke('login', {
-//         body: { phone },
-//       });
+export default function LoginModal() {
+  const {
+    modalOpen,
+    modalMode,
+    setModalMode,
+    closeAuthModal,
+    signIn,
+    signUp,
+    resendEmailVerification,
+    actionLoading,
+    configured,
+  } = useAuth();
 
-//       if (error) throw error;
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
 
-//       toast.success('验证码已发送');
+  const canSubmit = useMemo(() => {
+    if (!EMAIL_REGEX.test(email) || password.length < 8) {
+      return false;
+    }
 
-//       // 开始倒计时
-//       setCountdown(60);
-//       const timer = setInterval(() => {
-//         setCountdown((prev) => {
-//           if (prev <= 1) {
-//             clearInterval(timer);
-//             return 0;
-//           }
-//           return prev - 1;
-//         });
-//       }, 1000);
+    if (modalMode === 'register') {
+      return password === confirmPassword && confirmPassword.length >= 8;
+    }
 
-//       // 切换到验证码输入步骤
-//       setStep('code');
-//     } catch (error) {
-//       console.error('发送验证码失败:', error);
-//       toast.error(error.message || '发送验证码失败，请重试');
-//     } finally {
-//       setLoading(false);
-//     }
-//   };
+    return true;
+  }, [confirmPassword, email, modalMode, password]);
 
-//   const handleVerifyCode = async () => {
-//     try {
-//       setLoading(true);
-//       const { data, error } = await supabase.functions.invoke('verify', {
-//         body: { phone, code },
-//       });
+  if (!modalOpen) {
+    return null;
+  }
 
-//       if (error) throw error;
+  const resetForm = () => {
+    setPassword('');
+    setConfirmPassword('');
+  };
 
-//       toast.success('登录成功');
-//       onClose();
-//     } catch (error) {
-//       console.error('验证失败:', error);
-//       toast.error(error.message || '验证失败，请重试');
-//     } finally {
-//       setLoading(false);
-//     }
-//   };
+  const switchMode = (mode) => {
+    setModalMode(mode);
+    resetForm();
+  };
 
-//   return (
-//     <Transition
-//       appear
-//       show={isOpen}
-//       as={Fragment}>
-//       <Dialog
-//         as='div'
-//         className='relative z-50'
-//         onClose={onClose}>
-//         <Transition.Child
-//           as={Fragment}
-//           enter='ease-out duration-300'
-//           enterFrom='opacity-0'
-//           enterTo='opacity-100'
-//           leave='ease-in duration-200'
-//           leaveFrom='opacity-100'
-//           leaveTo='opacity-0'>
-//           <div className='fixed inset-0 bg-black/30 backdrop-blur-sm' />
-//         </Transition.Child>
+  const submit = async () => {
+    if (!canSubmit || actionLoading) {
+      return;
+    }
 
-//         <div className='fixed inset-0 flex items-center justify-center p-4'>
-//           <Transition.Child
-//             as={Fragment}
-//             enter='ease-out duration-300'
-//             enterFrom='opacity-0 scale-95'
-//             enterTo='opacity-100 scale-100'
-//             leave='ease-in duration-200'
-//             leaveFrom='opacity-100 scale-100'
-//             leaveTo='opacity-0 scale-95'>
-//             <Dialog.Panel className='w-[360px] aspect-[3/4] bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.25)] dark:shadow-[0_25px_50px_-12px_rgba(255,255,255,0.1)] backdrop-blur-sm'>
-//               {/* 头部区域 */}
-//               <div className='p-6 border-b border-zinc-100 dark:border-zinc-800'>
-//                 <div className='flex items-center justify-between mb-6'>
-//                   <div className='flex items-center gap-3'>
-//                     <img
-//                       src={appIcon}
-//                       alt='DeepRant Logo'
-//                       className='w-8 h-8 rounded-xl border-2 border-white'
-//                     />
-//                     <span className='text-lg font-semibold text-zinc-900 dark:text-white'>
-//                       DeepRant
-//                     </span>
-//                   </div>
-//                   <button
-//                     onClick={onClose}
-//                     className='p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors'>
-//                     <XClose className='w-5 h-5 text-zinc-500 dark:text-zinc-400' />
-//                   </button>
-//                 </div>
+    if (modalMode === 'register') {
+      const ok = await signUp(email, password);
+      if (ok) {
+        setConfirmPassword('');
+      }
+      return;
+    }
 
-//                 <Dialog.Title className='text-2xl font-bold text-zinc-900 dark:text-white'>
-//                   {step === 'phone' ? '欢迎回来' : '验证身份'}
-//                 </Dialog.Title>
-//               </div>
+    await signIn(email, password);
+  };
 
-//               {/* 内容区域 */}
-//               <div className='p-6 flex-1 flex flex-col'>
-//                 {step === 'phone' ? (
-//                   <div className='space-y-6 flex-1'>
-//                     <div className='space-y-1'>
-//                       <label className='text-sm text-zinc-500 dark:text-zinc-400'>
-//                         手机号码
-//                       </label>
-//                       <input
-//                         type='tel'
-//                         value={phone}
-//                         onChange={(e) => setPhone(e.target.value)}
-//                         placeholder='+86 请输入手机号'
-//                         className='w-full px-4 py-2.5 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white focus:border-transparent'
-//                         disabled={loading}
-//                       />
-//                     </div>
+  return (
+    <div className='fixed inset-0 z-[60] flex items-center justify-center p-4'>
+      <div className='absolute inset-0 bg-black/30 backdrop-blur-sm' onClick={closeAuthModal} />
 
-//                     <button
-//                       onClick={handleSendCode}
-//                       disabled={!/^1\d{10}$/.test(phone) || loading}
-//                       className='w-full py-2.5 bg-zinc-900 hover:bg-black dark:bg-white dark:hover:bg-zinc-200 text-white dark:text-zinc-900 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed'>
-//                       {loading ? (
-//                         <span className='flex items-center justify-center gap-2'>
-//                           <Spinner className='w-4 h-4 animate-spin' />
-//                           发送验证码
-//                         </span>
-//                       ) : (
-//                         '获取验证码'
-//                       )}
-//                     </button>
-//                   </div>
-//                 ) : (
-//                   <div className='space-y-6 flex-1'>
-//                     <div className='space-y-1'>
-//                       <label className='text-sm text-zinc-500 dark:text-zinc-400'>
-//                         验证码
-//                       </label>
-//                       <input
-//                         type='text'
-//                         value={code}
-//                         onChange={(e) => setCode(e.target.value)}
-//                         placeholder='输入6位验证码'
-//                         maxLength={6}
-//                         className='w-full px-4 py-2.5 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white focus:border-transparent'
-//                         disabled={loading}
-//                       />
-//                     </div>
+      <div className='relative w-full max-w-[420px] rounded-2xl border border-zinc-200 bg-white p-6 shadow-[0_30px_60px_rgba(15,23,42,0.2)]'>
+        <div className='mb-5 flex items-center justify-between'>
+          <div className='flex items-center gap-3'>
+            <img src={appIcon} alt='Lingo' className='h-9 w-9 rounded-lg border border-zinc-200' />
+            <div>
+              <div className='tool-card-title'>Lingo 账号</div>
+              <div className='tool-caption'>登录后即可启用翻译功能</div>
+            </div>
+          </div>
+          <button type='button' onClick={closeAuthModal} className='rounded-lg p-1 text-zinc-500 hover:bg-zinc-100'>
+            <XClose className='h-5 w-5' />
+          </button>
+        </div>
 
-//                     <div className='flex items-center justify-between text-sm'>
-//                       <button
-//                         onClick={() => setStep('phone')}
-//                         className='text-zinc-900 hover:text-black dark:text-zinc-200 dark:hover:text-white'
-//                         disabled={loading}>
-//                         修改手机号
-//                       </button>
-//                       {countdown > 0 ? (
-//                         <span className='text-zinc-500 dark:text-zinc-400'>
-//                           {countdown}秒后重试
-//                         </span>
-//                       ) : (
-//                         <button
-//                           onClick={handleSendCode}
-//                           className='text-zinc-900 hover:text-black dark:text-zinc-200 dark:hover:text-white'
-//                           disabled={loading}>
-//                           重新发送
-//                         </button>
-//                       )}
-//                     </div>
+        {!configured ? (
+          <div className='rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-700'>
+            当前未配置 Supabase 认证环境变量（`VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY`）。
+          </div>
+        ) : (
+          <>
+            <div className='mb-4 grid grid-cols-2 rounded-xl bg-zinc-100 p-1'>
+              <button
+                type='button'
+                onClick={() => switchMode('login')}
+                className={`rounded-lg px-3 py-2 text-sm font-semibold ${
+                  modalMode === 'login' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500'
+                }`}>
+                登录
+              </button>
+              <button
+                type='button'
+                onClick={() => switchMode('register')}
+                className={`rounded-lg px-3 py-2 text-sm font-semibold ${
+                  modalMode === 'register' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500'
+                }`}>
+                注册
+              </button>
+            </div>
 
-//                     <button
-//                       onClick={handleVerifyCode}
-//                       disabled={code.length !== 6 || loading}
-//                       className='w-full py-2.5 bg-zinc-900 hover:bg-black dark:bg-white dark:hover:bg-zinc-200 text-white dark:text-zinc-900 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed'>
-//                       {loading ? (
-//                         <span className='flex items-center justify-center gap-2'>
-//                           <Spinner className='w-4 h-4 animate-spin' />
-//                           验证中...
-//                         </span>
-//                       ) : (
-//                         '立即登录'
-//                       )}
-//                     </button>
-//                   </div>
-//                 )}
+            <div className='space-y-3'>
+              <div>
+                <label className='tool-label block'>邮箱</label>
+                <input
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value.trim())}
+                  className='tool-input'
+                  type='email'
+                  placeholder='name@example.com'
+                />
+              </div>
 
-//                 {/* 底部声明 */}
-//                 <p className='pt-6 text-xs text-zinc-500 dark:text-zinc-400 text-center border-t border-zinc-100 dark:border-zinc-800'>
-//                   登录即表示同意
-//                   <a
-//                     href='#'
-//                     className='text-zinc-900 hover:text-black dark:text-white dark:hover:text-zinc-200 ml-1 hover:underline'>
-//                     用户协议
-//                   </a>
-//                 </p>
-//               </div>
-//             </Dialog.Panel>
-//           </Transition.Child>
-//         </div>
-//       </Dialog>
-//     </Transition>
-//   );
-// }
+              <div>
+                <label className='tool-label block'>密码</label>
+                <input
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  className='tool-input'
+                  type='password'
+                  placeholder='至少 8 位'
+                />
+              </div>
+
+              {modalMode === 'register' ? (
+                <div>
+                  <label className='tool-label block'>确认密码</label>
+                  <input
+                    value={confirmPassword}
+                    onChange={(event) => setConfirmPassword(event.target.value)}
+                    className='tool-input'
+                    type='password'
+                    placeholder='再次输入密码'
+                  />
+                </div>
+              ) : null}
+            </div>
+
+            <button
+              type='button'
+              onClick={submit}
+              disabled={!canSubmit || actionLoading}
+              className={`mt-5 flex w-full items-center justify-center gap-2 px-4 py-3 text-sm ${
+                canSubmit && !actionLoading ? 'tool-btn-primary' : 'tool-btn opacity-70 cursor-not-allowed'
+              }`}>
+              {actionLoading ? <Spinner className='h-4 w-4 animate-spin' /> : <UserUser01 className='h-4 w-4' />}
+              {modalMode === 'register' ? '注册并发送验证邮件' : '登录'}
+            </button>
+
+            <button
+              type='button'
+              onClick={() => resendEmailVerification()}
+              disabled={!EMAIL_REGEX.test(email) || actionLoading}
+              className='mt-2 w-full rounded-lg border border-zinc-200 px-3 py-2 text-sm text-zinc-600 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-60'>
+              重发验证邮件
+            </button>
+
+            <p className='mt-3 text-center text-xs text-zinc-500'>
+              注册后需完成邮箱验证，验证成功后才能使用翻译。
+            </p>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}

@@ -6,22 +6,30 @@ import {
   Translate,
   ChatBubbleMessage,
   AT,
+  UserUser01,
 } from '../icons';
 import appIcon from '../assets/app-icon.png';
 import { useUpdater } from './UpdateProvider';
-// import LoginModal from './LoginModal';
+import { useAuth } from './AuthProvider';
 
 const sidebarItems = [
   { name: '主页', icon: HomeHLine, id: 'home' },
   { name: '模式', icon: Translate, id: 'translate' },
   { name: '常用语', icon: ChatBubbleMessage, id: 'phrases' },
-  { name: 'AI模型', icon: Settings02, id: 'settings' },
+  { name: '服务', icon: Settings02, id: 'settings' },
   { name: '关于', icon: AT, id: 'about' },
 ];
 
 export default function Sidebar({ activeItem, setActiveItem }) {
   const { hasUpdate } = useUpdater();
-  // const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const {
+    authState,
+    openAuthModal,
+    signOut,
+    resendEmailVerification,
+    configured,
+    actionLoading,
+  } = useAuth();
 
   return (
     <div className='dota-sidebar h-full flex flex-col'>
@@ -96,27 +104,62 @@ export default function Sidebar({ activeItem, setActiveItem }) {
         })}
       </nav>
 
-      <div className='px-4 pb-4 pt-2 border-t border-zinc-200/70'>
-        <div className='tool-caption'>
-          <div className='font-semibold text-zinc-600'>V0.1.0</div>
-          <div className='mt-0.5'>powerby 萌新</div>
+      <div className='px-4 py-3 border-t border-zinc-200/70'>
+        <div className='rounded-xl border border-zinc-200 bg-white/70 p-3'>
+          <div className='flex items-center gap-2'>
+            <UserUser01 className='h-4 w-4 text-zinc-500' />
+            <span className='text-sm font-semibold text-zinc-700'>
+              {authState.loggedIn ? '已登录' : '未登录'}
+            </span>
+          </div>
+          <div className='mt-1 text-xs text-zinc-500 truncate'>
+            {authState.loggedIn ? authState.email : '登录后可启用翻译'}
+          </div>
+          {authState.loggedIn && !authState.emailVerified ? (
+            <div className='mt-1 text-[11px] text-amber-600'>邮箱未验证，翻译功能暂不可用。</div>
+          ) : null}
+          {!configured ? (
+            <div className='mt-1 text-[11px] text-red-500'>认证服务未配置。</div>
+          ) : null}
+
+          <div className='mt-2 flex gap-2'>
+            {authState.loggedIn ? (
+              <>
+                {!authState.emailVerified ? (
+                  <button
+                    type='button'
+                    onClick={() => resendEmailVerification()}
+                    disabled={actionLoading}
+                    className='tool-btn px-2 py-1 text-xs disabled:opacity-60 disabled:cursor-not-allowed'>
+                    重发验证
+                  </button>
+                ) : null}
+                <button
+                  type='button'
+                  onClick={() => signOut()}
+                  disabled={actionLoading}
+                  className='tool-btn px-2 py-1 text-xs disabled:opacity-60 disabled:cursor-not-allowed'>
+                  退出
+                </button>
+              </>
+            ) : (
+              <button
+                type='button'
+                onClick={() => openAuthModal('login')}
+                className='tool-btn-primary px-2.5 py-1.5 text-xs'>
+                登录 / 注册
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* 用户信息 */}
-      {/* <div className='px-2 pb-3'>
-        <div
-          className='flex items-center px-3.5 py-2.5 cursor-pointer text-[#666666] hover:text-[#1a1a1a]'
-          onClick={() => setIsLoginModalOpen(true)}>
-          <UserUser01 className='w-[18px] h-[18px] mr-3 stroke-[#666666]' />
-          <span className='text-[14px] font-medium'>未登录</span>
+      <div className='px-4 pb-4 pt-2 border-t border-zinc-200/70'>
+        <div className='tool-caption'>
+          <div className='font-semibold text-zinc-600'>V0.2.1</div>
+          <div className='mt-0.5'>powerby 萌新</div>
         </div>
-      </div> */}
-
-      {/* <LoginModal
-        isOpen={isLoginModalOpen}
-        onClose={() => setIsLoginModalOpen(false)}
-      /> */}
+      </div>
     </div>
   );
 }

@@ -46,7 +46,7 @@ export default function Home() {
           <div className='tool-pill'>3 步完成</div>
         </div>
         <p className='tool-body mt-2'>
-          完成一次快捷键配置后，即可在 Dota2 对局中直接复制、翻译并回填聊天文本。
+          完成一次快捷键配置后，即可在游戏对局中直接复制、翻译并回填聊天文本。
         </p>
 
         <div className='mt-5 grid grid-cols-1 md:grid-cols-3 gap-3'>

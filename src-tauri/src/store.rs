@@ -102,7 +102,7 @@ impl Default for AppSettings {
             trans_hotkey: HotkeyConfig::default(),
             translation_from: "zh".to_string(),
             translation_to: "en".to_string(),
-            game_scene: "dota2".to_string(),
+            game_scene: "general".to_string(),
             translation_mode: "auto".to_string(),
             daily_mode: false,
             model_type: "openai".to_string(),
@@ -337,7 +337,7 @@ fn normalize_settings(settings: &mut AppSettings) {
     }
 
     if settings.game_scene.is_empty() {
-        settings.game_scene = "dota2".to_string();
+        settings.game_scene = "general".to_string();
     }
 
     if settings.translation_mode.is_empty() {

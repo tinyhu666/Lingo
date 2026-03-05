@@ -4,7 +4,7 @@ import { hasTauriRuntime } from '../services/tauriRuntime';
 import { showError } from '../utils/toast';
 
 export default function DeveloperNote() {
-  const currentVersion = 'V0.1.0';
+  const currentVersion = 'V0.2.1';
 
   const open = async (url) => {
     try {
@@ -29,10 +29,10 @@ export default function DeveloperNote() {
         <div className='tool-card-title'>Lingo {currentVersion}</div>
         <div className='tool-body'>powerby 萌新</div>
         <p className='tool-body'>
-          Lingo 专注 Dota2 游戏内剪贴板翻译：快捷键触发后自动复制、翻译并粘贴回当前输入框，支持 Win 与 macOS。
+          Lingo 专注游戏内剪贴板翻译：快捷键触发后自动复制、翻译并粘贴回当前输入框，支持 Win 与 macOS。
         </p>
         <p className='tool-body'>
-          你的 API Key 保存在本地 `store.json`，不会上传到项目服务器。你可以按厂商分别填写配置并随时切换。
+          翻译模型参数由服务端统一维护。你只需登录账号并完成邮箱验证，即可直接开始翻译。
         </p>
 
         <button

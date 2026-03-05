@@ -1,6 +1,7 @@
 use crate::store::initialize_settings;
 use tauri::Manager;
 pub mod ai_translator;
+pub mod auth;
 pub mod shell_helper;
 pub mod shortcut;
 pub mod store;
@@ -32,6 +33,24 @@ async fn update_translator_shortcut(
 #[tauri::command]
 async fn get_settings(app_handle: tauri::AppHandle) -> Result<store::AppSettings, String> {
     store::get_settings(&app_handle).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn set_auth_session(
+    app_handle: tauri::AppHandle,
+    payload: auth::AuthSessionPayload,
+) -> Result<auth::AuthState, String> {
+    auth::set_auth_session(&app_handle, payload).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn clear_auth_session(app_handle: tauri::AppHandle) -> Result<auth::AuthState, String> {
+    auth::clear_auth_session(&app_handle).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn get_auth_state(app_handle: tauri::AppHandle) -> Result<auth::AuthState, String> {
+    auth::get_auth_state(&app_handle).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -97,6 +116,9 @@ pub fn run() {
             log_to_backend,
             get_settings,
             get_version,
+            set_auth_session,
+            clear_auth_session,
+            get_auth_state,
             set_app_enabled,
             update_phrases
         ]);

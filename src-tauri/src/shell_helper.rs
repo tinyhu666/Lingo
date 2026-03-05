@@ -1,12 +1,39 @@
 use crate::ai_translator;
 use anyhow::Result;
+use serde_json::json;
 use std::time::Instant;
-use tauri::AppHandle;
+use tauri::{AppHandle, Emitter};
 use tauri_plugin_clipboard_manager::ClipboardExt;
 use tauri_plugin_shell::ShellExt;
 
 pub async fn trans_and_replace_text(app: &AppHandle) -> Result<()> {
     let total_started = Instant::now();
+    let auth_state = crate::auth::get_auth_state(app)?;
+    if !auth_state.logged_in {
+        let _ = app.emit(
+            "auth_required",
+            json!({ "reason": "not_logged_in", "message": "请先登录后使用翻译" }),
+        );
+        println!("未登录，拦截翻译动作");
+        return Ok(());
+    }
+    if auth_state.token_expired {
+        let _ = app.emit(
+            "auth_required",
+            json!({ "reason": "token_expired", "message": "登录状态已过期，请重新登录" }),
+        );
+        println!("登录状态已过期，拦截翻译动作");
+        return Ok(());
+    }
+    if !auth_state.email_verified {
+        let _ = app.emit(
+            "auth_required",
+            json!({ "reason": "email_unverified", "message": "请先验证邮箱后使用翻译" }),
+        );
+        println!("邮箱未验证，拦截翻译动作");
+        return Ok(());
+    }
+
     let settings = crate::store::get_settings(app)?;
     if !settings.app_enabled {
         println!("应用已禁用，跳过翻译动作");

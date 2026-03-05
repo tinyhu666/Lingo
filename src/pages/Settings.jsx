@@ -1,152 +1,61 @@
 import { motion } from 'framer-motion';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Server, Crown, Sparkles } from '../icons';
+import { useMemo, useState } from 'react';
+import { Server, Crown, Sparkles, UserUser01 } from '../icons';
 import { useStore } from '../components/StoreProvider';
-import {
-  MODEL_OPTIONS,
-  PROVIDER_OPTIONS,
-  normalizeApiUrlByProvider,
-  normalizeProvider,
-  testModelConnection,
-} from '../services/modelProviders';
-import { showSuccess, showError } from '../utils/toast';
-
-const getModelName = (id) => MODEL_OPTIONS.find((item) => item.id === id)?.name || id;
+import { useAuth } from '../components/AuthProvider';
 
 export default function Settings() {
-  const { settings, updateSettings } = useStore();
-  const [activeModel, setActiveModel] = useState(settings?.model_type || 'openai');
-  const [testing, setTesting] = useState(false);
-  const [draftConfig, setDraftConfig] = useState({
-    auth: '',
-    api_url: '',
-    model_name: '',
-  });
-  const debounceTimerRef = useRef(null);
-  const pendingPatchRef = useRef({});
+  const { settings } = useStore();
+  const {
+    configured,
+    authState,
+    loading,
+    refreshProfile,
+    openAuthModal,
+    isAdmin,
+    profileMessage,
+  } = useAuth();
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [checking, setChecking] = useState(false);
 
-  useEffect(() => {
-    if (settings?.model_type) {
-      setActiveModel(settings.model_type);
-    }
-  }, [settings?.model_type]);
-
-  const activeConfig = useMemo(() => {
-    const allConfigs = settings?.model_configs || {};
-    return allConfigs[activeModel] || {};
-  }, [settings?.model_configs, activeModel]);
-
-  const patchActiveConfig = useCallback(
-    async (patch) => {
-      await updateSettings((current) => {
-        const allConfigs = current?.model_configs || {};
-        const nextModelConfigs = {
-          ...allConfigs,
-          [activeModel]: {
-            ...(allConfigs[activeModel] || {}),
-            ...patch,
-          },
-        };
-
-        const payload = { model_configs: nextModelConfigs };
-        if (activeModel === 'custom') {
-          payload.custom_model = nextModelConfigs.custom;
-        }
-
-        return payload;
-      });
-    },
-    [activeModel, updateSettings],
-  );
-
-  const flushDraftPatch = useCallback(async () => {
-    const pendingPatch = pendingPatchRef.current;
-    if (!Object.keys(pendingPatch).length) {
-      return;
-    }
-
-    pendingPatchRef.current = {};
-    await patchActiveConfig(pendingPatch);
-  }, [patchActiveConfig]);
-
-  const scheduleDraftPatch = useCallback(
-    (field, value) => {
-      setDraftConfig((prev) => ({ ...prev, [field]: value }));
-      pendingPatchRef.current = {
-        ...pendingPatchRef.current,
-        [field]: value,
+  const serviceStatus = useMemo(() => {
+    if (!configured) {
+      return {
+        label: '认证服务未配置',
+        tone: 'text-red-600',
+        hint: '请在环境变量中配置 VITE_SUPABASE_URL 和 VITE_SUPABASE_ANON_KEY。',
       };
-
-      if (debounceTimerRef.current) {
-        clearTimeout(debounceTimerRef.current);
-      }
-
-      debounceTimerRef.current = setTimeout(() => {
-        debounceTimerRef.current = null;
-        void flushDraftPatch();
-      }, 400);
-    },
-    [flushDraftPatch],
-  );
-
-  const commitDraftImmediately = useCallback(() => {
-    if (debounceTimerRef.current) {
-      clearTimeout(debounceTimerRef.current);
-      debounceTimerRef.current = null;
     }
-    void flushDraftPatch();
-  }, [flushDraftPatch]);
 
-  useEffect(() => {
-    setDraftConfig({
-      auth: activeConfig?.auth || '',
-      api_url: activeConfig?.api_url || '',
-      model_name: activeConfig?.model_name || '',
-    });
-  }, [activeModel, activeConfig?.auth, activeConfig?.api_url, activeConfig?.model_name]);
+    if (!authState.loggedIn) {
+      return {
+        label: '等待登录',
+        tone: 'text-zinc-600',
+        hint: '登录后即可调用服务端翻译代理。',
+      };
+    }
 
-  useEffect(
-    () => () => {
-      if (debounceTimerRef.current) {
-        clearTimeout(debounceTimerRef.current);
-      }
-    },
-    [],
-  );
+    if (!authState.emailVerified) {
+      return {
+        label: '邮箱待验证',
+        tone: 'text-amber-600',
+        hint: '请先验证邮箱，验证成功后才能翻译。',
+      };
+    }
 
-  const selectModel = async (modelId) => {
-    await flushDraftPatch();
-    setActiveModel(modelId);
-    await updateSettings({ model_type: modelId });
-  };
+    return {
+      label: '可用',
+      tone: 'text-emerald-600',
+      hint: '当前账号可直接使用服务端翻译能力。',
+    };
+  }, [configured, authState.emailVerified, authState.loggedIn]);
 
-  const updateProvider = async (provider) => {
-    await flushDraftPatch();
-    const normalizedProvider = normalizeProvider(provider);
-    const normalizedUrl = normalizeApiUrlByProvider(activeConfig?.api_url, normalizedProvider);
-    await patchActiveConfig({
-      provider: normalizedProvider,
-      api_url: normalizedUrl,
-    });
-  };
-
-  const verifyConnection = async () => {
-    await flushDraftPatch();
-    setTesting(true);
+  const checkService = async () => {
+    setChecking(true);
     try {
-      const ok = await testModelConnection({
-        ...activeConfig,
-        auth: draftConfig.auth,
-        api_url: draftConfig.api_url,
-        model_name: draftConfig.model_name,
-      });
-      if (ok) {
-        showSuccess('API 连接测试成功');
-      }
-    } catch (error) {
-      showError(error.message || '连接测试失败');
+      await refreshProfile();
     } finally {
-      setTesting(false);
+      setChecking(false);
     }
   };
 
@@ -156,9 +65,9 @@ export default function Settings() {
         className='dota-card w-full rounded-2xl p-6'
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}>
-        <h1 className='tool-page-title mb-4'>Lingo 模型设置</h1>
+        <h1 className='tool-page-title mb-4'>Lingo 服务设置</h1>
         <p className='tool-body text-zinc-600'>
-          可为不同厂商分别填写 API Key、URL、模型名称。翻译时按当前选中厂商发起请求。
+          模型参数由服务端统一托管。普通用户无需填写 API Key 或模型信息，登录后即可使用翻译。
         </p>
       </motion.section>
 
@@ -168,43 +77,49 @@ export default function Settings() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}>
           <div className='flex items-center gap-3 mb-6'>
-            <Crown className='w-5 h-5 stroke-zinc-500' />
-            <h2 className='tool-card-title'>模型厂商</h2>
+            <Server className='w-5 h-5 stroke-zinc-500' />
+            <h2 className='tool-card-title'>服务状态</h2>
           </div>
 
-          <div className='space-y-3'>
-            {MODEL_OPTIONS.map((model) => {
-              const active = activeModel === model.id;
-              return (
-                <button
-                  key={model.id}
-                  type='button'
-                  onClick={() => selectModel(model.id)}
-                  className={`w-full flex items-center justify-between p-4 rounded-xl border transition-all ${
-                    active
-                      ? 'border-blue-300 bg-blue-50/70 shadow-[0_6px_16px_rgba(37,99,235,0.12)]'
-                      : 'border-zinc-200 hover:bg-zinc-50'
-                  }`}>
-                  <div className='min-w-0 text-left'>
-                    <div className='tool-control-text text-zinc-700 truncate'>{model.name}</div>
-                    <div className='tool-caption mt-1 truncate'>{model.modelName}</div>
-                  </div>
+          <div className='space-y-4'>
+            <div className='rounded-xl border border-zinc-200 bg-white p-4'>
+              <div className='tool-caption'>翻译代理</div>
+              <div className={`mt-1 text-base font-semibold ${serviceStatus.tone}`}>{serviceStatus.label}</div>
+              <div className='tool-body mt-1'>{serviceStatus.hint}</div>
+            </div>
 
-                  <div className='flex items-center gap-2 pl-3'>
-                    <span className='tool-chip'>
-                      <Sparkles className='w-3.5 h-3.5 stroke-emerald-500' />
-                      <span className='tool-caption text-emerald-600'>{model.tag}</span>
-                    </span>
+            <div className='rounded-xl border border-zinc-200 bg-white p-4'>
+              <div className='tool-caption'>当前账号</div>
+              <div className='mt-1 text-base font-semibold text-zinc-800'>
+                {authState.loggedIn ? authState.email : '未登录'}
+              </div>
+              <div className='tool-body mt-1'>
+                {loading
+                  ? '正在读取账号状态...'
+                  : authState.loggedIn
+                    ? authState.emailVerified
+                      ? '邮箱已验证，可直接翻译。'
+                      : '邮箱未验证，暂无法翻译。'
+                    : '请先登录再使用翻译功能。'}
+              </div>
+              {profileMessage ? <div className='tool-caption mt-2 text-amber-600'>{profileMessage}</div> : null}
+            </div>
 
-                    <span
-                      className={`w-4 h-4 rounded-full border transition-all ${
-                        active ? 'border-blue-600 bg-blue-600' : 'border-zinc-300'
-                      }`}
-                    />
-                  </div>
+            <div className='flex items-center justify-between gap-3 pt-1'>
+              <button
+                type='button'
+                onClick={checkService}
+                disabled={checking}
+                className={`tool-btn px-4 py-2 text-sm ${checking ? 'opacity-70 cursor-not-allowed' : ''}`}>
+                {checking ? '检查中...' : '刷新状态'}
+              </button>
+
+              {!authState.loggedIn ? (
+                <button type='button' onClick={() => openAuthModal('login')} className='tool-btn-primary px-4 py-2 text-sm'>
+                  登录账号
                 </button>
-              );
-            })}
+              ) : null}
+            </div>
           </div>
         </motion.section>
 
@@ -212,88 +127,88 @@ export default function Settings() {
           className='dota-card flex flex-col rounded-2xl p-6'
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}>
+          transition={{ delay: 0.08 }}>
           <div className='flex items-center gap-3 mb-6'>
-            <Server className='w-5 h-5 stroke-zinc-500' />
-            <h2 className='tool-card-title'>API 配置（{getModelName(activeModel)}）</h2>
+            <UserUser01 className='w-5 h-5 stroke-zinc-500' />
+            <h2 className='tool-card-title'>账号与权限</h2>
           </div>
 
           <div className='space-y-4'>
-            <div>
-              <label className='tool-label block'>API Key</label>
-              <input
-                type='password'
-                value={draftConfig.auth}
-                onChange={(event) => scheduleDraftPatch('auth', event.target.value)}
-                onBlur={commitDraftImmediately}
-                className='tool-input'
-                placeholder='输入 API Key'
-              />
+            <div className='rounded-xl border border-zinc-200 bg-white p-4'>
+              <div className='tool-caption'>角色</div>
+              <div className='mt-1 text-base font-semibold text-zinc-800'>
+                {authState.loggedIn ? (isAdmin ? '管理员' : '普通用户') : '游客'}
+              </div>
+              <div className='tool-body mt-1'>
+                管理员可开启隐藏高级模式查看服务端线路状态；普通用户不会看到模型配置入口。
+              </div>
             </div>
 
-            <div>
-              <label className='tool-label block'>API URL</label>
-              <input
-                type='text'
-                value={draftConfig.api_url}
-                onChange={(event) => scheduleDraftPatch('api_url', event.target.value)}
-                onBlur={commitDraftImmediately}
-                className='tool-input'
-                placeholder={
-                  normalizeProvider(activeConfig?.provider) === 'anthropic'
-                    ? '例如：https://api.anthropic.com/v1/messages'
-                    : '例如：https://api.openai.com/v1/chat/completions'
-                }
-              />
-            </div>
+            {authState.quota ? (
+              <div className='rounded-xl border border-zinc-200 bg-white p-4'>
+                <div className='tool-caption'>配额信息</div>
+                <pre className='mt-2 text-xs text-zinc-600 whitespace-pre-wrap'>
+                  {JSON.stringify(authState.quota, null, 2)}
+                </pre>
+              </div>
+            ) : null}
 
-            <div>
-              <label className='tool-label block'>Model Name</label>
-              <input
-                type='text'
-                value={draftConfig.model_name}
-                onChange={(event) => scheduleDraftPatch('model_name', event.target.value)}
-                onBlur={commitDraftImmediately}
-                className='tool-input'
-                placeholder='例如：gpt-4.1-mini'
-              />
-            </div>
+            {isAdmin ? (
+              <div className='rounded-xl border border-blue-200 bg-blue-50 p-4'>
+                <div className='flex items-center justify-between gap-3'>
+                  <div>
+                    <div className='text-sm font-semibold text-blue-700'>隐藏高级模式</div>
+                    <div className='tool-caption text-blue-600'>仅管理员可见，用于服务端线路巡检。</div>
+                  </div>
+                  <button
+                    type='button'
+                    onClick={() => setShowAdvanced((prev) => !prev)}
+                    className='tool-btn px-3 py-2 text-xs'>
+                    {showAdvanced ? '收起' : '展开'}
+                  </button>
+                </div>
 
-            <div>
-              <label className='tool-label block'>Provider 类型</label>
-              <select
-                value={normalizeProvider(activeConfig?.provider)}
-                onChange={(event) => updateProvider(event.target.value)}
-                className='tool-input'>
-                {PROVIDER_OPTIONS.map((provider) => (
-                  <option key={provider.id} value={provider.id}>
-                    {provider.label}
-                  </option>
-                ))}
-              </select>
-
-              <p className='tool-caption text-zinc-400 mt-2'>切换后会自动修正常见默认端点，避免接口不匹配。</p>
-            </div>
-
-            <div className='pt-2 flex items-center justify-between'>
-              <p className='tool-caption text-zinc-400'>
-                当前翻译使用：
-                <span className='font-medium text-zinc-500'> {getModelName(activeModel)}</span>
-              </p>
-
-              <button
-                type='button'
-                onClick={verifyConnection}
-                disabled={testing}
-                className={`tool-btn-primary px-4 py-2 text-sm ${
-                  testing ? 'opacity-70 cursor-not-allowed' : ''
-                }`}>
-                {testing ? '测试中...' : '测试连接'}
-              </button>
-            </div>
+                {showAdvanced ? (
+                  <div className='mt-3 rounded-lg border border-blue-200 bg-white p-3'>
+                    <div className='tool-caption'>当前客户端偏好（仅调试展示）</div>
+                    <div className='tool-body mt-1'>
+                      model_type: <span className='font-semibold text-zinc-700'>{settings?.model_type || 'openai'}</span>
+                    </div>
+                    <div className='tool-body'>
+                      game_scene: <span className='font-semibold text-zinc-700'>{settings?.game_scene || 'moba'}</span>
+                    </div>
+                    <div className='tool-caption mt-2 text-zinc-500'>
+                      提示：实际翻译参数以服务端配置为准，客户端本地模型配置不会生效。
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            ) : (
+              <div className='rounded-xl border border-zinc-200 bg-zinc-50 p-4'>
+                <div className='flex items-center gap-2'>
+                  <Crown className='w-4 h-4 stroke-zinc-500' />
+                  <span className='text-sm font-semibold text-zinc-700'>高级模式已隐藏</span>
+                </div>
+                <div className='tool-caption mt-1'>普通用户无需配置模型，登录后可直接翻译。</div>
+              </div>
+            )}
           </div>
         </motion.section>
       </div>
+
+      <motion.section
+        className='dota-card rounded-2xl p-6'
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.12 }}>
+        <div className='flex items-center gap-3'>
+          <Sparkles className='w-5 h-5 stroke-zinc-500' />
+          <h2 className='tool-card-title'>产品路线提示</h2>
+        </div>
+        <p className='tool-body mt-2'>
+          当前版本已切换到服务端统一模型配置。后续会逐步支持更多游戏场景，并由服务端按场景下发术语与语气策略。
+        </p>
+      </motion.section>
     </div>
   );
 }

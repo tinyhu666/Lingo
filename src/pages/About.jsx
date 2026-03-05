@@ -41,7 +41,7 @@ export default function About() {
     installUpdate,
   } = useUpdater();
 
-  const versionLabel = currentVersion ? `V${currentVersion}` : 'V0.1.0';
+  const versionLabel = currentVersion ? `V${currentVersion}` : 'V0.2.1';
   const latestVersionLabel = latestVersion ? `V${latestVersion}` : '暂未获取';
   const actionLabel = checking
     ? '检查中...'
@@ -61,7 +61,7 @@ export default function About() {
         animate={{ opacity: 1, y: 0 }}>
         <h1 className='tool-page-title mb-4'>关于 Lingo</h1>
         <p className='tool-body text-zinc-600'>
-          当前版本：{versionLabel}。powerby 萌新。Lingo 聚焦 Dota2 游戏内即时沟通翻译，支持全局快捷键、剪贴板翻译回填以及多厂商大模型 API。
+          当前版本：{versionLabel}。powerby 萌新。Lingo 聚焦游戏内即时沟通翻译，支持全局快捷键、剪贴板翻译回填以及多语言互译能力。
         </p>
 
         <div className='mt-5 rounded-xl border border-zinc-200 bg-white/80 p-4 space-y-3'>
@@ -146,7 +146,7 @@ export default function About() {
           transition={{ delay: 0.14 }}>
           <div className='flex items-center gap-3'>
             <GamingPad className='w-6 h-6 stroke-zinc-500' />
-            <h3 className='tool-card-title'>Dota2 场景优化</h3>
+            <h3 className='tool-card-title'>游戏场景优化</h3>
           </div>
           <p className='tool-body mt-4 text-zinc-400'>
             针对游戏内对话做短句化输出，尽量保留技能、装备和指挥术语，减少“翻译腔”。
