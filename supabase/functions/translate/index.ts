@@ -1,5 +1,3 @@
-import { createClient } from 'npm:@supabase/supabase-js@2';
-
 const corsHeaders = {
   'Content-Type': 'application/json',
 };
@@ -30,28 +28,6 @@ const normalizeOpenAICompletionsUrl = (apiUrl: string) => {
 
 Deno.serve(async (req) => {
   try {
-    const authHeader = req.headers.get('Authorization') || '';
-    const token = authHeader.replace('Bearer ', '').trim();
-    if (!token) {
-      return new Response(JSON.stringify({ message: 'Unauthorized' }), { status: 401, headers: corsHeaders });
-    }
-
-    const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
-    const anonKey = Deno.env.get('SUPABASE_ANON_KEY') || '';
-    const authClient = createClient(supabaseUrl, anonKey, {
-      global: { headers: { Authorization: `Bearer ${token}` } },
-    });
-
-    const { data: userData, error: userError } = await authClient.auth.getUser();
-    if (userError || !userData?.user) {
-      return new Response(JSON.stringify({ message: 'Unauthorized' }), { status: 401, headers: corsHeaders });
-    }
-
-    const emailVerified = Boolean(userData.user.email_confirmed_at || userData.user.confirmed_at);
-    if (!emailVerified) {
-      return new Response(JSON.stringify({ message: 'Email not verified' }), { status: 403, headers: corsHeaders });
-    }
-
     const payload = await req.json().catch(() => ({}));
     const text = String(payload?.text || '').trim();
     if (!text) {

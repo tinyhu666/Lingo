@@ -4,7 +4,7 @@ import { hasTauriRuntime } from '../services/tauriRuntime';
 import { showError } from '../utils/toast';
 
 export default function DeveloperNote() {
-  const currentVersion = 'V0.2.1';
+  const currentVersion = 'V0.2.2';
 
   const open = async (url) => {
     try {
@@ -31,9 +31,7 @@ export default function DeveloperNote() {
         <p className='tool-body'>
           Lingo 专注游戏内剪贴板翻译：快捷键触发后自动复制、翻译并粘贴回当前输入框，支持 Win 与 macOS。
         </p>
-        <p className='tool-body'>
-          翻译模型参数由服务端统一维护。你只需登录账号并完成邮箱验证，即可直接开始翻译。
-        </p>
+        <p className='tool-body'>翻译模型参数由服务端统一维护，无需登录账号与手动配置 API。</p>
 
         <button
           type='button'

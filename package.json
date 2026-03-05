@@ -1,7 +1,7 @@
 {
   "name": "lingo",
   "private": true,
-  "version": "0.2.1",
+  "version": "0.2.2",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -13,7 +13,6 @@
   },
   "dependencies": {
     "@headlessui/react": "^2.2.0",
-    "@supabase/supabase-js": "^2.48.1",
     "@tauri-apps/plugin-clipboard-manager": "^2.2.1",
     "@tauri-apps/plugin-global-shortcut": "^2.2.0",
     "@tauri-apps/plugin-opener": "^2.2.5",

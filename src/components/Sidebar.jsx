@@ -6,11 +6,9 @@ import {
   Translate,
   ChatBubbleMessage,
   AT,
-  UserUser01,
 } from '../icons';
 import appIcon from '../assets/app-icon.png';
 import { useUpdater } from './UpdateProvider';
-import { useAuth } from './AuthProvider';
 
 const sidebarItems = [
   { name: '主页', icon: HomeHLine, id: 'home' },
@@ -22,14 +20,6 @@ const sidebarItems = [
 
 export default function Sidebar({ activeItem, setActiveItem }) {
   const { hasUpdate } = useUpdater();
-  const {
-    authState,
-    openAuthModal,
-    signOut,
-    resendEmailVerification,
-    configured,
-    actionLoading,
-  } = useAuth();
 
   return (
     <div className='dota-sidebar h-full flex flex-col'>
@@ -104,59 +94,9 @@ export default function Sidebar({ activeItem, setActiveItem }) {
         })}
       </nav>
 
-      <div className='px-4 py-3 border-t border-zinc-200/70'>
-        <div className='rounded-xl border border-zinc-200 bg-white/70 p-3'>
-          <div className='flex items-center gap-2'>
-            <UserUser01 className='h-4 w-4 text-zinc-500' />
-            <span className='text-sm font-semibold text-zinc-700'>
-              {authState.loggedIn ? '已登录' : '未登录'}
-            </span>
-          </div>
-          <div className='mt-1 text-xs text-zinc-500 truncate'>
-            {authState.loggedIn ? authState.email : '登录后可启用翻译'}
-          </div>
-          {authState.loggedIn && !authState.emailVerified ? (
-            <div className='mt-1 text-[11px] text-amber-600'>邮箱未验证，翻译功能暂不可用。</div>
-          ) : null}
-          {!configured ? (
-            <div className='mt-1 text-[11px] text-red-500'>认证服务未配置。</div>
-          ) : null}
-
-          <div className='mt-2 flex gap-2'>
-            {authState.loggedIn ? (
-              <>
-                {!authState.emailVerified ? (
-                  <button
-                    type='button'
-                    onClick={() => resendEmailVerification()}
-                    disabled={actionLoading}
-                    className='tool-btn px-2 py-1 text-xs disabled:opacity-60 disabled:cursor-not-allowed'>
-                    重发验证
-                  </button>
-                ) : null}
-                <button
-                  type='button'
-                  onClick={() => signOut()}
-                  disabled={actionLoading}
-                  className='tool-btn px-2 py-1 text-xs disabled:opacity-60 disabled:cursor-not-allowed'>
-                  退出
-                </button>
-              </>
-            ) : (
-              <button
-                type='button'
-                onClick={() => openAuthModal('login')}
-                className='tool-btn-primary px-2.5 py-1.5 text-xs'>
-                登录 / 注册
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-
       <div className='px-4 pb-4 pt-2 border-t border-zinc-200/70'>
         <div className='tool-caption'>
-          <div className='font-semibold text-zinc-600'>V0.2.1</div>
+          <div className='font-semibold text-zinc-600'>V0.2.2</div>
           <div className='mt-0.5'>powerby 萌新</div>
         </div>
       </div>

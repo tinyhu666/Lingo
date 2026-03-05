@@ -91,7 +91,6 @@ pub async fn translate_with_gpt(app: &AppHandle, original: &str) -> Result<Strin
     }
 
     let settings = crate::store::get_settings(app)?;
-    let access_token = crate::auth::require_access_token(app)?;
     let base_url = backend_base_url()?;
     let endpoint = if base_url.ends_with("/translate") {
         base_url
@@ -112,11 +111,12 @@ pub async fn translate_with_gpt(app: &AppHandle, original: &str) -> Result<Strin
     let mut request = client
         .post(endpoint)
         .header("Content-Type", "application/json")
-        .header("Authorization", format!("Bearer {}", access_token))
         .json(&body);
 
     if let Some(apikey) = backend_apikey() {
-        request = request.header("apikey", apikey);
+        request = request
+            .header("apikey", &apikey)
+            .header("Authorization", format!("Bearer {}", apikey));
     }
 
     let request_started = Instant::now();

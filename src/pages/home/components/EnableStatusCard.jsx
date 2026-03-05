@@ -1,14 +1,12 @@
 import { motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
 import { useStore } from '../../../components/StoreProvider';
-import { useAuth } from '../../../components/AuthProvider';
 import { PowerToggle } from '../../../icons';
 import { invokeCommand, hasTauriRuntime } from '../../../services/tauriRuntime';
 import { showError, showSuccess } from '../../../utils/toast';
 
 export default function EnableStatusCard() {
   const { settings, updateSettings, replaceSettings } = useStore();
-  const { authState, openAuthModal } = useAuth();
   const [pending, setPending] = useState(false);
   const [draftState, setDraftState] = useState(null);
 
@@ -26,12 +24,6 @@ export default function EnableStatusCard() {
 
     const nextEnabled = event.target.value === 'enabled';
     if (nextEnabled === isEnabled) {
-      return;
-    }
-
-    if (nextEnabled && (!authState.loggedIn || !authState.emailVerified)) {
-      showError('请先登录并完成邮箱验证后再启用翻译。');
-      openAuthModal('login');
       return;
     }
 
@@ -79,7 +71,9 @@ export default function EnableStatusCard() {
               value={isEnabled ? 'enabled' : 'paused'}
               onChange={handleStatusChange}
               disabled={pending}
-              className={`home-top-control-shell tool-control-text px-3 pr-10 ${pending ? 'cursor-not-allowed opacity-70' : ''}`}>
+              className={`home-top-control-shell tool-control-text px-3 pr-10 ${pending ? 'cursor-not-allowed opacity-70' : ''} ${
+                isEnabled ? 'border-emerald-200 bg-emerald-50/80 text-emerald-700' : 'border-zinc-300 bg-zinc-100 text-zinc-700'
+              }`}>
               <option value='enabled'>已启用（可正常翻译）</option>
               <option value='paused'>已暂停（不响应快捷键）</option>
             </select>
