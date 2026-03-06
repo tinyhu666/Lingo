@@ -4,7 +4,7 @@ import { hasTauriRuntime } from '../services/tauriRuntime';
 import { showError } from '../utils/toast';
 
 export default function DeveloperNote() {
-  const currentVersion = 'V0.2.2';
+  const currentVersion = 'V0.2.3';
 
   const open = async (url) => {
     try {
@@ -36,7 +36,7 @@ export default function DeveloperNote() {
         <button
           type='button'
           onClick={() => open('https://tauri.app')}
-          className='tool-btn self-start flex items-center gap-2 px-4 py-2 tool-control-text'>
+          className='tool-btn self-start gap-2 px-4 tool-control-text'>
           <Globe className='w-4 h-4 stroke-zinc-500' />
           Tauri 文档
         </button>

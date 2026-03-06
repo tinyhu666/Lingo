@@ -215,14 +215,14 @@ export default function Phrases() {
           </div>
 
           <div className='flex items-center gap-2'>
-            <button type='button' onClick={addRow} className='tool-btn px-3 py-2 text-sm'>
+            <button type='button' onClick={addRow} className='tool-btn px-4'>
               新增常用语
             </button>
             <button
               type='button'
               onClick={saveRows}
               disabled={saving}
-              className={`tool-btn-primary px-4 py-2 text-sm ${
+              className={`tool-btn-primary min-w-[96px] px-4 ${
                 saving ? 'opacity-70 cursor-not-allowed' : ''
               }`}>
               {saving ? '保存中...' : '保存'}
@@ -276,7 +276,7 @@ export default function Phrases() {
                     <button
                       type='button'
                       onClick={() => removeRow(row.id)}
-                      className='tool-btn px-2.5 py-1.5 text-xs text-red-600 border-red-200 bg-red-50 hover:bg-red-100'>
+                      className='tool-btn tool-btn-danger min-w-[72px] px-3 text-sm'>
                       删除
                     </button>
                   </td>

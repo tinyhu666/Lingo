@@ -67,16 +67,18 @@ export default function EnableStatusCard() {
         <div className='mt-auto'>
           <div className='tool-caption'>软件状态</div>
           <div className='tool-control-slot mt-2'>
-            <select
-              value={isEnabled ? 'enabled' : 'paused'}
-              onChange={handleStatusChange}
-              disabled={pending}
-              className={`home-top-control-shell tool-control-text px-3 pr-10 ${pending ? 'cursor-not-allowed opacity-70' : ''} ${
-                isEnabled ? 'border-emerald-200 bg-emerald-50/80 text-emerald-700' : 'border-zinc-300 bg-zinc-100 text-zinc-700'
-              }`}>
-              <option value='enabled'>已启用（可正常翻译）</option>
-              <option value='paused'>已暂停（不响应快捷键）</option>
-            </select>
+            <div className='home-top-control-shell'>
+              <select
+                value={isEnabled ? 'enabled' : 'paused'}
+                onChange={handleStatusChange}
+                disabled={pending}
+                className={`home-top-control-frame tool-control-text px-3 pr-10 ${pending ? 'cursor-not-allowed opacity-70' : ''} ${
+                  isEnabled ? 'home-status-select--enabled' : 'home-status-select--paused'
+                }`}>
+                <option value='enabled'>已启用（可正常翻译）</option>
+                <option value='paused'>已暂停（不响应快捷键）</option>
+              </select>
+            </div>
           </div>
           <div className='mt-2 h-4 text-xs text-zinc-500'>{pending ? '正在保存状态...' : '\u00A0'}</div>
         </div>

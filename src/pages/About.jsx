@@ -39,19 +39,22 @@ export default function About() {
     errorMessage,
     checkForUpdates,
     installUpdate,
+    supportsUpdater,
   } = useUpdater();
 
-  const versionLabel = currentVersion ? `V${currentVersion}` : 'V0.2.2';
+  const versionLabel = currentVersion ? `V${currentVersion}` : 'V0.2.3';
   const latestVersionLabel = latestVersion ? `V${latestVersion}` : '暂未获取';
-  const actionLabel = checking
-    ? '检查中...'
-    : downloading
-      ? '下载并安装中...'
-      : hasUpdate
-        ? '立即更新'
-        : '检查更新';
+  const actionLabel = !supportsUpdater
+    ? '仅桌面端可用'
+    : checking
+      ? '检查中...'
+      : downloading
+        ? '下载并安装中...'
+        : hasUpdate
+          ? '立即更新'
+          : '检查更新';
   const actionHandler = hasUpdate ? installUpdate : () => checkForUpdates({ silent: false });
-  const actionDisabled = checking || downloading;
+  const actionDisabled = !supportsUpdater || checking || downloading;
 
   return (
     <div className='h-full flex flex-col gap-6'>
@@ -85,7 +88,7 @@ export default function About() {
               type='button'
               onClick={actionHandler}
               disabled={actionDisabled}
-              className={`px-4 py-2 tool-control-text ${actionDisabled ? 'opacity-70 cursor-not-allowed' : ''} ${
+              className={`px-4 tool-control-text ${actionDisabled ? 'opacity-70 cursor-not-allowed' : ''} ${
                 hasUpdate ? 'tool-btn-primary' : 'tool-btn'
               }`}>
               {actionLabel}
@@ -93,6 +96,12 @@ export default function About() {
           </div>
 
           <div className='space-y-3'>
+            {!supportsUpdater ? (
+              <div className='rounded-xl border border-zinc-200 bg-zinc-50 p-3 text-sm text-zinc-600'>
+                当前为预览环境，更新检测与安装仅在桌面客户端内可用。
+              </div>
+            ) : null}
+
             {hasUpdate ? (
               <div className='rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-600'>
                 发现新版本 {latestVersionLabel}，点击“立即更新”即可在应用内下载并安装。

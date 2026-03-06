@@ -63,8 +63,8 @@ export function UpdateProvider({ children }) {
         patchState({
           checking: false,
           hasUpdate: false,
-          errorMessage: '当前为预览环境，无法检查更新。',
-          checkedAt: Date.now(),
+          errorMessage: silent ? null : '当前为预览环境，无法检查更新。',
+          checkedAt: silent ? null : Date.now(),
         });
         if (!silent) {
           showError('当前为预览环境，无法检查更新');

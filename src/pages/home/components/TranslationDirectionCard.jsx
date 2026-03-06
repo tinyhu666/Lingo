@@ -78,35 +78,37 @@ export default function TranslationDirectionCard() {
 
         <div className='mt-auto'>
           <div className='tool-control-slot mt-4'>
-            <div className='home-top-control-shell px-2 py-1.5'>
-              <div className='grid h-full w-full grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 text-zinc-900'>
-                <div className='relative min-w-0'>
-                  <LanguageChip value={from} onClick={() => setActiveMenu('from')} />
-                  <DropdownMenu
-                    show={activeMenu === 'from'}
-                    onClose={() => setActiveMenu(null)}
-                    options={options}
-                    currentValue={from}
-                    onSelect={(lang) => handleLanguageChange(lang, 'translation_from')}
-                    renderOption={renderOption}
-                  />
-                </div>
+            <div className='home-top-control-shell'>
+              <div className='home-top-control-frame-soft px-2'>
+                <div className='grid h-full w-full grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 text-zinc-900'>
+                  <div className='relative min-w-0'>
+                    <LanguageChip value={from} onClick={() => setActiveMenu('from')} />
+                    <DropdownMenu
+                      show={activeMenu === 'from'}
+                      onClose={() => setActiveMenu(null)}
+                      options={options}
+                      currentValue={from}
+                      onSelect={(lang) => handleLanguageChange(lang, 'translation_from')}
+                      renderOption={renderOption}
+                    />
+                  </div>
 
-                <div className='h-11 w-9 flex items-center justify-center'>
-                  <ArrowRight className='w-6 h-6 shrink-0 text-zinc-700' />
-                </div>
+                  <div className='h-11 w-9 flex items-center justify-center'>
+                    <ArrowRight className='w-6 h-6 shrink-0 text-zinc-700' />
+                  </div>
 
-                <div className='relative min-w-0'>
-                  <LanguageChip value={to} onClick={() => setActiveMenu('to')} />
-                  <DropdownMenu
-                    show={activeMenu === 'to'}
-                    onClose={() => setActiveMenu(null)}
-                    options={options}
-                    currentValue={to}
-                    onSelect={(lang) => handleLanguageChange(lang, 'translation_to')}
-                    anchorPosition='right-0'
-                    renderOption={renderOption}
-                  />
+                  <div className='relative min-w-0'>
+                    <LanguageChip value={to} onClick={() => setActiveMenu('to')} />
+                    <DropdownMenu
+                      show={activeMenu === 'to'}
+                      onClose={() => setActiveMenu(null)}
+                      options={options}
+                      currentValue={to}
+                      onSelect={(lang) => handleLanguageChange(lang, 'translation_to')}
+                      anchorPosition='right-0'
+                      renderOption={renderOption}
+                    />
+                  </div>
                 </div>
               </div>
             </div>

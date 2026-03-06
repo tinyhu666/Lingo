@@ -4,6 +4,19 @@ import { Server, Sparkles, Globe } from '../icons';
 import { useStore } from '../components/StoreProvider';
 import { getLanguageMeta } from '../constants/languages';
 
+const SCENE_LABELS = {
+  general: '通用',
+  moba: 'MOBA',
+  fps: 'FPS',
+  mmo: 'MMO',
+};
+
+const MODE_LABELS = {
+  auto: '自动',
+  pro: '职业',
+  toxic: '竞技',
+};
+
 export default function Settings() {
   const { settings } = useStore();
 
@@ -33,8 +46,8 @@ export default function Settings() {
 
   const from = settings?.translation_from || 'zh';
   const to = settings?.translation_to || 'en';
-  const scene = settings?.game_scene || 'general';
-  const mode = settings?.translation_mode || 'auto';
+  const scene = SCENE_LABELS[settings?.game_scene || 'general'] || settings?.game_scene || '通用';
+  const mode = MODE_LABELS[settings?.translation_mode || 'auto'] || settings?.translation_mode || '自动';
 
   return (
     <div className='h-full flex flex-col gap-6'>
@@ -59,7 +72,7 @@ export default function Settings() {
           </div>
 
           <div className='rounded-xl border border-zinc-200 bg-white p-4'>
-            <div className='tool-caption'>翻译代理</div>
+            <div className='tool-caption'>客户端状态</div>
             <div className={`mt-1 text-base font-semibold ${serviceStatus.tone}`}>{serviceStatus.label}</div>
             <div className='tool-body mt-1'>{serviceStatus.hint}</div>
           </div>
@@ -85,7 +98,7 @@ export default function Settings() {
 
           <div className='space-y-4'>
             <div className='rounded-xl border border-zinc-200 bg-white p-4'>
-              <div className='tool-caption'>场景</div>
+              <div className='tool-caption'>场景策略</div>
               <div className='mt-1 text-base font-semibold text-zinc-800'>{scene}</div>
             </div>
             <div className='rounded-xl border border-zinc-200 bg-white p-4'>

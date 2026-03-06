@@ -1,9 +1,39 @@
+import { useEffect } from 'react';
 import Sidebar from './Sidebar';
 import { StoreProvider } from './StoreProvider';
 import { UpdateProvider } from './UpdateProvider';
 import { Toaster } from 'react-hot-toast';
+import { listen } from '@tauri-apps/api/event';
+import { hasTauriRuntime } from '../services/tauriRuntime';
+import { showError } from '../utils/toast';
 
 export default function Layout({ children, activeItem, setActiveItem }) {
+    useEffect(() => {
+        if (!hasTauriRuntime()) {
+            return undefined;
+        }
+
+        let unlisten = null;
+
+        const bind = async () => {
+            unlisten = await listen('translation_failed', (event) => {
+                const message =
+                    typeof event.payload === 'string' && event.payload.trim()
+                        ? event.payload
+                        : '翻译失败，请检查服务配置或稍后重试。';
+                showError(message);
+            });
+        };
+
+        void bind();
+
+        return () => {
+            if (typeof unlisten === 'function') {
+                unlisten();
+            }
+        };
+    }, []);
+
     return (
         <StoreProvider>
             <UpdateProvider>

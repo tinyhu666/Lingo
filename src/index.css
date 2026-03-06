@@ -49,12 +49,22 @@
   }
 
   .home-top-control-shell {
-    @apply h-14 w-full rounded-xl border border-[#d4dce8] bg-white;
+    @apply h-14 w-full rounded-xl border border-[#d4dce8] bg-white px-2.5 py-1.5 flex items-center;
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95);
   }
 
   .home-top-control-shell-soft {
-    @apply h-14 w-full rounded-xl border border-[#d4dce8] bg-[#f7faff];
+    @apply h-14 w-full rounded-xl border border-[#d4dce8] bg-[#f7faff] px-2.5 py-1.5 flex items-center;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95);
+  }
+
+  .home-top-control-frame {
+    @apply h-11 w-full rounded-lg border border-[#d4dbe6] bg-[#f7faff];
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95);
+  }
+
+  .home-top-control-frame-soft {
+    @apply h-11 w-full rounded-lg border border-[#d4dbe6] bg-white;
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95);
   }
 
@@ -146,6 +156,10 @@ body {
 }
 
 .tool-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
   border: 1px solid #d4dbe6;
   border-radius: 10px;
   background: #f7faff;
@@ -166,6 +180,10 @@ body {
 }
 
 .tool-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
   border: 1px solid #2563eb;
   border-radius: 10px;
   background: linear-gradient(180deg, #3b82f6 0%, #2563eb 100%);
@@ -191,6 +209,7 @@ body {
 
 .tool-input {
   width: 100%;
+  min-height: 44px;
   padding: 10px 12px;
   border: 1px solid #d4dce8;
   border-radius: 10px;
@@ -199,6 +218,17 @@ body {
   font-size: 14px;
   font-weight: 600;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.tool-btn-danger {
+  border-color: #fecaca;
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+.tool-btn-danger:hover {
+  background: #fee2e2;
+  border-color: #fca5a5;
 }
 
 .tool-input:focus {
@@ -248,6 +278,18 @@ body {
 .dota-theme input::placeholder,
 .dota-theme textarea::placeholder {
   color: #8a96a8;
+}
+
+.dota-theme select.home-status-select--enabled {
+  background: rgba(236, 253, 245, 0.92) !important;
+  border-color: #86efac !important;
+  color: #047857 !important;
+}
+
+.dota-theme select.home-status-select--paused {
+  background: #f4f7fb !important;
+  border-color: #cbd5e1 !important;
+  color: #475569 !important;
 }
 
 .dota-theme .text-zinc-900,
