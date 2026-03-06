@@ -42,7 +42,7 @@ export default function About() {
     supportsUpdater,
   } = useUpdater();
 
-  const versionLabel = currentVersion ? `V${currentVersion}` : 'V0.2.3';
+  const versionLabel = currentVersion ? `V${currentVersion}` : 'V0.2.4';
   const latestVersionLabel = latestVersion ? `V${latestVersion}` : '暂未获取';
   const actionLabel = !supportsUpdater
     ? '仅桌面端可用'

@@ -96,7 +96,7 @@ export default function Sidebar({ activeItem, setActiveItem }) {
 
       <div className='px-4 pb-4 pt-2 border-t border-zinc-200/70'>
         <div className='tool-caption'>
-          <div className='font-semibold text-zinc-600'>V0.2.3</div>
+          <div className='font-semibold text-zinc-600'>V0.2.4</div>
           <div className='mt-0.5'>powerby 萌新</div>
         </div>
       </div>

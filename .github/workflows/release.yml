@@ -71,7 +71,6 @@ jobs:
             安装包：
             - Windows: `.msi` / `.exe`
             - macOS: `.dmg`
-            - 自动更新：`latest.json` + 签名包
           releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}
