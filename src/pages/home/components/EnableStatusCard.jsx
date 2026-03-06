@@ -17,15 +17,12 @@ export default function EnableStatusCard() {
     setDraftState(null);
   }, [persistedEnabled]);
 
-  const handleStatusChange = async (event) => {
+  const handleStatusToggle = async () => {
     if (pending) {
       return;
     }
 
-    const nextEnabled = event.target.value === 'enabled';
-    if (nextEnabled === isEnabled) {
-      return;
-    }
+    const nextEnabled = !isEnabled;
 
     setDraftState(nextEnabled);
     setPending(true);
@@ -61,23 +58,43 @@ export default function EnableStatusCard() {
         <PowerToggle className='w-6 h-6 stroke-zinc-500' />
         <h3 className='tool-card-title'>启用状态</h3>
       </div>
-      <p className='tool-body mt-1'>通过软件状态下拉控制 Lingo 开关。</p>
+      <p className='tool-body mt-1'>通过开关控制 Lingo 是否响应快捷键。</p>
 
       <div className='flex-1 flex flex-col mt-4'>
         <div className='mt-auto'>
           <div className='tool-caption'>软件状态</div>
           <div className='tool-control-slot mt-2'>
             <div className='home-top-control-shell'>
-              <select
-                value={isEnabled ? 'enabled' : 'paused'}
-                onChange={handleStatusChange}
+              <button
+                type='button'
+                onClick={handleStatusToggle}
                 disabled={pending}
-                className={`home-top-control-frame tool-control-text px-3 pr-10 ${pending ? 'cursor-not-allowed opacity-70' : ''} ${
-                  isEnabled ? 'home-status-select--enabled' : 'home-status-select--paused'
-                }`}>
-                <option value='enabled'>已启用（可正常翻译）</option>
-                <option value='paused'>已暂停（不响应快捷键）</option>
-              </select>
+                aria-pressed={isEnabled}
+                className={`home-status-toggle home-top-control-frame ${
+                  isEnabled ? 'home-status-toggle--enabled' : 'home-status-toggle--paused'
+                } ${pending ? 'cursor-not-allowed opacity-70' : ''}`}>
+                <span className='flex min-w-0 items-center gap-2.5'>
+                  <span
+                    className={`h-2.5 w-2.5 shrink-0 rounded-full ${
+                      isEnabled ? 'bg-emerald-500' : 'bg-zinc-400'
+                    }`}
+                  />
+                  <span className='tool-control-text truncate'>
+                    {isEnabled ? '已启用（可正常翻译）' : '已暂停（不响应快捷键）'}
+                  </span>
+                </span>
+
+                <span
+                  className={`home-status-switch ${
+                    isEnabled ? 'home-status-switch--enabled' : 'home-status-switch--paused'
+                  }`}>
+                  <span
+                    className={`home-status-switch-thumb ${
+                      isEnabled ? 'translate-x-5' : 'translate-x-0'
+                    }`}
+                  />
+                </span>
+              </button>
             </div>
           </div>
           <div className='mt-2 h-4 text-xs text-zinc-500'>{pending ? '正在保存状态...' : '\u00A0'}</div>
