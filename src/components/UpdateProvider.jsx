@@ -4,6 +4,7 @@ import { relaunch } from '@tauri-apps/plugin-process';
 import { hasTauriRuntime } from '../services/tauriRuntime';
 import { invokeCommand } from '../services/tauriRuntime';
 import { showError, showSuccess } from '../utils/toast';
+import { APP_VERSION, RELEASE_API_URL } from '../constants/version';
 
 const UpdateContext = createContext(null);
 
@@ -18,6 +19,53 @@ const DEFAULT_STATE = {
   progressPercent: 0,
   checkedAt: null,
   errorMessage: null,
+};
+
+const normalizeVersion = (value) => String(value || '').replace(/^v/i, '').trim();
+
+const isVersionNewer = (incoming, current) => {
+  const nextParts = normalizeVersion(incoming)
+    .split('.')
+    .map((item) => Number.parseInt(item, 10) || 0);
+  const currentParts = normalizeVersion(current)
+    .split('.')
+    .map((item) => Number.parseInt(item, 10) || 0);
+  const length = Math.max(nextParts.length, currentParts.length);
+
+  for (let index = 0; index < length; index += 1) {
+    const nextValue = nextParts[index] || 0;
+    const currentValue = currentParts[index] || 0;
+
+    if (nextValue > currentValue) {
+      return true;
+    }
+
+    if (nextValue < currentValue) {
+      return false;
+    }
+  }
+
+  return false;
+};
+
+const fetchLatestReleaseMetadata = async () => {
+  const response = await fetch(RELEASE_API_URL, {
+    headers: {
+      Accept: 'application/vnd.github+json',
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`获取版本信息失败: HTTP ${response.status}`);
+  }
+
+  const payload = await response.json();
+
+  return {
+    version: normalizeVersion(payload.tag_name),
+    publishedAt: payload.published_at || payload.created_at || null,
+    body: payload.body || null,
+  };
 };
 
 export function UpdateProvider({ children }) {
@@ -44,7 +92,9 @@ export function UpdateProvider({ children }) {
 
   const loadCurrentVersion = useCallback(async () => {
     if (!hasTauriRuntime()) {
-      return null;
+      currentVersionRef.current = APP_VERSION;
+      patchState({ currentVersion: APP_VERSION });
+      return APP_VERSION;
     }
 
     try {
@@ -59,23 +109,31 @@ export function UpdateProvider({ children }) {
 
   const checkForUpdates = useCallback(
     async ({ silent = false } = {}) => {
-      if (!hasTauriRuntime()) {
-        patchState({
-          checking: false,
-          hasUpdate: false,
-          errorMessage: silent ? null : '当前为预览环境，无法检查更新。',
-          checkedAt: silent ? null : Date.now(),
-        });
-        if (!silent) {
-          showError('当前为预览环境，无法检查更新');
-        }
-        return null;
-      }
-
       patchState({ checking: true, errorMessage: null });
 
       try {
         const currentVersion = currentVersionRef.current || (await loadCurrentVersion());
+        const latestRelease = await fetchLatestReleaseMetadata().catch(() => null);
+
+        if (!hasTauriRuntime()) {
+          const previewVersion = currentVersion || APP_VERSION;
+          const latestVersion = latestRelease?.version || previewVersion;
+
+          patchState({
+            checking: false,
+            hasUpdate: isVersionNewer(latestVersion, previewVersion),
+            latestVersion,
+            currentVersion: previewVersion,
+            releaseDate: latestRelease?.publishedAt || null,
+            releaseBody: latestRelease?.body || null,
+            progressPercent: 0,
+            checkedAt: Date.now(),
+            errorMessage: null,
+          });
+
+          return latestRelease;
+        }
+
         const update = await check();
 
         if (!update) {
@@ -83,9 +141,10 @@ export function UpdateProvider({ children }) {
           patchState({
             checking: false,
             hasUpdate: false,
-            latestVersion: currentVersion,
-            releaseDate: null,
-            releaseBody: null,
+            latestVersion: latestRelease?.version || currentVersion,
+            currentVersion: currentVersion || APP_VERSION,
+            releaseDate: latestRelease?.publishedAt || null,
+            releaseBody: latestRelease?.body || null,
             progressPercent: 0,
             checkedAt: Date.now(),
           });
@@ -105,8 +164,8 @@ export function UpdateProvider({ children }) {
           hasUpdate: true,
           latestVersion: update.version,
           currentVersion: update.currentVersion,
-          releaseDate: update.date || null,
-          releaseBody: update.body || null,
+          releaseDate: update.date || latestRelease?.publishedAt || null,
+          releaseBody: update.body || latestRelease?.body || null,
           progressPercent: 0,
           checkedAt: Date.now(),
         });

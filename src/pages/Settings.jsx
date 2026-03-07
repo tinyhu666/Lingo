@@ -14,7 +14,7 @@ const SCENE_LABELS = {
 const MODE_LABELS = {
   auto: '自动',
   pro: '职业',
-  toxic: '竞技',
+  toxic: '高压',
 };
 
 export default function Settings() {

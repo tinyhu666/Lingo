@@ -20,9 +20,9 @@ const MODE_OPTIONS = [
   },
   {
     id: 'toxic',
-    title: '竞技模式',
-    desc: '语气更直接，保持高压感但不过线，适合高强度对局。',
-    detail: '强调短促、直接和冲击力，但避免失控表达。',
+    title: '高压模式',
+    desc: '语气更重、施压更强，适合需要抢节奏、压气势和高压沟通的对局场景。',
+    detail: '更偏嘴臭式施压和压力怪风格，表达更硬、更冲，但仍保持句子可直接发送。',
     icon: Whistle,
   },
 ];
@@ -30,7 +30,7 @@ const MODE_OPTIONS = [
 const MODE_LABELS = {
   auto: '自动',
   pro: '职业',
-  toxic: '竞技',
+  toxic: '高压',
 };
 
 export default function Translate() {
@@ -86,7 +86,7 @@ export default function Translate() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.05 * (idx + 1) }}>
               <div className='flex items-center justify-between gap-3'>
-                <div className='workspace-header__icon h-11 w-11 min-w-[44px]'>
+                <div className='workspace-header__icon mode-card__icon-shell h-11 w-11 min-w-[44px]'>
                   <Icon className='h-5 w-5 stroke-current' />
                 </div>
                 <span className={`tool-pill shrink-0 ${isActive ? 'workspace-pill--success' : ''}`}>
@@ -103,7 +103,7 @@ export default function Translate() {
               <div className='tool-subcard mt-6 p-4'>
                 <div className='flex items-center gap-2'>
                   <Sparkles className='h-4 w-4 stroke-zinc-500' />
-                  <span className='tool-caption'>模式特点</span>
+                  <span className='tool-caption lowercase'>tips</span>
                 </div>
                 <p className='tool-body mt-2'>{mode.detail}</p>
               </div>

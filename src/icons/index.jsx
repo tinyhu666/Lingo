@@ -76,7 +76,6 @@ export function GamingPad(props) {
   return (
     <svg
       {...props}
-      style={{ color: 'dddddd' }}
       xmlns='http://www.w3.org/2000/svg'
       viewBox='0 0 24 24'
       width='24'
@@ -94,7 +93,6 @@ export function KeyboardAlt(props) {
   return (
     <svg
       {...props}
-      style={{ color: 'dddddd' }}
       xmlns='http://www.w3.org/2000/svg'
       viewBox='0 0 24 24'
       width='24'
@@ -112,7 +110,6 @@ export function Repeat01(props) {
   return (
     <svg
       {...props}
-      style={{ color: 'dddddd' }}
       xmlns='http://www.w3.org/2000/svg'
       viewBox='0 0 24 24'
       width='24'
@@ -132,7 +129,6 @@ export function ChevronRight(props) {
   return (
     <svg
       {...props}
-      style={{ color: 'dddddd' }}
       xmlns='http://www.w3.org/2000/svg'
       viewBox='0 0 24 24'
       width='24'
@@ -151,7 +147,6 @@ export function CrossCross(props) {
   return (
     <svg
       {...props}
-      style={{ color: 'dddddd' }}
       xmlns='http://www.w3.org/2000/svg'
       viewBox='0 0 24 24'
       width='24'
