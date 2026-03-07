@@ -135,8 +135,8 @@
   .sidebar-brand {
     display: flex;
     align-items: center;
-    gap: 14px;
-    padding: 14px;
+    gap: 12px;
+    padding: 12px 14px;
     border-radius: 22px;
     border: 1px solid var(--line-soft);
     background:

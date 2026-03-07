@@ -59,12 +59,24 @@ export default function About() {
   return (
     <div className='flex h-full flex-col gap-6'>
       <motion.section className='dota-card tool-rise p-6' initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }}>
-        <div>
-          <h2 className='tool-page-title'>客户端更新</h2>
-          <p className='tool-body mt-3'>集中查看版本信息、更新状态和项目说明，安装新版本时无需离开客户端。</p>
+        <div className='flex items-start justify-between gap-4'>
+          <div>
+            <h2 className='tool-page-title'>客户端更新</h2>
+            <p className='tool-body mt-2'>查看版本信息、更新状态，并在桌面客户端内直接完成安装。</p>
+          </div>
+
+          {supportsUpdater ? (
+            <button
+              type='button'
+              onClick={actionHandler}
+              disabled={actionDisabled}
+              className={`min-w-[132px] justify-center whitespace-nowrap px-4 ${hasUpdate ? 'tool-btn-primary' : 'tool-btn'} ${actionDisabled ? 'opacity-70 cursor-not-allowed' : ''}`}>
+              {actionLabel}
+            </button>
+          ) : null}
         </div>
 
-        <div className='mt-6 grid grid-cols-3 gap-4'>
+        <div className='mt-5 grid grid-cols-4 gap-3'>
           <div className='tool-subcard p-4'>
             <div className='tool-caption'>当前版本</div>
             <div className='tool-card-title mt-2'>{versionLabel}</div>
@@ -77,25 +89,13 @@ export default function About() {
             <div className='tool-caption'>发布日期</div>
             <div className='tool-card-title mt-2'>{formatReleaseDate(releaseDate)}</div>
           </div>
+          <div className='tool-subcard p-4'>
+            <div className='tool-caption'>上次检查</div>
+            <div className='tool-body mt-2'>{formatTime(checkedAt)}</div>
+          </div>
         </div>
 
         <div className='mt-4 space-y-3'>
-          <div className='tool-subcard p-4'>
-            <div className='tool-caption'>上次检查</div>
-            <p className='tool-body mt-2'>{formatTime(checkedAt)}</p>
-          </div>
-
-          {supportsUpdater ? (
-            <div className='flex justify-start'>
-              <button
-                type='button'
-                onClick={actionHandler}
-                disabled={actionDisabled}
-                className={`min-w-[132px] justify-center whitespace-nowrap px-4 ${hasUpdate ? 'tool-btn-primary' : 'tool-btn'} ${actionDisabled ? 'opacity-70 cursor-not-allowed' : ''}`}>
-                {actionLabel}
-              </button>
-            </div>
-          ) : null}
 
           {!supportsUpdater ? (
             <div className='rounded-2xl border border-[rgba(205,216,230,0.94)] bg-[rgba(248,250,253,0.9)] p-4 text-sm text-zinc-600'>
