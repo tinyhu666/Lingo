@@ -2,84 +2,104 @@ import { motion } from 'framer-motion';
 import HotkeyCard from './components/HotkeyCard';
 import TranslationDirectionCard from './components/TranslationDirectionCard';
 import EnableStatusCard from './components/EnableStatusCard';
+import { ChatBubbleMessage, KeyboardAlt, Sparkles } from '../../icons';
 
 const STEPS = [
   {
     id: '01',
     title: '复制聊天内容',
-    desc: '在游戏聊天框中选中或准备发送文本。',
+    desc: '在游戏聊天框中选中或准备发送文本，保持输入焦点不变。',
   },
   {
     id: '02',
     title: '触发快捷键',
-    desc: '按翻译快捷键，一键发起翻译。',
+    desc: '按翻译快捷键，一键调用服务端翻译并获取译文。',
   },
   {
     id: '03',
     title: '自动回填',
-    desc: '译文自动回填到当前输入框，可直接发送。',
+    desc: '译文自动写回当前输入框，可以直接发送，不必切出游戏。',
   },
 ];
 
 export default function Home() {
   return (
-    <div className='h-full grid grid-cols-1 xl:grid-cols-12 gap-6 items-stretch'>
-      <div className='h-full min-h-[248px] xl:col-span-4'>
+    <div className='grid h-full grid-cols-12 gap-6'>
+      <div className='col-span-4 min-h-[252px]'>
         <TranslationDirectionCard />
       </div>
 
-      <div className='h-full min-h-[248px] xl:col-span-4'>
+      <div className='col-span-4 min-h-[252px]'>
         <HotkeyCard />
       </div>
 
-      <div className='h-full min-h-[248px] xl:col-span-4'>
+      <div className='col-span-4 min-h-[252px]'>
         <EnableStatusCard />
       </div>
 
       <motion.section
-        className='dota-card rounded-2xl p-6 xl:col-span-8'
-        initial={{ opacity: 0, y: 20 }}
+        className='dota-card tool-rise col-span-7 p-6'
+        initial={{ opacity: 0, y: 18 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}>
-        <div className='flex items-center justify-between gap-3'>
-          <h1 className='tool-page-title'>使用教程</h1>
-          <div className='tool-pill'>3 步完成</div>
+        transition={{ delay: 0.08 }}>
+        <div className='flex items-start justify-between gap-4'>
+          <div>
+            <div className='tool-pill mb-3'>工作流</div>
+            <h2 className='tool-page-title'>翻译流程</h2>
+            <p className='tool-body'>完成一次配置后，即可把翻译操作稳定压缩成三步，减少战局内停顿。</p>
+          </div>
+          <div className='rounded-2xl border border-[rgba(205,216,230,0.92)] bg-white/75 px-4 py-3 text-right shadow-[0_8px_18px_rgba(37,57,88,0.08)]'>
+            <div className='tool-caption'>链路状态</div>
+            <div className='tool-card-title mt-1'>复制 → 翻译 → 回填</div>
+          </div>
         </div>
-        <p className='tool-body mt-2'>
-          完成一次快捷键配置后，即可在游戏对局中直接复制、翻译并回填聊天文本。
-        </p>
 
-        <div className='mt-5 grid grid-cols-1 md:grid-cols-3 gap-3'>
+        <div className='mt-6 grid grid-cols-3 gap-4'>
           {STEPS.map((step) => (
-            <div key={step.id} className='tool-subcard rounded-xl p-4 h-full'>
+            <article key={step.id} className='tool-subcard tool-rise p-5'>
               <div className='tool-caption tracking-[0.16em]'>{step.id}</div>
-              <div className='tool-card-title mt-1'>{step.title}</div>
-              <p className='tool-body mt-1'>{step.desc}</p>
-            </div>
+              <h3 className='tool-card-title mt-2'>{step.title}</h3>
+              <p className='tool-body mt-2'>{step.desc}</p>
+            </article>
           ))}
         </div>
       </motion.section>
 
       <motion.section
-        className='dota-card rounded-2xl p-6 xl:col-span-4'
-        initial={{ opacity: 0, y: 20 }}
+        className='dota-card tool-rise col-span-5 p-6'
+        initial={{ opacity: 0, y: 18 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.12 }}>
         <div className='flex items-center justify-between gap-3'>
-          <h2 className='tool-page-title'>演示说明</h2>
+          <div className='flex items-center gap-3'>
+            <ChatBubbleMessage className='h-5 w-5 stroke-zinc-500' />
+            <h2 className='tool-card-title'>演示说明</h2>
+          </div>
           <div className='tool-pill'>示例</div>
         </div>
-        <p className='tool-body mt-2'>以下为团战沟通场景下的翻译示例。</p>
+        <p className='tool-body mt-3'>以下为游戏内沟通场景下的翻译示例，强调清晰、短句和可直接发送。</p>
 
-        <div className='mt-4 space-y-3'>
-          <div className='rounded-lg border border-zinc-200 bg-white p-3'>
-            <div className='tool-caption mb-1'>原文（中文）</div>
-            <div className='text-base text-zinc-900 leading-relaxed'>别急着开团，等我 BKB 好了再打。</div>
+        <div className='mt-5 space-y-4'>
+          <div className='tool-subcard p-4'>
+            <div className='flex items-center gap-2 text-zinc-800'>
+              <KeyboardAlt className='h-4 w-4 stroke-zinc-500' />
+              <span className='tool-caption'>原文（中文）</span>
+            </div>
+            <div className='mt-3 text-[17px] font-semibold leading-7 text-zinc-900'>别急着开团，等我 BKB 好了再打。</div>
           </div>
-          <div className='text-center tool-caption tracking-[0.14em]'>翻译结果</div>
-          <div className='rounded-lg border border-zinc-200 bg-white p-3'>
-            <div className='tool-caption mb-1'>译文（英文）</div>
-            <div className='text-base text-zinc-900 leading-relaxed'>Hold for now. Fight when my BKB is ready.</div>
+
+          <div className='flex items-center gap-3 px-1'>
+            <div className='h-px flex-1 bg-[rgba(214,224,236,0.86)]' />
+            <div className='tool-pill'>翻译结果</div>
+            <div className='h-px flex-1 bg-[rgba(214,224,236,0.86)]' />
+          </div>
+
+          <div className='tool-subcard p-4'>
+            <div className='flex items-center gap-2 text-zinc-800'>
+              <Sparkles className='h-4 w-4 stroke-zinc-500' />
+              <span className='tool-caption'>译文（英文）</span>
+            </div>
+            <div className='mt-3 text-[17px] font-semibold leading-7 text-zinc-900'>Hold for now. Fight when my BKB is ready.</div>
           </div>
         </div>
       </motion.section>

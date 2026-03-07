@@ -63,11 +63,7 @@ export default function Phrases() {
     }
 
     const mapped = source.map((item, index) =>
-      createRow(
-        index + 1,
-        item?.phrase || '',
-        item?.hotkey?.key || `Digit${Math.min(index + 1, 9)}`,
-      ),
+      createRow(index + 1, item?.phrase || '', item?.hotkey?.key || `Digit${Math.min(index + 1, 9)}`),
     );
 
     setRows(mapped);
@@ -201,52 +197,48 @@ export default function Phrases() {
   };
 
   return (
-    <div className='h-full flex flex-col gap-6'>
-      <motion.div
-        className='dota-card w-full rounded-2xl p-6'
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}>
+    <div className='flex h-full flex-col gap-6'>
+      <motion.section className='dota-card tool-rise p-6' initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }}>
         <div className='flex items-start justify-between gap-4'>
           <div>
-            <h1 className='tool-page-title'>常用语</h1>
-            <p className='tool-body mt-2'>
-              支持新增、修改、删除常用语。快捷键统一使用 {MODIFIER_LABEL} + 键位，减少误触。
-            </p>
+            <div className='tool-pill mb-3'>短语库</div>
+            <h2 className='tool-page-title'>常用语工作区</h2>
+            <p className='tool-body'>为高频沟通短句分配快捷入口，触发后可直接回填到当前输入框。</p>
           </div>
-
-          <div className='flex items-center gap-2'>
-            <button type='button' onClick={addRow} className='tool-btn px-4'>
+          <div className='flex shrink-0 items-center gap-2'>
+            <span className='tool-pill min-w-[76px] justify-center'>{rows.length} / {MAX_PHRASE_COUNT}</span>
+            <button type='button' onClick={addRow} className='tool-btn min-w-[120px] whitespace-nowrap px-4'>
               新增常用语
             </button>
             <button
               type='button'
               onClick={saveRows}
               disabled={saving}
-              className={`tool-btn-primary min-w-[96px] px-4 ${
-                saving ? 'opacity-70 cursor-not-allowed' : ''
-              }`}>
+              className={`tool-btn-primary min-w-[104px] whitespace-nowrap px-4 ${saving ? 'opacity-70 cursor-not-allowed' : ''}`}>
               {saving ? '保存中...' : '保存'}
             </button>
           </div>
         </div>
+      </motion.section>
 
-        <div className='mt-5 overflow-auto'>
-          <table className='min-w-full'>
-            <thead>
-              <tr className='border-b border-zinc-200'>
-                <th className='py-3 pr-2 text-left tool-control-text text-zinc-500 w-[64px]'>#</th>
-                <th className='py-3 px-2 text-left tool-control-text text-zinc-500'>常用语内容</th>
-                <th className='py-3 px-2 text-left tool-control-text text-zinc-500 w-[190px]'>快捷键</th>
-                <th className='py-3 pl-2 text-left tool-control-text text-zinc-500 w-[90px]'>操作</th>
+      <motion.section className='dota-card tool-rise flex-1 p-4' initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.06 }}>
+        <div className='h-full overflow-auto rounded-[20px] border border-[rgba(219,228,239,0.9)] bg-[rgba(255,255,255,0.62)]'>
+          <table className='min-w-full border-separate border-spacing-0'>
+            <thead className='sticky top-0 z-10 bg-[rgba(248,251,255,0.96)] backdrop-blur-xl'>
+              <tr>
+                <th className='px-5 py-4 text-left tool-caption w-[64px]'>#</th>
+                <th className='px-4 py-4 text-left tool-caption'>常用语内容</th>
+                <th className='px-4 py-4 text-left tool-caption w-[210px]'>快捷键</th>
+                <th className='px-5 py-4 text-left tool-caption w-[92px]'>操作</th>
               </tr>
             </thead>
 
-            <tbody className='divide-y divide-zinc-200'>
+            <tbody>
               {rows.map((row) => (
-                <tr key={row.id} className='hover:bg-zinc-50/80'>
-                  <td className='py-3 pr-2 text-sm text-zinc-500'>{row.id}</td>
+                <tr key={row.id} className='border-t border-[rgba(226,233,243,0.8)] hover:bg-[rgba(248,251,255,0.9)]'>
+                  <td className='px-5 py-4 text-sm font-semibold text-zinc-500 align-top'>{row.id}</td>
 
-                  <td className='py-3 px-2'>
+                  <td className='px-4 py-4'>
                     <input
                       value={row.phrase}
                       onChange={(event) => patchRow(row.id, { phrase: event.target.value })}
@@ -256,7 +248,7 @@ export default function Phrases() {
                     />
                   </td>
 
-                  <td className='py-3 px-2'>
+                  <td className='px-4 py-4'>
                     <div className='flex items-center gap-2'>
                       <span className='tool-chip'>{MODIFIER_LABEL}</span>
                       <select
@@ -272,7 +264,7 @@ export default function Phrases() {
                     </div>
                   </td>
 
-                  <td className='py-3 pl-2'>
+                  <td className='px-5 py-4 align-top'>
                     <button
                       type='button'
                       onClick={() => removeRow(row.id)}
@@ -285,7 +277,7 @@ export default function Phrases() {
             </tbody>
           </table>
         </div>
-      </motion.div>
+      </motion.section>
     </div>
   );
 }

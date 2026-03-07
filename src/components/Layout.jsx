@@ -1,72 +1,125 @@
-import { useEffect } from 'react';
-import Sidebar from './Sidebar';
-import { StoreProvider } from './StoreProvider';
-import { UpdateProvider } from './UpdateProvider';
+import { useEffect, useMemo } from 'react';
 import { Toaster } from 'react-hot-toast';
 import { listen } from '@tauri-apps/api/event';
+import Sidebar from './Sidebar';
+import PageContextPanel from './PageContextPanel';
+import { StoreProvider, useStore } from './StoreProvider';
+import { UpdateProvider, useUpdater } from './UpdateProvider';
 import { hasTauriRuntime } from '../services/tauriRuntime';
 import { showError } from '../utils/toast';
 
-export default function Layout({ children, activeItem, setActiveItem }) {
-    useEffect(() => {
-        if (!hasTauriRuntime()) {
-            return undefined;
-        }
+function LayoutShell({ children, activeItem, setActiveItem, pageMeta }) {
+  const { settings } = useStore();
+  const { hasUpdate } = useUpdater();
 
-        let unlisten = null;
+  useEffect(() => {
+    if (!hasTauriRuntime()) {
+      return undefined;
+    }
 
-        const bind = async () => {
-            unlisten = await listen('translation_failed', (event) => {
-                const message =
-                    typeof event.payload === 'string' && event.payload.trim()
-                        ? event.payload
-                        : '翻译失败，请检查服务配置或稍后重试。';
-                showError(message);
-            });
-        };
+    let unlisten = null;
 
-        void bind();
+    const bind = async () => {
+      unlisten = await listen('translation_failed', (event) => {
+        const message =
+          typeof event.payload === 'string' && event.payload.trim()
+            ? event.payload
+            : '翻译失败，请检查服务配置或稍后重试。';
+        showError(message);
+      });
+    };
 
-        return () => {
-            if (typeof unlisten === 'function') {
-                unlisten();
-            }
-        };
-    }, []);
+    void bind();
 
-    return (
-        <StoreProvider>
-            <UpdateProvider>
-                <div className="flex h-screen overflow-hidden p-4">
-                    {/* Toast 容器 */}
-                    <Toaster
-                        toastOptions={{
-                            className: 'text-sm',
-                            style: {
-                                borderRadius: '10px',
-                                background: '#ffffff',
-                                color: '#1f2937',
-                                border: '1px solid #d7dde6',
-                                boxShadow: '0 10px 28px rgba(15, 23, 42, 0.12)',
-                            },
-                        }}
-                    />
+    return () => {
+      if (typeof unlisten === 'function') {
+        unlisten();
+      }
+    };
+  }, []);
 
-                    <div className="dota-shell flex w-full rounded-[20px] overflow-hidden">
-                        {/* 左侧固定宽度的侧边栏 */}
-                        <div className="w-[220px] h-full">
-                            <Sidebar activeItem={activeItem} setActiveItem={setActiveItem} />
-                        </div>
+  const statusPills = useMemo(() => {
+    const items = [];
 
-                        {/* 右侧内容区域 */}
-                        <div className="flex-1 p-5">
-                            <div className="dota-main-panel max-w-[1240px] mx-auto h-[calc(100vh-68px)] rounded-[18px] p-6 overflow-auto">
-                                {children}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </UpdateProvider>
-        </StoreProvider>
-    );
+    if (settings?.app_enabled === false) {
+      items.push({ label: '软件已暂停', tone: 'muted' });
+    } else {
+      items.push({ label: '服务已启用', tone: 'success' });
+    }
+
+    if (hasUpdate) {
+      items.push({ label: '检测到更新', tone: 'alert' });
+    }
+
+    return items;
+  }, [hasUpdate, settings?.app_enabled]);
+
+  const HeaderIcon = pageMeta?.icon;
+
+  return (
+    <div className='lingo-app-shell'>
+      <Toaster
+        toastOptions={{
+          className: 'text-sm',
+          style: {
+            borderRadius: '14px',
+            background: 'rgba(255,255,255,0.94)',
+            color: '#1f2937',
+            border: '1px solid rgba(212,220,232,0.88)',
+            boxShadow: '0 18px 40px rgba(15, 23, 42, 0.14)',
+            backdropFilter: 'blur(18px)',
+          },
+        }}
+      />
+
+      <div className='lingo-shell'>
+        <aside className='lingo-shell__sidebar'>
+          <Sidebar activeItem={activeItem} setActiveItem={setActiveItem} />
+        </aside>
+
+        <section className='lingo-shell__workspace'>
+          <header className='workspace-header'>
+            <div className='workspace-header__left'>
+              <div className='workspace-header__icon'>
+                {HeaderIcon ? <HeaderIcon className='h-5 w-5 stroke-current' /> : null}
+              </div>
+              <div className='workspace-header__text'>
+                <span className='workspace-header__eyebrow'>{pageMeta?.eyebrow || 'Workspace'}</span>
+                <h1 className='workspace-header__title'>{pageMeta?.title || 'Lingo'}</h1>
+                <p className='workspace-header__subtitle'>{pageMeta?.subtitle || '统一管理翻译客户端设置和状态。'}</p>
+              </div>
+            </div>
+
+            <div className='workspace-header__right'>
+              {statusPills.map((item) => (
+                <span key={item.label} className={`workspace-pill workspace-pill--${item.tone}`}>
+                  {item.label}
+                </span>
+              ))}
+            </div>
+          </header>
+
+          <div className='workspace-content'>
+            {children}
+          </div>
+        </section>
+
+        <aside className='lingo-shell__context'>
+          <PageContextPanel activeItem={activeItem} pageMeta={pageMeta} />
+        </aside>
+      </div>
+    </div>
+  );
+}
+
+export default function Layout({ children, activeItem, setActiveItem, pageMeta }) {
+  return (
+    <StoreProvider>
+      <UpdateProvider>
+        <LayoutShell activeItem={activeItem} setActiveItem={setActiveItem} pageMeta={pageMeta}>
+          {children}
+        </LayoutShell>
+      </UpdateProvider>
+    </StoreProvider>
+  );
 }
