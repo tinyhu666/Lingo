@@ -58,12 +58,11 @@ export default function EnableStatusCard() {
         <PowerToggle className='w-6 h-6 stroke-zinc-500' />
         <h3 className='tool-card-title'>启用状态</h3>
       </div>
-      <p className='tool-body mt-1'>通过开关控制 Lingo 是否响应快捷键。</p>
+      <p className='tool-body mt-2'>通过开关控制 Lingo 是否响应快捷键。</p>
 
       <div className='flex-1 flex flex-col mt-4'>
         <div className='mt-auto'>
-          <div className='tool-caption'>软件状态</div>
-          <div className='tool-control-slot mt-2'>
+          <div className='tool-control-slot home-top-control-slot mt-4'>
             <div className='home-top-control-shell'>
               <button
                 type='button'

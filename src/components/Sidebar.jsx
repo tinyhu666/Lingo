@@ -15,9 +15,8 @@ export default function Sidebar({ activeItem, setActiveItem }) {
           <img src={appIcon} alt='Lingo Logo' className='sidebar-brand__mark-image' />
         </div>
         <div className='sidebar-brand__text'>
-          <span className='sidebar-brand__eyebrow'>Game Translation Tool</span>
-          <h3 className='sidebar-brand__title'>Lingo</h3>
-          <p className='sidebar-brand__subtitle'>更快地理解、更自然地表达。</p>
+          <h3 className='sidebar-brand__title sidebar-brand__title--compact'>Lingo</h3>
+          <p className='sidebar-brand__subtitle'>游戏优化 · 自然表达</p>
         </div>
       </div>
 

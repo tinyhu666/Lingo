@@ -42,17 +42,11 @@ export default function Home() {
         initial={{ opacity: 0, y: 18 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.08 }}>
-        <div className='flex items-start justify-between gap-4'>
-          <div>
-            <div className='tool-pill mb-3'>工作流</div>
-            <h2 className='tool-page-title'>翻译流程</h2>
-            <p className='tool-body'>完成一次配置后，即可把翻译操作稳定压缩成三步，减少战局内停顿。</p>
-          </div>
-          <div className='rounded-2xl border border-[rgba(205,216,230,0.92)] bg-white/75 px-4 py-3 text-right shadow-[0_8px_18px_rgba(37,57,88,0.08)]'>
-            <div className='tool-caption'>链路状态</div>
-            <div className='tool-card-title mt-1'>复制 → 翻译 → 回填</div>
-          </div>
+        <div className='flex items-center gap-3'>
+          <KeyboardAlt className='h-5 w-5 stroke-zinc-500' />
+          <h2 className='tool-card-title'>使用说明</h2>
         </div>
+        <p className='tool-body mt-3'>完成一次配置后，即可把翻译操作稳定压缩成三步，减少战局内停顿。</p>
 
         <div className='mt-6 grid grid-cols-3 gap-4'>
           {STEPS.map((step) => (

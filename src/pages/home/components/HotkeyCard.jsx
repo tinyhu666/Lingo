@@ -170,7 +170,7 @@ export default function HotkeyCard() {
         </p>
 
         <div className='mt-auto'>
-          <div className='tool-control-slot mt-4'>
+          <div className='tool-control-slot home-top-control-slot mt-4'>
             <div className='home-top-control-shell'>
               <div className='home-top-control-frame flex items-center justify-center'>
                 {typeof hotkeyDisplay === 'string' ? (

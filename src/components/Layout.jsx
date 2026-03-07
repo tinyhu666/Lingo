@@ -1,16 +1,13 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect } from 'react';
 import { Toaster } from 'react-hot-toast';
 import { listen } from '@tauri-apps/api/event';
 import Sidebar from './Sidebar';
-import { StoreProvider, useStore } from './StoreProvider';
-import { UpdateProvider, useUpdater } from './UpdateProvider';
+import { StoreProvider } from './StoreProvider';
+import { UpdateProvider } from './UpdateProvider';
 import { hasTauriRuntime } from '../services/tauriRuntime';
 import { showError } from '../utils/toast';
 
-function LayoutShell({ children, activeItem, setActiveItem, pageMeta }) {
-  const { settings } = useStore();
-  const { hasUpdate } = useUpdater();
-
+function LayoutShell({ children, activeItem, setActiveItem }) {
   useEffect(() => {
     if (!hasTauriRuntime()) {
       return undefined;
@@ -37,24 +34,6 @@ function LayoutShell({ children, activeItem, setActiveItem, pageMeta }) {
     };
   }, []);
 
-  const statusPills = useMemo(() => {
-    const items = [];
-
-    if (settings?.app_enabled === false) {
-      items.push({ label: '软件已暂停', tone: 'muted' });
-    } else {
-      items.push({ label: '服务已启用', tone: 'success' });
-    }
-
-    if (hasUpdate) {
-      items.push({ label: '检测到更新', tone: 'alert' });
-    }
-
-    return items;
-  }, [hasUpdate, settings?.app_enabled]);
-
-  const HeaderIcon = pageMeta?.icon;
-
   return (
     <div className='lingo-app-shell'>
       <Toaster
@@ -77,27 +56,6 @@ function LayoutShell({ children, activeItem, setActiveItem, pageMeta }) {
         </aside>
 
         <section className='lingo-shell__workspace'>
-          <header className='workspace-header'>
-            <div className='workspace-header__left'>
-              <div className='workspace-header__icon'>
-                {HeaderIcon ? <HeaderIcon className='h-5 w-5 stroke-current' /> : null}
-              </div>
-              <div className='workspace-header__text'>
-                <span className='workspace-header__eyebrow'>{pageMeta?.eyebrow || 'Workspace'}</span>
-                <h1 className='workspace-header__title'>{pageMeta?.title || 'Lingo'}</h1>
-                <p className='workspace-header__subtitle'>{pageMeta?.subtitle || '统一管理翻译客户端设置和状态。'}</p>
-              </div>
-            </div>
-
-            <div className='workspace-header__right'>
-              {statusPills.map((item) => (
-                <span key={item.label} className={`workspace-pill workspace-pill--${item.tone}`}>
-                  {item.label}
-                </span>
-              ))}
-            </div>
-          </header>
-
           <div className='workspace-content'>
             {children}
           </div>
@@ -107,11 +65,11 @@ function LayoutShell({ children, activeItem, setActiveItem, pageMeta }) {
   );
 }
 
-export default function Layout({ children, activeItem, setActiveItem, pageMeta }) {
+export default function Layout({ children, activeItem, setActiveItem }) {
   return (
     <StoreProvider>
       <UpdateProvider>
-        <LayoutShell activeItem={activeItem} setActiveItem={setActiveItem} pageMeta={pageMeta}>
+        <LayoutShell activeItem={activeItem} setActiveItem={setActiveItem}>
           {children}
         </LayoutShell>
       </UpdateProvider>

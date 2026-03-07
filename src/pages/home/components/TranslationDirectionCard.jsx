@@ -77,7 +77,7 @@ export default function TranslationDirectionCard() {
         </div>
 
         <div className='mt-auto'>
-          <div className='tool-control-slot mt-4'>
+          <div className='tool-control-slot home-top-control-slot mt-4'>
             <div className='home-top-control-shell'>
               <div className='grid h-full w-full grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 text-zinc-900'>
                 <div className='relative min-w-0'>
