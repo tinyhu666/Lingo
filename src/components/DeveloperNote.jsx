@@ -30,7 +30,7 @@ export default function DeveloperNote() {
         <div className='tool-subcard p-4'>
           <div className='tool-caption'>版本</div>
           <div className='tool-card-title mt-2'>Lingo {currentVersion}</div>
-          <div className='tool-body mt-2'>powerby 萌新</div>
+          <div className='tool-body mt-2'>Powerby 萌新</div>
         </div>
 
         <div className='tool-subcard p-4'>

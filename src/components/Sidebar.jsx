@@ -16,7 +16,6 @@ export default function Sidebar({ activeItem, setActiveItem }) {
         </div>
         <div className='sidebar-brand__text'>
           <h3 className='sidebar-brand__title sidebar-brand__title--compact'>Lingo</h3>
-          <p className='sidebar-brand__subtitle'>游戏优化 · 自然表达</p>
         </div>
       </div>
 
@@ -57,7 +56,7 @@ export default function Sidebar({ activeItem, setActiveItem }) {
 
       <div className='sidebar-footer'>
         <div className='sidebar-footer__version'>{APP_VERSION_LABEL}</div>
-        <div className='sidebar-footer__meta'>powerby 萌新</div>
+        <div className='sidebar-footer__meta'>Powerby 萌新</div>
       </div>
     </div>
   );

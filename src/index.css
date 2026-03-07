@@ -167,6 +167,9 @@
 
   .sidebar-brand__text {
     min-width: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
   }
 
   .sidebar-brand__eyebrow,
@@ -194,12 +197,6 @@
 
   .sidebar-brand__title--compact {
     margin-top: 0;
-  }
-
-  .sidebar-brand__subtitle {
-    margin: 6px 0 0;
-    font-size: 13px;
-    color: var(--text-2);
   }
 
   .sidebar-section {

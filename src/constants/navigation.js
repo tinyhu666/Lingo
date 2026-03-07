@@ -2,7 +2,6 @@ import {
   HomeHLine,
   Translate,
   ChatBubbleMessage,
-  Settings02,
   AT,
 } from '../icons';
 
@@ -21,11 +20,6 @@ export const NAV_ITEMS = [
     id: 'phrases',
     name: '常用语',
     icon: ChatBubbleMessage,
-  },
-  {
-    id: 'settings',
-    name: '服务',
-    icon: Settings02,
   },
   {
     id: 'about',

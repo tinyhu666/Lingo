@@ -2,14 +2,12 @@ import { useState } from 'react';
 import Layout from './components/Layout';
 import Home from './pages/home';
 import TranslatePage from './pages/Translate';
-import Settings from './pages/Settings';
 import About from './pages/About';
 import Phrases from './pages/Phrases';
 
 const pages = {
   home: Home,
   translate: TranslatePage,
-  settings: Settings,
   about: About,
   phrases: Phrases,
 };

@@ -1,6 +1,5 @@
 import { motion } from 'framer-motion';
-import { GamingPad, Globe, Sparkles, InfoCircle } from '../icons';
-import DeveloperNote from '../components/DeveloperNote';
+import { GamingPad, Globe, InfoCircle } from '../icons';
 import { useUpdater } from '../components/UpdateProvider';
 import { APP_VERSION_LABEL } from '../constants/version';
 
@@ -60,19 +59,9 @@ export default function About() {
   return (
     <div className='flex h-full flex-col gap-6'>
       <motion.section className='dota-card tool-rise p-6' initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }}>
-        <div className='flex items-start justify-between gap-4'>
-          <div>
-            <div className='tool-pill mb-3'>版本中心</div>
-            <h2 className='tool-page-title'>客户端更新</h2>
-            <p className='tool-body'>集中查看版本信息、更新状态和项目说明，安装新版本时无需离开客户端。</p>
-          </div>
-          <button
-            type='button'
-            onClick={actionHandler}
-            disabled={actionDisabled}
-            className={`min-w-[132px] justify-center whitespace-nowrap px-4 ${hasUpdate ? 'tool-btn-primary' : 'tool-btn'} ${actionDisabled ? 'opacity-70 cursor-not-allowed' : ''}`}>
-            {actionLabel}
-          </button>
+        <div>
+          <h2 className='tool-page-title'>客户端更新</h2>
+          <p className='tool-body mt-3'>集中查看版本信息、更新状态和项目说明，安装新版本时无需离开客户端。</p>
         </div>
 
         <div className='mt-6 grid grid-cols-3 gap-4'>
@@ -95,6 +84,18 @@ export default function About() {
             <div className='tool-caption'>上次检查</div>
             <p className='tool-body mt-2'>{formatTime(checkedAt)}</p>
           </div>
+
+          {supportsUpdater ? (
+            <div className='flex justify-start'>
+              <button
+                type='button'
+                onClick={actionHandler}
+                disabled={actionDisabled}
+                className={`min-w-[132px] justify-center whitespace-nowrap px-4 ${hasUpdate ? 'tool-btn-primary' : 'tool-btn'} ${actionDisabled ? 'opacity-70 cursor-not-allowed' : ''}`}>
+                {actionLabel}
+              </button>
+            </div>
+          ) : null}
 
           {!supportsUpdater ? (
             <div className='rounded-2xl border border-[rgba(205,216,230,0.94)] bg-[rgba(248,250,253,0.9)] p-4 text-sm text-zinc-600'>
@@ -135,34 +136,41 @@ export default function About() {
         </div>
       </motion.section>
 
-      <div className='grid grid-cols-3 gap-6'>
-        <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }}>
-          <DeveloperNote />
-        </motion.div>
+      <motion.section
+        className='dota-card tool-rise p-6'
+        initial={{ opacity: 0, y: 18 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}>
+        <div className='flex items-center gap-3'>
+          <InfoCircle className='h-5 w-5 stroke-zinc-500' />
+          <h3 className='tool-card-title'>项目说明</h3>
+        </div>
+        <p className='tool-body mt-3'>这里集中说明 Lingo 当前项目情况、核心特点和后续发展方向，避免信息分散在多个卡片中。</p>
 
-        <motion.section className='dota-card tool-rise p-6' initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }}>
-          <div className='flex items-center gap-3'>
-            <GamingPad className='h-5 w-5 stroke-zinc-500' />
-            <h3 className='tool-card-title'>游戏场景优化</h3>
+        <div className='mt-5 grid grid-cols-3 gap-4'>
+          <div className='tool-subcard p-5'>
+            <div className='tool-caption'>当前情况</div>
+            <div className='tool-card-title mt-2'>Lingo {versionLabel}</div>
+            <p className='tool-body mt-3'>Powerby 萌新。当前版本聚焦桌面端游戏内翻译体验，支持快捷键触发、自动回填与应用内更新。</p>
           </div>
-          <p className='tool-body mt-4'>针对游戏内对话做短句化输出，尽量保留技能、装备和指挥术语，减少“翻译腔”。</p>
-        </motion.section>
 
-        <motion.section className='dota-card tool-rise p-6' initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.16 }}>
-          <div className='flex items-center gap-3'>
-            <Globe className='h-5 w-5 stroke-zinc-500' />
-            <h3 className='tool-card-title'>多语言互译</h3>
-          </div>
-          <p className='tool-body mt-4'>支持中文、英文、俄文等主流语言的双向翻译，满足不同地区玩家的即时沟通需求。</p>
-          <div className='tool-subcard mt-4 p-4'>
+          <div className='tool-subcard p-5'>
             <div className='flex items-center gap-2'>
-              <InfoCircle className='h-4 w-4 stroke-zinc-500' />
-              <span className='tool-caption'>项目方向</span>
+              <GamingPad className='h-4 w-4 stroke-zinc-500' />
+              <span className='tool-caption'>核心特点</span>
             </div>
-            <p className='tool-body mt-2'>Lingo 会继续扩展到更多游戏，不局限于单一题材或单一服务器环境。</p>
+            <p className='tool-body mt-3'>针对游戏内对话做短句化输出，尽量保留技能、装备和指挥术语；支持中英俄等主流语言互译，减少沟通阻力。</p>
           </div>
-        </motion.section>
-      </div>
+
+          <div className='tool-subcard p-5'>
+            <div className='flex items-center gap-2'>
+              <Globe className='h-4 w-4 stroke-zinc-500' />
+              <span className='tool-caption'>后续发展</span>
+            </div>
+            <p className='tool-body mt-3'>后续会继续扩展到更多游戏场景，优化翻译质量与更新体验，同时保持桌面工具链路稳定、直接、低打断。</p>
+          </div>
+        </div>
+      </motion.section>
     </div>
   );
 }
