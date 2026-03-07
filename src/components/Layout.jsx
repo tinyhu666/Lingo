@@ -2,7 +2,6 @@ import { useEffect, useMemo } from 'react';
 import { Toaster } from 'react-hot-toast';
 import { listen } from '@tauri-apps/api/event';
 import Sidebar from './Sidebar';
-import PageContextPanel from './PageContextPanel';
 import { StoreProvider, useStore } from './StoreProvider';
 import { UpdateProvider, useUpdater } from './UpdateProvider';
 import { hasTauriRuntime } from '../services/tauriRuntime';
@@ -103,10 +102,6 @@ function LayoutShell({ children, activeItem, setActiveItem, pageMeta }) {
             {children}
           </div>
         </section>
-
-        <aside className='lingo-shell__context'>
-          <PageContextPanel activeItem={activeItem} pageMeta={pageMeta} />
-        </aside>
       </div>
     </div>
   );
