@@ -59,10 +59,13 @@ export default function About() {
   return (
     <div className='flex h-full flex-col gap-6'>
       <motion.section className='dota-card tool-rise p-6' initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }}>
-        <div className='flex items-start justify-between gap-4'>
-          <div>
-            <h2 className='tool-page-title'>客户端更新</h2>
-            <p className='tool-body mt-2'>查看版本信息、更新状态，并在桌面客户端内直接完成安装。</p>
+        <div className='tool-section-head'>
+          <div className='tool-section-head__main'>
+            <div className='tool-section-head__title-row'>
+              <InfoCircle className='tool-section-head__icon' />
+              <h2 className='tool-card-title'>客户端更新</h2>
+            </div>
+            <p className='tool-body tool-section-summary'>查看版本信息、更新状态，并在桌面客户端内直接完成安装。</p>
           </div>
 
           {supportsUpdater ? (
@@ -141,11 +144,15 @@ export default function About() {
         initial={{ opacity: 0, y: 18 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}>
-        <div className='flex items-center gap-3'>
-          <InfoCircle className='h-5 w-5 stroke-zinc-500' />
-          <h3 className='tool-card-title'>项目说明</h3>
+        <div className='tool-section-head'>
+          <div className='tool-section-head__main'>
+            <div className='tool-section-head__title-row'>
+              <InfoCircle className='tool-section-head__icon' />
+              <h3 className='tool-card-title'>项目说明</h3>
+            </div>
+          </div>
         </div>
-        <p className='tool-body mt-3'>这里集中说明 Lingo 当前项目情况、核心特点和后续发展方向，避免信息分散在多个卡片中。</p>
+        <p className='tool-body tool-section-summary'>这里集中说明 Lingo 当前项目情况、核心特点和后续发展方向，避免信息分散在多个卡片中。</p>
 
         <div className='mt-5 grid grid-cols-3 gap-4'>
           <div className='tool-subcard p-5'>

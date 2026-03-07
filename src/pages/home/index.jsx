@@ -42,11 +42,15 @@ export default function Home() {
         initial={{ opacity: 0, y: 18 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.08 }}>
-        <div className='flex items-center gap-3'>
-          <KeyboardAlt className='h-5 w-5 stroke-zinc-500' />
-          <h2 className='tool-card-title'>使用说明</h2>
+        <div className='tool-section-head'>
+          <div className='tool-section-head__main'>
+            <div className='tool-section-head__title-row'>
+              <KeyboardAlt className='tool-section-head__icon' />
+              <h2 className='tool-card-title'>使用说明</h2>
+            </div>
+          </div>
         </div>
-        <p className='tool-body mt-3'>完成一次配置后，即可把翻译操作稳定压缩成三步，减少战局内停顿。</p>
+        <p className='tool-body tool-section-summary'>完成一次配置后，即可把翻译操作稳定压缩成三步，减少战局内停顿。</p>
 
         <div className='mt-6 grid grid-cols-3 gap-4'>
           {STEPS.map((step) => (
@@ -64,14 +68,16 @@ export default function Home() {
         initial={{ opacity: 0, y: 18 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.12 }}>
-        <div className='flex items-center justify-between gap-3'>
-          <div className='flex items-center gap-3'>
-            <ChatBubbleMessage className='h-5 w-5 stroke-zinc-500' />
-            <h2 className='tool-card-title'>演示说明</h2>
+        <div className='tool-section-head'>
+          <div className='tool-section-head__main'>
+            <div className='tool-section-head__title-row'>
+              <ChatBubbleMessage className='tool-section-head__icon' />
+              <h2 className='tool-card-title'>演示说明</h2>
+            </div>
           </div>
           <div className='tool-pill'>示例</div>
         </div>
-        <p className='tool-body mt-3'>以下为游戏内沟通场景下的翻译示例，强调清晰、短句和可直接发送。</p>
+        <p className='tool-body tool-section-summary'>以下为游戏内沟通场景下的翻译示例，强调清晰、短句和可直接发送。</p>
 
         <div className='mt-5 space-y-4'>
           <div className='tool-subcard p-4'>

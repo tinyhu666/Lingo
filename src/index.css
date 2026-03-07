@@ -346,6 +346,34 @@
     color: var(--text-2);
   }
 
+  .tool-section-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  .tool-section-head__main {
+    min-width: 0;
+  }
+
+  .tool-section-head__title-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .tool-section-head__icon {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+    stroke: #7b8596;
+  }
+
+  .tool-section-summary {
+    margin-top: 12px;
+  }
+
   .tool-pill,
   .tool-chip {
     display: inline-flex;
