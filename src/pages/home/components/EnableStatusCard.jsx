@@ -50,7 +50,7 @@ export default function EnableStatusCard() {
 
   return (
     <motion.section
-      className='dota-card rounded-2xl p-6 h-full min-h-[248px] flex flex-col text-left'
+      className='dota-card rounded-2xl px-6 pt-6 pb-[6px] h-full min-h-[248px] flex flex-col text-left'
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.06 }}>
@@ -99,7 +99,6 @@ export default function EnableStatusCard() {
               </button>
             </div>
           </div>
-          <div className='mt-2 h-4 text-xs text-zinc-500'>{pending ? '正在保存状态...' : '\u00A0'}</div>
         </div>
       </div>
     </motion.section>

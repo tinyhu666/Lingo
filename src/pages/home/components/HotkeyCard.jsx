@@ -153,7 +153,7 @@ export default function HotkeyCard() {
     <motion.button
       type='button'
       onClick={beginRecording}
-      className='dota-card w-full h-full min-h-[248px] flex flex-col rounded-2xl p-6 text-left transition-all duration-200 hover:shadow-[0_14px_30px_rgba(15,23,42,0.1)]'
+      className='dota-card w-full h-full min-h-[248px] flex flex-col rounded-2xl px-6 pt-6 pb-[6px] text-left transition-all duration-200 hover:shadow-[0_14px_30px_rgba(15,23,42,0.1)]'
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.2 }}>
@@ -185,7 +185,6 @@ export default function HotkeyCard() {
               </div>
             </div>
           </div>
-          <div className='mt-2 h-4' aria-hidden='true' />
         </div>
       </div>
     </motion.button>

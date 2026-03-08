@@ -24,7 +24,7 @@ const STEPS = [
 
 export default function Home() {
   return (
-    <div className='grid h-full grid-cols-12 gap-6'>
+    <div className='grid h-full grid-cols-12 gap-x-6 gap-y-8'>
       <div className='col-span-4 min-h-[252px]'>
         <TranslationDirectionCard />
       </div>

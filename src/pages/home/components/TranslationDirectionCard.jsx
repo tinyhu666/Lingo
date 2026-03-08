@@ -19,7 +19,7 @@ function LanguageChip({ value, onClick }) {
     <button
       type='button'
       onClick={onClick}
-      className='home-language-chip w-full'>
+      className='home-language-chip w-full min-w-0'>
       <span className='w-5 h-5 rounded-full overflow-hidden flex items-center justify-center bg-gray-100 shrink-0'>
         {FlagIcon ? <FlagIcon className='w-7 h-7 scale-[1.8]' /> : null}
       </span>
@@ -62,7 +62,7 @@ export default function TranslationDirectionCard() {
 
   return (
     <motion.section
-      className='dota-card relative h-full min-h-[248px] flex flex-col rounded-2xl p-6 text-left'
+      className='dota-card relative h-full min-h-[248px] flex flex-col rounded-2xl px-6 pt-6 pb-[6px] text-left'
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}>
       <div className='flex items-center gap-3'>
@@ -79,7 +79,7 @@ export default function TranslationDirectionCard() {
         <div className='home-top-actions'>
           <div className='tool-control-slot home-top-control-slot'>
             <div className='home-top-control-shell'>
-              <div className='grid h-full w-full grid-cols-[minmax(126px,1fr)_auto_minmax(126px,1fr)] items-center gap-2 text-zinc-900'>
+              <div className='grid h-full w-full grid-cols-[minmax(0,1fr)_32px_minmax(0,1fr)] items-center gap-1.5 text-zinc-900'>
                 <div className='relative min-w-0'>
                   <LanguageChip value={from} onClick={() => setActiveMenu('from')} />
                   <DropdownMenu
@@ -111,7 +111,6 @@ export default function TranslationDirectionCard() {
               </div>
             </div>
           </div>
-          <div className='mt-2 h-4' aria-hidden='true' />
         </div>
       </div>
     </motion.section>
