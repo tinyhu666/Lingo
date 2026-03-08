@@ -163,14 +163,16 @@ export default function HotkeyCard() {
       </div>
 
       <div className='flex-1 flex flex-col mt-4'>
-        <p className='tool-body'>
-          {recording
-            ? '按下组合键，松开任意键完成设置。'
-            : `点击此卡片设置快捷键（默认 ${defaultTranslatorHotkeyLabel()}）。`}
-        </p>
+        <div className='home-top-copy'>
+          <p className='tool-body'>
+            {recording
+              ? '按下组合键，松开任意键完成设置。'
+              : `点击此卡片设置快捷键（默认 ${defaultTranslatorHotkeyLabel()}）。`}
+          </p>
+        </div>
 
-        <div className='mt-auto'>
-          <div className='tool-control-slot home-top-control-slot mt-4'>
+        <div className='home-top-actions'>
+          <div className='tool-control-slot home-top-control-slot'>
             <div className='home-top-control-shell'>
               <div className='home-top-control-frame flex items-center justify-center'>
                 {typeof hotkeyDisplay === 'string' ? (

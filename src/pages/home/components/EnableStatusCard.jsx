@@ -58,11 +58,14 @@ export default function EnableStatusCard() {
         <PowerToggle className='w-6 h-6 stroke-zinc-500' />
         <h3 className='tool-card-title'>启用状态</h3>
       </div>
-      <p className='tool-body mt-2'>通过开关控制 Lingo 是否响应快捷键。</p>
 
       <div className='flex-1 flex flex-col mt-4'>
-        <div className='mt-auto'>
-          <div className='tool-control-slot home-top-control-slot mt-4'>
+        <div className='home-top-copy'>
+          <p className='tool-body'>通过开关控制 Lingo 是否响应快捷键。</p>
+        </div>
+
+        <div className='home-top-actions'>
+          <div className='tool-control-slot home-top-control-slot'>
             <div className='home-top-control-shell'>
               <button
                 type='button'
@@ -78,8 +81,8 @@ export default function EnableStatusCard() {
                       isEnabled ? 'bg-emerald-500' : 'bg-zinc-400'
                     }`}
                   />
-                  <span className='tool-control-text truncate'>
-                    {isEnabled ? '已启用（可正常翻译）' : '已暂停（不响应快捷键）'}
+                  <span className='tool-control-text whitespace-nowrap'>
+                    {isEnabled ? '已启用' : '已暂停'}
                   </span>
                 </span>
 

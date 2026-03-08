@@ -3,8 +3,6 @@ name: Build Installers
 on:
   workflow_dispatch:
   push:
-    branches:
-      - release
     tags:
       - 'v*'
 
@@ -64,9 +62,9 @@ jobs:
           releaseName: 'Lingo v__VERSION__'
           releaseBody: |
             更新日志：
-            1. 加深蓝灰渐变与卡片层次，提升整体工具风质感。
-            2. 模式页文案优化，竞技模式升级为高压模式，模式特点统一为 tips。
-            3. 修复发布日期显示和图标颜色不一致问题。
+            1. 修复首页按钮文案显示不全与底部基线不齐的问题。
+            2. 优化模式页文案、图标状态与整体界面层次。
+            3. 调整发版流程，修复 Windows 安装包发布异常。
 
             安装包：
             - Windows: `.msi` / `.exe`

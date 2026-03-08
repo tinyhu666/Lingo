@@ -21,8 +21,8 @@ const MODE_OPTIONS = [
   {
     id: 'toxic',
     title: '高压模式',
-    desc: '语气更重、施压更强，适合需要抢节奏、压气势和高压沟通的对局场景。',
-    detail: '更偏嘴臭式施压和压力怪风格，表达更硬、更冲，但仍保持句子可直接发送。',
+    desc: '语气更重、施压更强，适合抢节奏、压气势的对局场景。',
+    detail: '嘴臭、喷子、压力怪模式，表达语气更强烈。',
     icon: Whistle,
   },
 ];
@@ -59,8 +59,8 @@ export default function Translate() {
         animate={{ opacity: 1, y: 0 }}>
         <div className='flex items-center justify-between gap-4'>
           <div>
-            <div className='tool-pill mb-3'>当前策略</div>
-            <h2 className='tool-page-title'>输出风格切换</h2>
+            <div className='tool-pill mb-3'>当前模式</div>
+            <h2 className='tool-page-title'>翻译风格设置</h2>
             <p className='tool-body'>选择一个输出风格，切换后会立即用于后续翻译结果。</p>
           </div>
           <div className='tool-subcard min-w-[132px] shrink-0 px-4 py-3'>
@@ -79,14 +79,14 @@ export default function Translate() {
               key={mode.id}
               type='button'
               onClick={() => handleModeChange(mode.id)}
-              className={`dota-card tool-rise min-h-[260px] p-6 text-left ${
+              className={`dota-card tool-rise mode-card min-h-[260px] p-6 text-left ${
                 isActive ? 'border-[rgba(129,163,255,0.92)] shadow-[0_22px_42px_rgba(76,111,255,0.16),inset_0_1px_0_rgba(255,255,255,0.96)]' : ''
               }`}
               initial={{ opacity: 0, y: 18 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.05 * (idx + 1) }}>
-              <div className='flex items-center justify-between gap-3'>
-                <div className='workspace-header__icon mode-card__icon-shell h-11 w-11 min-w-[44px]'>
+              <div className='mode-card__top-row'>
+                <div className={`workspace-header__icon mode-card__icon-shell h-11 w-11 min-w-[44px] ${isActive ? 'mode-card__icon-shell--active' : ''}`}>
                   <Icon className='h-5 w-5 stroke-current' />
                 </div>
                 <span className={`tool-pill shrink-0 ${isActive ? 'workspace-pill--success' : ''}`}>
@@ -99,7 +99,7 @@ export default function Translate() {
                 <div className='tool-caption mt-2'>{isActive ? '当前生效中' : '点击切换到此模式'}</div>
               </div>
 
-              <p className='tool-body mt-5'>{mode.desc}</p>
+              <p className='tool-body mode-card__desc mt-5'>{mode.desc}</p>
               <div className='tool-subcard mt-6 p-4'>
                 <div className='flex items-center gap-2'>
                   <Sparkles className='h-4 w-4 stroke-zinc-500' />
