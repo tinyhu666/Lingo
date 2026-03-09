@@ -23,6 +23,14 @@ const DEFAULT_STATE = {
 
 const normalizeVersion = (value) => String(value || '').replace(/^v/i, '').trim();
 
+const formatUpdaterError = (error) => {
+  const message = String(error?.message || error || 'Unknown updater error');
+  if (message.includes('Could not fetch a valid release JSON from the remote')) {
+    return 'Auto update is not configured correctly: latest.json is missing or invalid on the release endpoint.';
+  }
+  return message;
+};
+
 const isVersionNewer = (incoming, current) => {
   const nextParts = normalizeVersion(incoming)
     .split('.')
@@ -176,15 +184,16 @@ export function UpdateProvider({ children }) {
 
         return update;
       } catch (error) {
+        const readableError = formatUpdaterError(error);
         patchState({
           checking: false,
           hasUpdate: false,
-          errorMessage: String(error),
+          errorMessage: readableError,
           checkedAt: Date.now(),
         });
 
         if (!silent) {
-          showError(`检查更新失败: ${error}`);
+          showError(`检查更新失败: ${readableError}`);
         }
 
         return null;
@@ -256,11 +265,12 @@ export function UpdateProvider({ children }) {
 
       return true;
     } catch (error) {
+      const readableError = formatUpdaterError(error);
       patchState({
         downloading: false,
-        errorMessage: String(error),
+        errorMessage: readableError,
       });
-      showError(`更新安装失败: ${error}`);
+      showError(`更新安装失败: ${readableError}`);
       return false;
     }
   }, [checkForUpdates, closePreviousUpdateHandle, patchState]);
