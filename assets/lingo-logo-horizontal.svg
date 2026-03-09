@@ -1,0 +1,78 @@
+<svg width="1200" height="360" viewBox="0 0 1200 360" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="iconBg" x1="22" y1="18" x2="198" y2="208" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#D4DFF5"/>
+      <stop offset="1" stop-color="#B7C8EE"/>
+    </linearGradient>
+    <linearGradient id="panel" x1="54" y1="40" x2="174" y2="188" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#EAF1FD"/>
+      <stop offset="1" stop-color="#C9D7F3"/>
+    </linearGradient>
+    <linearGradient id="paper" x1="0" y1="0" x2="0" y2="1">
+      <stop stop-color="#F9FBFF"/>
+      <stop offset="1" stop-color="#E5ECFB"/>
+    </linearGradient>
+    <linearGradient id="badgeBg" x1="72" y1="123" x2="168" y2="165" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F7FBFF"/>
+      <stop offset="1" stop-color="#DDE6FA"/>
+    </linearGradient>
+    <linearGradient id="displayBg" x1="112" y1="131" x2="146" y2="157" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F7FAFF"/>
+      <stop offset="1" stop-color="#E7EEFF"/>
+    </linearGradient>
+    <linearGradient id="gameBg" x1="84" y1="132" x2="108" y2="156" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFD774"/>
+      <stop offset="1" stop-color="#F2A83E"/>
+    </linearGradient>
+    <linearGradient id="buttonBlue" x1="146" y1="132" x2="160" y2="147" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#6D92FF"/>
+      <stop offset="1" stop-color="#3F67DA"/>
+    </linearGradient>
+    <linearGradient id="buttonCyan" x1="154" y1="142" x2="168" y2="158" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#8DB4FF"/>
+      <stop offset="1" stop-color="#5E85EE"/>
+    </linearGradient>
+    <filter id="shadow" x="0" y="0" width="236" height="236" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="10" stdDeviation="10" flood-color="#233872" flood-opacity="0.15"/>
+    </filter>
+  </defs>
+
+  <g filter="url(#shadow)">
+    <rect x="12" y="12" width="212" height="212" rx="56" fill="url(#iconBg)"/>
+    <rect x="24" y="24" width="188" height="188" rx="48" fill="url(#panel)" stroke="#EEF4FF" stroke-width="3"/>
+  </g>
+
+  <rect x="58" y="46" width="120" height="150" rx="34" fill="#1F2F66"/>
+  <rect x="88" y="60" width="60" height="90" rx="16" fill="url(#paper)"/>
+  <rect x="98" y="48" width="40" height="18" rx="9" fill="#DFE8FB"/>
+  <rect x="96" y="82" width="44" height="8" rx="4" fill="#C7D3F0"/>
+  <rect x="96" y="100" width="32" height="8" rx="4" fill="#C7D3F0"/>
+  <rect x="96" y="118" width="40" height="8" rx="4" fill="#C7D3F0"/>
+
+  <g>
+    <rect x="72" y="123" width="96" height="42" rx="21" fill="url(#badgeBg)" stroke="#8DA5E5" stroke-width="2"/>
+
+    <circle cx="96" cy="144" r="12" fill="url(#gameBg)"/>
+    <path d="M94 136H98V141H103V145H98V150H94V145H89V141H94V136Z" fill="#26376E"/>
+    <circle cx="96" cy="143" r="1.5" fill="#F2C04D"/>
+
+    <rect x="112" y="131" width="34" height="26" rx="13" fill="url(#displayBg)" stroke="#9FB0E6" stroke-width="1.5"/>
+    <text x="120" y="147.5" fill="#22356E" font-size="7.8" font-family="SF Pro Display, PingFang SC, Microsoft YaHei, sans-serif" font-weight="700">A</text>
+    <text x="134" y="147.5" fill="#22356E" font-size="7.2" font-family="SF Pro Display, PingFang SC, Microsoft YaHei, sans-serif" font-weight="700">文</text>
+    <path d="M124.5 138.5H129" stroke="#5C79D4" stroke-width="1.5" stroke-linecap="round"/>
+    <path d="M127.3 136.6L129 138.5L127.3 140.4" stroke="#5C79D4" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M129 149.5H124.5" stroke="#5C79D4" stroke-width="1.5" stroke-linecap="round"/>
+    <path d="M126.2 147.6L124.5 149.5L126.2 151.4" stroke="#5C79D4" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+
+    <circle cx="156.5" cy="137.5" r="4.2" fill="url(#buttonBlue)" stroke="#25438D" stroke-width="1.5"/>
+    <circle cx="151" cy="143.5" r="4.2" fill="url(#buttonCyan)" stroke="#25438D" stroke-width="1.5"/>
+    <circle cx="162" cy="143.5" r="4.2" fill="url(#buttonBlue)" stroke="#25438D" stroke-width="1.5"/>
+    <circle cx="156.5" cy="149.5" r="4.2" fill="url(#buttonCyan)" stroke="#25438D" stroke-width="1.5"/>
+    <text x="155.1" y="139.25" fill="#F8FBFF" font-size="2.9" font-family="SF Pro Display, PingFang SC, Microsoft YaHei, sans-serif" font-weight="700">Y</text>
+    <text x="149.6" y="145.25" fill="#F8FBFF" font-size="2.9" font-family="SF Pro Display, PingFang SC, Microsoft YaHei, sans-serif" font-weight="700">X</text>
+    <text x="160.7" y="145.25" fill="#F8FBFF" font-size="2.9" font-family="SF Pro Display, PingFang SC, Microsoft YaHei, sans-serif" font-weight="700">B</text>
+    <text x="155.2" y="151.25" fill="#F8FBFF" font-size="2.9" font-family="SF Pro Display, PingFang SC, Microsoft YaHei, sans-serif" font-weight="700">A</text>
+  </g>
+
+  <text x="282" y="156" fill="#20336C" font-size="104" font-family="SF Pro Display, PingFang SC, Microsoft YaHei, sans-serif" font-weight="700" letter-spacing="-2">Lingo</text>
+</svg>

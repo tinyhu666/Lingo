@@ -34,3 +34,4 @@ supabase/.cache
 supabase/.output
 supabase/.env
 supabase/.env.*
+assets/previews/
