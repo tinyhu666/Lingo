@@ -50,7 +50,7 @@ export default function EnableStatusCard() {
 
   return (
     <motion.section
-      className='dota-card rounded-2xl px-6 pt-6 pb-[6px] h-full min-h-[248px] flex flex-col text-left'
+      className='dota-card w-full min-h-[248px] flex-1 rounded-2xl px-6 pt-6 pb-3 flex flex-col text-left'
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.06 }}>

@@ -62,7 +62,7 @@ export default function TranslationDirectionCard() {
 
   return (
     <motion.section
-      className='dota-card relative h-full min-h-[248px] flex flex-col rounded-2xl px-6 pt-6 pb-[6px] text-left'
+      className='dota-card relative w-full min-h-[248px] flex-1 flex flex-col rounded-2xl px-6 pt-6 pb-3 text-left'
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}>
       <div className='flex items-center gap-3'>

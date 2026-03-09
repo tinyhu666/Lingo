@@ -24,16 +24,16 @@ const STEPS = [
 
 export default function Home() {
   return (
-    <div className='grid h-full grid-cols-12 gap-x-6 gap-y-12'>
-      <div className='col-span-4 min-h-[252px]'>
+    <div className='grid grid-cols-12 gap-x-6 gap-y-12'>
+      <div className='col-span-4 flex min-h-[252px]'>
         <TranslationDirectionCard />
       </div>
 
-      <div className='col-span-4 min-h-[252px]'>
+      <div className='col-span-4 flex min-h-[252px]'>
         <HotkeyCard />
       </div>
 
-      <div className='col-span-4 min-h-[252px]'>
+      <div className='col-span-4 flex min-h-[252px]'>
         <EnableStatusCard />
       </div>
 
