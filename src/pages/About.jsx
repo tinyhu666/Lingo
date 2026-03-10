@@ -59,6 +59,7 @@ export default function About() {
           : '检查更新';
   const actionHandler = hasUpdate ? installUpdate : () => checkForUpdates({ silent: false });
   const actionDisabled = !supportsUpdater || checking || downloading;
+  const shouldShowReleaseNotes = hasUpdate && Boolean(releaseBody);
 
   return (
     <div className='flex h-full flex-col gap-6'>
@@ -116,7 +117,7 @@ export default function About() {
             </div>
           ) : null}
 
-          {releaseBody ? (
+          {shouldShowReleaseNotes ? (
             <div className='tool-subcard p-4'>
               <div className='tool-caption'>更新说明</div>
               <div className='tool-body mt-2 whitespace-pre-wrap'>{releaseBody}</div>
