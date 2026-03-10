@@ -62,13 +62,15 @@ jobs:
           releaseName: 'Lingo v__VERSION__'
           releaseBody: |
             更新日志：
-            1. 修复主页顶部工作台在较窄窗口下按钮与卡片底边重合的问题。
-            2. 调整顶部三张卡片的弹性布局与底部安全间距，缩窄窗口时显示更稳定。
-            3. 精简 README，移除本地运行、翻译代理环境变量与 Supabase 部署说明。
+            1. 修复自动更新发布链路缺少 latest.json 和签名文件，解决客户端“检查更新”报错问题。
+            2. 补齐 Tauri updater 产物上传配置，后续版本可正常检测、下载并安装更新。
+            3. 优化更新页错误提示，发布资源缺失时会直接提示缺少 updater artifacts。
 
             安装包：
             - Windows: `.msi` / `.exe`
             - macOS: `.dmg`
           releaseDraft: false
           prerelease: false
+          uploadUpdaterJson: true
+          uploadUpdaterSignatures: true
           args: ${{ matrix.args }}

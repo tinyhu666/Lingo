@@ -23,14 +23,6 @@ const DEFAULT_STATE = {
 
 const normalizeVersion = (value) => String(value || '').replace(/^v/i, '').trim();
 
-const formatUpdaterError = (error) => {
-  const message = String(error?.message || error || 'Unknown updater error');
-  if (message.includes('Could not fetch a valid release JSON from the remote')) {
-    return 'Auto update is not configured correctly: latest.json is missing or invalid on the release endpoint.';
-  }
-  return message;
-};
-
 const isVersionNewer = (incoming, current) => {
   const nextParts = normalizeVersion(incoming)
     .split('.')
@@ -54,6 +46,25 @@ const isVersionNewer = (incoming, current) => {
   }
 
   return false;
+};
+
+const formatUpdaterError = (error, { currentVersion, latestRelease } = {}) => {
+  const message = String(error?.message || error || '未知错误');
+  const isMissingManifest =
+    message.includes('Could not fetch a valid release JSON from the remote') ||
+    /latest\.json/i.test(message) ||
+    /\b404\b/i.test(message) ||
+    /Not Found/i.test(message);
+
+  if (!isMissingManifest) {
+    return message;
+  }
+
+  if (latestRelease?.version && isVersionNewer(latestRelease.version, currentVersion || APP_VERSION)) {
+    return `检测到新版本 v${latestRelease.version}，但当前发布缺少自动更新清单 latest.json 或签名文件，请重新发布包含 updater artifacts 的版本。`;
+  }
+
+  return '自动更新配置不完整：发布资源缺少 latest.json 或签名文件。';
 };
 
 const fetchLatestReleaseMetadata = async () => {
@@ -118,10 +129,12 @@ export function UpdateProvider({ children }) {
   const checkForUpdates = useCallback(
     async ({ silent = false } = {}) => {
       patchState({ checking: true, errorMessage: null });
+      let currentVersion = currentVersionRef.current;
+      let latestRelease = null;
 
       try {
-        const currentVersion = currentVersionRef.current || (await loadCurrentVersion());
-        const latestRelease = await fetchLatestReleaseMetadata().catch(() => null);
+        currentVersion = currentVersion || (await loadCurrentVersion());
+        latestRelease = await fetchLatestReleaseMetadata().catch(() => null);
 
         if (!hasTauriRuntime()) {
           const previewVersion = currentVersion || APP_VERSION;
@@ -184,16 +197,21 @@ export function UpdateProvider({ children }) {
 
         return update;
       } catch (error) {
-        const readableError = formatUpdaterError(error);
+        const errorMessage = formatUpdaterError(error, { currentVersion, latestRelease });
         patchState({
           checking: false,
           hasUpdate: false,
-          errorMessage: readableError,
+          latestVersion: latestRelease?.version || currentVersion || APP_VERSION,
+          currentVersion: currentVersion || APP_VERSION,
+          releaseDate: latestRelease?.publishedAt || null,
+          releaseBody: latestRelease?.body || null,
+          progressPercent: 0,
+          errorMessage,
           checkedAt: Date.now(),
         });
 
         if (!silent) {
-          showError(`检查更新失败: ${readableError}`);
+          showError(`检查更新失败: ${errorMessage}`);
         }
 
         return null;
