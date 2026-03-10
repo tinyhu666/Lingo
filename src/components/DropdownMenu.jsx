@@ -9,18 +9,23 @@ export default function DropdownMenu({
   currentValue,
   onSelect,
   anchorPosition = 'left-0',
+  direction = 'up',
   className = '',
   renderOption,
 }) {
+  const isDownward = direction === 'down';
+  const placementClass = isDownward ? 'top-full mt-3' : 'bottom-full mb-3';
+  const startOffsetY = isDownward ? -10 : 10;
+
   return show ? (
     <>
       <div className='fixed inset-0 z-20' onClick={onClose} />
       <motion.div
-        initial={{ opacity: 0, y: 10, scale: 0.98 }}
+        initial={{ opacity: 0, y: startOffsetY, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: 10, scale: 0.98 }}
+        exit={{ opacity: 0, y: startOffsetY, scale: 0.98 }}
         className={twMerge(
-          `absolute z-30 bottom-full mb-3 min-w-[196px] rounded-2xl border border-[rgba(205,216,230,0.94)] bg-[rgba(255,255,255,0.96)] p-2 shadow-[0_24px_48px_rgba(37,57,88,0.16)] backdrop-blur-xl ${anchorPosition}`,
+          `absolute z-30 min-w-[196px] max-h-[260px] overflow-y-auto rounded-2xl border border-[rgba(205,216,230,0.94)] bg-[rgba(255,255,255,0.96)] p-2 shadow-[0_24px_48px_rgba(37,57,88,0.16)] backdrop-blur-xl ${placementClass} ${anchorPosition}`,
           className,
         )}>
         {Object.entries(options).map(([value, label]) => {

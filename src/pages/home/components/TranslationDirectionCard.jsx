@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import * as FlagIcons from 'country-flag-icons/react/3x2';
-import { Translate, ArrowRight } from '../../../icons';
+import { Translate, ArrowRight, ChevronRight } from '../../../icons';
 import { useStore } from '../../../components/StoreProvider';
 import DropdownMenu from '../../../components/DropdownMenu';
 import { LANGUAGE_OPTIONS, getLanguageMeta } from '../../../constants/languages';
@@ -11,26 +11,42 @@ const LANGUAGE_LABEL_MAP = Object.fromEntries(
   LANGUAGE_OPTIONS.map((item) => [item.id, item.label]),
 );
 
-function LanguageChip({ value, onClick }) {
+function LanguageChip({ value, onClick, expanded, direction }) {
   const meta = getLanguageMeta(value);
   const FlagIcon = FlagIcons[meta.countryCode];
+  const caretClass =
+    expanded && direction === 'up'
+      ? 'home-language-chip__caret-icon home-language-chip__caret-icon--up'
+      : 'home-language-chip__caret-icon home-language-chip__caret-icon--down';
 
   return (
     <button
       type='button'
       onClick={onClick}
-      className='home-language-chip w-full min-w-0'>
-      <span className='w-5 h-5 rounded-full overflow-hidden flex items-center justify-center bg-gray-100 shrink-0'>
-        {FlagIcon ? <FlagIcon className='w-7 h-7 scale-[1.8]' /> : null}
+      aria-haspopup='menu'
+      aria-expanded={expanded}
+      className={`home-language-chip w-full min-w-0 ${expanded ? 'home-language-chip--active' : ''}`}>
+      <span className='home-language-chip__meta'>
+        <span className='w-5 h-5 rounded-full overflow-hidden flex items-center justify-center bg-gray-100 shrink-0'>
+          {FlagIcon ? <FlagIcon className='w-7 h-7 scale-[1.8]' /> : null}
+        </span>
+        <span className='tool-control-text home-language-chip__label whitespace-nowrap'>{meta.label}</span>
       </span>
-      <span className='tool-control-text whitespace-nowrap'>{meta.label}</span>
+      <span className='home-language-chip__caret' aria-hidden='true'>
+        <ChevronRight className={caretClass} />
+      </span>
     </button>
   );
 }
 
+const MENU_HEIGHT_PX = 276;
+
 export default function TranslationDirectionCard() {
   const { settings, updateSettings } = useStore();
   const [activeMenu, setActiveMenu] = useState(null);
+  const [menuDirection, setMenuDirection] = useState({ from: 'up', to: 'up' });
+  const fromTriggerRef = useRef(null);
+  const toTriggerRef = useRef(null);
 
   const from = settings?.translation_from || 'zh';
   const to = settings?.translation_to || 'en';
@@ -44,6 +60,33 @@ export default function TranslationDirectionCard() {
     } catch (error) {
       showError(`更新翻译语言失败: ${error}`);
     }
+  };
+
+  const resolveDirection = (triggerElement) => {
+    if (!triggerElement || typeof window === 'undefined') {
+      return 'up';
+    }
+
+    const rect = triggerElement.getBoundingClientRect();
+    const spaceAbove = rect.top;
+    const spaceBelow = window.innerHeight - rect.bottom;
+
+    if (spaceBelow >= MENU_HEIGHT_PX) {
+      return 'down';
+    }
+
+    if (spaceAbove >= MENU_HEIGHT_PX) {
+      return 'up';
+    }
+
+    return spaceBelow > spaceAbove ? 'down' : 'up';
+  };
+
+  const handleMenuToggle = (field) => {
+    const trigger = field === 'from' ? fromTriggerRef.current : toTriggerRef.current;
+    const nextDirection = resolveDirection(trigger);
+    setMenuDirection((current) => ({ ...current, [field]: nextDirection }));
+    setActiveMenu((current) => (current === field ? null : field));
   };
 
   const renderOption = (langCode, label) => {
@@ -79,25 +122,36 @@ export default function TranslationDirectionCard() {
         <div className='home-top-actions'>
           <div className='tool-control-slot home-top-control-slot'>
             <div className='home-top-control-shell'>
-              <div className='grid h-full w-full grid-cols-[minmax(0,1fr)_32px_minmax(0,1fr)] items-center gap-1.5 text-zinc-900'>
-                <div className='relative min-w-0'>
-                  <LanguageChip value={from} onClick={() => setActiveMenu('from')} />
+              <div className='grid h-full w-full grid-cols-[minmax(0,1fr)_26px_minmax(0,1fr)] items-center gap-1 text-zinc-900'>
+                <div className='relative min-w-0' ref={fromTriggerRef}>
+                  <LanguageChip
+                    value={from}
+                    onClick={() => handleMenuToggle('from')}
+                    expanded={activeMenu === 'from'}
+                    direction={menuDirection.from}
+                  />
                   <DropdownMenu
                     show={activeMenu === 'from'}
                     onClose={() => setActiveMenu(null)}
                     options={options}
                     currentValue={from}
                     onSelect={(lang) => handleLanguageChange(lang, 'translation_from')}
+                    direction={menuDirection.from}
                     renderOption={renderOption}
                   />
                 </div>
 
-                <div className='h-11 w-8 flex items-center justify-center'>
+                <div className='h-11 w-[26px] flex items-center justify-center'>
                   <ArrowRight className='w-6 h-6 shrink-0 text-zinc-700' />
                 </div>
 
-                <div className='relative min-w-0'>
-                  <LanguageChip value={to} onClick={() => setActiveMenu('to')} />
+                <div className='relative min-w-0' ref={toTriggerRef}>
+                  <LanguageChip
+                    value={to}
+                    onClick={() => handleMenuToggle('to')}
+                    expanded={activeMenu === 'to'}
+                    direction={menuDirection.to}
+                  />
                   <DropdownMenu
                     show={activeMenu === 'to'}
                     onClose={() => setActiveMenu(null)}
@@ -105,6 +159,7 @@ export default function TranslationDirectionCard() {
                     currentValue={to}
                     onSelect={(lang) => handleLanguageChange(lang, 'translation_to')}
                     anchorPosition='right-0'
+                    direction={menuDirection.to}
                     renderOption={renderOption}
                   />
                 </div>

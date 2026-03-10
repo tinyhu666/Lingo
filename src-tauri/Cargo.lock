@@ -4,7 +4,7 @@ version = 4
 
 [[package]]
 name = "Lingo"
-version = "0.2.26"
+version = "0.2.27"
 dependencies = [
  "anyhow",
  "reqwest 0.12.12",
