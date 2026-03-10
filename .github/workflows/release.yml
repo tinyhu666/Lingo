@@ -105,6 +105,5 @@ jobs:
             - macOS: `.dmg`
           releaseDraft: false
           prerelease: false
-          uploadUpdaterJson: true
-          uploadUpdaterSignatures: true
+          includeUpdaterJson: true
           args: ${{ matrix.args }}
