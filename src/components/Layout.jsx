@@ -26,8 +26,9 @@ async function handleWindowAction(action) {
     if (action === 'close') {
       await appWindow.close();
     }
-  } catch {
-    // Ignore window control failures in non-Tauri preview contexts.
+  } catch (error) {
+    console.error('Window action failed', { action, error });
+    showError(action === 'minimize' ? '最小化失败，请重试' : '窗口操作失败，请重试');
   }
 }
 

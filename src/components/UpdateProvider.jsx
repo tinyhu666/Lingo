@@ -88,6 +88,10 @@ const normalizeReleaseDate = (value) => {
 };
 
 const resolveReleaseDate = (updaterDate, fallbackDate) => normalizeReleaseDate(updaterDate) || normalizeReleaseDate(fallbackDate);
+const buildReleaseDatePatch = (value) => {
+  const normalized = normalizeReleaseDate(value);
+  return normalized ? { releaseDate: normalized } : {};
+};
 
 const formatUpdaterError = (error, { currentVersion, latestRelease } = {}) => {
   const message = String(error?.message || error || '未知错误');
@@ -160,6 +164,21 @@ const fetchLatestReleaseFromManifest = async () => {
 };
 
 const fetchLatestReleaseMetadata = async () => {
+  if (hasTauriRuntime()) {
+    try {
+      const payload = await invokeCommand('get_latest_release_metadata');
+      return {
+        version: normalizeVersion(payload?.version),
+        publishedAt: normalizeReleaseDate(
+          payload?.publishedAt ?? payload?.published_at ?? payload?.pubDate ?? payload?.pub_date ?? null,
+        ),
+        body: typeof payload?.body === 'string' ? payload.body : null,
+      };
+    } catch {
+      // Fallback to frontend fetch flow when backend metadata command is unavailable.
+    }
+  }
+
   const [manifestResult, apiResult] = await Promise.allSettled([
     fetchLatestReleaseFromManifest(),
     fetchLatestReleaseFromApi(),
@@ -239,7 +258,7 @@ export function UpdateProvider({ children }) {
             hasUpdate: isVersionNewer(latestVersion, previewVersion),
             latestVersion,
             currentVersion: previewVersion,
-            releaseDate: normalizeReleaseDate(latestRelease?.publishedAt),
+            ...buildReleaseDatePatch(latestRelease?.publishedAt),
             releaseBody: latestRelease?.body || null,
             progressPercent: 0,
             checkedAt: Date.now(),
@@ -258,7 +277,7 @@ export function UpdateProvider({ children }) {
             hasUpdate: false,
             latestVersion: latestRelease?.version || currentVersion,
             currentVersion: currentVersion || APP_VERSION,
-            releaseDate: normalizeReleaseDate(latestRelease?.publishedAt),
+            ...buildReleaseDatePatch(latestRelease?.publishedAt),
             releaseBody: latestRelease?.body || null,
             progressPercent: 0,
             checkedAt: Date.now(),
@@ -279,7 +298,7 @@ export function UpdateProvider({ children }) {
           hasUpdate: true,
           latestVersion: update.version,
           currentVersion: update.currentVersion,
-          releaseDate: resolveReleaseDate(update.date, latestRelease?.publishedAt),
+          ...buildReleaseDatePatch(resolveReleaseDate(update.date, latestRelease?.publishedAt)),
           releaseBody: update.body || latestRelease?.body || null,
           progressPercent: 0,
           checkedAt: Date.now(),
@@ -297,7 +316,7 @@ export function UpdateProvider({ children }) {
           hasUpdate: false,
           latestVersion: latestRelease?.version || currentVersion || APP_VERSION,
           currentVersion: currentVersion || APP_VERSION,
-          releaseDate: normalizeReleaseDate(latestRelease?.publishedAt),
+          ...buildReleaseDatePatch(latestRelease?.publishedAt),
           releaseBody: latestRelease?.body || null,
           progressPercent: 0,
           errorMessage,
