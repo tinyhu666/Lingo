@@ -51,7 +51,7 @@ jobs:
           "$($wix.FullName)\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
           candle.exe -?
 
-      - name: Normalize Updater Signing Secrets
+      - name: Load And Normalize Updater Signing Key
         shell: bash
         env:
           RAW_UPDATER_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
@@ -59,12 +59,26 @@ jobs:
         run: |
           set -euo pipefail
 
-          if [ -z "${RAW_UPDATER_KEY:-}" ]; then
+          REPO_KEY_FILE=".github/updater/updater.key"
+          SIGNING_KEY="${RAW_UPDATER_KEY:-}"
+          SIGNING_PASSWORD="${RAW_UPDATER_PASSWORD:-}"
+
+          # Keep updater key stable so historical clients can verify new signatures.
+          if [ -f "$REPO_KEY_FILE" ]; then
+            REPO_KEY="$(tr -d '\r\n' < "$REPO_KEY_FILE")"
+            if [ -n "$REPO_KEY" ]; then
+              SIGNING_KEY="$REPO_KEY"
+              SIGNING_PASSWORD="autogg-v013-updater"
+              echo "Using updater signing key from repository key file."
+            fi
+          fi
+
+          if [ -z "${SIGNING_KEY:-}" ]; then
             echo "TAURI_SIGNING_PRIVATE_KEY secret is empty."
             exit 1
           fi
 
-          if [ -z "${RAW_UPDATER_PASSWORD:-}" ]; then
+          if [ -z "${SIGNING_PASSWORD:-}" ]; then
             echo "TAURI_SIGNING_PRIVATE_KEY_PASSWORD secret is empty."
             exit 1
           fi
@@ -88,7 +102,7 @@ jobs:
           }
 
           # Normalize CR and support secrets stored with literal "\n".
-          NORMALIZED_KEY_RAW="${RAW_UPDATER_KEY//$'\r'/}"
+          NORMALIZED_KEY_RAW="${SIGNING_KEY//$'\r'/}"
           NORMALIZED_KEY_RAW="${NORMALIZED_KEY_RAW//\\n/$'\n'}"
 
           # Tauri expects the updater private key env in base64 form.
@@ -105,7 +119,7 @@ jobs:
           fi
 
           # Trim CR from password to avoid accidental Windows line endings in secrets.
-          NORMALIZED_PASSWORD="${RAW_UPDATER_PASSWORD//$'\r'/}"
+          NORMALIZED_PASSWORD="${SIGNING_PASSWORD//$'\r'/}"
 
           {
             echo "TAURI_SIGNING_PRIVATE_KEY=$NORMALIZED_KEY_B64"
@@ -121,9 +135,9 @@ jobs:
           releaseName: 'Lingo v__VERSION__'
           releaseBody: |
             更新日志：
-            1. 修复自动更新发布链路缺少 latest.json 和签名文件，解决客户端“检查更新”报错问题。
-            2. 补齐 Tauri updater 产物上传配置，后续版本可正常检测、下载并安装更新。
-            3. 优化更新页错误提示，发布资源缺失时会直接提示缺少 updater artifacts。
+            1. 修复旧版本客户端执行“立即更新”时报错 UnexpectedKeyId 的问题。
+            2. updater 签名回切到历史兼容密钥，v0.2.18 等历史版本可直接升级。
+            3. 修复更新页发布日期显示异常（Invalid Date）。
 
             安装包：
             - Windows: `.msi` / `.exe`

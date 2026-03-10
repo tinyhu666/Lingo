@@ -19,9 +19,13 @@ const formatReleaseDate = (value) => {
     return '未知';
   }
   try {
-    return new Date(value).toLocaleDateString();
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) {
+      return '未知';
+    }
+    return parsed.toLocaleDateString();
   } catch {
-    return value;
+    return '未知';
   }
 };
 

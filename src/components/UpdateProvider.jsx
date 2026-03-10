@@ -4,7 +4,7 @@ import { relaunch } from '@tauri-apps/plugin-process';
 import { hasTauriRuntime } from '../services/tauriRuntime';
 import { invokeCommand } from '../services/tauriRuntime';
 import { showError, showSuccess } from '../utils/toast';
-import { APP_VERSION, RELEASE_API_URL } from '../constants/version';
+import { APP_VERSION, RELEASE_API_URL, RELEASE_PAGE_URL } from '../constants/version';
 
 const UpdateContext = createContext(null);
 
@@ -48,13 +48,58 @@ const isVersionNewer = (incoming, current) => {
   return false;
 };
 
+const normalizeReleaseDate = (value) => {
+  if (value === null || value === undefined || value === '') {
+    return null;
+  }
+
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    const millis = value > 1_000_000_000_000 ? value : value * 1000;
+    const parsed = new Date(millis);
+    return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
+  }
+
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return null;
+    }
+
+    if (/^\d+$/.test(trimmed)) {
+      const numeric = Number.parseInt(trimmed, 10);
+      if (Number.isFinite(numeric)) {
+        const millis = numeric > 1_000_000_000_000 ? numeric : numeric * 1000;
+        const parsed = new Date(millis);
+        return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
+      }
+    }
+
+    const parsed = new Date(trimmed);
+    return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
+  }
+
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
+};
+
+const resolveReleaseDate = (updaterDate, fallbackDate) => normalizeReleaseDate(updaterDate) || normalizeReleaseDate(fallbackDate);
+
 const formatUpdaterError = (error, { currentVersion, latestRelease } = {}) => {
   const message = String(error?.message || error || '未知错误');
+  const isKeyMismatch = /UnexpectedKeyId/i.test(message) || /key id/i.test(message);
   const isMissingManifest =
     message.includes('Could not fetch a valid release JSON from the remote') ||
     /latest\.json/i.test(message) ||
     /\b404\b/i.test(message) ||
     /Not Found/i.test(message);
+
+  if (isKeyMismatch) {
+    const hasNewerRelease = latestRelease?.version && isVersionNewer(latestRelease.version, currentVersion || APP_VERSION);
+    if (hasNewerRelease) {
+      return `检测到新版本 v${latestRelease.version}，但当前客户端与发布签名密钥不匹配（UnexpectedKeyId），请先手动安装一次最新版：${RELEASE_PAGE_URL}`;
+    }
+    return `当前客户端与发布签名密钥不匹配（UnexpectedKeyId），请手动安装最新版：${RELEASE_PAGE_URL}`;
+  }
 
   if (!isMissingManifest) {
     return message;
@@ -145,7 +190,7 @@ export function UpdateProvider({ children }) {
             hasUpdate: isVersionNewer(latestVersion, previewVersion),
             latestVersion,
             currentVersion: previewVersion,
-            releaseDate: latestRelease?.publishedAt || null,
+            releaseDate: normalizeReleaseDate(latestRelease?.publishedAt),
             releaseBody: latestRelease?.body || null,
             progressPercent: 0,
             checkedAt: Date.now(),
@@ -164,7 +209,7 @@ export function UpdateProvider({ children }) {
             hasUpdate: false,
             latestVersion: latestRelease?.version || currentVersion,
             currentVersion: currentVersion || APP_VERSION,
-            releaseDate: latestRelease?.publishedAt || null,
+            releaseDate: normalizeReleaseDate(latestRelease?.publishedAt),
             releaseBody: latestRelease?.body || null,
             progressPercent: 0,
             checkedAt: Date.now(),
@@ -185,7 +230,7 @@ export function UpdateProvider({ children }) {
           hasUpdate: true,
           latestVersion: update.version,
           currentVersion: update.currentVersion,
-          releaseDate: update.date || latestRelease?.publishedAt || null,
+          releaseDate: resolveReleaseDate(update.date, latestRelease?.publishedAt),
           releaseBody: update.body || latestRelease?.body || null,
           progressPercent: 0,
           checkedAt: Date.now(),
@@ -203,7 +248,7 @@ export function UpdateProvider({ children }) {
           hasUpdate: false,
           latestVersion: latestRelease?.version || currentVersion || APP_VERSION,
           currentVersion: currentVersion || APP_VERSION,
-          releaseDate: latestRelease?.publishedAt || null,
+          releaseDate: normalizeReleaseDate(latestRelease?.publishedAt),
           releaseBody: latestRelease?.body || null,
           progressPercent: 0,
           errorMessage,
