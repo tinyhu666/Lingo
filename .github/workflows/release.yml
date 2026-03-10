@@ -69,39 +69,46 @@ jobs:
             exit 1
           fi
 
-          # Support secrets stored with literal "\n" characters.
-          NORMALIZED_KEY="${RAW_UPDATER_KEY//\\n/$'\n'}"
-
-          # Support keys stored as base64 (tauri signer generate output format).
-          if ! printf '%s\n' "$NORMALIZED_KEY" | grep -q '^untrusted comment:'; then
-            DECODED_KEY=""
-            if DECODED_KEY="$(printf '%s' "$NORMALIZED_KEY" | base64 --decode 2>/dev/null)"; then
-              :
-            elif DECODED_KEY="$(printf '%s' "$NORMALIZED_KEY" | base64 -d 2>/dev/null)"; then
-              :
-            elif DECODED_KEY="$(printf '%s' "$NORMALIZED_KEY" | base64 -D 2>/dev/null)"; then
-              :
-            else
-              DECODED_KEY=""
+          decode_base64() {
+            local value="$1"
+            local decoded=""
+            if decoded="$(printf '%s' "$value" | base64 --decode 2>/dev/null)"; then
+              printf '%s' "$decoded"
+              return 0
             fi
-
-            if printf '%s\n' "$DECODED_KEY" | grep -q '^untrusted comment:'; then
-              NORMALIZED_KEY="$DECODED_KEY"
+            if decoded="$(printf '%s' "$value" | base64 -d 2>/dev/null)"; then
+              printf '%s' "$decoded"
+              return 0
             fi
-          fi
+            if decoded="$(printf '%s' "$value" | base64 -D 2>/dev/null)"; then
+              printf '%s' "$decoded"
+              return 0
+            fi
+            return 1
+          }
 
-          if ! printf '%s\n' "$NORMALIZED_KEY" | grep -q '^untrusted comment:'; then
-            echo "TAURI_SIGNING_PRIVATE_KEY format is invalid (missing minisign comment header)."
-            exit 1
+          # Normalize CR and support secrets stored with literal "\n".
+          NORMALIZED_KEY_RAW="${RAW_UPDATER_KEY//$'\r'/}"
+          NORMALIZED_KEY_RAW="${NORMALIZED_KEY_RAW//\\n/$'\n'}"
+
+          # Tauri expects the updater private key env in base64 form.
+          if printf '%s\n' "$NORMALIZED_KEY_RAW" | grep -q '^untrusted comment:'; then
+            NORMALIZED_KEY_B64="$(printf '%s' "$NORMALIZED_KEY_RAW" | base64 | tr -d '\n\r')"
+          else
+            CANDIDATE_B64="$(printf '%s' "$NORMALIZED_KEY_RAW" | tr -d '\n\r\t ')"
+            DECODED_KEY="$(decode_base64 "$CANDIDATE_B64" || true)"
+            if ! printf '%s\n' "$DECODED_KEY" | grep -q '^untrusted comment:'; then
+              echo "TAURI_SIGNING_PRIVATE_KEY format is invalid (must be minisign key text or its base64 encoding)."
+              exit 1
+            fi
+            NORMALIZED_KEY_B64="$CANDIDATE_B64"
           fi
 
           # Trim CR from password to avoid accidental Windows line endings in secrets.
           NORMALIZED_PASSWORD="${RAW_UPDATER_PASSWORD//$'\r'/}"
 
           {
-            echo "TAURI_SIGNING_PRIVATE_KEY<<EOF"
-            printf '%s\n' "$NORMALIZED_KEY"
-            echo "EOF"
+            echo "TAURI_SIGNING_PRIVATE_KEY=$NORMALIZED_KEY_B64"
             echo "TAURI_SIGNING_PRIVATE_KEY_PASSWORD=$NORMALIZED_PASSWORD"
           } >> "$GITHUB_ENV"
 
