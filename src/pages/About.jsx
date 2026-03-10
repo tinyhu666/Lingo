@@ -157,7 +157,9 @@ export default function About() {
             </div>
           </div>
         </div>
-        <p className='tool-body tool-section-summary'>这里集中说明 Lingo 当前项目情况、核心特点和后续发展方向，避免信息分散在多个卡片中。</p>
+        <p className='tool-body tool-section-summary'>
+          Lingo 是 Dota2 爱好者（ID：萌新）在业余时间的兴趣项目，主要解决玩外服游戏时的沟通问题。后续将会带来翻译其他玩家发言的功能，敬请期待！
+        </p>
 
         <div className='mt-5 grid grid-cols-3 gap-4'>
           <div className='tool-subcard p-5'>
