@@ -72,6 +72,24 @@ jobs:
           # Support secrets stored with literal "\n" characters.
           NORMALIZED_KEY="${RAW_UPDATER_KEY//\\n/$'\n'}"
 
+          # Support keys stored as base64 (tauri signer generate output format).
+          if ! printf '%s\n' "$NORMALIZED_KEY" | grep -q '^untrusted comment:'; then
+            DECODED_KEY=""
+            if DECODED_KEY="$(printf '%s' "$NORMALIZED_KEY" | base64 --decode 2>/dev/null)"; then
+              :
+            elif DECODED_KEY="$(printf '%s' "$NORMALIZED_KEY" | base64 -d 2>/dev/null)"; then
+              :
+            elif DECODED_KEY="$(printf '%s' "$NORMALIZED_KEY" | base64 -D 2>/dev/null)"; then
+              :
+            else
+              DECODED_KEY=""
+            fi
+
+            if printf '%s\n' "$DECODED_KEY" | grep -q '^untrusted comment:'; then
+              NORMALIZED_KEY="$DECODED_KEY"
+            fi
+          fi
+
           if ! printf '%s\n' "$NORMALIZED_KEY" | grep -q '^untrusted comment:'; then
             echo "TAURI_SIGNING_PRIVATE_KEY format is invalid (missing minisign comment header)."
             exit 1
