@@ -90,14 +90,119 @@
 
   .lingo-app-shell {
     height: 100vh;
-    padding: 16px;
+    padding: 8px 16px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .lingo-titlebar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 34px;
+    min-height: 34px;
+    padding: 4px;
+    border-radius: 14px;
+    border: 1px solid rgba(188, 203, 229, 0.9);
+    background:
+      radial-gradient(280px 130px at 0% 0%, rgba(104, 138, 255, 0.18), transparent 72%),
+      linear-gradient(180deg, rgba(248, 251, 255, 0.92) 0%, rgba(233, 240, 251, 0.9) 100%);
+    box-shadow: 0 10px 20px rgba(25, 42, 74, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  }
+
+  .lingo-titlebar__brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    height: 100%;
+    padding: 0 8px;
+    min-width: 0;
+    border-radius: 10px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.62) 0%, rgba(241, 247, 255, 0.48) 100%);
+    border: 1px solid rgba(201, 215, 235, 0.86);
+  }
+
+  .lingo-titlebar__icon {
+    width: 18px;
+    height: 18px;
+    border-radius: 6px;
+    object-fit: cover;
+    box-shadow: 0 2px 6px rgba(35, 53, 90, 0.12);
+  }
+
+  .lingo-titlebar__title {
+    font-family: var(--font-body);
+    font-size: 13px;
+    line-height: 1;
+    font-weight: 700;
+    color: #2d3f62;
+    letter-spacing: 0.01em;
+    user-select: none;
+  }
+
+  .lingo-titlebar__drag-fill {
+    flex: 1;
+    height: 100%;
+    min-width: 0;
+  }
+
+  .lingo-titlebar__controls {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    height: 100%;
+  }
+
+  .lingo-titlebar__btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 26px;
+    border-radius: 8px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: #5e7191;
+    transition: all 0.16s ease;
+  }
+
+  .lingo-titlebar__btn:hover {
+    border-color: rgba(185, 202, 229, 0.9);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.88) 0%, rgba(228, 237, 251, 0.84) 100%);
+    color: #2d3f62;
+  }
+
+  .lingo-titlebar__btn:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(76, 111, 255, 0.18);
+  }
+
+  .lingo-titlebar__btn--close:hover {
+    border-color: rgba(237, 159, 178, 0.9);
+    background: linear-gradient(180deg, rgba(255, 244, 247, 0.95) 0%, rgba(255, 227, 234, 0.9) 100%);
+    color: #c43b5d;
+  }
+
+  .lingo-titlebar__btn-minimize {
+    width: 12px;
+    height: 1.5px;
+    border-radius: 999px;
+    background: currentColor;
+  }
+
+  .lingo-titlebar__btn-close-icon {
+    width: 12px;
+    height: 12px;
+    stroke-width: 2.2;
   }
 
   .lingo-shell {
     display: grid;
     grid-template-columns: 248px minmax(0, 1fr);
     gap: 16px;
-    height: 100%;
+    flex: 1;
+    min-height: 0;
   }
 
   .lingo-shell__sidebar,

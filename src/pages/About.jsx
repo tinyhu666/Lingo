@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { GamingPad, Globe, InfoCircle } from '../icons';
+import { Dock, GamingPad, Globe, InfoCircle } from '../icons';
 import { useUpdater } from '../components/UpdateProvider';
 import { APP_VERSION_LABEL } from '../constants/version';
 
@@ -67,10 +67,10 @@ export default function About() {
         <div className='tool-section-head'>
           <div className='tool-section-head__main'>
             <div className='tool-section-head__title-row'>
-              <InfoCircle className='tool-section-head__icon' />
+              <Dock className='tool-section-head__icon' />
               <h2 className='tool-card-title'>客户端更新</h2>
             </div>
-            <p className='tool-body tool-section-summary'>查看版本信息、更新状态，并在桌面客户端内直接完成安装。</p>
+            <p className='tool-body tool-section-summary'>查看版本信息、更新状态。</p>
           </div>
 
           {supportsUpdater ? (
@@ -163,8 +163,10 @@ export default function About() {
 
         <div className='mt-5 grid grid-cols-3 gap-4'>
           <div className='tool-subcard p-5'>
-            <div className='tool-caption'>当前情况</div>
-            <div className='tool-card-title mt-2'>Lingo {versionLabel}</div>
+            <div className='flex items-center gap-2'>
+              <InfoCircle className='h-4 w-4 stroke-zinc-500' />
+              <span className='tool-caption'>项目简介</span>
+            </div>
             <p className='tool-body mt-3'>Powerby 萌新。当前版本聚焦桌面端游戏内翻译体验，支持快捷键触发、自动回填与应用内更新。</p>
           </div>
 

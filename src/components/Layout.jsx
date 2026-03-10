@@ -4,8 +4,32 @@ import { listen } from '@tauri-apps/api/event';
 import Sidebar from './Sidebar';
 import { StoreProvider } from './StoreProvider';
 import { UpdateProvider } from './UpdateProvider';
+import appIcon from '../assets/app-icon.png';
+import { XClose } from '../icons';
 import { hasTauriRuntime } from '../services/tauriRuntime';
 import { showError } from '../utils/toast';
+
+async function handleWindowAction(action) {
+  if (!hasTauriRuntime()) {
+    return;
+  }
+
+  try {
+    const { getCurrentWindow } = await import('@tauri-apps/api/window');
+    const appWindow = getCurrentWindow();
+
+    if (action === 'minimize') {
+      await appWindow.minimize();
+      return;
+    }
+
+    if (action === 'close') {
+      await appWindow.close();
+    }
+  } catch {
+    // Ignore window control failures in non-Tauri preview contexts.
+  }
+}
 
 function LayoutShell({ children, activeItem, setActiveItem }) {
   useEffect(() => {
@@ -36,6 +60,38 @@ function LayoutShell({ children, activeItem, setActiveItem }) {
 
   return (
     <div className='lingo-app-shell'>
+      <header className='lingo-titlebar'>
+        <div className='lingo-titlebar__brand' data-tauri-drag-region>
+          <img src={appIcon} alt='Lingo' className='lingo-titlebar__icon' />
+          <span className='lingo-titlebar__title'>Lingo</span>
+        </div>
+
+        <div className='lingo-titlebar__drag-fill' data-tauri-drag-region />
+
+        <div className='lingo-titlebar__controls'>
+          <button
+            type='button'
+            className='lingo-titlebar__btn'
+            aria-label='最小化窗口'
+            title='最小化'
+            onClick={() => {
+              void handleWindowAction('minimize');
+            }}>
+            <span className='lingo-titlebar__btn-minimize' aria-hidden='true' />
+          </button>
+          <button
+            type='button'
+            className='lingo-titlebar__btn lingo-titlebar__btn--close'
+            aria-label='关闭窗口'
+            title='关闭'
+            onClick={() => {
+              void handleWindowAction('close');
+            }}>
+            <XClose className='lingo-titlebar__btn-close-icon' aria-hidden='true' />
+          </button>
+        </div>
+      </header>
+
       <Toaster
         toastOptions={{
           className: 'text-sm',

@@ -4,7 +4,12 @@ import { relaunch } from '@tauri-apps/plugin-process';
 import { hasTauriRuntime } from '../services/tauriRuntime';
 import { invokeCommand } from '../services/tauriRuntime';
 import { showError, showSuccess } from '../utils/toast';
-import { APP_VERSION, RELEASE_API_URL, RELEASE_PAGE_URL } from '../constants/version';
+import {
+  APP_VERSION,
+  RELEASE_API_URL,
+  RELEASE_LATEST_JSON_URL,
+  RELEASE_PAGE_URL,
+} from '../constants/version';
 
 const UpdateContext = createContext(null);
 
@@ -112,15 +117,16 @@ const formatUpdaterError = (error, { currentVersion, latestRelease } = {}) => {
   return '自动更新配置不完整：发布资源缺少 latest.json 或签名文件。';
 };
 
-const fetchLatestReleaseMetadata = async () => {
+const fetchLatestReleaseFromApi = async () => {
   const response = await fetch(RELEASE_API_URL, {
     headers: {
       Accept: 'application/vnd.github+json',
     },
+    cache: 'no-store',
   });
 
   if (!response.ok) {
-    throw new Error(`获取版本信息失败: HTTP ${response.status}`);
+    throw new Error(`获取 Release API 失败: HTTP ${response.status}`);
   }
 
   const payload = await response.json();
@@ -129,6 +135,49 @@ const fetchLatestReleaseMetadata = async () => {
     version: normalizeVersion(payload.tag_name),
     publishedAt: payload.published_at || payload.created_at || null,
     body: payload.body || null,
+  };
+};
+
+const fetchLatestReleaseFromManifest = async () => {
+  const response = await fetch(RELEASE_LATEST_JSON_URL, {
+    headers: {
+      Accept: 'application/json',
+    },
+    cache: 'no-store',
+  });
+
+  if (!response.ok) {
+    throw new Error(`获取 latest.json 失败: HTTP ${response.status}`);
+  }
+
+  const payload = await response.json();
+
+  return {
+    version: normalizeVersion(payload.version),
+    publishedAt: payload.pub_date || payload.published_at || payload.created_at || null,
+    body: payload.notes || null,
+  };
+};
+
+const fetchLatestReleaseMetadata = async () => {
+  const [manifestResult, apiResult] = await Promise.allSettled([
+    fetchLatestReleaseFromManifest(),
+    fetchLatestReleaseFromApi(),
+  ]);
+
+  const manifest = manifestResult.status === 'fulfilled' ? manifestResult.value : null;
+  const api = apiResult.status === 'fulfilled' ? apiResult.value : null;
+
+  if (!manifest && !api) {
+    throw new Error('获取版本信息失败');
+  }
+
+  const version = normalizeVersion(manifest?.version || api?.version);
+
+  return {
+    version: version || null,
+    publishedAt: manifest?.publishedAt || api?.publishedAt || null,
+    body: api?.body || manifest?.body || null,
   };
 };
 
