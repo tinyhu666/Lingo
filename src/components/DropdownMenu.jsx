@@ -1,6 +1,12 @@
 import { motion } from 'framer-motion';
+import { useCallback, useLayoutEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { CheckTick } from '../icons';
 import { twMerge } from 'tailwind-merge';
+
+const MENU_GAP_PX = 12;
+const MIN_MENU_WIDTH_PX = 196;
+const VIEWPORT_PADDING_PX = 8;
 
 export default function DropdownMenu({
   show,
@@ -12,22 +18,95 @@ export default function DropdownMenu({
   direction = 'up',
   className = '',
   renderOption,
+  anchorRef = null,
+  usePortal = true,
 }) {
   const isDownward = direction === 'down';
   const placementClass = isDownward ? 'top-full mt-3' : 'bottom-full mb-3';
   const startOffsetY = isDownward ? -10 : 10;
+  const shouldUsePortal =
+    show &&
+    usePortal &&
+    !!anchorRef?.current &&
+    typeof document !== 'undefined' &&
+    typeof window !== 'undefined';
+  const [portalStyle, setPortalStyle] = useState(null);
 
-  return show ? (
+  const updatePortalStyle = useCallback(() => {
+    const anchorElement = anchorRef?.current;
+    if (!anchorElement || typeof window === 'undefined') {
+      setPortalStyle(null);
+      return;
+    }
+
+    const rect = anchorElement.getBoundingClientRect();
+    const nextStyle = {};
+
+    if (direction === 'down') {
+      nextStyle.top = Math.round(rect.bottom + MENU_GAP_PX);
+    } else {
+      nextStyle.bottom = Math.round(window.innerHeight - rect.top + MENU_GAP_PX);
+    }
+
+    if (anchorPosition === 'right-0') {
+      const rawRight = window.innerWidth - rect.right;
+      const maxRight = Math.max(
+        VIEWPORT_PADDING_PX,
+        window.innerWidth - VIEWPORT_PADDING_PX - MIN_MENU_WIDTH_PX,
+      );
+      nextStyle.right = Math.round(
+        Math.min(Math.max(rawRight, VIEWPORT_PADDING_PX), maxRight),
+      );
+    } else {
+      const rawLeft = rect.left;
+      const maxLeft = Math.max(
+        VIEWPORT_PADDING_PX,
+        window.innerWidth - VIEWPORT_PADDING_PX - MIN_MENU_WIDTH_PX,
+      );
+      nextStyle.left = Math.round(
+        Math.min(Math.max(rawLeft, VIEWPORT_PADDING_PX), maxLeft),
+      );
+    }
+
+    setPortalStyle(nextStyle);
+  }, [anchorPosition, anchorRef, direction]);
+
+  useLayoutEffect(() => {
+    if (!shouldUsePortal) {
+      setPortalStyle(null);
+      return undefined;
+    }
+
+    updatePortalStyle();
+    window.addEventListener('resize', updatePortalStyle);
+    window.addEventListener('scroll', updatePortalStyle, true);
+
+    return () => {
+      window.removeEventListener('resize', updatePortalStyle);
+      window.removeEventListener('scroll', updatePortalStyle, true);
+    };
+  }, [shouldUsePortal, updatePortalStyle]);
+
+  if (!show) {
+    return null;
+  }
+
+  const overlayClass = shouldUsePortal
+    ? 'fixed inset-0 z-[1200]'
+    : 'fixed inset-0 z-20';
+  const menuClass = shouldUsePortal
+    ? 'fixed z-[1300] min-w-[196px] max-w-[calc(100vw-16px)] max-h-[260px] overflow-y-auto rounded-2xl border border-[rgba(205,216,230,0.94)] bg-[rgba(255,255,255,0.96)] p-2 shadow-[0_24px_48px_rgba(37,57,88,0.16)] backdrop-blur-xl'
+    : `absolute z-30 min-w-[196px] max-h-[260px] overflow-y-auto rounded-2xl border border-[rgba(205,216,230,0.94)] bg-[rgba(255,255,255,0.96)] p-2 shadow-[0_24px_48px_rgba(37,57,88,0.16)] backdrop-blur-xl ${placementClass} ${anchorPosition}`;
+
+  const menuBody = (
     <>
-      <div className='fixed inset-0 z-20' onClick={onClose} />
+      <div className={overlayClass} onClick={onClose} />
       <motion.div
         initial={{ opacity: 0, y: startOffsetY, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: startOffsetY, scale: 0.98 }}
-        className={twMerge(
-          `absolute z-30 min-w-[196px] max-h-[260px] overflow-y-auto rounded-2xl border border-[rgba(205,216,230,0.94)] bg-[rgba(255,255,255,0.96)] p-2 shadow-[0_24px_48px_rgba(37,57,88,0.16)] backdrop-blur-xl ${placementClass} ${anchorPosition}`,
-          className,
-        )}>
+        style={shouldUsePortal ? portalStyle || undefined : undefined}
+        className={twMerge(menuClass, className)}>
         {Object.entries(options).map(([value, label]) => {
           const isActive = value === currentValue;
           return (
@@ -48,5 +127,7 @@ export default function DropdownMenu({
         })}
       </motion.div>
     </>
-  ) : null;
+  );
+
+  return shouldUsePortal ? createPortal(menuBody, document.body) : menuBody;
 }

@@ -7,8 +7,8 @@ import { ChatBubbleMessage, KeyboardAlt, Sparkles } from '../../icons';
 const STEPS = [
   {
     id: '01',
-    title: '复制聊天内容',
-    desc: '在游戏聊天框中选中或准备发送文本，保持输入焦点不变。',
+    title: '输入发送内容',
+    desc: '在游戏聊天框内，输入想要发送的聊天内容，保持输入焦点不变。',
   },
   {
     id: '02',

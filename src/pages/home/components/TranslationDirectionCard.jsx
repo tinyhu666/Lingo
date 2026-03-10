@@ -137,6 +137,7 @@ export default function TranslationDirectionCard() {
                     currentValue={from}
                     onSelect={(lang) => handleLanguageChange(lang, 'translation_from')}
                     direction={menuDirection.from}
+                    anchorRef={fromTriggerRef}
                     renderOption={renderOption}
                   />
                 </div>
@@ -160,6 +161,7 @@ export default function TranslationDirectionCard() {
                     onSelect={(lang) => handleLanguageChange(lang, 'translation_to')}
                     anchorPosition='right-0'
                     direction={menuDirection.to}
+                    anchorRef={toTriggerRef}
                     renderOption={renderOption}
                   />
                 </div>
