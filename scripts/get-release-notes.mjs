@@ -55,7 +55,7 @@ if (!notes) {
 }
 
 if (!notes) {
-  notes = '### 修复\n- 本次发布包含稳定性与体验优化。';
+  notes = '### 更新日志\n\n1. 本次发布包含稳定性与体验优化。';
 }
 
 if (process.env.GITHUB_OUTPUT) {
