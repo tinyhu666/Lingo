@@ -60,16 +60,15 @@ export default function Translate() {
   };
 
   return (
-    <div className='flex h-full flex-col gap-6'>
+    <div className='flex min-h-full flex-col gap-6'>
       <motion.section
         className='dota-card tool-rise p-6'
-        initial={{ opacity: 0, y: 18 }}
-        animate={{ opacity: 1, y: 0 }}>
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}>
         <div className='flex items-center justify-between gap-4'>
           <div className='min-w-0'>
-            <div className='tool-pill mb-3'>当前风格</div>
-            <h2 className='tool-page-title'>翻译风格设置</h2>
-            <p className='tool-body'>选择一个输出风格，切换后会立即用于后续翻译结果。</p>
+            <h2 className='tool-page-title mt-0'>翻译风格设置</h2>
+            <p className='tool-body mt-3'>选择一个输出风格，切换后会立即用于后续翻译结果。</p>
           </div>
           <div className='tool-subcard min-w-[132px] shrink-0 px-4 py-3'>
             <div className='tool-caption'>当前已启用</div>

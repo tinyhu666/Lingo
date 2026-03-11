@@ -63,7 +63,7 @@ export default function About() {
 
   return (
     <div className='flex h-full flex-col gap-6'>
-      <motion.section className='dota-card tool-rise p-6' initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }}>
+      <motion.section className='dota-card tool-rise p-6' initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
         <div className='tool-section-head'>
           <div className='tool-section-head__main'>
             <div className='tool-section-head__title-row'>

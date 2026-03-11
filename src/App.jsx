@@ -26,7 +26,7 @@ function App() {
   const CurrentPage = pages[activeItem] || Home;
 
   return (
-    <div className='lingo-theme min-h-screen text-zinc-900'>
+    <div className='lingo-theme h-full text-zinc-900'>
       <Layout activeItem={activeItem} setActiveItem={setActiveItem}>
         <Suspense fallback={<PageFallback />}>
           <CurrentPage />

@@ -42,6 +42,7 @@
     height: 100%;
     overflow: hidden;
     border-radius: var(--app-radius-outer);
+    background: transparent;
   }
 
   body {
@@ -49,14 +50,7 @@
     font-family: var(--font-body);
     color: var(--text-1);
     line-height: 1.45;
-    background:
-      radial-gradient(980px 560px at -12% -14%, var(--shell-glow), transparent 68%),
-      radial-gradient(800px 440px at 112% 10%, var(--shell-glow-soft), transparent 70%),
-      radial-gradient(860px 460px at 52% 112%, var(--shell-warm), transparent 76%),
-      linear-gradient(135deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0) 34%),
-      linear-gradient(150deg, rgba(103, 129, 189, 0.14) 0%, rgba(67, 99, 174, 0.04) 42%, rgba(255, 255, 255, 0) 72%),
-      linear-gradient(180deg, var(--shell-bg) 0%, var(--shell-bg-deep) 100%);
-    background-attachment: fixed;
+    background: transparent;
   }
 
   * {
@@ -88,8 +82,12 @@
 
 @layer components {
   .lingo-theme {
+    height: 100%;
     min-height: 100%;
+    border-radius: var(--app-radius-outer);
+    overflow: hidden;
     color: var(--text-1);
+    background: transparent;
   }
 
   .lingo-app-shell {
@@ -241,7 +239,7 @@
     display: flex;
     height: 100%;
     flex-direction: column;
-    padding: 18px 18px 18px;
+    padding: 26px 18px 18px;
     background:
       radial-gradient(260px 200px at 0% 0%, rgba(85, 123, 255, 0.28), transparent 76%),
       radial-gradient(320px 220px at 100% 100%, rgba(120, 211, 255, 0.14), transparent 76%),
@@ -509,7 +507,8 @@
   .workspace-content {
     flex: 1;
     min-height: 0;
-    overflow: auto;
+    overflow-y: auto;
+    overflow-x: hidden;
     padding: 26px 28px;
   }
 

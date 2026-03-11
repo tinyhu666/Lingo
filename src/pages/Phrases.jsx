@@ -198,16 +198,17 @@ export default function Phrases() {
   };
 
   return (
-    <div className='flex h-full flex-col gap-6'>
-      <motion.section className='dota-card tool-rise p-6' initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }}>
+    <div className='flex min-h-full flex-col gap-6'>
+      <motion.section className='dota-card tool-rise p-6' initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
         <div className='flex items-start justify-between gap-4'>
           <div className='min-w-0'>
-            <div className='tool-pill mb-3'>常用语库</div>
-            <h2 className='tool-page-title'>常用语工作区</h2>
-            <p className='tool-body'>为高频沟通短句分配快捷入口，触发后可直接回填到当前输入框。</p>
+            <div className='flex flex-wrap items-center gap-3'>
+              <h2 className='tool-page-title mt-0'>常用语工作区</h2>
+              <span className='tool-pill min-w-[76px] justify-center'>{rows.length}/{MAX_PHRASE_COUNT}</span>
+            </div>
+            <p className='tool-body mt-3'>为高频沟通短句分配快捷入口，触发后可直接回填到当前输入框。</p>
           </div>
           <div className='flex shrink-0 flex-wrap items-center justify-end gap-2'>
-            <span className='tool-pill min-w-[76px] justify-center'>{rows.length} / {MAX_PHRASE_COUNT}</span>
             <button type='button' onClick={addRow} className='tool-btn min-w-[120px] whitespace-nowrap px-4'>
               新增常用语
             </button>
