@@ -1,38 +1,58 @@
-import { useEffect } from 'react';
+﻿import { useEffect, useMemo, useRef, useState } from 'react';
 import { Toaster } from 'react-hot-toast';
 import { listen } from '@tauri-apps/api/event';
 import Sidebar from './Sidebar';
+import DropdownMenu from './DropdownMenu';
 import { StoreProvider } from './StoreProvider';
 import { UpdateProvider } from './UpdateProvider';
 import appIcon from '../assets/app-icon.png';
-import { XClose } from '../icons';
+import { ChevronRight, Globe, XClose } from '../icons';
 import { hasTauriRuntime } from '../services/tauriRuntime';
 import { showError } from '../utils/toast';
+import { useI18n } from '../i18n/I18nProvider';
 
-async function handleWindowAction(action) {
-  if (!hasTauriRuntime()) {
-    return;
-  }
+function LayoutShell({ children, activeItem, setActiveItem }) {
+  const { locale, setLocale, t, localeOptions } = useI18n();
+  const [showLocaleMenu, setShowLocaleMenu] = useState(false);
+  const localeTriggerRef = useRef(null);
 
-  try {
-    const { getCurrentWindow } = await import('@tauri-apps/api/window');
-    const appWindow = getCurrentWindow();
+  const localeMap = useMemo(
+    () =>
+      localeOptions.reduce((acc, item) => {
+        acc[item.value] = item.label;
+        return acc;
+      }, {}),
+    [localeOptions],
+  );
 
-    if (action === 'minimize') {
-      await appWindow.minimize();
+  const currentLocaleLabel = useMemo(() => {
+    const matched = localeOptions.find((item) => item.value === locale);
+    return matched?.label || locale;
+  }, [locale, localeOptions]);
+
+  const handleWindowAction = async (action) => {
+    if (!hasTauriRuntime()) {
       return;
     }
 
-    if (action === 'close') {
-      await appWindow.close();
-    }
-  } catch (error) {
-    console.error('Window action failed', { action, error });
-    showError(action === 'minimize' ? '最小化失败，请重试' : '窗口操作失败，请重试');
-  }
-}
+    try {
+      const { getCurrentWindow } = await import('@tauri-apps/api/window');
+      const appWindow = getCurrentWindow();
 
-function LayoutShell({ children, activeItem, setActiveItem }) {
+      if (action === 'minimize') {
+        await appWindow.minimize();
+        return;
+      }
+
+      if (action === 'close') {
+        await appWindow.close();
+      }
+    } catch (error) {
+      console.error('Window action failed', { action, error });
+      showError(action === 'minimize' ? t('titlebar.minimizeFailed') : t('titlebar.actionFailed'));
+    }
+  };
+
   useEffect(() => {
     if (!hasTauriRuntime()) {
       return undefined;
@@ -47,7 +67,7 @@ function LayoutShell({ children, activeItem, setActiveItem }) {
           const message =
             typeof event.payload === 'string' && event.payload.trim()
               ? event.payload
-              : '翻译失败，请检查服务配置或稍后重试。';
+              : t('titlebar.translationFailed');
           showError(message);
         });
 
@@ -70,7 +90,7 @@ function LayoutShell({ children, activeItem, setActiveItem }) {
         cleanup();
       }
     };
-  }, []);
+  }, [t]);
 
   return (
     <div className='lingo-app-shell'>
@@ -83,25 +103,55 @@ function LayoutShell({ children, activeItem, setActiveItem }) {
         <div className='lingo-titlebar__drag-fill' data-tauri-drag-region />
 
         <div className='lingo-titlebar__controls'>
+          <div className='lingo-titlebar__locale' ref={localeTriggerRef}>
+            <button
+              type='button'
+              className={`lingo-titlebar__locale-trigger ${showLocaleMenu ? 'lingo-titlebar__locale-trigger--active' : ''}`}
+              aria-label={t('locale.label')}
+              title={t('locale.label')}
+              onClick={() => setShowLocaleMenu((current) => !current)}>
+              <Globe className='lingo-titlebar__locale-icon' aria-hidden='true' />
+              <span className='lingo-titlebar__locale-label'>{currentLocaleLabel}</span>
+              <ChevronRight
+                className={`lingo-titlebar__locale-caret ${showLocaleMenu ? 'lingo-titlebar__locale-caret--open' : ''}`}
+                aria-hidden='true'
+              />
+            </button>
+            <DropdownMenu
+              show={showLocaleMenu}
+              onClose={() => setShowLocaleMenu(false)}
+              options={localeMap}
+              currentValue={locale}
+              onSelect={(nextLocale) => {
+                setLocale(nextLocale);
+                setShowLocaleMenu(false);
+              }}
+              anchorPosition='right-0'
+              direction='down'
+              anchorRef={localeTriggerRef}
+              className='lingo-titlebar__locale-menu'
+            />
+          </div>
+
           <button
             type='button'
             className='lingo-titlebar__btn'
-            aria-label='最小化窗口'
-            title='最小化'
+            aria-label={t('titlebar.minimizeAria')}
+            title={t('titlebar.minimizeTitle')}
             onClick={() => {
               void handleWindowAction('minimize');
             }}>
-            <span className='lingo-titlebar__btn-minimize' aria-hidden='true' />
+            <span className='lingo-titlebar__btn-icon lingo-titlebar__btn-minimize' aria-hidden='true' />
           </button>
           <button
             type='button'
             className='lingo-titlebar__btn lingo-titlebar__btn--close'
-            aria-label='关闭窗口'
-            title='关闭'
+            aria-label={t('titlebar.closeAria')}
+            title={t('titlebar.closeTitle')}
             onClick={() => {
               void handleWindowAction('close');
             }}>
-            <XClose className='lingo-titlebar__btn-close-icon' aria-hidden='true' />
+            <XClose className='lingo-titlebar__btn-icon lingo-titlebar__btn-close-icon' aria-hidden='true' />
           </button>
         </div>
       </header>
@@ -126,9 +176,7 @@ function LayoutShell({ children, activeItem, setActiveItem }) {
         </aside>
 
         <section className='lingo-shell__workspace'>
-          <div className='workspace-content'>
-            {children}
-          </div>
+          <div className='workspace-content'>{children}</div>
         </section>
       </div>
     </div>

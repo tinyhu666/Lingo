@@ -1,35 +1,11 @@
-import { motion } from 'framer-motion';
+﻿import { motion } from 'framer-motion';
 import { CircleInfo, Dock, GamingPad, Globe } from '../icons';
 import { useUpdater } from '../components/UpdateProvider';
 import { APP_VERSION_LABEL } from '../constants/version';
-
-const formatTime = (timestamp) => {
-  if (!timestamp) {
-    return '未检查';
-  }
-  try {
-    return new Date(timestamp).toLocaleString();
-  } catch {
-    return '未检查';
-  }
-};
-
-const formatReleaseDate = (value) => {
-  if (!value) {
-    return '未知';
-  }
-  try {
-    const parsed = new Date(value);
-    if (Number.isNaN(parsed.getTime())) {
-      return '未知';
-    }
-    return parsed.toLocaleDateString();
-  } catch {
-    return '未知';
-  }
-};
+import { useI18n } from '../i18n/I18nProvider';
 
 export default function About() {
+  const { t } = useI18n();
   const {
     currentVersion,
     latestVersion,
@@ -46,17 +22,43 @@ export default function About() {
     supportsUpdater,
   } = useUpdater();
 
+  const formatTime = (timestamp) => {
+    if (!timestamp) {
+      return t('common.notChecked');
+    }
+    try {
+      return new Date(timestamp).toLocaleString();
+    } catch {
+      return t('common.notChecked');
+    }
+  };
+
+  const formatReleaseDate = (value) => {
+    if (!value) {
+      return t('common.unknown');
+    }
+    try {
+      const parsed = new Date(value);
+      if (Number.isNaN(parsed.getTime())) {
+        return t('common.unknown');
+      }
+      return parsed.toLocaleDateString();
+    } catch {
+      return t('common.unknown');
+    }
+  };
+
   const versionLabel = currentVersion ? `V${currentVersion}` : APP_VERSION_LABEL;
-  const latestVersionLabel = latestVersion ? `V${latestVersion}` : '暂未获取';
+  const latestVersionLabel = latestVersion ? `V${latestVersion}` : t('about.update.latestUnavailable');
   const actionLabel = !supportsUpdater
-    ? '仅桌面端可用'
+    ? t('about.update.actionUnsupported')
     : checking
-      ? '检查中...'
+      ? t('about.update.actionChecking')
       : downloading
-        ? '下载并安装中...'
+        ? t('about.update.actionDownloading')
         : hasUpdate
-          ? '立即更新'
-          : '检查更新';
+          ? t('about.update.actionInstall')
+          : t('about.update.actionCheck');
   const actionHandler = hasUpdate ? installUpdate : () => checkForUpdates({ silent: false });
   const actionDisabled = !supportsUpdater || checking || downloading;
   const shouldShowReleaseNotes = hasUpdate && Boolean(releaseBody);
@@ -68,9 +70,9 @@ export default function About() {
           <div className='tool-section-head__main'>
             <div className='tool-section-head__title-row'>
               <Dock className='tool-section-head__icon' />
-              <h2 className='tool-card-title'>客户端更新</h2>
+              <h2 className='tool-card-title'>{t('about.update.title')}</h2>
             </div>
-            <p className='tool-body tool-section-summary'>查看版本信息与更新状态。</p>
+            <p className='tool-body tool-section-summary'>{t('about.update.summary')}</p>
           </div>
 
           {supportsUpdater ? (
@@ -86,19 +88,19 @@ export default function About() {
 
         <div className='mt-5 grid grid-cols-4 gap-3'>
           <div className='tool-subcard min-w-0 p-4'>
-            <div className='tool-caption'>当前版本</div>
+            <div className='tool-caption'>{t('about.update.currentVersion')}</div>
             <div className='tool-card-title mt-2'>{versionLabel}</div>
           </div>
           <div className='tool-subcard min-w-0 p-4'>
-            <div className='tool-caption'>最新版本</div>
+            <div className='tool-caption'>{t('about.update.latestVersion')}</div>
             <div className='tool-card-title mt-2'>{latestVersionLabel}</div>
           </div>
           <div className='tool-subcard min-w-0 p-4'>
-            <div className='tool-caption'>发布日期</div>
+            <div className='tool-caption'>{t('about.update.releaseDate')}</div>
             <div className='tool-card-title mt-2'>{formatReleaseDate(releaseDate)}</div>
           </div>
           <div className='tool-subcard min-w-0 p-4'>
-            <div className='tool-caption'>上次检查</div>
+            <div className='tool-caption'>{t('about.update.checkedAt')}</div>
             <div className='tool-body mt-2'>{formatTime(checkedAt)}</div>
           </div>
         </div>
@@ -106,19 +108,19 @@ export default function About() {
         <div className='mt-4 space-y-3'>
           {!supportsUpdater ? (
             <div className='rounded-2xl border border-[rgba(205,216,230,0.94)] bg-[rgba(248,250,253,0.9)] p-4 text-sm text-zinc-600'>
-              当前为预览环境，更新检测与安装仅在桌面客户端内可用。
+              {t('about.update.previewOnly')}
             </div>
           ) : null}
 
           {hasUpdate ? (
             <div className='rounded-2xl border border-[rgba(252,202,212,0.94)] bg-[rgba(255,241,245,0.96)] p-4 text-sm text-red-600'>
-              发现新版本 {latestVersionLabel}，点击“立即更新”即可在应用内完成下载和安装。
+              {t('about.update.updateFound', { version: latestVersionLabel })}
             </div>
           ) : null}
 
           {shouldShowReleaseNotes ? (
             <div className='tool-subcard min-w-0 p-4'>
-              <div className='tool-caption'>更新说明</div>
+              <div className='tool-caption'>{t('about.update.releaseNotes')}</div>
               <div className='tool-body mt-2 whitespace-pre-wrap break-words'>{releaseBody}</div>
             </div>
           ) : null}
@@ -126,7 +128,7 @@ export default function About() {
           {downloading ? (
             <div className='tool-subcard p-4'>
               <div className='flex items-center justify-between text-xs font-semibold text-blue-700'>
-                <span>下载进度</span>
+                <span>{t('about.update.downloadProgress')}</span>
                 <span>{progressPercent}%</span>
               </div>
               <div className='mt-3 h-2 rounded-full bg-blue-100'>
@@ -152,37 +154,35 @@ export default function About() {
           <div className='tool-section-head__main'>
             <div className='tool-section-head__title-row'>
               <CircleInfo className='tool-section-head__icon' />
-              <h3 className='tool-card-title'>项目说明</h3>
+              <h3 className='tool-card-title'>{t('about.project.title')}</h3>
             </div>
           </div>
         </div>
-        <p className='tool-body tool-section-summary'>
-          Lingo 是 Dota 2 爱好者（ID：萌新）在业余时间打造的兴趣项目，主要解决外服对局中的沟通问题。后续将带来翻译其他玩家发言的功能，敬请期待！
-        </p>
+        <p className='tool-body tool-section-summary'>{t('about.project.summary')}</p>
 
         <div className='mt-5 grid grid-cols-3 gap-4'>
           <div className='tool-subcard min-w-0 p-5'>
             <div className='flex items-center gap-2'>
               <CircleInfo className='h-4 w-4 stroke-zinc-500' />
-              <span className='tool-caption'>项目简介</span>
+              <span className='tool-caption'>{t('about.project.introTitle')}</span>
             </div>
-            <p className='tool-body mt-3'>Powered by 萌新。当前版本聚焦桌面端游戏内翻译体验，支持快捷键触发、自动回填与应用内更新。</p>
+            <p className='tool-body mt-3'>{t('about.project.introBody')}</p>
           </div>
 
           <div className='tool-subcard min-w-0 p-5'>
             <div className='flex items-center gap-2'>
               <GamingPad className='h-4 w-4 stroke-zinc-500' />
-              <span className='tool-caption'>核心特点</span>
+              <span className='tool-caption'>{t('about.project.featureTitle')}</span>
             </div>
-            <p className='tool-body mt-3'>针对游戏内对话做短句化输出，尽量保留技能、装备和指挥术语；支持中英俄等主流语言互译，减少沟通阻力。</p>
+            <p className='tool-body mt-3'>{t('about.project.featureBody')}</p>
           </div>
 
           <div className='tool-subcard min-w-0 p-5'>
             <div className='flex items-center gap-2'>
               <Globe className='h-4 w-4 stroke-zinc-500' />
-              <span className='tool-caption'>后续发展</span>
+              <span className='tool-caption'>{t('about.project.roadmapTitle')}</span>
             </div>
-            <p className='tool-body mt-3'>后续会继续扩展到更多游戏场景，优化翻译质量与更新体验，同时保持桌面工具链路稳定、直接、低打断。</p>
+            <p className='tool-body mt-3'>{t('about.project.roadmapBody')}</p>
           </div>
         </div>
       </motion.section>

@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from 'react';
+﻿import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useStore } from '../components/StoreProvider';
 import { defaultPhraseModifier, defaultPhraseModifierLabel } from '../constants/hotkeys';
 import { invokeCommand, hasTauriRuntime } from '../services/tauriRuntime';
 import { showError, showSuccess } from '../utils/toast';
 import { toErrorMessage } from '../utils/error';
+import { useI18n } from '../i18n/I18nProvider';
 
 const MAX_PHRASE_COUNT = 20;
 const MAX_PHRASE_LENGTH = 120;
@@ -53,6 +54,7 @@ const createRow = (id, phrase = '', keyCode = `Digit${Math.min(id, 9)}`) => ({
 
 export default function Phrases() {
   const { settings, updateSettings, replaceSettings } = useStore();
+  const { t } = useI18n();
   const [rows, setRows] = useState([]);
   const [saving, setSaving] = useState(false);
 
@@ -100,7 +102,7 @@ export default function Phrases() {
 
   const addRow = () => {
     if (rows.length >= MAX_PHRASE_COUNT) {
-      showError(`常用语最多 ${MAX_PHRASE_COUNT} 条`);
+      showError(t('phrases.errors.maxCount', { max: MAX_PHRASE_COUNT }));
       return;
     }
 
@@ -114,7 +116,7 @@ export default function Phrases() {
 
   const removeRow = (id) => {
     if (rows.length <= 1) {
-      showError('请至少保留一条常用语');
+      showError(t('phrases.errors.minOne'));
       return;
     }
 
@@ -136,21 +138,21 @@ export default function Phrases() {
       const text = row.phrase.trim();
 
       if (!text) {
-        return `第 ${index + 1} 条常用语为空`;
+        return t('phrases.errors.rowEmpty', { index: index + 1 });
       }
       if (text.length > MAX_PHRASE_LENGTH) {
-        return `第 ${index + 1} 条常用语超过 ${MAX_PHRASE_LENGTH} 字`;
+        return t('phrases.errors.rowTooLong', { index: index + 1, max: MAX_PHRASE_LENGTH });
       }
       if (!row.keyCode) {
-        return `第 ${index + 1} 条快捷键未设置`;
+        return t('phrases.errors.rowHotkeyMissing', { index: index + 1 });
       }
 
       const signature = rowSignature(row.keyCode);
       if (signature === translatorSignature) {
-        return `第 ${index + 1} 条与翻译快捷键冲突`;
+        return t('phrases.errors.conflictTranslator', { index: index + 1 });
       }
       if (signatures.has(signature)) {
-        return `第 ${index + 1} 条快捷键重复`;
+        return t('phrases.errors.duplicateHotkey', { index: index + 1 });
       }
 
       signatures.add(signature);
@@ -185,13 +187,13 @@ export default function Phrases() {
         await invokeCommand('update_phrases', { phrases: payload });
         const latest = await invokeCommand('get_settings');
         await replaceSettings(latest);
-        showSuccess('常用语已保存并更新快捷键');
+        showSuccess(t('phrases.toasts.saved'));
       } else {
         await updateSettings({ phrases: payload });
-        showSuccess('预览模式：常用语已保存到本地');
+        showSuccess(t('phrases.toasts.previewSaved'));
       }
     } catch (error) {
-      showError(`保存失败: ${toErrorMessage(error)}`);
+      showError(t('phrases.errors.saveFailed', { error: toErrorMessage(error) }));
     } finally {
       setSaving(false);
     }
@@ -203,21 +205,21 @@ export default function Phrases() {
         <div className='flex items-start justify-between gap-4'>
           <div className='min-w-0'>
             <div className='flex flex-wrap items-center gap-3'>
-              <h2 className='tool-page-title mt-0'>常用语工作区</h2>
+              <h2 className='tool-page-title mt-0'>{t('phrases.title')}</h2>
               <span className='tool-pill min-w-[76px] justify-center'>{rows.length}/{MAX_PHRASE_COUNT}</span>
             </div>
-            <p className='tool-body mt-3'>为高频沟通短句分配快捷入口，触发后可直接回填到当前输入框。</p>
+            <p className='tool-body mt-3'>{t('phrases.summary')}</p>
           </div>
           <div className='flex shrink-0 flex-wrap items-center justify-end gap-2'>
             <button type='button' onClick={addRow} className='tool-btn min-w-[120px] whitespace-nowrap px-4'>
-              新增常用语
+              {t('phrases.add')}
             </button>
             <button
               type='button'
               onClick={saveRows}
               disabled={saving}
               className={`tool-btn-primary min-w-[104px] whitespace-nowrap px-4 ${saving ? 'opacity-70 cursor-not-allowed' : ''}`}>
-              {saving ? '保存中...' : '保存'}
+              {saving ? t('phrases.saving') : t('phrases.save')}
             </button>
           </div>
         </div>
@@ -228,10 +230,10 @@ export default function Phrases() {
           <table className='min-w-full border-separate border-spacing-0'>
             <thead className='sticky top-0 z-10 bg-[rgba(248,251,255,0.96)] backdrop-blur-xl'>
               <tr>
-                <th className='px-5 py-4 text-left tool-caption w-[64px]'>#</th>
-                <th className='px-4 py-4 text-left tool-caption'>常用语内容</th>
-                <th className='px-4 py-4 text-left tool-caption w-[210px]'>快捷键</th>
-                <th className='px-5 py-4 text-left tool-caption w-[92px]'>操作</th>
+                <th className='px-5 py-4 text-left tool-caption w-[64px]'>{t('phrases.table.index')}</th>
+                <th className='px-4 py-4 text-left tool-caption'>{t('phrases.table.content')}</th>
+                <th className='px-4 py-4 text-left tool-caption w-[210px]'>{t('phrases.table.hotkey')}</th>
+                <th className='px-5 py-4 text-left tool-caption w-[92px]'>{t('phrases.table.action')}</th>
               </tr>
             </thead>
 
@@ -245,7 +247,7 @@ export default function Phrases() {
                       value={row.phrase}
                       onChange={(event) => patchRow(row.id, { phrase: event.target.value })}
                       className='tool-input'
-                      placeholder='输入常用语内容'
+                      placeholder={t('phrases.contentPlaceholder')}
                       maxLength={MAX_PHRASE_LENGTH}
                     />
                   </td>
@@ -271,7 +273,7 @@ export default function Phrases() {
                       type='button'
                       onClick={() => removeRow(row.id)}
                       className='tool-btn tool-btn-danger min-w-[72px] px-3 text-sm'>
-                      删除
+                      {t('common.remove')}
                     </button>
                   </td>
                 </tr>

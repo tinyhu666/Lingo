@@ -1,12 +1,13 @@
-import { motion } from 'framer-motion';
+﻿import { motion } from 'framer-motion';
 import { useMemo, useRef, useState } from 'react';
 import { CN, DE, ES, FR, JP, KR, RU, SG, US } from 'country-flag-icons/react/3x2';
 import { Translate, ArrowRight, ChevronRight } from '../../../icons';
 import { useStore } from '../../../components/StoreProvider';
 import DropdownMenu from '../../../components/DropdownMenu';
-import { LANGUAGE_OPTIONS, getLanguageMeta } from '../../../constants/languages';
+import { LANGUAGE_OPTIONS, getLanguageMeta, getLanguageLabel } from '../../../constants/languages';
 import { showError } from '../../../utils/toast';
 import { toErrorMessage } from '../../../utils/error';
+import { useI18n } from '../../../i18n/I18nProvider';
 
 const FLAG_COMPONENTS = {
   CN,
@@ -20,12 +21,8 @@ const FLAG_COMPONENTS = {
   DE,
 };
 
-const LANGUAGE_LABEL_MAP = Object.fromEntries(
-  LANGUAGE_OPTIONS.map((item) => [item.id, item.label]),
-);
-
-function LanguageChip({ value, onClick, expanded, direction }) {
-  const meta = getLanguageMeta(value);
+function LanguageChip({ value, onClick, expanded, direction, uiLocale }) {
+  const meta = getLanguageMeta(value, uiLocale);
   const FlagIcon = FLAG_COMPONENTS[meta.countryCode];
   const caretClass =
     expanded && direction === 'up'
@@ -56,6 +53,7 @@ const MENU_HEIGHT_PX = 276;
 
 export default function TranslationDirectionCard() {
   const { settings, updateSettings } = useStore();
+  const { locale, t } = useI18n();
   const [activeMenu, setActiveMenu] = useState(null);
   const [menuDirection, setMenuDirection] = useState({ from: 'up', to: 'up' });
   const fromTriggerRef = useRef(null);
@@ -64,14 +62,20 @@ export default function TranslationDirectionCard() {
   const from = settings?.translation_from || 'zh';
   const to = settings?.translation_to || 'en';
 
-  const options = useMemo(() => LANGUAGE_LABEL_MAP, []);
+  const options = useMemo(
+    () =>
+      Object.fromEntries(
+        LANGUAGE_OPTIONS.map((item) => [item.id, getLanguageLabel(item.id, locale)]),
+      ),
+    [locale],
+  );
 
   const handleLanguageChange = async (lang, field) => {
     setActiveMenu(null);
     try {
       await updateSettings({ [field]: lang });
     } catch (error) {
-      showError(`更新翻译语言失败: ${toErrorMessage(error)}`);
+      showError(t('home.translationLanguage.updateFailed', { error: toErrorMessage(error) }));
     }
   };
 
@@ -103,7 +107,7 @@ export default function TranslationDirectionCard() {
   };
 
   const renderOption = (langCode, label) => {
-    const meta = getLanguageMeta(langCode);
+    const meta = getLanguageMeta(langCode, locale);
     const FlagIcon = FLAG_COMPONENTS[meta.countryCode];
 
     return (
@@ -123,13 +127,13 @@ export default function TranslationDirectionCard() {
       animate={{ opacity: 1, y: 0 }}>
       <div className='flex items-center gap-3'>
         <Translate className='w-6 h-6' />
-        <h3 className='tool-card-title'>翻译语言</h3>
+        <h3 className='tool-card-title'>{t('home.translationLanguage.title')}</h3>
       </div>
 
       <div className='flex-1 flex flex-col mt-4'>
         <div className='home-top-copy'>
-          <p className='tool-body'>设置你的翻译语言。</p>
-          <p className='tool-body mt-2'>语言相同也可用于润色或增强表达语气。</p>
+          <p className='tool-body'>{t('home.translationLanguage.desc1')}</p>
+          <p className='tool-body mt-2'>{t('home.translationLanguage.desc2')}</p>
         </div>
 
         <div className='home-top-actions'>
@@ -142,6 +146,7 @@ export default function TranslationDirectionCard() {
                     onClick={() => handleMenuToggle('from')}
                     expanded={activeMenu === 'from'}
                     direction={menuDirection.from}
+                    uiLocale={locale}
                   />
                   <DropdownMenu
                     show={activeMenu === 'from'}
@@ -165,6 +170,7 @@ export default function TranslationDirectionCard() {
                     onClick={() => handleMenuToggle('to')}
                     expanded={activeMenu === 'to'}
                     direction={menuDirection.to}
+                    uiLocale={locale}
                   />
                   <DropdownMenu
                     show={activeMenu === 'to'}

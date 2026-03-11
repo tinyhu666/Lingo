@@ -1,42 +1,29 @@
-import { motion } from 'framer-motion';
+﻿import { motion } from 'framer-motion';
 import { useEffect, useMemo, useState } from 'react';
 import { GamingPad, FaceOldFace, Whistle, Sparkles } from '../icons';
 import { useStore } from '../components/StoreProvider';
 import { showError } from '../utils/toast';
 import { toErrorMessage } from '../utils/error';
+import { useI18n } from '../i18n/I18nProvider';
 
 const MODE_OPTIONS = [
   {
     id: 'auto',
-    title: '自动',
-    desc: '平衡准确、自然和可读性，适合大部分对局沟通。',
-    detail: '优先输出自然、稳妥、可直接发送的表达。',
     icon: FaceOldFace,
   },
   {
     id: 'pro',
-    title: '职业',
-    desc: '术语更集中，指令更短，适合团队配合与节奏交流。',
-    detail: '保留更多游戏术语和节奏词，更适合高频协同。',
     icon: GamingPad,
   },
   {
     id: 'toxic',
-    title: '高压',
-    desc: '语气更重、施压更强，适合抢节奏、压气势的对局场景。',
-    detail: '嘴臭、喷子、压力怪风格，表达语气更强烈。',
     icon: Whistle,
   },
 ];
 
-const MODE_LABELS = {
-  auto: '自动',
-  pro: '职业',
-  toxic: '高压',
-};
-
 export default function Translate() {
   const { settings, updateSettings } = useStore();
+  const { t } = useI18n();
   const [activeMode, setActiveMode] = useState(settings?.translation_mode || 'auto');
 
   useEffect(() => {
@@ -45,7 +32,11 @@ export default function Translate() {
     }
   }, [settings?.translation_mode]);
 
-  const currentLabel = useMemo(() => MODE_LABELS[activeMode] || '自动', [activeMode]);
+  const currentLabel = useMemo(() => {
+    const key = `translate.mode.${activeMode}.title`;
+    const hit = t(key);
+    return hit === key ? t('translate.mode.auto.title') : hit;
+  }, [activeMode, t]);
 
   const handleModeChange = async (mode) => {
     if (mode === activeMode) return;
@@ -55,7 +46,7 @@ export default function Translate() {
       await updateSettings({ translation_mode: mode });
     } catch (error) {
       setActiveMode(previousMode);
-      showError(`切换翻译风格失败: ${toErrorMessage(error)}`);
+      showError(t('translate.switchFailed', { error: toErrorMessage(error) }));
     }
   };
 
@@ -67,11 +58,11 @@ export default function Translate() {
         animate={{ opacity: 1 }}>
         <div className='flex items-center justify-between gap-4'>
           <div className='min-w-0'>
-            <h2 className='tool-page-title mt-0'>翻译风格设置</h2>
-            <p className='tool-body mt-3'>选择一个输出风格，切换后会立即用于后续翻译结果。</p>
+            <h2 className='tool-page-title mt-0'>{t('translate.title')}</h2>
+            <p className='tool-body mt-3'>{t('translate.summary')}</p>
           </div>
           <div className='tool-subcard min-w-[132px] shrink-0 px-4 py-3'>
-            <div className='tool-caption'>当前已启用</div>
+            <div className='tool-caption'>{t('translate.currentEnabled')}</div>
             <div className='tool-card-title mt-2'>{currentLabel}</div>
           </div>
         </div>
@@ -97,22 +88,22 @@ export default function Translate() {
                   <Icon className='h-5 w-5 stroke-current' />
                 </div>
                 <span className={`tool-pill shrink-0 ${isActive ? 'workspace-pill--success' : ''}`}>
-                  {isActive ? '已启用' : '待启用'}
+                  {isActive ? t('translate.styleEnabled') : t('translate.stylePending')}
                 </span>
               </div>
 
               <div className='mt-5'>
-                <div className='tool-card-title'>{mode.title}</div>
-                <div className='tool-caption mt-2'>{isActive ? '当前生效中' : '点击切换到此风格'}</div>
+                <div className='tool-card-title'>{t(`translate.mode.${mode.id}.title`)}</div>
+                <div className='tool-caption mt-2'>{isActive ? t('translate.activeNow') : t('translate.clickToSwitch')}</div>
               </div>
 
-              <p className='tool-body mode-card__desc mt-5'>{mode.desc}</p>
+              <p className='tool-body mode-card__desc mt-5'>{t(`translate.mode.${mode.id}.desc`)}</p>
               <div className='tool-subcard mt-6 p-4'>
                 <div className='flex items-center gap-2'>
                   <Sparkles className='h-4 w-4 stroke-zinc-500' />
-                  <span className='tool-caption'>提示</span>
+                  <span className='tool-caption'>{t('common.hint')}</span>
                 </div>
-                <p className='tool-body mt-2'>{mode.detail}</p>
+                <p className='tool-body mt-2'>{t(`translate.mode.${mode.id}.detail`)}</p>
               </div>
             </motion.button>
           );

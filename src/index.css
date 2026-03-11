@@ -45,6 +45,13 @@
     background: linear-gradient(160deg, #bfd0ea 0%, #afc2e2 48%, #a2b8dc 100%);
   }
 
+  html.platform-windows,
+  html.platform-windows body,
+  html.platform-windows #root {
+    border-radius: 0;
+    background: transparent;
+  }
+
   body {
     margin: 0;
     font-family: var(--font-body);
@@ -90,6 +97,17 @@
     background: linear-gradient(160deg, #bfd0ea 0%, #afc2e2 48%, #a2b8dc 100%);
   }
 
+  .lingo-theme--windows {
+    overflow: clip;
+    isolation: isolate;
+  }
+
+  @supports not (overflow: clip) {
+    .lingo-theme--windows {
+      overflow: hidden;
+    }
+  }
+
   .lingo-app-shell {
     height: 100%;
     padding: 8px 10px 10px;
@@ -107,6 +125,14 @@
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.62),
       0 22px 52px rgba(20, 34, 62, 0.16);
+  }
+
+  .lingo-theme--windows .lingo-app-shell {
+    clip-path: inset(0 round var(--app-radius-outer));
+    border-color: rgba(139, 160, 197, 0.88);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.58),
+      0 20px 40px rgba(20, 34, 62, 0.12);
   }
 
   .lingo-titlebar {
@@ -164,21 +190,107 @@
   .lingo-titlebar__controls {
     display: inline-flex;
     align-items: center;
-    gap: 4px;
+    gap: 6px;
     height: 100%;
+  }
+
+  .lingo-titlebar__locale {
+    position: relative;
+    min-width: 0;
+  }
+
+  .lingo-titlebar__locale-trigger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    height: 34px;
+    min-width: 152px;
+    max-width: 210px;
+    padding: 0 10px 0 12px;
+    border-radius: 10px;
+    border: 1px solid rgba(193, 207, 229, 0.92);
+    background: linear-gradient(180deg, rgba(253, 255, 255, 0.98) 0%, rgba(239, 247, 255, 0.97) 100%);
+    color: #32537f;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95);
+    transition: all 0.16s ease;
+  }
+
+  .lingo-titlebar__locale-trigger:hover {
+    border-color: rgba(168, 191, 231, 0.95);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.99) 0%, rgba(231, 242, 255, 0.98) 100%);
+  }
+
+  .lingo-titlebar__locale-trigger:focus-visible {
+    outline: none;
+    box-shadow:
+      0 0 0 3px rgba(76, 111, 255, 0.16),
+      inset 0 1px 0 rgba(255, 255, 255, 0.95);
+  }
+
+  .lingo-titlebar__locale-trigger--active {
+    border-color: rgba(141, 173, 245, 0.96);
+    box-shadow:
+      0 0 0 3px rgba(76, 111, 255, 0.12),
+      inset 0 1px 0 rgba(255, 255, 255, 0.95);
+  }
+
+  .lingo-titlebar__locale-icon {
+    width: 16px;
+    height: 16px;
+    stroke-width: 2;
+    flex-shrink: 0;
+  }
+
+  .lingo-titlebar__locale-label {
+    min-width: 0;
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-align: left;
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  .lingo-titlebar__locale-caret {
+    width: 14px;
+    height: 14px;
+    stroke-width: 2.1;
+    flex-shrink: 0;
+    transform: rotate(90deg);
+    transition: transform 0.16s ease;
+  }
+
+  .lingo-titlebar__locale-caret--open {
+    transform: rotate(-90deg);
+  }
+
+  .lingo-titlebar__locale-menu {
+    min-width: 164px;
   }
 
   .lingo-titlebar__btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 40px;
+    width: 36px;
     height: 34px;
     border-radius: 10px;
     border: none;
     background: transparent;
     color: #5e7191;
     transition: all 0.16s ease;
+  }
+
+  .lingo-titlebar__btn-icon {
+    width: 14px;
+    height: 14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
   }
 
   .lingo-titlebar__btn:hover {
@@ -197,16 +309,14 @@
   }
 
   .lingo-titlebar__btn-minimize {
-    width: 14px;
+    width: 12px;
     height: 2px;
     border-radius: 999px;
     background: currentColor;
   }
 
   .lingo-titlebar__btn-close-icon {
-    width: 13px;
-    height: 13px;
-    stroke-width: 2.2;
+    stroke-width: 2.1;
   }
 
   .lingo-shell {

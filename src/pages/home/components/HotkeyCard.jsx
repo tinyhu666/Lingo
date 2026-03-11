@@ -1,4 +1,4 @@
-import { motion } from 'framer-motion';
+﻿import { motion } from 'framer-motion';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { KeyboardAlt, Spinner } from '../../../icons';
 import { useStore } from '../../../components/StoreProvider';
@@ -13,6 +13,7 @@ import {
 import { invokeCommand, hasTauriRuntime } from '../../../services/tauriRuntime';
 import { showError, showSuccess } from '../../../utils/toast';
 import { toErrorMessage } from '../../../utils/error';
+import { useI18n } from '../../../i18n/I18nProvider';
 
 const formatPreview = (codes) =>
   codes
@@ -26,6 +27,7 @@ const formatPreview = (codes) =>
 
 export default function HotkeyCard() {
   const { settings, updateSettings, replaceSettings } = useStore();
+  const { t } = useI18n();
   const [recording, setRecording] = useState(false);
   const [capturedCodes, setCapturedCodes] = useState([]);
 
@@ -57,18 +59,18 @@ export default function HotkeyCard() {
         await invokeCommand('update_translator_shortcut', { keys });
         const latest = await invokeCommand('get_settings');
         await replaceSettings(latest);
-        showSuccess('翻译快捷键设置成功');
+        showSuccess(t('home.hotkey.setSuccess'));
       } else {
         const hotkey = buildHotkeyFromKeyCodes(keys);
         await updateSettings({ trans_hotkey: hotkey });
-        showSuccess('预览模式：快捷键显示已更新');
+        showSuccess(t('home.hotkey.previewSuccess'));
       }
     } catch (error) {
-      showError(`翻译快捷键设置失败: ${toErrorMessage(error)}`);
+      showError(t('home.hotkey.setFailed', { error: toErrorMessage(error) }));
     } finally {
       stopRecording();
     }
-  }, [replaceSettings, stopRecording, updateSettings]);
+  }, [replaceSettings, stopRecording, updateSettings, t]);
 
   const handleKeyDown = useCallback(
     (event) => {
@@ -160,15 +162,15 @@ export default function HotkeyCard() {
       transition={{ delay: 0.2 }}>
       <div className='flex items-center gap-3'>
         <KeyboardAlt className='w-6 h-6 stroke-zinc-500' />
-        <h3 className='tool-card-title'>快捷键</h3>
+        <h3 className='tool-card-title'>{t('home.hotkey.title')}</h3>
       </div>
 
       <div className='flex-1 flex flex-col mt-4'>
         <div className='home-top-copy'>
           <p className='tool-body'>
             {recording
-              ? '按下组合键，松开任意键完成设置。'
-              : `点击此卡片设置快捷键（默认 ${defaultTranslatorHotkeyLabel()}）。`}
+              ? t('home.hotkey.recordingHint')
+              : t('home.hotkey.defaultHint', { shortcut: defaultTranslatorHotkeyLabel() })}
           </p>
         </div>
 

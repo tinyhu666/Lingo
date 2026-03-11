@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+﻿import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { check } from '@tauri-apps/plugin-updater';
 import { relaunch } from '@tauri-apps/plugin-process';
 import { hasTauriRuntime } from '../services/tauriRuntime';
@@ -10,6 +10,7 @@ import {
   RELEASE_LATEST_JSON_URL,
   RELEASE_PAGE_URL,
 } from '../constants/version';
+import { useI18n } from '../i18n/I18nProvider';
 
 const UpdateContext = createContext(null);
 
@@ -93,8 +94,8 @@ const buildReleaseDatePatch = (value) => {
   return normalized ? { releaseDate: normalized } : {};
 };
 
-const formatUpdaterError = (error, { currentVersion, latestRelease } = {}) => {
-  const message = String(error?.message || error || '未知错误');
+const formatUpdaterError = (error, { currentVersion, latestRelease, t } = {}) => {
+  const message = String(error?.message || error || t('update.unknownError'));
   const isKeyMismatch = /UnexpectedKeyId/i.test(message) || /key id/i.test(message);
   const isMissingManifest =
     message.includes('Could not fetch a valid release JSON from the remote') ||
@@ -105,9 +106,12 @@ const formatUpdaterError = (error, { currentVersion, latestRelease } = {}) => {
   if (isKeyMismatch) {
     const hasNewerRelease = latestRelease?.version && isVersionNewer(latestRelease.version, currentVersion || APP_VERSION);
     if (hasNewerRelease) {
-      return `检测到新版本 v${latestRelease.version}，但当前客户端与发布签名密钥不匹配（UnexpectedKeyId），请先手动安装一次最新版：${RELEASE_PAGE_URL}`;
+      return t('update.keyMismatchWithVersion', {
+        version: latestRelease.version,
+        url: RELEASE_PAGE_URL,
+      });
     }
-    return `当前客户端与发布签名密钥不匹配（UnexpectedKeyId），请手动安装最新版：${RELEASE_PAGE_URL}`;
+    return t('update.keyMismatch', { url: RELEASE_PAGE_URL });
   }
 
   if (!isMissingManifest) {
@@ -115,13 +119,15 @@ const formatUpdaterError = (error, { currentVersion, latestRelease } = {}) => {
   }
 
   if (latestRelease?.version && isVersionNewer(latestRelease.version, currentVersion || APP_VERSION)) {
-    return `检测到新版本 v${latestRelease.version}，但当前发布缺少自动更新清单 latest.json 或签名文件，请重新发布包含 updater artifacts 的版本。`;
+    return t('update.missingManifestWithVersion', {
+      version: latestRelease.version,
+    });
   }
 
-  return '自动更新配置不完整：发布资源缺少 latest.json 或签名文件。';
+  return t('update.missingManifest');
 };
 
-const fetchLatestReleaseFromApi = async () => {
+const fetchLatestReleaseFromApi = async (t) => {
   const response = await fetch(RELEASE_API_URL, {
     headers: {
       Accept: 'application/vnd.github+json',
@@ -130,7 +136,7 @@ const fetchLatestReleaseFromApi = async () => {
   });
 
   if (!response.ok) {
-    throw new Error(`获取 Release API 失败: HTTP ${response.status}`);
+    throw new Error(t('update.releaseApiFailed', { status: response.status }));
   }
 
   const payload = await response.json();
@@ -142,7 +148,7 @@ const fetchLatestReleaseFromApi = async () => {
   };
 };
 
-const fetchLatestReleaseFromManifest = async () => {
+const fetchLatestReleaseFromManifest = async (t) => {
   const response = await fetch(RELEASE_LATEST_JSON_URL, {
     headers: {
       Accept: 'application/json',
@@ -151,7 +157,7 @@ const fetchLatestReleaseFromManifest = async () => {
   });
 
   if (!response.ok) {
-    throw new Error(`获取 latest.json 失败: HTTP ${response.status}`);
+    throw new Error(t('update.manifestFailed', { status: response.status }));
   }
 
   const payload = await response.json();
@@ -163,7 +169,7 @@ const fetchLatestReleaseFromManifest = async () => {
   };
 };
 
-const fetchLatestReleaseMetadata = async () => {
+const fetchLatestReleaseMetadata = async (t) => {
   if (hasTauriRuntime()) {
     try {
       const payload = await invokeCommand('get_latest_release_metadata');
@@ -180,15 +186,15 @@ const fetchLatestReleaseMetadata = async () => {
   }
 
   const [manifestResult, apiResult] = await Promise.allSettled([
-    fetchLatestReleaseFromManifest(),
-    fetchLatestReleaseFromApi(),
+    fetchLatestReleaseFromManifest(t),
+    fetchLatestReleaseFromApi(t),
   ]);
 
   const manifest = manifestResult.status === 'fulfilled' ? manifestResult.value : null;
   const api = apiResult.status === 'fulfilled' ? apiResult.value : null;
 
   if (!manifest && !api) {
-    throw new Error('获取版本信息失败');
+    throw new Error(t('update.metadataFailed'));
   }
 
   const version = normalizeVersion(manifest?.version || api?.version);
@@ -201,6 +207,7 @@ const fetchLatestReleaseMetadata = async () => {
 };
 
 export function UpdateProvider({ children }) {
+  const { t } = useI18n();
   const [state, setState] = useState(DEFAULT_STATE);
   const updateRef = useRef(null);
   const currentVersionRef = useRef(null);
@@ -266,7 +273,7 @@ export function UpdateProvider({ children }) {
           return null;
         }
 
-        latestRelease = await fetchLatestReleaseMetadata().catch(() => null);
+        latestRelease = await fetchLatestReleaseMetadata(t).catch(() => null);
 
         const update = await check();
 
@@ -284,7 +291,7 @@ export function UpdateProvider({ children }) {
           });
 
           if (!silent) {
-            showSuccess('当前已是最新版本');
+            showSuccess(t('update.latest'));
           }
 
           return null;
@@ -305,12 +312,12 @@ export function UpdateProvider({ children }) {
         });
 
         if (!silent) {
-          showSuccess(`发现新版本 v${update.version}`);
+          showSuccess(t('update.found', { version: update.version }));
         }
 
         return update;
       } catch (error) {
-        const errorMessage = formatUpdaterError(error, { currentVersion, latestRelease });
+        const errorMessage = formatUpdaterError(error, { currentVersion, latestRelease, t });
         patchState({
           checking: false,
           hasUpdate: false,
@@ -324,18 +331,18 @@ export function UpdateProvider({ children }) {
         });
 
         if (!silent) {
-          showError(`检查更新失败: ${errorMessage}`);
+          showError(t('update.checkFailed', { error: errorMessage }));
         }
 
         return null;
       }
     },
-    [closePreviousUpdateHandle, loadCurrentVersion, patchState],
+    [closePreviousUpdateHandle, loadCurrentVersion, patchState, t],
   );
 
   const installUpdate = useCallback(async () => {
     if (!hasTauriRuntime()) {
-      showError('当前环境不支持自动更新');
+      showError(t('update.unsupported'));
       return false;
     }
 
@@ -345,7 +352,7 @@ export function UpdateProvider({ children }) {
     }
 
     if (!update) {
-      showSuccess('当前已是最新版本');
+      showSuccess(t('update.latest'));
       return false;
     }
 
@@ -386,7 +393,7 @@ export function UpdateProvider({ children }) {
         latestVersion: update.version,
       });
 
-      showSuccess('更新已下载完成，应用即将重启安装');
+      showSuccess(t('update.downloaded'));
 
       try {
         await relaunch();
@@ -396,15 +403,15 @@ export function UpdateProvider({ children }) {
 
       return true;
     } catch (error) {
-      const readableError = formatUpdaterError(error);
+      const readableError = formatUpdaterError(error, { t });
       patchState({
         downloading: false,
         errorMessage: readableError,
       });
-      showError(`更新安装失败: ${readableError}`);
+      showError(t('update.installFailed', { error: readableError }));
       return false;
     }
-  }, [checkForUpdates, closePreviousUpdateHandle, patchState]);
+  }, [checkForUpdates, closePreviousUpdateHandle, patchState, t]);
 
   useEffect(() => {
     let mounted = true;
@@ -451,7 +458,7 @@ export function UpdateProvider({ children }) {
 export const useUpdater = () => {
   const context = useContext(UpdateContext);
   if (!context) {
-    throw new Error('useUpdater 必须在 UpdateProvider 内使用');
+    throw new Error('useUpdater must be used inside UpdateProvider');
   }
   return context;
 };

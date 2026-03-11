@@ -1,4 +1,4 @@
-import {
+﻿import {
   HomeHLine,
   Translate,
   ChatBubbleMessage,
@@ -8,22 +8,22 @@ import {
 export const NAV_ITEMS = [
   {
     id: 'home',
-    name: '主页',
+    labelKey: 'sidebar.nav.home',
     icon: HomeHLine,
   },
   {
     id: 'translate',
-    name: '翻译风格',
+    labelKey: 'sidebar.nav.translate',
     icon: Translate,
   },
   {
     id: 'phrases',
-    name: '常用语',
+    labelKey: 'sidebar.nav.phrases',
     icon: ChatBubbleMessage,
   },
   {
     id: 'about',
-    name: '关于',
+    labelKey: 'sidebar.nav.about',
     icon: CircleInfo,
   },
 ];

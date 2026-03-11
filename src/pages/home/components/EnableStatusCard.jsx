@@ -1,13 +1,15 @@
-import { motion } from 'framer-motion';
+﻿import { motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
 import { useStore } from '../../../components/StoreProvider';
 import { PowerToggle } from '../../../icons';
 import { invokeCommand, hasTauriRuntime } from '../../../services/tauriRuntime';
 import { showError, showSuccess } from '../../../utils/toast';
 import { toErrorMessage } from '../../../utils/error';
+import { useI18n } from '../../../i18n/I18nProvider';
 
 export default function EnableStatusCard() {
   const { settings, updateSettings, replaceSettings } = useStore();
+  const { t } = useI18n();
   const [pending, setPending] = useState(false);
   const [draftState, setDraftState] = useState(null);
 
@@ -40,10 +42,10 @@ export default function EnableStatusCard() {
         await updateSettings({ app_enabled: nextEnabled });
       }
 
-      showSuccess(nextEnabled ? 'Lingo 已启用' : 'Lingo 已暂停');
+      showSuccess(nextEnabled ? t('home.enableStatus.toggleEnabledSuccess') : t('home.enableStatus.togglePausedSuccess'));
     } catch (error) {
       setDraftState(null);
-      showError(`切换失败: ${toErrorMessage(error)}`);
+      showError(t('home.enableStatus.toggleFailed', { error: toErrorMessage(error) }));
     } finally {
       setPending(false);
     }
@@ -57,12 +59,12 @@ export default function EnableStatusCard() {
       transition={{ delay: 0.06 }}>
       <div className='flex items-center gap-3'>
         <PowerToggle className='w-6 h-6 stroke-zinc-500' />
-        <h3 className='tool-card-title'>启用状态</h3>
+        <h3 className='tool-card-title'>{t('home.enableStatus.title')}</h3>
       </div>
 
       <div className='flex-1 flex flex-col mt-4'>
         <div className='home-top-copy'>
-          <p className='tool-body'>通过开关控制 Lingo 是否响应快捷键。</p>
+          <p className='tool-body'>{t('home.enableStatus.desc')}</p>
         </div>
 
         <div className='home-top-actions'>
@@ -83,7 +85,7 @@ export default function EnableStatusCard() {
                     }`}
                   />
                   <span className='tool-control-text whitespace-nowrap'>
-                    {isEnabled ? '已启用' : '已暂停'}
+                    {isEnabled ? t('common.enabled') : t('common.paused')}
                   </span>
                 </span>
 
