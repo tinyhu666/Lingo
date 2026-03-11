@@ -16,8 +16,14 @@ pub fn create_tray(app: &AppHandle) -> tauri::Result<()> {
 
     // 在菜单项中添加 check_update_i
     let menu = Menu::with_items(app, &[&show_i, &check_update_i, &quit_i])?;
-    let _tray = TrayIconBuilder::new()
-        .icon(app.default_window_icon().unwrap().clone())
+    let mut tray_builder = TrayIconBuilder::new();
+    if let Some(icon) = app.default_window_icon() {
+        tray_builder = tray_builder.icon(icon.clone());
+    } else {
+        eprintln!("默认窗口图标缺失，托盘将使用系统默认图标");
+    }
+
+    let _tray = tray_builder
         .menu(&menu)
         .show_menu_on_left_click(true)
         .on_menu_event(|app, event| match event.id.as_ref() {
@@ -25,8 +31,12 @@ pub fn create_tray(app: &AppHandle) -> tauri::Result<()> {
                 if let Some(window) = app.get_webview_window("main") {
                     #[cfg(target_os = "macos")]
                     let _ = app.set_activation_policy(tauri::ActivationPolicy::Regular);
-                    window.show().unwrap();
-                    window.set_focus().unwrap();
+                    if let Err(error) = window.show() {
+                        eprintln!("托盘显示窗口失败: {}", error);
+                    }
+                    if let Err(error) = window.set_focus() {
+                        eprintln!("托盘聚焦窗口失败: {}", error);
+                    }
                 }
             }
             "check_update" => {

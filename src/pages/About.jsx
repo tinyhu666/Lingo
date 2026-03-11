@@ -70,7 +70,7 @@ export default function About() {
               <Dock className='tool-section-head__icon' />
               <h2 className='tool-card-title'>客户端更新</h2>
             </div>
-            <p className='tool-body tool-section-summary'>查看版本信息、更新状态。</p>
+            <p className='tool-body tool-section-summary'>查看版本信息与更新状态。</p>
           </div>
 
           {supportsUpdater ? (
@@ -85,26 +85,25 @@ export default function About() {
         </div>
 
         <div className='mt-5 grid grid-cols-4 gap-3'>
-          <div className='tool-subcard p-4'>
+          <div className='tool-subcard min-w-0 p-4'>
             <div className='tool-caption'>当前版本</div>
             <div className='tool-card-title mt-2'>{versionLabel}</div>
           </div>
-          <div className='tool-subcard p-4'>
+          <div className='tool-subcard min-w-0 p-4'>
             <div className='tool-caption'>最新版本</div>
             <div className='tool-card-title mt-2'>{latestVersionLabel}</div>
           </div>
-          <div className='tool-subcard p-4'>
+          <div className='tool-subcard min-w-0 p-4'>
             <div className='tool-caption'>发布日期</div>
             <div className='tool-card-title mt-2'>{formatReleaseDate(releaseDate)}</div>
           </div>
-          <div className='tool-subcard p-4'>
+          <div className='tool-subcard min-w-0 p-4'>
             <div className='tool-caption'>上次检查</div>
             <div className='tool-body mt-2'>{formatTime(checkedAt)}</div>
           </div>
         </div>
 
         <div className='mt-4 space-y-3'>
-
           {!supportsUpdater ? (
             <div className='rounded-2xl border border-[rgba(205,216,230,0.94)] bg-[rgba(248,250,253,0.9)] p-4 text-sm text-zinc-600'>
               当前为预览环境，更新检测与安装仅在桌面客户端内可用。
@@ -118,9 +117,9 @@ export default function About() {
           ) : null}
 
           {shouldShowReleaseNotes ? (
-            <div className='tool-subcard p-4'>
+            <div className='tool-subcard min-w-0 p-4'>
               <div className='tool-caption'>更新说明</div>
-              <div className='tool-body mt-2 whitespace-pre-wrap'>{releaseBody}</div>
+              <div className='tool-body mt-2 whitespace-pre-wrap break-words'>{releaseBody}</div>
             </div>
           ) : null}
 
@@ -137,7 +136,7 @@ export default function About() {
           ) : null}
 
           {errorMessage ? (
-            <div className='rounded-2xl border border-[rgba(252,202,212,0.94)] bg-[rgba(255,241,245,0.96)] p-4 text-sm text-red-600'>
+            <div className='rounded-2xl border border-[rgba(252,202,212,0.94)] bg-[rgba(255,241,245,0.96)] p-4 text-sm text-red-600 break-words'>
               {errorMessage}
             </div>
           ) : null}
@@ -158,19 +157,19 @@ export default function About() {
           </div>
         </div>
         <p className='tool-body tool-section-summary'>
-          Lingo 是 Dota2 爱好者（ID：萌新）在业余时间的兴趣项目，主要解决玩外服游戏时的沟通问题。后续将会带来翻译其他玩家发言的功能，敬请期待！
+          Lingo 是 Dota 2 爱好者（ID：萌新）在业余时间打造的兴趣项目，主要解决外服对局中的沟通问题。后续将带来翻译其他玩家发言的功能，敬请期待！
         </p>
 
         <div className='mt-5 grid grid-cols-3 gap-4'>
-          <div className='tool-subcard p-5'>
+          <div className='tool-subcard min-w-0 p-5'>
             <div className='flex items-center gap-2'>
               <InfoCircle className='h-4 w-4 stroke-zinc-500' />
               <span className='tool-caption'>项目简介</span>
             </div>
-            <p className='tool-body mt-3'>Powerby 萌新。当前版本聚焦桌面端游戏内翻译体验，支持快捷键触发、自动回填与应用内更新。</p>
+            <p className='tool-body mt-3'>Powered by 萌新。当前版本聚焦桌面端游戏内翻译体验，支持快捷键触发、自动回填与应用内更新。</p>
           </div>
 
-          <div className='tool-subcard p-5'>
+          <div className='tool-subcard min-w-0 p-5'>
             <div className='flex items-center gap-2'>
               <GamingPad className='h-4 w-4 stroke-zinc-500' />
               <span className='tool-caption'>核心特点</span>
@@ -178,7 +177,7 @@ export default function About() {
             <p className='tool-body mt-3'>针对游戏内对话做短句化输出，尽量保留技能、装备和指挥术语；支持中英俄等主流语言互译，减少沟通阻力。</p>
           </div>
 
-          <div className='tool-subcard p-5'>
+          <div className='tool-subcard min-w-0 p-5'>
             <div className='flex items-center gap-2'>
               <Globe className='h-4 w-4 stroke-zinc-500' />
               <span className='tool-caption'>后续发展</span>

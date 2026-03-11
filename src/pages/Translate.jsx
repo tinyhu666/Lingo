@@ -2,6 +2,8 @@ import { motion } from 'framer-motion';
 import { useEffect, useMemo, useState } from 'react';
 import { GamingPad, FaceOldFace, Whistle, Sparkles } from '../icons';
 import { useStore } from '../components/StoreProvider';
+import { showError } from '../utils/toast';
+import { toErrorMessage } from '../utils/error';
 
 const MODE_OPTIONS = [
   {
@@ -47,8 +49,14 @@ export default function Translate() {
 
   const handleModeChange = async (mode) => {
     if (mode === activeMode) return;
+    const previousMode = activeMode;
     setActiveMode(mode);
-    await updateSettings({ translation_mode: mode });
+    try {
+      await updateSettings({ translation_mode: mode });
+    } catch (error) {
+      setActiveMode(previousMode);
+      showError(`切换翻译模式失败: ${toErrorMessage(error)}`);
+    }
   };
 
   return (
@@ -58,7 +66,7 @@ export default function Translate() {
         initial={{ opacity: 0, y: 18 }}
         animate={{ opacity: 1, y: 0 }}>
         <div className='flex items-center justify-between gap-4'>
-          <div>
+          <div className='min-w-0'>
             <div className='tool-pill mb-3'>当前模式</div>
             <h2 className='tool-page-title'>翻译风格设置</h2>
             <p className='tool-body'>选择一个输出风格，切换后会立即用于后续翻译结果。</p>
@@ -79,7 +87,7 @@ export default function Translate() {
               key={mode.id}
               type='button'
               onClick={() => handleModeChange(mode.id)}
-              className={`dota-card tool-rise mode-card min-h-[260px] p-6 text-left ${
+              className={`dota-card tool-rise mode-card min-h-[260px] min-w-0 p-6 text-left ${
                 isActive ? 'border-[rgba(129,163,255,0.92)] shadow-[0_22px_42px_rgba(76,111,255,0.16),inset_0_1px_0_rgba(255,255,255,0.96)]' : ''
               }`}
               initial={{ opacity: 0, y: 18 }}
@@ -103,7 +111,7 @@ export default function Translate() {
               <div className='tool-subcard mt-6 p-4'>
                 <div className='flex items-center gap-2'>
                   <Sparkles className='h-4 w-4 stroke-zinc-500' />
-                  <span className='tool-caption lowercase'>tips</span>
+                  <span className='tool-caption'>提示</span>
                 </div>
                 <p className='tool-body mt-2'>{mode.detail}</p>
               </div>

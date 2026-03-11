@@ -313,10 +313,10 @@ pub fn update_phrases(app: &AppHandle, phrases: Vec<Phrase>) -> Result<Vec<Phras
 }
 
 fn format_key_display(key: &str) -> String {
-    if key.starts_with("Key") {
-        key[3..].to_string()
-    } else if key.starts_with("Digit") {
-        key[5..].to_string()
+    if let Some(stripped) = key.strip_prefix("Key") {
+        stripped.to_string()
+    } else if let Some(stripped) = key.strip_prefix("Digit") {
+        stripped.to_string()
     } else if key.starts_with("Arrow") {
         match key {
             "ArrowUp" => "↑".to_string(),

@@ -247,26 +247,26 @@ export function UpdateProvider({ children }) {
 
       try {
         currentVersion = currentVersion || (await loadCurrentVersion());
-        latestRelease = await fetchLatestReleaseMetadata().catch(() => null);
 
         if (!hasTauriRuntime()) {
           const previewVersion = currentVersion || APP_VERSION;
-          const latestVersion = latestRelease?.version || previewVersion;
 
           patchState({
             checking: false,
-            hasUpdate: isVersionNewer(latestVersion, previewVersion),
-            latestVersion,
+            hasUpdate: false,
+            latestVersion: previewVersion,
             currentVersion: previewVersion,
-            ...buildReleaseDatePatch(latestRelease?.publishedAt),
-            releaseBody: latestRelease?.body || null,
+            releaseDate: null,
+            releaseBody: null,
             progressPercent: 0,
             checkedAt: Date.now(),
             errorMessage: null,
           });
 
-          return latestRelease;
+          return null;
         }
+
+        latestRelease = await fetchLatestReleaseMetadata().catch(() => null);
 
         const update = await check();
 
@@ -408,6 +408,7 @@ export function UpdateProvider({ children }) {
 
   useEffect(() => {
     let mounted = true;
+    let checkTimer = null;
 
     const initialize = async () => {
       if (!mounted) {
@@ -415,7 +416,11 @@ export function UpdateProvider({ children }) {
       }
       await loadCurrentVersion();
       if (mounted) {
-        await checkForUpdates({ silent: true });
+        checkTimer = window.setTimeout(() => {
+          if (mounted) {
+            void checkForUpdates({ silent: true });
+          }
+        }, 1200);
       }
     };
 
@@ -423,6 +428,9 @@ export function UpdateProvider({ children }) {
 
     return () => {
       mounted = false;
+      if (checkTimer) {
+        window.clearTimeout(checkTimer);
+      }
       void closePreviousUpdateHandle();
     };
   }, [checkForUpdates, closePreviousUpdateHandle, loadCurrentVersion]);

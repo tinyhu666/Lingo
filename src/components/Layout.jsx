@@ -38,23 +38,36 @@ function LayoutShell({ children, activeItem, setActiveItem }) {
       return undefined;
     }
 
-    let unlisten = null;
+    let disposed = false;
+    let cleanup = null;
 
     const bind = async () => {
-      unlisten = await listen('translation_failed', (event) => {
-        const message =
-          typeof event.payload === 'string' && event.payload.trim()
-            ? event.payload
-            : '翻译失败，请检查服务配置或稍后重试。';
-        showError(message);
-      });
+      try {
+        const unlisten = await listen('translation_failed', (event) => {
+          const message =
+            typeof event.payload === 'string' && event.payload.trim()
+              ? event.payload
+              : '翻译失败，请检查服务配置或稍后重试。';
+          showError(message);
+        });
+
+        if (disposed) {
+          unlisten();
+          return;
+        }
+
+        cleanup = unlisten;
+      } catch (error) {
+        console.error('Failed to bind translation_failed listener', error);
+      }
     };
 
     void bind();
 
     return () => {
-      if (typeof unlisten === 'function') {
-        unlisten();
+      disposed = true;
+      if (typeof cleanup === 'function') {
+        cleanup();
       }
     };
   }, []);

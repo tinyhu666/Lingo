@@ -1,11 +1,24 @@
 import { motion } from 'framer-motion';
 import { useMemo, useRef, useState } from 'react';
-import * as FlagIcons from 'country-flag-icons/react/3x2';
+import { CN, DE, ES, FR, JP, KR, RU, SG, US } from 'country-flag-icons/react/3x2';
 import { Translate, ArrowRight, ChevronRight } from '../../../icons';
 import { useStore } from '../../../components/StoreProvider';
 import DropdownMenu from '../../../components/DropdownMenu';
 import { LANGUAGE_OPTIONS, getLanguageMeta } from '../../../constants/languages';
 import { showError } from '../../../utils/toast';
+import { toErrorMessage } from '../../../utils/error';
+
+const FLAG_COMPONENTS = {
+  CN,
+  SG,
+  KR,
+  US,
+  FR,
+  RU,
+  ES,
+  JP,
+  DE,
+};
 
 const LANGUAGE_LABEL_MAP = Object.fromEntries(
   LANGUAGE_OPTIONS.map((item) => [item.id, item.label]),
@@ -13,7 +26,7 @@ const LANGUAGE_LABEL_MAP = Object.fromEntries(
 
 function LanguageChip({ value, onClick, expanded, direction }) {
   const meta = getLanguageMeta(value);
-  const FlagIcon = FlagIcons[meta.countryCode];
+  const FlagIcon = FLAG_COMPONENTS[meta.countryCode];
   const caretClass =
     expanded && direction === 'up'
       ? 'home-language-chip__caret-icon home-language-chip__caret-icon--up'
@@ -58,7 +71,7 @@ export default function TranslationDirectionCard() {
     try {
       await updateSettings({ [field]: lang });
     } catch (error) {
-      showError(`更新翻译语言失败: ${error}`);
+      showError(`更新翻译语言失败: ${toErrorMessage(error)}`);
     }
   };
 
@@ -91,7 +104,7 @@ export default function TranslationDirectionCard() {
 
   const renderOption = (langCode, label) => {
     const meta = getLanguageMeta(langCode);
-    const FlagIcon = FlagIcons[meta.countryCode];
+    const FlagIcon = FLAG_COMPONENTS[meta.countryCode];
 
     return (
       <div className='flex items-center gap-2 min-w-0'>
@@ -105,7 +118,7 @@ export default function TranslationDirectionCard() {
 
   return (
     <motion.section
-      className='dota-card relative w-full min-h-[248px] flex-1 flex flex-col rounded-2xl px-6 pt-6 pb-3 text-left'
+      className='dota-card tool-rise relative w-full min-h-[248px] min-w-0 flex-1 flex flex-col rounded-2xl px-6 pt-6 pb-3 text-left'
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}>
       <div className='flex items-center gap-3'>

@@ -1,6 +1,5 @@
 import { motion } from 'framer-motion';
 import { twMerge } from 'tailwind-merge';
-import appIcon from '../assets/app-icon.png';
 import { NAV_ITEMS } from '../constants/navigation';
 import { APP_VERSION_LABEL } from '../constants/version';
 import { useUpdater } from './UpdateProvider';
@@ -10,15 +9,6 @@ export default function Sidebar({ activeItem, setActiveItem }) {
 
   return (
     <div className='sidebar-panel'>
-      <div className='sidebar-brand'>
-        <div className='sidebar-brand__mark'>
-          <img src={appIcon} alt='Lingo Logo' className='sidebar-brand__mark-image' />
-        </div>
-        <div className='sidebar-brand__text'>
-          <h3 className='sidebar-brand__title sidebar-brand__title--compact'>Lingo</h3>
-        </div>
-      </div>
-
       <div className='sidebar-section'>
         <div className='sidebar-section__label'>导航</div>
         <nav className='sidebar-nav'>
@@ -56,7 +46,7 @@ export default function Sidebar({ activeItem, setActiveItem }) {
 
       <div className='sidebar-footer'>
         <div className='sidebar-footer__version'>{APP_VERSION_LABEL}</div>
-        <div className='sidebar-footer__meta'>Powerby 萌新</div>
+        <div className='sidebar-footer__meta'>Powered by 萌新</div>
       </div>
     </div>
   );

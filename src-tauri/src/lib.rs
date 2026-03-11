@@ -133,13 +133,20 @@ async fn update_phrases(
 
 #[tauri::command]
 async fn get_latest_release_metadata() -> Result<ReleaseMetadata, String> {
-    let manifest = fetch_release_json(RELEASE_LATEST_JSON_URL)
+    let manifest_task =
+        tauri::async_runtime::spawn(async { fetch_release_json(RELEASE_LATEST_JSON_URL).await });
+    let release_api_task =
+        tauri::async_runtime::spawn(async { fetch_release_json(RELEASE_API_URL).await });
+
+    let manifest = manifest_task
         .await
         .ok()
+        .and_then(|result| result.ok())
         .map(|payload| extract_from_manifest(&payload));
-    let release_api = fetch_release_json(RELEASE_API_URL)
+    let release_api = release_api_task
         .await
         .ok()
+        .and_then(|result| result.ok())
         .map(|payload| extract_from_release_api(&payload));
 
     if manifest.is_none() && release_api.is_none() {
@@ -179,20 +186,20 @@ pub fn run() {
         .setup(|app| {
             // 初始化存储
             println!("Initializing...");
-            match initialize_settings(&app.app_handle()) {
+            match initialize_settings(app.app_handle()) {
                 Ok(_) => println!("应用设置初始化完成"),
                 Err(e) => eprintln!("初始化设置失败: {}", e),
             }
 
             // 初始化所有快捷键
             println!("正在注册全局快捷键...");
-            match shortcut::init_shortcuts(&app.app_handle()) {
+            match shortcut::init_shortcuts(app.app_handle()) {
                 Ok(_) => println!("快捷键设置成功"),
                 Err(e) => eprintln!("注册全局快捷键失败: {}", e),
             }
 
             // 创建AI模型托盘
-            match tray::create_tray(&app.app_handle()) {
+            match tray::create_tray(app.app_handle()) {
                 Ok(_) => println!("托盘创建成功"),
                 Err(e) => eprintln!("创建托盘失败: {}", e),
             }
@@ -213,16 +220,17 @@ pub fn run() {
     // 只在非Windows系统上添加窗口事件监听
     #[cfg(not(target_os = "windows"))]
     {
-        builder = builder.on_window_event(|window, event| match event {
-            tauri::WindowEvent::CloseRequested { api, .. } => {
-                window.hide().unwrap();
+        builder = builder.on_window_event(|window, event| {
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                if let Err(error) = window.hide() {
+                    eprintln!("隐藏窗口失败: {}", error);
+                }
                 #[cfg(target_os = "macos")]
                 let _ = window
                     .app_handle()
                     .set_activation_policy(tauri::ActivationPolicy::Accessory);
                 api.prevent_close();
             }
-            _ => {}
         });
     }
 

@@ -3,6 +3,7 @@ import { APP_VERSION_LABEL } from '../constants/version';
 import { openUrl } from '@tauri-apps/plugin-opener';
 import { hasTauriRuntime } from '../services/tauriRuntime';
 import { showError } from '../utils/toast';
+import { toErrorMessage } from '../utils/error';
 
 export default function DeveloperNote() {
   const currentVersion = APP_VERSION_LABEL;
@@ -15,7 +16,7 @@ export default function DeveloperNote() {
         window.open(url, '_blank', 'noopener,noreferrer');
       }
     } catch (error) {
-      showError(`打开链接失败: ${error}`);
+      showError(`打开链接失败: ${toErrorMessage(error)}`);
     }
   };
 
@@ -30,12 +31,12 @@ export default function DeveloperNote() {
         <div className='tool-subcard p-4'>
           <div className='tool-caption'>版本</div>
           <div className='tool-card-title mt-2'>Lingo {currentVersion}</div>
-          <div className='tool-body mt-2'>Powerby 萌新</div>
+          <div className='tool-body mt-2'>Powered by 萌新</div>
         </div>
 
         <div className='tool-subcard p-4'>
           <div className='tool-caption'>定位</div>
-          <p className='tool-body mt-2'>Lingo 专注游戏内剪贴板翻译：快捷键触发后自动复制、翻译并粘贴回当前输入框，支持 Win 与 macOS。</p>
+          <p className='tool-body mt-2'>Lingo 专注游戏内剪贴板翻译：快捷键触发后自动复制、翻译并粘贴回当前输入框，支持 Windows 与 macOS。</p>
         </div>
 
         <div className='tool-subcard p-4'>

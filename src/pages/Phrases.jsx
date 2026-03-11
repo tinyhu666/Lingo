@@ -4,6 +4,7 @@ import { useStore } from '../components/StoreProvider';
 import { defaultPhraseModifier, defaultPhraseModifierLabel } from '../constants/hotkeys';
 import { invokeCommand, hasTauriRuntime } from '../services/tauriRuntime';
 import { showError, showSuccess } from '../utils/toast';
+import { toErrorMessage } from '../utils/error';
 
 const MAX_PHRASE_COUNT = 20;
 const MAX_PHRASE_LENGTH = 120;
@@ -190,7 +191,7 @@ export default function Phrases() {
         showSuccess('预览模式：常用语已保存到本地');
       }
     } catch (error) {
-      showError(`保存失败: ${error}`);
+      showError(`保存失败: ${toErrorMessage(error)}`);
     } finally {
       setSaving(false);
     }
@@ -200,12 +201,12 @@ export default function Phrases() {
     <div className='flex h-full flex-col gap-6'>
       <motion.section className='dota-card tool-rise p-6' initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }}>
         <div className='flex items-start justify-between gap-4'>
-          <div>
-            <div className='tool-pill mb-3'>短语库</div>
+          <div className='min-w-0'>
+            <div className='tool-pill mb-3'>常用语库</div>
             <h2 className='tool-page-title'>常用语工作区</h2>
             <p className='tool-body'>为高频沟通短句分配快捷入口，触发后可直接回填到当前输入框。</p>
           </div>
-          <div className='flex shrink-0 items-center gap-2'>
+          <div className='flex shrink-0 flex-wrap items-center justify-end gap-2'>
             <span className='tool-pill min-w-[76px] justify-center'>{rows.length} / {MAX_PHRASE_COUNT}</span>
             <button type='button' onClick={addRow} className='tool-btn min-w-[120px] whitespace-nowrap px-4'>
               新增常用语
@@ -222,7 +223,7 @@ export default function Phrases() {
       </motion.section>
 
       <motion.section className='dota-card tool-rise flex-1 p-4' initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.06 }}>
-        <div className='h-full overflow-auto rounded-[20px] border border-[rgba(219,228,239,0.9)] bg-[rgba(255,255,255,0.62)]'>
+        <div className='h-full overflow-x-auto overflow-y-auto rounded-[20px] border border-[rgba(219,228,239,0.9)] bg-[rgba(255,255,255,0.62)]'>
           <table className='min-w-full border-separate border-spacing-0'>
             <thead className='sticky top-0 z-10 bg-[rgba(248,251,255,0.96)] backdrop-blur-xl'>
               <tr>

@@ -1,16 +1,25 @@
-import { useState } from 'react';
+import { Suspense, lazy, useState } from 'react';
 import Layout from './components/Layout';
 import Home from './pages/home';
-import TranslatePage from './pages/Translate';
-import About from './pages/About';
-import Phrases from './pages/Phrases';
+
+const TranslatePage = lazy(() => import('./pages/Translate'));
+const AboutPage = lazy(() => import('./pages/About'));
+const PhrasesPage = lazy(() => import('./pages/Phrases'));
 
 const pages = {
   home: Home,
   translate: TranslatePage,
-  about: About,
-  phrases: Phrases,
+  about: AboutPage,
+  phrases: PhrasesPage,
 };
+
+function PageFallback() {
+  return (
+    <div className='dota-card flex h-full items-center justify-center p-6'>
+      <span className='tool-body'>页面加载中...</span>
+    </div>
+  );
+}
 
 function App() {
   const [activeItem, setActiveItem] = useState('home');
@@ -19,7 +28,9 @@ function App() {
   return (
     <div className='lingo-theme min-h-screen text-zinc-900'>
       <Layout activeItem={activeItem} setActiveItem={setActiveItem}>
-        <CurrentPage />
+        <Suspense fallback={<PageFallback />}>
+          <CurrentPage />
+        </Suspense>
       </Layout>
     </div>
   );

@@ -4,6 +4,7 @@ import { useStore } from '../../../components/StoreProvider';
 import { PowerToggle } from '../../../icons';
 import { invokeCommand, hasTauriRuntime } from '../../../services/tauriRuntime';
 import { showError, showSuccess } from '../../../utils/toast';
+import { toErrorMessage } from '../../../utils/error';
 
 export default function EnableStatusCard() {
   const { settings, updateSettings, replaceSettings } = useStore();
@@ -42,7 +43,7 @@ export default function EnableStatusCard() {
       showSuccess(nextEnabled ? 'Lingo 已启用' : 'Lingo 已暂停');
     } catch (error) {
       setDraftState(null);
-      showError(`切换失败: ${error}`);
+      showError(`切换失败: ${toErrorMessage(error)}`);
     } finally {
       setPending(false);
     }
@@ -50,7 +51,7 @@ export default function EnableStatusCard() {
 
   return (
     <motion.section
-      className='dota-card w-full min-h-[248px] flex-1 rounded-2xl px-6 pt-6 pb-3 flex flex-col text-left'
+      className='dota-card tool-rise w-full min-h-[248px] min-w-0 flex-1 rounded-2xl px-6 pt-6 pb-3 flex flex-col text-left'
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.06 }}>

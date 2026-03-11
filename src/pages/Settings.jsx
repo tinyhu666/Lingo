@@ -23,7 +23,7 @@ export default function Settings() {
   const serviceStatus = useMemo(() => {
     if (!settings) {
       return {
-        label: '读取中',
+        label: '加载中',
         tone: 'text-zinc-600',
         hint: '正在加载本地设置...',
       };
@@ -53,7 +53,7 @@ export default function Settings() {
     <div className='flex h-full flex-col gap-6'>
       <motion.section className='dota-card tool-rise p-6' initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }}>
         <div className='flex items-start justify-between gap-4'>
-          <div>
+          <div className='min-w-0'>
             <div className='tool-pill mb-3'>运行概览</div>
             <h2 className='tool-page-title'>服务状态与策略</h2>
             <p className='tool-body'>翻译服务由服务端统一托管，客户端只负责触发、接收和回填译文。</p>
@@ -66,40 +66,40 @@ export default function Settings() {
       </motion.section>
 
       <div className='grid grid-cols-2 gap-6'>
-        <motion.section className='dota-card tool-rise p-6' initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.06 }}>
+        <motion.section className='dota-card tool-rise min-w-0 p-6' initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.06 }}>
           <div className='flex items-center gap-3 mb-5'>
             <Server className='h-5 w-5 stroke-zinc-500' />
             <h3 className='tool-card-title'>客户端状态</h3>
           </div>
 
           <div className='grid grid-cols-2 gap-4'>
-            <div className='tool-subcard p-4'>
+            <div className='tool-subcard min-w-0 p-4'>
               <div className='tool-caption'>当前状态</div>
               <div className={`tool-card-title mt-2 ${serviceStatus.tone}`}>{serviceStatus.label}</div>
               <p className='tool-body mt-2'>{serviceStatus.hint}</p>
             </div>
-            <div className='tool-subcard p-4'>
+            <div className='tool-subcard min-w-0 p-4'>
               <div className='tool-caption'>默认翻译语言</div>
               <div className='tool-card-title mt-2 text-zinc-900'>
                 {getLanguageMeta(from).label} → {getLanguageMeta(to).label}
               </div>
-              <p className='tool-body mt-2'>可在主页顶部工作台即时切换。</p>
+              <p className='tool-body mt-2'>可在主页翻译语言卡中即时切换。</p>
             </div>
           </div>
         </motion.section>
 
-        <motion.section className='dota-card tool-rise p-6' initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+        <motion.section className='dota-card tool-rise min-w-0 p-6' initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
           <div className='flex items-center gap-3 mb-5'>
             <Cpu className='h-5 w-5 stroke-zinc-500' />
             <h3 className='tool-card-title'>翻译策略</h3>
           </div>
 
           <div className='grid grid-cols-2 gap-4'>
-            <div className='tool-subcard p-4'>
+            <div className='tool-subcard min-w-0 p-4'>
               <div className='tool-caption'>场景策略</div>
               <div className='tool-card-title mt-2 text-zinc-900'>{scene}</div>
             </div>
-            <div className='tool-subcard p-4'>
+            <div className='tool-subcard min-w-0 p-4'>
               <div className='tool-caption'>语气模式</div>
               <div className='tool-card-title mt-2 text-zinc-900'>{mode}</div>
             </div>

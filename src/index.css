@@ -90,54 +90,61 @@
 
   .lingo-app-shell {
     height: 100vh;
-    padding: 8px 16px 16px;
+    padding: 10px 14px 14px;
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 12px;
+    border-radius: 28px;
+    overflow: hidden;
+    border: 1px solid rgba(164, 183, 214, 0.72);
+    background:
+      radial-gradient(980px 400px at -8% -18%, rgba(86, 121, 255, 0.24), transparent 70%),
+      radial-gradient(860px 360px at 110% 0%, rgba(110, 208, 255, 0.18), transparent 72%),
+      linear-gradient(180deg, rgba(236, 243, 254, 0.68) 0%, rgba(216, 228, 246, 0.62) 100%);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.68);
   }
 
   .lingo-titlebar {
     display: flex;
     align-items: center;
-    gap: 8px;
-    height: 34px;
-    min-height: 34px;
-    padding: 4px;
-    border-radius: 14px;
-    border: 1px solid rgba(166, 186, 220, 0.76);
+    gap: 10px;
+    height: 48px;
+    min-height: 48px;
+    padding: 6px 10px;
+    border-radius: 18px;
     background:
-      radial-gradient(740px 220px at -8% -140%, rgba(92, 127, 255, 0.34), transparent 72%),
-      radial-gradient(620px 240px at 112% -130%, rgba(111, 211, 255, 0.28), transparent 74%),
-      linear-gradient(180deg, rgba(215, 226, 245, 0.74) 0%, rgba(200, 215, 238, 0.66) 100%);
-    box-shadow: 0 8px 18px rgba(25, 42, 74, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.7);
+      radial-gradient(780px 280px at -8% -140%, rgba(92, 127, 255, 0.3), transparent 74%),
+      radial-gradient(680px 280px at 112% -130%, rgba(111, 211, 255, 0.24), transparent 76%),
+      linear-gradient(180deg, rgba(215, 226, 245, 0.7) 0%, rgba(200, 215, 238, 0.58) 100%);
+    box-shadow: 0 8px 18px rgba(25, 42, 74, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.64);
     backdrop-filter: blur(14px);
   }
 
   .lingo-titlebar__brand {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
     height: 100%;
-    padding: 0 8px;
+    padding: 0 14px;
     min-width: 0;
-    border-radius: 10px;
+    border-radius: 14px;
     background: linear-gradient(180deg, rgba(229, 238, 250, 0.7) 0%, rgba(214, 226, 243, 0.58) 100%);
-    border: 1px solid rgba(178, 197, 226, 0.84);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.74);
   }
 
   .lingo-titlebar__icon {
-    width: 18px;
-    height: 18px;
-    border-radius: 6px;
+    width: 22px;
+    height: 22px;
+    border-radius: 7px;
     object-fit: cover;
     box-shadow: 0 2px 6px rgba(35, 53, 90, 0.12);
   }
 
   .lingo-titlebar__title {
     font-family: var(--font-body);
-    font-size: 13px;
+    font-size: 16px;
     line-height: 1;
-    font-weight: 700;
+    font-weight: 800;
     color: #2d3f62;
     letter-spacing: 0.01em;
     user-select: none;
@@ -152,7 +159,7 @@
   .lingo-titlebar__controls {
     display: inline-flex;
     align-items: center;
-    gap: 4px;
+    gap: 6px;
     height: 100%;
   }
 
@@ -160,17 +167,16 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 32px;
-    height: 26px;
-    border-radius: 8px;
-    border: 1px solid transparent;
+    width: 40px;
+    height: 34px;
+    border-radius: 11px;
+    border: none;
     background: transparent;
     color: #5e7191;
     transition: all 0.16s ease;
   }
 
   .lingo-titlebar__btn:hover {
-    border-color: rgba(167, 188, 221, 0.88);
     background: linear-gradient(180deg, rgba(237, 244, 253, 0.82) 0%, rgba(220, 232, 248, 0.76) 100%);
     color: #2d3f62;
   }
@@ -181,21 +187,20 @@
   }
 
   .lingo-titlebar__btn--close:hover {
-    border-color: rgba(237, 159, 178, 0.9);
     background: linear-gradient(180deg, rgba(255, 244, 247, 0.95) 0%, rgba(255, 227, 234, 0.9) 100%);
     color: #c43b5d;
   }
 
   .lingo-titlebar__btn-minimize {
-    width: 12px;
-    height: 1.5px;
+    width: 14px;
+    height: 2px;
     border-radius: 999px;
     background: currentColor;
   }
 
   .lingo-titlebar__btn-close-icon {
-    width: 12px;
-    height: 12px;
+    width: 13px;
+    height: 13px;
     stroke-width: 2.2;
   }
 
@@ -233,54 +238,13 @@
     display: flex;
     height: 100%;
     flex-direction: column;
-    padding: 18px;
+    padding: 22px 18px 18px;
     background:
       radial-gradient(260px 200px at 0% 0%, rgba(85, 123, 255, 0.28), transparent 76%),
       radial-gradient(320px 220px at 100% 100%, rgba(120, 211, 255, 0.14), transparent 76%),
       linear-gradient(180deg, rgba(255, 255, 255, 0.8) 0%, rgba(236, 243, 253, 0.92) 100%);
   }
 
-  .sidebar-brand {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 12px 14px;
-    border-radius: 22px;
-    border: 1px solid var(--line-soft);
-    background:
-      radial-gradient(140px 90px at 0% 0%, rgba(92, 129, 255, 0.18), transparent 76%),
-      linear-gradient(145deg, rgba(255, 255, 255, 0.96) 0%, rgba(236, 244, 255, 0.96) 100%);
-    box-shadow: 0 14px 28px rgba(27, 42, 72, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.96);
-  }
-
-  .sidebar-brand__mark {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 54px;
-    min-width: 54px;
-    height: 54px;
-    border-radius: 18px;
-    background: linear-gradient(180deg, rgba(37, 63, 126, 0.2) 0%, rgba(76, 111, 255, 0.18) 100%);
-    border: 1px solid rgba(188, 202, 221, 0.92);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.96);
-  }
-
-  .sidebar-brand__mark-image {
-    width: 46px;
-    height: 46px;
-    object-fit: cover;
-    border-radius: 14px;
-  }
-
-  .sidebar-brand__text {
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-  }
-
-  .sidebar-brand__eyebrow,
   .sidebar-section__label {
     display: inline-flex;
     align-items: center;
@@ -292,7 +256,6 @@
     color: #7788a0;
   }
 
-  .sidebar-brand__title,
   .dota-logo-title {
     margin: 4px 0 0;
     font-family: var(--font-display);
@@ -303,21 +266,17 @@
     color: #1f3161;
   }
 
-  .sidebar-brand__title--compact {
-    margin-top: 0;
-  }
-
   .sidebar-section {
-    margin-top: 18px;
-    padding: 12px 0 0;
-    border-top: 1px solid rgba(218, 227, 239, 0.84);
+    margin-top: 2px;
+    padding: 0;
+    border-top: none;
   }
 
   .sidebar-nav {
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    margin-top: 12px;
+    gap: 10px;
+    margin-top: 14px;
   }
 
   .sidebar-nav__item {
@@ -341,6 +300,15 @@
     background: linear-gradient(120deg, rgba(255, 255, 255, 0.88), rgba(230, 239, 255, 0.88));
     border-color: rgba(215, 223, 233, 0.68);
     color: var(--text-1);
+  }
+
+  .sidebar-nav__item:focus-visible {
+    outline: none;
+    border-color: rgba(141, 173, 245, 0.96);
+    box-shadow:
+      0 0 0 3px rgba(76, 111, 255, 0.16),
+      var(--shadow-sm);
+    color: #183061;
   }
 
   .sidebar-nav__item--active {
@@ -860,6 +828,15 @@
   .tool-rise:hover {
     transform: translateY(-2px);
     box-shadow: 0 20px 42px rgba(37, 57, 88, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.94);
+  }
+
+  .tool-rise:focus-visible {
+    outline: none;
+    transform: translateY(-1px);
+    box-shadow:
+      0 0 0 3px rgba(76, 111, 255, 0.14),
+      0 20px 42px rgba(37, 57, 88, 0.12),
+      inset 0 1px 0 rgba(255, 255, 255, 0.94);
   }
 
   .dota-theme button,

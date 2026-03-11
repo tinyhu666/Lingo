@@ -12,6 +12,7 @@ import {
 } from '../../../constants/hotkeys';
 import { invokeCommand, hasTauriRuntime } from '../../../services/tauriRuntime';
 import { showError, showSuccess } from '../../../utils/toast';
+import { toErrorMessage } from '../../../utils/error';
 
 const formatPreview = (codes) =>
   codes
@@ -63,7 +64,7 @@ export default function HotkeyCard() {
         showSuccess('预览模式：快捷键显示已更新');
       }
     } catch (error) {
-      showError(`翻译快捷键设置失败: ${error}`);
+      showError(`翻译快捷键设置失败: ${toErrorMessage(error)}`);
     } finally {
       stopRecording();
     }
@@ -153,7 +154,7 @@ export default function HotkeyCard() {
     <motion.button
       type='button'
       onClick={beginRecording}
-      className='dota-card w-full min-h-[248px] flex-1 flex flex-col rounded-2xl px-6 pt-6 pb-3 text-left transition-all duration-200 hover:shadow-[0_14px_30px_rgba(15,23,42,0.1)]'
+      className='dota-card tool-rise w-full min-h-[248px] min-w-0 flex-1 flex flex-col rounded-2xl px-6 pt-6 pb-3 text-left transition-all duration-200'
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.2 }}>

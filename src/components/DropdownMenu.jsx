@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { useCallback, useLayoutEffect, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { CheckTick } from '../icons';
 import { twMerge } from 'tailwind-merge';
@@ -87,6 +87,25 @@ export default function DropdownMenu({
     };
   }, [shouldUsePortal, updatePortalStyle]);
 
+  useEffect(() => {
+    if (!show || typeof window === 'undefined') {
+      return undefined;
+    }
+
+    const handleEscape = (event) => {
+      if (event.key !== 'Escape') {
+        return;
+      }
+      event.preventDefault();
+      onClose();
+    };
+
+    window.addEventListener('keydown', handleEscape);
+    return () => {
+      window.removeEventListener('keydown', handleEscape);
+    };
+  }, [show, onClose]);
+
   if (!show) {
     return null;
   }
@@ -114,7 +133,7 @@ export default function DropdownMenu({
               key={value}
               type='button'
               className={twMerge(
-                'flex w-full items-center rounded-xl px-3.5 py-2.5 text-left text-sm font-semibold transition-all duration-150',
+                'flex w-full items-center rounded-xl px-3.5 py-2.5 text-left text-sm font-semibold transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(76,111,255,0.45)]',
                 isActive
                   ? 'bg-[linear-gradient(180deg,rgba(236,243,255,0.96)_0%,rgba(227,237,255,0.98)_100%)] text-zinc-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]'
                   : 'text-zinc-600 hover:bg-[rgba(244,248,253,0.96)] hover:text-zinc-900',

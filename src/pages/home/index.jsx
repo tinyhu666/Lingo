@@ -25,20 +25,20 @@ const STEPS = [
 export default function Home() {
   return (
     <div className='grid grid-cols-12 gap-x-6 gap-y-12'>
-      <div className='col-span-4 flex min-h-[252px]'>
+      <div className='col-span-4 flex min-h-[252px] min-w-0'>
         <TranslationDirectionCard />
       </div>
 
-      <div className='col-span-4 flex min-h-[252px]'>
+      <div className='col-span-4 flex min-h-[252px] min-w-0'>
         <HotkeyCard />
       </div>
 
-      <div className='col-span-4 flex min-h-[252px]'>
+      <div className='col-span-4 flex min-h-[252px] min-w-0'>
         <EnableStatusCard />
       </div>
 
       <motion.section
-        className='dota-card tool-rise col-span-7 p-6'
+        className='dota-card tool-rise col-span-7 min-w-0 p-6'
         initial={{ opacity: 0, y: 18 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.08 }}>
@@ -64,7 +64,7 @@ export default function Home() {
       </motion.section>
 
       <motion.section
-        className='dota-card tool-rise col-span-5 p-6'
+        className='dota-card tool-rise col-span-5 min-w-0 p-6'
         initial={{ opacity: 0, y: 18 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.12 }}>

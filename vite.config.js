@@ -30,5 +30,38 @@ export default defineConfig(async () => ({
   },
   css: {
     postcss: true
-  }
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes("node_modules")) {
+            return;
+          }
+
+          if (id.includes("framer-motion")) {
+            return "vendor-motion";
+          }
+
+          if (id.includes("country-flag-icons")) {
+            return "vendor-flags";
+          }
+
+          if (id.includes("@tauri-apps")) {
+            return "vendor-tauri";
+          }
+
+          if (
+            id.includes("react-hot-toast") ||
+            id.includes("@headlessui") ||
+            id.includes("tailwind-merge")
+          ) {
+            return "vendor-ui";
+          }
+
+          return "vendor-core";
+        },
+      },
+    },
+  },
 }));
