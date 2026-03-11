@@ -100,7 +100,7 @@ export default function Settings() {
               <div className='tool-card-title mt-2 text-zinc-900'>{scene}</div>
             </div>
             <div className='tool-subcard min-w-0 p-4'>
-              <div className='tool-caption'>语气模式</div>
+              <div className='tool-caption'>语气风格</div>
               <div className='tool-card-title mt-2 text-zinc-900'>{mode}</div>
             </div>
           </div>

@@ -583,6 +583,26 @@ export function AT(props) {
   );
 }
 
+export function CircleInfo(props) {
+  return (
+    <svg
+      {...props}
+      xmlns='http://www.w3.org/2000/svg'
+      viewBox='0 0 24 24'
+      width='24'
+      height='24'
+      fill='none'
+      stroke='currentColor'
+      strokeLinecap='round'
+      strokeLinejoin='round'
+      strokeWidth='2'>
+      <path d='M12 16v-4' />
+      <path d='M12 8h.01' />
+      <path d='M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z' />
+    </svg>
+  );
+}
+
 export function XClose(props) {
   return (
     <svg

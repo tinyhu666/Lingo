@@ -8,23 +8,23 @@ import { toErrorMessage } from '../utils/error';
 const MODE_OPTIONS = [
   {
     id: 'auto',
-    title: '自动模式',
+    title: '自动',
     desc: '平衡准确、自然和可读性，适合大部分对局沟通。',
     detail: '优先输出自然、稳妥、可直接发送的表达。',
     icon: FaceOldFace,
   },
   {
     id: 'pro',
-    title: '职业模式',
+    title: '职业',
     desc: '术语更集中，指令更短，适合团队配合与节奏交流。',
     detail: '保留更多游戏术语和节奏词，更适合高频协同。',
     icon: GamingPad,
   },
   {
     id: 'toxic',
-    title: '高压模式',
+    title: '高压',
     desc: '语气更重、施压更强，适合抢节奏、压气势的对局场景。',
-    detail: '嘴臭、喷子、压力怪模式，表达语气更强烈。',
+    detail: '嘴臭、喷子、压力怪风格，表达语气更强烈。',
     icon: Whistle,
   },
 ];
@@ -55,7 +55,7 @@ export default function Translate() {
       await updateSettings({ translation_mode: mode });
     } catch (error) {
       setActiveMode(previousMode);
-      showError(`切换翻译模式失败: ${toErrorMessage(error)}`);
+      showError(`切换翻译风格失败: ${toErrorMessage(error)}`);
     }
   };
 
@@ -67,7 +67,7 @@ export default function Translate() {
         animate={{ opacity: 1, y: 0 }}>
         <div className='flex items-center justify-between gap-4'>
           <div className='min-w-0'>
-            <div className='tool-pill mb-3'>当前模式</div>
+            <div className='tool-pill mb-3'>当前风格</div>
             <h2 className='tool-page-title'>翻译风格设置</h2>
             <p className='tool-body'>选择一个输出风格，切换后会立即用于后续翻译结果。</p>
           </div>
@@ -104,7 +104,7 @@ export default function Translate() {
 
               <div className='mt-5'>
                 <div className='tool-card-title'>{mode.title}</div>
-                <div className='tool-caption mt-2'>{isActive ? '当前生效中' : '点击切换到此模式'}</div>
+                <div className='tool-caption mt-2'>{isActive ? '当前生效中' : '点击切换到此风格'}</div>
               </div>
 
               <p className='tool-body mode-card__desc mt-5'>{mode.desc}</p>

@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Dock, GamingPad, Globe, InfoCircle } from '../icons';
+import { CircleInfo, Dock, GamingPad, Globe } from '../icons';
 import { useUpdater } from '../components/UpdateProvider';
 import { APP_VERSION_LABEL } from '../constants/version';
 
@@ -151,7 +151,7 @@ export default function About() {
         <div className='tool-section-head'>
           <div className='tool-section-head__main'>
             <div className='tool-section-head__title-row'>
-              <InfoCircle className='tool-section-head__icon' />
+              <CircleInfo className='tool-section-head__icon' />
               <h3 className='tool-card-title'>项目说明</h3>
             </div>
           </div>
@@ -163,7 +163,7 @@ export default function About() {
         <div className='mt-5 grid grid-cols-3 gap-4'>
           <div className='tool-subcard min-w-0 p-5'>
             <div className='flex items-center gap-2'>
-              <InfoCircle className='h-4 w-4 stroke-zinc-500' />
+              <CircleInfo className='h-4 w-4 stroke-zinc-500' />
               <span className='tool-caption'>项目简介</span>
             </div>
             <p className='tool-body mt-3'>Powered by 萌新。当前版本聚焦桌面端游戏内翻译体验，支持快捷键触发、自动回填与应用内更新。</p>

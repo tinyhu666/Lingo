@@ -2,7 +2,7 @@ import { motion } from 'framer-motion';
 import HotkeyCard from './components/HotkeyCard';
 import TranslationDirectionCard from './components/TranslationDirectionCard';
 import EnableStatusCard from './components/EnableStatusCard';
-import { ChatBubbleMessage, KeyboardAlt, Sparkles } from '../../icons';
+import { CircleInfo, KeyboardAlt, Sparkles } from '../../icons';
 
 const STEPS = [
   {
@@ -45,7 +45,7 @@ export default function Home() {
         <div className='tool-section-head'>
           <div className='tool-section-head__main'>
             <div className='tool-section-head__title-row'>
-              <KeyboardAlt className='tool-section-head__icon' />
+              <CircleInfo className='tool-section-head__icon' />
               <h2 className='tool-card-title'>使用说明</h2>
             </div>
           </div>
@@ -71,7 +71,7 @@ export default function Home() {
         <div className='tool-section-head'>
           <div className='tool-section-head__main'>
             <div className='tool-section-head__title-row'>
-              <ChatBubbleMessage className='tool-section-head__icon' />
+              <CircleInfo className='tool-section-head__icon' />
               <h2 className='tool-card-title'>演示说明</h2>
             </div>
           </div>

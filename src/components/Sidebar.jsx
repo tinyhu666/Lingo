@@ -10,7 +10,6 @@ export default function Sidebar({ activeItem, setActiveItem }) {
   return (
     <div className='sidebar-panel'>
       <div className='sidebar-section'>
-        <div className='sidebar-section__label'>导航</div>
         <nav className='sidebar-nav'>
           {NAV_ITEMS.map((item) => {
             const isActive = activeItem === item.id;

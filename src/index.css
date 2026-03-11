@@ -5,6 +5,8 @@
 @tailwind utilities;
 
 :root {
+  --app-radius-outer: 30px;
+  --app-radius-inner: 26px;
   --shell-bg: #d7e1f5;
   --shell-bg-deep: #b9c8e4;
   --shell-glow: rgba(70, 104, 255, 0.3);
@@ -38,6 +40,8 @@
   body,
   #root {
     height: 100%;
+    overflow: hidden;
+    border-radius: var(--app-radius-outer);
   }
 
   body {
@@ -89,35 +93,33 @@
   }
 
   .lingo-app-shell {
-    height: 100vh;
-    padding: 10px 14px 14px;
+    height: 100%;
+    padding: 8px 10px 10px;
     display: flex;
     flex-direction: column;
-    gap: 12px;
-    border-radius: 28px;
+    gap: 10px;
+    border-radius: var(--app-radius-outer);
     overflow: hidden;
-    border: 1px solid rgba(164, 183, 214, 0.72);
+    border: 1px solid rgba(164, 183, 214, 0.66);
     background:
       radial-gradient(980px 400px at -8% -18%, rgba(86, 121, 255, 0.24), transparent 70%),
       radial-gradient(860px 360px at 110% 0%, rgba(110, 208, 255, 0.18), transparent 72%),
       linear-gradient(180deg, rgba(236, 243, 254, 0.68) 0%, rgba(216, 228, 246, 0.62) 100%);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.68);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.66);
   }
 
   .lingo-titlebar {
     display: flex;
     align-items: center;
-    gap: 10px;
-    height: 48px;
-    min-height: 48px;
-    padding: 6px 10px;
-    border-radius: 18px;
-    background:
-      radial-gradient(780px 280px at -8% -140%, rgba(92, 127, 255, 0.3), transparent 74%),
-      radial-gradient(680px 280px at 112% -130%, rgba(111, 211, 255, 0.24), transparent 76%),
-      linear-gradient(180deg, rgba(215, 226, 245, 0.7) 0%, rgba(200, 215, 238, 0.58) 100%);
-    box-shadow: 0 8px 18px rgba(25, 42, 74, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.64);
-    backdrop-filter: blur(14px);
+    gap: 8px;
+    height: 52px;
+    min-height: 52px;
+    padding: 0 6px;
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    backdrop-filter: none;
   }
 
   .lingo-titlebar__brand {
@@ -125,19 +127,20 @@
     align-items: center;
     gap: 10px;
     height: 100%;
-    padding: 0 14px;
+    padding: 0 10px;
     min-width: 0;
-    border-radius: 14px;
-    background: linear-gradient(180deg, rgba(229, 238, 250, 0.7) 0%, rgba(214, 226, 243, 0.58) 100%);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.74);
+    border-radius: 12px;
+    border: none;
+    background: transparent;
+    box-shadow: none;
   }
 
   .lingo-titlebar__icon {
-    width: 22px;
-    height: 22px;
-    border-radius: 7px;
-    object-fit: cover;
-    box-shadow: 0 2px 6px rgba(35, 53, 90, 0.12);
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    object-fit: contain;
+    box-shadow: none;
   }
 
   .lingo-titlebar__title {
@@ -159,7 +162,7 @@
   .lingo-titlebar__controls {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
+    gap: 4px;
     height: 100%;
   }
 
@@ -169,7 +172,7 @@
     justify-content: center;
     width: 40px;
     height: 34px;
-    border-radius: 11px;
+    border-radius: 10px;
     border: none;
     background: transparent;
     color: #5e7191;
@@ -177,7 +180,7 @@
   }
 
   .lingo-titlebar__btn:hover {
-    background: linear-gradient(180deg, rgba(237, 244, 253, 0.82) 0%, rgba(220, 232, 248, 0.76) 100%);
+    background: rgba(223, 235, 252, 0.72);
     color: #2d3f62;
   }
 
@@ -187,7 +190,7 @@
   }
 
   .lingo-titlebar__btn--close:hover {
-    background: linear-gradient(180deg, rgba(255, 244, 247, 0.95) 0%, rgba(255, 227, 234, 0.9) 100%);
+    background: rgba(255, 227, 234, 0.86);
     color: #c43b5d;
   }
 
@@ -207,7 +210,7 @@
   .lingo-shell {
     display: grid;
     grid-template-columns: 248px minmax(0, 1fr);
-    gap: 16px;
+    gap: 14px;
     flex: 1;
     min-height: 0;
   }
@@ -215,7 +218,7 @@
   .lingo-shell__sidebar,
   .lingo-shell__workspace {
     min-height: 0;
-    border-radius: 26px;
+    border-radius: var(--app-radius-inner);
     border: 1px solid var(--border);
     background:
       radial-gradient(360px 220px at 0% 0%, rgba(87, 122, 255, 0.16), transparent 72%),
@@ -238,7 +241,7 @@
     display: flex;
     height: 100%;
     flex-direction: column;
-    padding: 22px 18px 18px;
+    padding: 18px 18px 18px;
     background:
       radial-gradient(260px 200px at 0% 0%, rgba(85, 123, 255, 0.28), transparent 76%),
       radial-gradient(320px 220px at 100% 100%, rgba(120, 211, 255, 0.14), transparent 76%),
@@ -267,7 +270,7 @@
   }
 
   .sidebar-section {
-    margin-top: 2px;
+    margin-top: 0;
     padding: 0;
     border-top: none;
   }
@@ -276,7 +279,7 @@
     display: flex;
     flex-direction: column;
     gap: 10px;
-    margin-top: 14px;
+    margin-top: 0;
   }
 
   .sidebar-nav__item {

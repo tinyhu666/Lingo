@@ -2,7 +2,7 @@ import {
   HomeHLine,
   Translate,
   ChatBubbleMessage,
-  AT,
+  CircleInfo,
 } from '../icons';
 
 export const NAV_ITEMS = [
@@ -13,7 +13,7 @@ export const NAV_ITEMS = [
   },
   {
     id: 'translate',
-    name: '模式',
+    name: '翻译风格',
     icon: Translate,
   },
   {
@@ -24,6 +24,6 @@ export const NAV_ITEMS = [
   {
     id: 'about',
     name: '关于',
-    icon: AT,
+    icon: CircleInfo,
   },
 ];

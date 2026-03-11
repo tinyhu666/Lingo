@@ -38,6 +38,15 @@ jobs:
       - name: Install Dependencies
         run: npm ci
 
+      - name: Prepare Release Notes
+        id: release_notes
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="$(node -p "JSON.parse(require('node:fs').readFileSync('package.json', 'utf8')).version")"
+          echo "Using changelog section for version: $VERSION"
+          node ./scripts/get-release-notes.mjs "$VERSION"
+
       - name: Install WiX Toolset (Windows)
         if: matrix.os == 'windows-latest'
         shell: pwsh
@@ -133,7 +142,8 @@ jobs:
         with:
           tagName: v__VERSION__
           releaseName: 'Lingo v__VERSION__'
-          generateReleaseNotes: true
+          releaseBody: ${{ steps.release_notes.outputs.body }}
+          generateReleaseNotes: false
           releaseDraft: false
           prerelease: false
           includeUpdaterJson: true
