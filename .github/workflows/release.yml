@@ -133,14 +133,7 @@ jobs:
         with:
           tagName: v__VERSION__
           releaseName: 'Lingo v__VERSION__'
-          releaseBody: |
-            更新日志：
-            1. 关于页更新说明模块仅在检测到新版本时显示，更新到最新版后不再展示历史更新日志。
-            2. 优化“项目说明”介绍文案，明确项目背景与后续功能规划（翻译其他玩家发言）。
-
-            安装包：
-            - Windows: `.msi` / `.exe`
-            - macOS: `.dmg`
+          generateReleaseNotes: true
           releaseDraft: false
           prerelease: false
           includeUpdaterJson: true
