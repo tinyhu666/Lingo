@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Lingo",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "identifier": "com.lingo.app",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -10,6 +10,7 @@
     "frontendDist": "../dist"
   },
   "app": {
+    "macOSPrivateApi": true,
     "windows": [
       {
         "title": "Lingo",
@@ -22,7 +23,8 @@
         "theme": "Light",
         "visible": true,
         "decorations": false,
-        "transparent": true
+        "transparent": true,
+        "backgroundColor": "#00000000"
       }
     ]
   },

@@ -45,7 +45,7 @@
 
   <g filter="url(#outerShadow)">
     <rect x="140" y="120" width="744" height="784" rx="176" fill="url(#bg)"/>
-    <rect x="172" y="152" width="680" height="720" rx="156" fill="url(#panel)" stroke="#EFF4FF" stroke-width="6"/>
+    <rect x="172" y="152" width="680" height="720" rx="156" fill="url(#panel)"/>
   </g>
 
   <g filter="url(#innerShadow)">
