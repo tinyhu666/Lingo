@@ -45,11 +45,14 @@
     background: linear-gradient(160deg, #bfd0ea 0%, #afc2e2 48%, #a2b8dc 100%);
   }
 
-  html.platform-windows,
-  html.platform-windows body,
-  html.platform-windows #root {
-    border-radius: 0;
-    background: transparent;
+  html.platform-desktop,
+  html.platform-desktop body,
+  html.platform-desktop #root,
+  body.platform-desktop,
+  body.platform-desktop #root {
+    border-radius: var(--app-radius-outer);
+    overflow: hidden;
+    background: transparent !important;
   }
 
   body {
@@ -97,15 +100,11 @@
     background: linear-gradient(160deg, #bfd0ea 0%, #afc2e2 48%, #a2b8dc 100%);
   }
 
-  .lingo-theme--windows {
-    overflow: clip;
+  .lingo-theme--desktop {
+    border-radius: var(--app-radius-outer);
+    overflow: hidden;
     isolation: isolate;
-  }
-
-  @supports not (overflow: clip) {
-    .lingo-theme--windows {
-      overflow: hidden;
-    }
+    background: transparent;
   }
 
   .lingo-app-shell {
@@ -127,8 +126,12 @@
       0 22px 52px rgba(20, 34, 62, 0.16);
   }
 
+  .lingo-theme--desktop .lingo-app-shell {
+    border-radius: calc(var(--app-radius-outer) - 1px);
+    overflow: hidden;
+  }
+
   .lingo-theme--windows .lingo-app-shell {
-    clip-path: inset(0 round var(--app-radius-outer));
     border-color: rgba(139, 160, 197, 0.88);
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.58),

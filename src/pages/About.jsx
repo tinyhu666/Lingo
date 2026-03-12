@@ -4,6 +4,30 @@ import { useUpdater } from '../components/UpdateProvider';
 import { APP_VERSION_LABEL } from '../constants/version';
 import { useI18n } from '../i18n/I18nProvider';
 
+const stripLeadingMarkdownHeading = (value) => {
+  if (typeof value !== 'string') {
+    return '';
+  }
+
+  const lines = value.replace(/\r\n/g, '\n').split('\n');
+  let firstContentIndex = 0;
+
+  while (firstContentIndex < lines.length && !lines[firstContentIndex].trim()) {
+    firstContentIndex += 1;
+  }
+
+  if (firstContentIndex < lines.length && /^\s{0,3}#{1,6}\s+.+$/.test(lines[firstContentIndex])) {
+    lines.splice(firstContentIndex, 1);
+    if (firstContentIndex < lines.length && !lines[firstContentIndex].trim()) {
+      lines.splice(firstContentIndex, 1);
+    }
+  }
+
+  return lines.join('\n').trim();
+};
+
+const normalizeReleaseNotes = (value) => stripLeadingMarkdownHeading(value).replace(/\n{3,}/g, '\n\n').trim();
+
 export default function About() {
   const { t } = useI18n();
   const {
@@ -61,7 +85,8 @@ export default function About() {
           : t('about.update.actionCheck');
   const actionHandler = hasUpdate ? installUpdate : () => checkForUpdates({ silent: false });
   const actionDisabled = !supportsUpdater || checking || downloading;
-  const shouldShowReleaseNotes = hasUpdate && Boolean(releaseBody);
+  const releaseNotesBody = normalizeReleaseNotes(releaseBody);
+  const shouldShowReleaseNotes = hasUpdate && Boolean(releaseNotesBody);
 
   return (
     <div className='flex h-full flex-col gap-6'>
@@ -121,7 +146,9 @@ export default function About() {
           {shouldShowReleaseNotes ? (
             <div className='tool-subcard min-w-0 p-4'>
               <div className='tool-caption'>{t('about.update.releaseNotes')}</div>
-              <div className='tool-body mt-2 whitespace-pre-wrap break-words'>{releaseBody}</div>
+              <div className='mt-3 whitespace-pre-line break-words text-[15px] leading-[1.78] text-[#5a6b84]'>
+                {releaseNotesBody}
+              </div>
             </div>
           ) : null}
 

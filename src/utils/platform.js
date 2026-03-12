@@ -1,10 +1,22 @@
 ﻿import { hasTauriRuntime } from '../services/tauriRuntime';
 
-export function isWindowsClient() {
-  if (typeof navigator === 'undefined') {
-    return false;
+export function getDesktopPlatform() {
+  if (typeof navigator === 'undefined' || !hasTauriRuntime()) {
+    return null;
   }
 
   const userAgent = String(navigator.userAgent || '').toLowerCase();
-  return hasTauriRuntime() && userAgent.includes('windows');
+  if (userAgent.includes('windows')) {
+    return 'windows';
+  }
+
+  if (userAgent.includes('mac os x') || userAgent.includes('macintosh')) {
+    return 'macos';
+  }
+
+  return 'desktop';
+}
+
+export function isWindowsClient() {
+  return getDesktopPlatform() === 'windows';
 }

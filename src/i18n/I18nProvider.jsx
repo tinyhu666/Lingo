@@ -8,8 +8,9 @@ import {
 } from './messages';
 
 const I18nContext = createContext(null);
+const SYSTEM_FALLBACK_LOCALE = 'en-US';
 
-function normalizeLocale(locale) {
+function resolveSupportedLocale(locale) {
   const raw = String(locale || '').trim().toLowerCase();
   if (raw.startsWith('zh')) {
     return 'zh-CN';
@@ -20,7 +21,34 @@ function normalizeLocale(locale) {
   if (raw.startsWith('ru')) {
     return 'ru-RU';
   }
-  return DEFAULT_LOCALE;
+  return null;
+}
+
+function normalizeLocale(locale) {
+  return resolveSupportedLocale(locale) || DEFAULT_LOCALE;
+}
+
+function resolveLocaleFromSystem() {
+  if (typeof navigator === 'undefined') {
+    return SYSTEM_FALLBACK_LOCALE;
+  }
+
+  const candidates = [];
+  if (Array.isArray(navigator.languages)) {
+    candidates.push(...navigator.languages);
+  }
+  if (typeof navigator.language === 'string' && navigator.language) {
+    candidates.push(navigator.language);
+  }
+
+  for (const candidate of candidates) {
+    const normalized = resolveSupportedLocale(candidate);
+    if (normalized) {
+      return normalized;
+    }
+  }
+
+  return SYSTEM_FALLBACK_LOCALE;
 }
 
 function readInitialLocale() {
@@ -31,13 +59,16 @@ function readInitialLocale() {
   try {
     const stored = window.localStorage.getItem(UI_LOCALE_STORAGE_KEY);
     if (stored) {
-      return normalizeLocale(stored);
+      const normalizedStored = resolveSupportedLocale(stored);
+      if (normalizedStored) {
+        return normalizedStored;
+      }
     }
   } catch {
     // ignore localStorage read failures
   }
 
-  return DEFAULT_LOCALE;
+  return resolveLocaleFromSystem();
 }
 
 function getPathValue(source, keyPath) {
