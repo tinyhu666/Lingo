@@ -38,6 +38,11 @@ Lingo — это клиент перевода внутриигрового ча
 npm run tauri build
 ```
 
+## Контакты
+
+- Discord: https://discord.gg/cWB49jCfdP
+- Email: huruiw@outlook.com
+
 ## Лицензия
 
 MIT

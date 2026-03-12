@@ -38,6 +38,11 @@ Lingo is an in-game chat translation client powered by AI models, built for real
 npm run tauri build
 ```
 
+## Contact
+
+- Discord: https://discord.gg/cWB49jCfdP
+- Email: huruiw@outlook.com
+
 ## License
 
 MIT
