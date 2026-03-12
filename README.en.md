@@ -5,6 +5,7 @@
 Lingo is an in-game chat translation client powered by AI models, built for real-time communication across multiple game scenarios. It uses a global hotkey workflow to automatically copy, translate, and paste back text.
 
 - Supports Windows / macOS
+- Client UI language supports Simplified Chinese, English, and Russian
 - Supports global hotkeys: auto-copy -> translate -> auto-paste
 - Translation is provided by a centralized backend; no client-side model API login or parameter setup needed
 - Includes phrase shortcuts and multilingual translation capabilities
