@@ -1,8 +1,12 @@
 ﻿import { motion } from 'framer-motion';
+import { openUrl } from '@tauri-apps/plugin-opener';
 import { CircleInfo, Dock, GamingPad, Globe } from '../icons';
 import { useUpdater } from '../components/UpdateProvider';
 import { APP_VERSION_LABEL } from '../constants/version';
+import { hasTauriRuntime } from '../services/tauriRuntime';
 import { useI18n } from '../i18n/I18nProvider';
+import { showError } from '../utils/toast';
+import { toErrorMessage } from '../utils/error';
 
 const stripLeadingMarkdownHeading = (value) => {
   if (typeof value !== 'string') {
@@ -27,6 +31,27 @@ const stripLeadingMarkdownHeading = (value) => {
 };
 
 const normalizeReleaseNotes = (value) => stripLeadingMarkdownHeading(value).replace(/\n{3,}/g, '\n\n').trim();
+const DISCORD_URL = 'https://discord.gg/cWB49jCfdP';
+const EMAIL_ADDRESS = 'huruiw@outlook.com';
+
+const openContactLink = async (url, t) => {
+  try {
+    if (hasTauriRuntime()) {
+      await openUrl(url);
+      return;
+    }
+
+    if (typeof window !== 'undefined') {
+      if (url.startsWith('mailto:')) {
+        window.location.href = url;
+        return;
+      }
+      window.open(url, '_blank', 'noopener,noreferrer');
+    }
+  } catch (error) {
+    showError(t('developerNote.openLinkFailed', { error: toErrorMessage(error) }));
+  }
+};
 
 export default function About() {
   const { t } = useI18n();
@@ -87,6 +112,20 @@ export default function About() {
   const actionDisabled = !supportsUpdater || checking || downloading;
   const releaseNotesBody = normalizeReleaseNotes(releaseBody);
   const shouldShowReleaseNotes = hasUpdate && Boolean(releaseNotesBody);
+  const contactItems = [
+    {
+      key: 'discord',
+      label: t('about.project.contactDiscord'),
+      value: 'discord.gg/cWB49jCfdP',
+      href: DISCORD_URL,
+    },
+    {
+      key: 'email',
+      label: t('about.project.contactEmail'),
+      value: EMAIL_ADDRESS,
+      href: `mailto:${EMAIL_ADDRESS}`,
+    },
+  ];
 
   return (
     <div className='flex h-full flex-col gap-6'>
@@ -186,6 +225,24 @@ export default function About() {
           </div>
         </div>
         <p className='tool-body tool-section-summary'>{t('about.project.summary')}</p>
+
+        <div className='mt-4 rounded-2xl border border-[rgba(205,218,237,0.96)] bg-[rgba(248,251,255,0.9)] p-4 shadow-[0_10px_24px_rgba(27,42,72,0.04)]'>
+          <div className='tool-caption'>{t('about.project.contactTitle')}</div>
+          <div className='mt-3 flex flex-wrap gap-3'>
+            {contactItems.map((item) => (
+              <button
+                key={item.key}
+                type='button'
+                onClick={() => {
+                  void openContactLink(item.href, t);
+                }}
+                className='min-w-[260px] flex-1 rounded-2xl border border-[rgba(196,210,233,0.96)] bg-[rgba(255,255,255,0.94)] px-4 py-3 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition-all duration-150 hover:-translate-y-[1px] hover:border-[rgba(157,181,229,0.98)] hover:bg-[rgba(252,254,255,0.98)]'>
+                <div className='text-[11px] font-extrabold uppercase tracking-[0.12em] text-[#7a89a1]'>{item.label}</div>
+                <div className='mt-1 text-[14px] font-semibold text-[#2d3d59]'>{item.value}</div>
+              </button>
+            ))}
+          </div>
+        </div>
 
         <div className='mt-5 grid grid-cols-3 gap-4'>
           <div className='tool-subcard min-w-0 p-5'>

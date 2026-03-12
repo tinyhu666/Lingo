@@ -199,6 +199,9 @@ export const messages = {
       project: {
         title: '项目说明',
         summary: 'Lingo 是 Dota 2 爱好者（ID：萌新）在业余时间打造的兴趣项目，主要解决外服对局中的沟通问题。后续将带来翻译其他玩家发言的功能，敬请期待。',
+        contactTitle: '联系方式',
+        contactDiscord: 'Discord',
+        contactEmail: '邮箱',
         introTitle: '项目简介',
         introBody: 'Powered by 萌新。当前版本聚焦桌面端游戏内翻译体验，支持快捷键触发、自动回填与应用内更新。',
         featureTitle: '核心特点',
@@ -424,6 +427,9 @@ export const messages = {
       project: {
         title: 'Project Notes',
         summary: 'Lingo is a side project built by a Dota 2 player (ID: Mengxin) to improve communication in overseas matches.',
+        contactTitle: 'Contact',
+        contactDiscord: 'Discord',
+        contactEmail: 'Email',
         introTitle: 'Overview',
         introBody: 'Powered by Mengxin. Current release focuses on desktop in-game translation with hotkeys, auto fill-back, and in-app updates.',
         featureTitle: 'Core Features',
@@ -649,6 +655,9 @@ export const messages = {
       project: {
         title: 'О проекте',
         summary: 'Lingo — пет-проект игрока в Dota 2 (ID: Mengxin) для упрощения общения в зарубежных матчах.',
+        contactTitle: 'Контакты',
+        contactDiscord: 'Discord',
+        contactEmail: 'Почта',
         introTitle: 'Кратко',
         introBody: 'Powered by Mengxin. Текущий релиз фокусируется на переводе в desktop-клиенте: хоткеи, автоподстановка и обновления внутри приложения.',
         featureTitle: 'Ключевые возможности',
