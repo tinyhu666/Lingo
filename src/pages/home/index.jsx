@@ -1,4 +1,4 @@
-﻿import { motion } from 'framer-motion';
+import { motion } from 'framer-motion';
 import HotkeyCard from './components/HotkeyCard';
 import TranslationDirectionCard from './components/TranslationDirectionCard';
 import EnableStatusCard from './components/EnableStatusCard';
@@ -27,21 +27,21 @@ export default function Home() {
   ];
 
   return (
-    <div className='grid min-h-full grid-cols-12 gap-x-6 gap-y-12'>
-      <div className='col-span-4 flex min-h-[252px] min-w-0'>
+    <div className='grid min-h-full grid-cols-1 gap-6 xl:grid-cols-6 2xl:grid-cols-12'>
+      <div className='flex min-h-[252px] min-w-0 xl:col-span-3 2xl:col-span-4'>
         <TranslationDirectionCard />
       </div>
 
-      <div className='col-span-4 flex min-h-[252px] min-w-0'>
+      <div className='flex min-h-[252px] min-w-0 xl:col-span-3 2xl:col-span-4'>
         <HotkeyCard />
       </div>
 
-      <div className='col-span-4 flex min-h-[252px] min-w-0'>
+      <div className='flex min-h-[252px] min-w-0 xl:col-span-6 2xl:col-span-4'>
         <EnableStatusCard />
       </div>
 
       <motion.section
-        className='dota-card tool-rise col-span-7 min-w-0 p-6'
+        className='dota-card tool-rise min-w-0 p-6 xl:col-span-6 2xl:col-span-7'
         initial={{ opacity: 0, y: 18 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.08 }}>
@@ -55,7 +55,7 @@ export default function Home() {
         </div>
         <p className='tool-body tool-section-summary'>{t('home.guide.summary')}</p>
 
-        <div className='mt-6 grid grid-cols-3 gap-4'>
+        <div className='mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 2xl:grid-cols-3'>
           {steps.map((step) => (
             <article key={step.id} className='tool-subcard tool-rise p-5'>
               <div className='tool-caption tracking-[0.16em]'>{step.id}</div>
@@ -67,7 +67,7 @@ export default function Home() {
       </motion.section>
 
       <motion.section
-        className='dota-card tool-rise col-span-5 min-w-0 p-6'
+        className='dota-card tool-rise min-w-0 p-6 xl:col-span-6 2xl:col-span-5'
         initial={{ opacity: 0, y: 18 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.12 }}>

@@ -28,9 +28,6 @@ export default defineConfig(async () => ({
       ignored: ["**/src-tauri/**"],
     },
   },
-  css: {
-    postcss: true
-  },
   build: {
     rollupOptions: {
       output: {

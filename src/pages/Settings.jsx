@@ -1,4 +1,4 @@
-﻿import { motion } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { useMemo } from 'react';
 import { Server, Sparkles, Globe, Cpu } from '../icons';
 import { useStore } from '../components/StoreProvider';
@@ -42,27 +42,27 @@ export default function Settings() {
   return (
     <div className='flex h-full flex-col gap-6'>
       <motion.section className='dota-card tool-rise p-6' initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }}>
-        <div className='flex items-start justify-between gap-4'>
+        <div className='flex flex-col items-start gap-4 lg:flex-row lg:items-start lg:justify-between'>
           <div className='min-w-0'>
             <div className='tool-pill mb-3'>{t('settings.overviewBadge')}</div>
             <h2 className='tool-page-title'>{t('settings.title')}</h2>
             <p className='tool-body'>{t('settings.summary')}</p>
           </div>
-          <div className='tool-subcard min-w-[132px] shrink-0 px-4 py-3'>
+          <div className='tool-subcard w-full min-w-0 px-4 py-3 sm:w-auto sm:min-w-[132px] sm:shrink-0'>
             <div className='tool-caption'>{t('settings.statusCard')}</div>
             <div className={`tool-card-title mt-2 ${serviceStatus.tone}`}>{serviceStatus.label}</div>
           </div>
         </div>
       </motion.section>
 
-      <div className='grid grid-cols-2 gap-6'>
+      <div className='grid grid-cols-1 gap-6 xl:grid-cols-2'>
         <motion.section className='dota-card tool-rise min-w-0 p-6' initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.06 }}>
           <div className='flex items-center gap-3 mb-5'>
             <Server className='h-5 w-5 stroke-zinc-500' />
             <h3 className='tool-card-title'>{t('settings.section.status')}</h3>
           </div>
 
-          <div className='grid grid-cols-2 gap-4'>
+          <div className='grid grid-cols-1 gap-4 md:grid-cols-2'>
             <div className='tool-subcard min-w-0 p-4'>
               <div className='tool-caption'>{t('settings.statusCard')}</div>
               <div className={`tool-card-title mt-2 ${serviceStatus.tone}`}>{serviceStatus.label}</div>
@@ -84,7 +84,7 @@ export default function Settings() {
             <h3 className='tool-card-title'>{t('settings.section.strategy')}</h3>
           </div>
 
-          <div className='grid grid-cols-2 gap-4'>
+          <div className='grid grid-cols-1 gap-4 md:grid-cols-2'>
             <div className='tool-subcard min-w-0 p-4'>
               <div className='tool-caption'>{t('settings.strategy.scene')}</div>
               <div className='tool-card-title mt-2 text-zinc-900'>{scene}</div>

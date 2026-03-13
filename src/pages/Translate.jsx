@@ -1,4 +1,4 @@
-﻿import { motion } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { useEffect, useMemo, useState } from 'react';
 import { GamingPad, FaceOldFace, Whistle, Sparkles } from '../icons';
 import { useStore } from '../components/StoreProvider';
@@ -56,19 +56,19 @@ export default function Translate() {
         className='dota-card tool-rise p-6'
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}>
-        <div className='flex items-center justify-between gap-4'>
+        <div className='flex flex-col items-start gap-4 lg:flex-row lg:items-center lg:justify-between'>
           <div className='min-w-0'>
             <h2 className='tool-page-title mt-0'>{t('translate.title')}</h2>
             <p className='tool-body mt-3'>{t('translate.summary')}</p>
           </div>
-          <div className='tool-subcard min-w-[132px] shrink-0 px-4 py-3'>
+          <div className='tool-subcard w-full min-w-0 px-4 py-3 sm:w-auto sm:min-w-[132px] sm:shrink-0'>
             <div className='tool-caption'>{t('translate.currentEnabled')}</div>
             <div className='tool-card-title mt-2'>{currentLabel}</div>
           </div>
         </div>
       </motion.section>
 
-      <div className='grid grid-cols-3 gap-6'>
+      <div className='grid grid-cols-1 gap-6 lg:grid-cols-2 2xl:grid-cols-3'>
         {MODE_OPTIONS.map((mode, idx) => {
           const Icon = mode.icon;
           const isActive = activeMode === mode.id;

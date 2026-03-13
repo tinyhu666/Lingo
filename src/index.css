@@ -1,8 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=Source+Sans+3:wght@400;500;600;700&display=swap');
-
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
 :root {
   --app-radius-outer: 30px;
@@ -193,7 +190,7 @@
   .lingo-titlebar__controls {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
     height: 100%;
   }
 
@@ -205,13 +202,13 @@
   .lingo-titlebar__locale-trigger {
     display: inline-flex;
     align-items: center;
-    justify-content: center;
-    gap: 8px;
-    height: 34px;
-    min-width: 152px;
+    justify-content: flex-start;
+    gap: 9px;
+    height: 36px;
+    min-width: 156px;
     max-width: 210px;
-    padding: 0 10px 0 12px;
-    border-radius: 10px;
+    padding: 0 12px;
+    border-radius: 12px;
     border: 1px solid rgba(193, 207, 229, 0.92);
     background: linear-gradient(180deg, rgba(253, 255, 255, 0.98) 0%, rgba(239, 247, 255, 0.97) 100%);
     color: #32537f;
@@ -246,6 +243,8 @@
   }
 
   .lingo-titlebar__locale-label {
+    display: flex;
+    align-items: center;
     min-width: 0;
     flex: 1;
     overflow: hidden;
@@ -254,7 +253,8 @@
     text-align: left;
     font-size: 13px;
     font-weight: 700;
-    line-height: 1;
+    line-height: 1.25;
+    letter-spacing: 0.01em;
   }
 
   .lingo-titlebar__locale-caret {
@@ -278,9 +278,9 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 36px;
-    height: 34px;
-    border-radius: 10px;
+    width: 38px;
+    height: 36px;
+    border-radius: 12px;
     border: none;
     background: transparent;
     color: #5e7191;
@@ -324,8 +324,8 @@
 
   .lingo-shell {
     display: grid;
-    grid-template-columns: 248px minmax(0, 1fr);
-    gap: 14px;
+    grid-template-columns: clamp(196px, 22vw, 248px) minmax(0, 1fr);
+    gap: clamp(10px, 1.4vw, 14px);
     flex: 1;
     min-height: 0;
   }
@@ -356,7 +356,7 @@
     display: flex;
     height: 100%;
     flex-direction: column;
-    padding: 26px 18px 18px;
+    padding: clamp(20px, 2.2vw, 26px) clamp(14px, 1.8vw, 18px) 18px;
     background:
       radial-gradient(300px 210px at 0% 0%, rgba(83, 118, 205, 0.34), transparent 74%),
       radial-gradient(340px 240px at 100% 100%, rgba(91, 173, 224, 0.24), transparent 74%),
@@ -542,8 +542,9 @@
 
   .mode-card__top-row {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: space-between;
+    flex-wrap: wrap;
     gap: 12px;
     min-height: 56px;
   }
@@ -573,6 +574,7 @@
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
+    flex-wrap: wrap;
     gap: 16px;
   }
 
@@ -626,7 +628,7 @@
     min-height: 0;
     overflow-y: auto;
     overflow-x: hidden;
-    padding: 26px 28px;
+    padding: clamp(20px, 2.2vw, 26px) clamp(18px, 2.5vw, 28px);
   }
 
   .dota-card {
@@ -666,6 +668,18 @@
       radial-gradient(160px 90px at 0% 0%, rgba(112, 146, 255, 0.12), transparent 80%),
       linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(243, 248, 255, 0.94) 100%);
     box-shadow: 0 10px 24px rgba(27, 42, 72, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.96);
+  }
+
+  .tool-inline-icon-shell {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 10px;
+    border: 1px solid rgba(218, 227, 239, 0.9);
+    background: rgba(255, 255, 255, 0.78);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.94);
   }
 
   .tool-btn,
@@ -956,6 +970,42 @@
       0 0 0 3px rgba(76, 111, 255, 0.14),
       0 20px 42px rgba(37, 57, 88, 0.12),
       inset 0 1px 0 rgba(255, 255, 255, 0.94);
+  }
+
+  @media (max-width: 1024px) {
+    .lingo-titlebar {
+      height: 54px;
+      min-height: 54px;
+      padding-inline: 6px;
+    }
+
+    .lingo-titlebar__brand {
+      gap: 10px;
+      padding-inline: 10px;
+    }
+
+    .lingo-titlebar__title {
+      font-size: 19px;
+    }
+
+    .lingo-titlebar__locale-trigger {
+      min-width: 138px;
+    }
+
+    .sidebar-nav__item {
+      min-height: 48px;
+      padding-inline: 12px;
+      font-size: 15px;
+    }
+
+    .sidebar-nav__icon-wrap {
+      width: 32px;
+      height: 32px;
+    }
+
+    .home-top-copy {
+      min-height: auto;
+    }
   }
 
   .dota-theme button,

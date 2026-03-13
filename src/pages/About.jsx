@@ -1,6 +1,6 @@
-﻿import { motion } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { openUrl } from '@tauri-apps/plugin-opener';
-import { CircleInfo, Dock, GamingPad, Globe } from '../icons';
+import { ChatBubbleMessage, CircleInfo, Dock, GamingPad, Globe } from '../icons';
 import { useUpdater } from '../components/UpdateProvider';
 import { APP_VERSION_LABEL } from '../constants/version';
 import { hasTauriRuntime } from '../services/tauriRuntime';
@@ -54,7 +54,7 @@ const openContactLink = async (url, t) => {
 };
 
 export default function About() {
-  const { t } = useI18n();
+  const { locale, t } = useI18n();
   const {
     currentVersion,
     latestVersion,
@@ -76,7 +76,7 @@ export default function About() {
       return t('common.notChecked');
     }
     try {
-      return new Date(timestamp).toLocaleString();
+      return new Date(timestamp).toLocaleString(locale);
     } catch {
       return t('common.notChecked');
     }
@@ -91,7 +91,7 @@ export default function About() {
       if (Number.isNaN(parsed.getTime())) {
         return t('common.unknown');
       }
-      return parsed.toLocaleDateString();
+      return parsed.toLocaleDateString(locale);
     } catch {
       return t('common.unknown');
     }
@@ -144,13 +144,13 @@ export default function About() {
               type='button'
               onClick={actionHandler}
               disabled={actionDisabled}
-              className={`min-w-[132px] justify-center whitespace-nowrap px-4 ${hasUpdate ? 'tool-btn-primary' : 'tool-btn'} ${actionDisabled ? 'opacity-70 cursor-not-allowed' : ''}`}>
+              className={`w-full justify-center whitespace-nowrap px-4 sm:w-auto sm:min-w-[132px] ${hasUpdate ? 'tool-btn-primary' : 'tool-btn'} ${actionDisabled ? 'opacity-70 cursor-not-allowed' : ''}`}>
               {actionLabel}
             </button>
           ) : null}
         </div>
 
-        <div className='mt-5 grid grid-cols-4 gap-3'>
+        <div className='mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 2xl:grid-cols-4'>
           <div className='tool-subcard min-w-0 p-4'>
             <div className='tool-caption'>{t('about.update.currentVersion')}</div>
             <div className='tool-card-title mt-2'>{versionLabel}</div>
@@ -165,7 +165,7 @@ export default function About() {
           </div>
           <div className='tool-subcard min-w-0 p-4'>
             <div className='tool-caption'>{t('about.update.checkedAt')}</div>
-            <div className='tool-body mt-2'>{formatTime(checkedAt)}</div>
+            <div className='tool-body mt-2 break-words'>{formatTime(checkedAt)}</div>
           </div>
         </div>
 
@@ -227,7 +227,12 @@ export default function About() {
         <p className='tool-body tool-section-summary'>{t('about.project.summary')}</p>
 
         <div className='mt-4 rounded-2xl border border-[rgba(205,218,237,0.96)] bg-[rgba(248,251,255,0.9)] p-4 shadow-[0_10px_24px_rgba(27,42,72,0.04)]'>
-          <div className='tool-caption'>{t('about.project.contactTitle')}</div>
+          <div className='flex items-center gap-2'>
+            <span className='tool-inline-icon-shell' aria-hidden='true'>
+              <ChatBubbleMessage className='h-3.5 w-3.5 stroke-zinc-500' />
+            </span>
+            <span className='tool-caption'>{t('about.project.contactTitle')}</span>
+          </div>
           <div className='mt-3 flex flex-wrap gap-3'>
             {contactItems.map((item) => (
               <button
@@ -236,7 +241,7 @@ export default function About() {
                 onClick={() => {
                   void openContactLink(item.href, t);
                 }}
-                className='min-w-[260px] flex-1 rounded-2xl border border-[rgba(196,210,233,0.96)] bg-[rgba(255,255,255,0.94)] px-4 py-3 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition-all duration-150 hover:-translate-y-[1px] hover:border-[rgba(157,181,229,0.98)] hover:bg-[rgba(252,254,255,0.98)]'>
+                className='min-w-[220px] flex-1 rounded-2xl border border-[rgba(196,210,233,0.96)] bg-[rgba(255,255,255,0.94)] px-4 py-3 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition-all duration-150 hover:-translate-y-[1px] hover:border-[rgba(157,181,229,0.98)] hover:bg-[rgba(252,254,255,0.98)]'>
                 <div className='text-[11px] font-extrabold uppercase tracking-[0.12em] text-[#7a89a1]'>{item.label}</div>
                 <div className='mt-1 text-[14px] font-semibold text-[#2d3d59]'>{item.value}</div>
               </button>
@@ -244,7 +249,7 @@ export default function About() {
           </div>
         </div>
 
-        <div className='mt-5 grid grid-cols-3 gap-4'>
+        <div className='mt-5 grid grid-cols-1 gap-4 xl:grid-cols-2 2xl:grid-cols-3'>
           <div className='tool-subcard min-w-0 p-5'>
             <div className='flex items-center gap-2'>
               <CircleInfo className='h-4 w-4 stroke-zinc-500' />

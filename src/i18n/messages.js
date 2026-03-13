@@ -179,7 +179,7 @@ export const messages = {
     },
     about: {
       update: {
-        title: '客户端更新',
+        title: '版本信息',
         summary: '查看版本信息与更新状态。',
         actionUnsupported: '仅桌面端可用',
         actionChecking: '检查中...',
@@ -407,7 +407,7 @@ export const messages = {
     },
     about: {
       update: {
-        title: 'Client Updates',
+        title: 'Version Info',
         summary: 'View version info and update status.',
         actionUnsupported: 'Desktop only',
         actionChecking: 'Checking...',
@@ -635,7 +635,7 @@ export const messages = {
     },
     about: {
       update: {
-        title: 'Обновления клиента',
+        title: 'Информация о версии',
         summary: 'Информация о версии и статусе обновлений.',
         actionUnsupported: 'Только desktop',
         actionChecking: 'Проверка...',
