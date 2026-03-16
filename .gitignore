@@ -37,3 +37,4 @@ supabase/.env.*
 assets/previews/
 .playwright-cli/
 output/
+.mirror-cos/
