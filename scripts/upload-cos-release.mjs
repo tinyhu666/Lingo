@@ -61,32 +61,35 @@ async function collectFiles(rootDir) {
   return files;
 }
 
-function uploadFile(localPath, remoteKey, cacheControl) {
-  const key = normalizeKey(remoteKey);
-
+function putObject(params) {
   return new Promise((resolve, reject) => {
-    cos.uploadFile(
-      {
-        Bucket,
-        Region,
-        Key: key,
-        FilePath: localPath,
-        ACL: 'public-read',
-        CacheControl: cacheControl,
-        SliceSize: 1024 * 1024 * 5,
-        ChunkParallelLimit: 4,
-      },
-      (error, data) => {
-        if (error) {
-          reject(error);
-          return;
-        }
+    cos.putObject(params, (error, data) => {
+      if (error) {
+        reject(error);
+        return;
+      }
 
-        console.log(`Uploaded ${localPath} => cos://${Bucket}/${key}`);
-        resolve(data);
-      },
-    );
+      resolve(data);
+    });
   });
+}
+
+async function uploadFile(localPath, remoteKey, cacheControl) {
+  const key = normalizeKey(remoteKey);
+  const body = await fs.readFile(localPath);
+
+  const data = await putObject({
+    Bucket,
+    Region,
+    Key: key,
+    Body: body,
+    ACL: 'public-read',
+    CacheControl: cacheControl,
+    ContentLength: body.length,
+  });
+
+  console.log(`Uploaded ${localPath} => cos://${Bucket}/${key}`);
+  return data;
 }
 
 async function uploadVersionedReleaseFiles() {
@@ -119,8 +122,14 @@ async function uploadLatestManifests() {
   await uploadFile(path.join(manifestRoot, 'latest-web.json'), 'releases/latest-web.json', 'public,max-age=60');
 }
 
-await uploadVersionedReleaseFiles();
-await uploadStableAliases();
-await uploadLatestManifests();
+try {
+  await uploadVersionedReleaseFiles();
+  await uploadStableAliases();
+  await uploadLatestManifests();
 
-console.log(`Tencent COS upload completed for v${version}.`);
+  console.log(`Tencent COS upload completed for v${version}.`);
+  process.exit(0);
+} catch (error) {
+  console.error(error);
+  process.exit(1);
+}
