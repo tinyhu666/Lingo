@@ -2,12 +2,18 @@ name: Build Installers
 
 on:
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Existing release tag to mirror to Tencent COS
+        required: true
+        default: v0.3.10
   push:
     tags:
       - 'v*'
 
 jobs:
   build:
+    if: github.event_name != 'workflow_dispatch'
     permissions:
       contents: write
     strategy:
@@ -159,6 +165,84 @@ jobs:
     env:
       RELEASE_REPO: tinyhu666/Lingo
       RELEASE_TAG: ${{ github.ref_name }}
+      TENCENT_COS_BUCKET: lingo-1259551686
+      TENCENT_COS_REGION: ap-shanghai
+      TENCENT_COS_PUBLIC_BASE_URL: https://lingo-1259551686.cos.ap-shanghai.myqcloud.com
+      COS_PREP_DIR: .mirror-cos
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 'lts/*'
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install COSCMD
+        run: pip install coscmd
+
+      - name: Prepare Mirrored Release Payload
+        id: prepare_mirror
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node ./scripts/prepare-cos-release.mjs
+
+      - name: Configure COSCMD
+        env:
+          TENCENT_SECRET_ID: ${{ secrets.TENCENT_SECRET_ID }}
+          TENCENT_SECRET_KEY: ${{ secrets.TENCENT_SECRET_KEY }}
+          TENCENT_COS_SESSION_TOKEN: ${{ secrets.TENCENT_COS_SESSION_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ -z "${TENCENT_SECRET_ID:-}" ] || [ -z "${TENCENT_SECRET_KEY:-}" ]; then
+            echo "Tencent COS credentials are missing."
+            exit 1
+          fi
+
+          if [ -n "${TENCENT_COS_SESSION_TOKEN:-}" ]; then
+            coscmd config -a "${TENCENT_SECRET_ID}" -s "${TENCENT_SECRET_KEY}" -t "${TENCENT_COS_SESSION_TOKEN}" -b "${TENCENT_COS_BUCKET}" -r "${TENCENT_COS_REGION}"
+          else
+            coscmd config -a "${TENCENT_SECRET_ID}" -s "${TENCENT_SECRET_KEY}" -b "${TENCENT_COS_BUCKET}" -r "${TENCENT_COS_REGION}"
+          fi
+
+      - name: Upload Versioned Release Files
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="${{ steps.prepare_mirror.outputs.version }}"
+          coscmd upload -rs "${COS_PREP_DIR}/releases/v${VERSION}" "releases/v${VERSION}" -H "{'x-cos-acl':'public-read','Cache-Control':'public,max-age=31536000,immutable'}"
+
+      - name: Upload Stable Website Download Aliases
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="${{ steps.prepare_mirror.outputs.version }}"
+          coscmd upload "${COS_PREP_DIR}/releases/v${VERSION}/Lingo_${VERSION}_aarch64.dmg" "releases/Lingo_latest_aarch64.dmg" -H "{'x-cos-acl':'public-read','Cache-Control':'public,max-age=60'}"
+          coscmd upload "${COS_PREP_DIR}/releases/v${VERSION}/Lingo_${VERSION}_x64-setup.exe" "releases/Lingo_latest_x64-setup.exe" -H "{'x-cos-acl':'public-read','Cache-Control':'public,max-age=60'}"
+
+      - name: Upload Latest Manifests
+        shell: bash
+        run: |
+          set -euo pipefail
+          coscmd upload "${COS_PREP_DIR}/releases/latest.json" "releases/latest.json" -H "{'x-cos-acl':'public-read','Cache-Control':'public,max-age=60'}"
+          coscmd upload "${COS_PREP_DIR}/releases/latest-web.json" "releases/latest-web.json" -H "{'x-cos-acl':'public-read','Cache-Control':'public,max-age=60'}"
+
+  mirror_existing_release:
+    name: Mirror Existing Release To Tencent COS
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      RELEASE_REPO: tinyhu666/Lingo
+      RELEASE_TAG: ${{ inputs.release_tag }}
       TENCENT_COS_BUCKET: lingo-1259551686
       TENCENT_COS_REGION: ap-shanghai
       TENCENT_COS_PUBLIC_BASE_URL: https://lingo-1259551686.cos.ap-shanghai.myqcloud.com
