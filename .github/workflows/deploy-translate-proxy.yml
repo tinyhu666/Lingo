@@ -28,24 +28,29 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          missing=0
 
           if [ -z "${SUPABASE_ACCESS_TOKEN:-}" ]; then
             echo "SUPABASE_ACCESS_TOKEN secret is required."
-            exit 1
+            missing=1
           fi
 
           if [ -z "${PROJECT_ID:-}" ]; then
             echo "SUPABASE_PROJECT_ID repo variable is required."
-            exit 1
+            missing=1
           fi
 
           if [ -z "${SUPABASE_SERVICE_ROLE_KEY:-}" ]; then
             echo "SUPABASE_SERVICE_ROLE_KEY secret is required."
-            exit 1
+            missing=1
           fi
 
           if [ -z "${MODEL_API_KEY:-}" ]; then
             echo "MODEL_API_KEY secret is required."
+            missing=1
+          fi
+
+          if [ "$missing" -ne 0 ]; then
             exit 1
           fi
 

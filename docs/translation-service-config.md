@@ -41,10 +41,16 @@ The same example is also stored in
 
 ## Required Secrets
 
-At minimum, configure these secrets in Supabase and GitHub Actions:
+For the GitHub deploy workflow, configure these repository secrets:
 
-- `MODEL_API_KEY`
+- `SUPABASE_ACCESS_TOKEN`
 - `SUPABASE_SERVICE_ROLE_KEY`
+- `MODEL_API_KEY`
+
+Also configure these repository variables:
+
+- `SUPABASE_PROJECT_ID`
+- `TRANSLATION_RUNTIME_CONFIG_JSON` (optional)
 
 The deploy workflow syncs these secrets into the Edge Function runtime.
 
