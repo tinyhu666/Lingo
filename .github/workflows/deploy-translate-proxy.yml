@@ -75,15 +75,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          payload="$(python3 - <<'PY'
-import json
-import os
-
-raw = os.environ["TRANSLATION_RUNTIME_CONFIG_JSON"]
-value = json.loads(raw)
-print(json.dumps({"key": "translation_proxy", "value": value}, ensure_ascii=False))
-PY
-)"
+          payload="$(python3 -c 'import json, os; value = json.loads(os.environ["TRANSLATION_RUNTIME_CONFIG_JSON"]); print(json.dumps({"key": "translation_proxy", "value": value}, ensure_ascii=False))')"
 
           curl --fail-with-body \
             -X POST "${RUNTIME_CONFIG_SUPABASE_URL}/rest/v1/app_runtime_config?on_conflict=key" \
