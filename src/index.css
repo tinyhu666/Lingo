@@ -972,6 +972,186 @@
       inset 0 1px 0 rgba(255, 255, 255, 0.94);
   }
 
+  .home-grid,
+  .home-guide-grid,
+  .translate-mode-grid,
+  .about-update-grid,
+  .about-project-grid {
+    display: grid;
+  }
+
+  .home-grid {
+    min-height: 100%;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 24px;
+  }
+
+  .home-guide-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+  }
+
+  .translate-mode-grid,
+  .about-project-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 24px;
+  }
+
+  .about-update-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  @media (min-width: 640px) {
+    .about-update-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (min-width: 768px) {
+    .home-guide-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .translate-mode-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (min-width: 1280px) {
+    .about-project-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  html.platform-desktop .lingo-titlebar__controls,
+  body.platform-desktop .lingo-titlebar__controls {
+    gap: 6px;
+  }
+
+  html.platform-desktop .lingo-titlebar__locale-trigger,
+  body.platform-desktop .lingo-titlebar__locale-trigger {
+    gap: 8px;
+    height: 34px;
+    min-width: 152px;
+    padding: 0 10px 0 12px;
+    border-radius: 10px;
+  }
+
+  html.platform-desktop .lingo-titlebar__locale-label,
+  body.platform-desktop .lingo-titlebar__locale-label {
+    line-height: 1;
+    letter-spacing: 0;
+  }
+
+  html.platform-desktop .lingo-titlebar__btn,
+  body.platform-desktop .lingo-titlebar__btn {
+    width: 36px;
+    height: 34px;
+    border-radius: 10px;
+  }
+
+  html.platform-desktop .lingo-shell,
+  body.platform-desktop .lingo-shell {
+    grid-template-columns: 248px minmax(0, 1fr);
+    gap: 14px;
+  }
+
+  html.platform-desktop .sidebar-panel,
+  body.platform-desktop .sidebar-panel {
+    padding: 26px 18px 18px;
+  }
+
+  html.platform-desktop .workspace-content,
+  body.platform-desktop .workspace-content {
+    padding: 26px 28px;
+  }
+
+  html.platform-desktop .mode-card__top-row,
+  body.platform-desktop .mode-card__top-row {
+    align-items: center;
+    flex-wrap: nowrap;
+  }
+
+  html.platform-desktop .tool-section-head,
+  body.platform-desktop .tool-section-head {
+    flex-wrap: nowrap;
+  }
+
+  html.platform-desktop .desktop-tight-header,
+  body.platform-desktop .desktop-tight-header {
+    flex-direction: row;
+    justify-content: space-between;
+  }
+
+  html.platform-desktop .desktop-tight-header--start,
+  body.platform-desktop .desktop-tight-header--start {
+    align-items: flex-start;
+  }
+
+  html.platform-desktop .desktop-tight-actions,
+  body.platform-desktop .desktop-tight-actions {
+    width: auto;
+    flex-wrap: nowrap;
+    justify-content: flex-end;
+  }
+
+  html.platform-desktop .desktop-tight-summary-card,
+  body.platform-desktop .desktop-tight-summary-card {
+    width: auto;
+    min-width: 132px;
+    flex-shrink: 0;
+  }
+
+  html.platform-desktop .desktop-tight-button,
+  body.platform-desktop .desktop-tight-button {
+    width: auto;
+    flex: none;
+  }
+
+  html.platform-desktop .home-grid,
+  body.platform-desktop .home-grid {
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    gap: 24px;
+  }
+
+  html.platform-desktop .home-grid__stat,
+  body.platform-desktop .home-grid__stat {
+    grid-column: span 4 / span 4;
+  }
+
+  html.platform-desktop .home-grid__guide,
+  body.platform-desktop .home-grid__guide {
+    grid-column: span 7 / span 7;
+  }
+
+  html.platform-desktop .home-grid__demo,
+  body.platform-desktop .home-grid__demo {
+    grid-column: span 5 / span 5;
+  }
+
+  html.platform-desktop .home-guide-grid,
+  body.platform-desktop .home-guide-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  html.platform-desktop .translate-mode-grid,
+  body.platform-desktop .translate-mode-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  html.platform-desktop .about-update-grid,
+  body.platform-desktop .about-update-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  html.platform-desktop .about-project-grid,
+  body.platform-desktop .about-project-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
   @media (max-width: 1024px) {
     .lingo-titlebar {
       height: 54px;

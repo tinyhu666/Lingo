@@ -202,7 +202,7 @@ export default function Phrases() {
   return (
     <div className='flex min-h-full flex-col gap-6'>
       <motion.section className='dota-card tool-rise p-6' initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-        <div className='flex flex-col items-start gap-4 lg:flex-row lg:items-start lg:justify-between'>
+        <div className='desktop-tight-header desktop-tight-header--start flex flex-col items-start gap-4 lg:flex-row lg:items-start lg:justify-between'>
           <div className='min-w-0'>
             <div className='flex flex-wrap items-center gap-3'>
               <h2 className='tool-page-title mt-0'>{t('phrases.title')}</h2>
@@ -210,15 +210,15 @@ export default function Phrases() {
             </div>
             <p className='tool-body mt-3'>{t('phrases.summary')}</p>
           </div>
-          <div className='flex w-full flex-wrap items-center gap-2 lg:w-auto lg:shrink-0 lg:justify-end'>
-            <button type='button' onClick={addRow} className='tool-btn min-w-[120px] flex-1 whitespace-nowrap px-4 sm:flex-none'>
+          <div className='desktop-tight-actions flex w-full flex-wrap items-center gap-2 lg:w-auto lg:shrink-0 lg:justify-end'>
+            <button type='button' onClick={addRow} className='desktop-tight-button tool-btn min-w-[120px] flex-1 whitespace-nowrap px-4 sm:flex-none'>
               {t('phrases.add')}
             </button>
             <button
               type='button'
               onClick={saveRows}
               disabled={saving}
-              className={`tool-btn-primary min-w-[104px] flex-1 whitespace-nowrap px-4 sm:flex-none ${saving ? 'opacity-70 cursor-not-allowed' : ''}`}>
+              className={`desktop-tight-button tool-btn-primary min-w-[104px] flex-1 whitespace-nowrap px-4 sm:flex-none ${saving ? 'opacity-70 cursor-not-allowed' : ''}`}>
               {saving ? t('phrases.saving') : t('phrases.save')}
             </button>
           </div>

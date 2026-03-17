@@ -6,7 +6,7 @@ on:
       release_tag:
         description: Existing release tag to mirror to Tencent COS
         required: true
-        default: v0.3.10
+        default: v0.3.11
   push:
     tags:
       - 'v*'
@@ -140,6 +140,35 @@ jobs:
             echo "TAURI_SIGNING_PRIVATE_KEY=$NORMALIZED_KEY_B64"
             echo "TAURI_SIGNING_PRIVATE_KEY_PASSWORD=$NORMALIZED_PASSWORD"
           } >> "$GITHUB_ENV"
+
+      - name: Resolve Translation Backend Defaults
+        shell: bash
+        env:
+          CONFIGURED_BACKEND_URL: ${{ vars.LINGO_BACKEND_URL }}
+          SUPABASE_PROJECT_ID: ${{ vars.SUPABASE_PROJECT_ID }}
+          CONFIGURED_BACKEND_ANON_KEY_SECRET: ${{ secrets.LINGO_BACKEND_ANON_KEY }}
+          CONFIGURED_BACKEND_ANON_KEY_VAR: ${{ vars.LINGO_BACKEND_ANON_KEY }}
+        run: |
+          set -euo pipefail
+
+          BACKEND_URL="${CONFIGURED_BACKEND_URL:-}"
+          if [ -z "$BACKEND_URL" ] && [ -n "${SUPABASE_PROJECT_ID:-}" ]; then
+            BACKEND_URL="https://${SUPABASE_PROJECT_ID}.supabase.co/functions/v1"
+          fi
+
+          BACKEND_ANON_KEY="${CONFIGURED_BACKEND_ANON_KEY_SECRET:-}"
+          if [ -z "$BACKEND_ANON_KEY" ]; then
+            BACKEND_ANON_KEY="${CONFIGURED_BACKEND_ANON_KEY_VAR:-}"
+          fi
+
+          echo "LINGO_BACKEND_URL=$BACKEND_URL" >> "$GITHUB_ENV"
+          echo "LINGO_BACKEND_ANON_KEY=$BACKEND_ANON_KEY" >> "$GITHUB_ENV"
+
+          if [ -n "$BACKEND_URL" ]; then
+            echo "Using embedded translation backend: $BACKEND_URL"
+          else
+            echo "Translation backend default is not configured; release builds will require runtime environment variables."
+          fi
 
       - name: Build And Publish Release
         uses: tauri-apps/tauri-action@v0

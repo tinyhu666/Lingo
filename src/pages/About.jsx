@@ -144,13 +144,13 @@ export default function About() {
               type='button'
               onClick={actionHandler}
               disabled={actionDisabled}
-              className={`w-full justify-center whitespace-nowrap px-4 sm:w-auto sm:min-w-[132px] ${hasUpdate ? 'tool-btn-primary' : 'tool-btn'} ${actionDisabled ? 'opacity-70 cursor-not-allowed' : ''}`}>
+              className={`desktop-tight-button w-full justify-center whitespace-nowrap px-4 sm:w-auto sm:min-w-[132px] ${hasUpdate ? 'tool-btn-primary' : 'tool-btn'} ${actionDisabled ? 'opacity-70 cursor-not-allowed' : ''}`}>
               {actionLabel}
             </button>
           ) : null}
         </div>
 
-        <div className='mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 2xl:grid-cols-4'>
+        <div className='about-update-grid mt-5'>
           <div className='tool-subcard min-w-0 p-4'>
             <div className='tool-caption'>{t('about.update.currentVersion')}</div>
             <div className='tool-card-title mt-2'>{versionLabel}</div>
@@ -249,7 +249,7 @@ export default function About() {
           </div>
         </div>
 
-        <div className='mt-5 grid grid-cols-1 gap-4 xl:grid-cols-2 2xl:grid-cols-3'>
+        <div className='about-project-grid mt-5'>
           <div className='tool-subcard min-w-0 p-5'>
             <div className='flex items-center gap-2'>
               <CircleInfo className='h-4 w-4 stroke-zinc-500' />

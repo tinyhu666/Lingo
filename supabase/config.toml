@@ -1,0 +1,4 @@
+project_id = "lingo"
+
+[functions.translate]
+verify_jwt = false

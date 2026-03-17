@@ -27,21 +27,21 @@ export default function Home() {
   ];
 
   return (
-    <div className='grid min-h-full grid-cols-1 gap-6 xl:grid-cols-6 2xl:grid-cols-12'>
-      <div className='flex min-h-[252px] min-w-0 xl:col-span-3 2xl:col-span-4'>
+    <div className='home-grid'>
+      <div className='home-grid__stat flex min-h-[252px] min-w-0'>
         <TranslationDirectionCard />
       </div>
 
-      <div className='flex min-h-[252px] min-w-0 xl:col-span-3 2xl:col-span-4'>
+      <div className='home-grid__stat flex min-h-[252px] min-w-0'>
         <HotkeyCard />
       </div>
 
-      <div className='flex min-h-[252px] min-w-0 xl:col-span-6 2xl:col-span-4'>
+      <div className='home-grid__stat flex min-h-[252px] min-w-0'>
         <EnableStatusCard />
       </div>
 
       <motion.section
-        className='dota-card tool-rise min-w-0 p-6 xl:col-span-6 2xl:col-span-7'
+        className='home-grid__guide dota-card tool-rise min-w-0 p-6'
         initial={{ opacity: 0, y: 18 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.08 }}>
@@ -55,7 +55,7 @@ export default function Home() {
         </div>
         <p className='tool-body tool-section-summary'>{t('home.guide.summary')}</p>
 
-        <div className='mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 2xl:grid-cols-3'>
+        <div className='home-guide-grid mt-6'>
           {steps.map((step) => (
             <article key={step.id} className='tool-subcard tool-rise p-5'>
               <div className='tool-caption tracking-[0.16em]'>{step.id}</div>
@@ -67,7 +67,7 @@ export default function Home() {
       </motion.section>
 
       <motion.section
-        className='dota-card tool-rise min-w-0 p-6 xl:col-span-6 2xl:col-span-5'
+        className='home-grid__demo dota-card tool-rise min-w-0 p-6'
         initial={{ opacity: 0, y: 18 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.12 }}>
