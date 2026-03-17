@@ -9,10 +9,14 @@ jobs:
     env:
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
       PROJECT_ID: ${{ vars.SUPABASE_PROJECT_ID }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       MODEL_API_KEY: ${{ secrets.MODEL_API_KEY }}
+      MODEL_API_KEY_SECRET_NAME: MODEL_API_KEY
       MODEL_PROVIDER: openai-compatible
       MODEL_API_URL: https://api.siliconflow.cn/v1/chat/completions
       MODEL_NAME: deepseek-ai/DeepSeek-V3
+      RUNTIME_CONFIG_SUPABASE_URL: https://${{ vars.SUPABASE_PROJECT_ID }}.supabase.co
+      TRANSLATION_RUNTIME_CONFIG_JSON: ${{ vars.TRANSLATION_RUNTIME_CONFIG_JSON }}
     steps:
       - uses: actions/checkout@v5
 
@@ -35,6 +39,11 @@ jobs:
             exit 1
           fi
 
+          if [ -z "${SUPABASE_SERVICE_ROLE_KEY:-}" ]; then
+            echo "SUPABASE_SERVICE_ROLE_KEY secret is required."
+            exit 1
+          fi
+
           if [ -z "${MODEL_API_KEY:-}" ]; then
             echo "MODEL_API_KEY secret is required."
             exit 1
@@ -48,7 +57,10 @@ jobs:
             MODEL_PROVIDER="$MODEL_PROVIDER" \
             MODEL_API_URL="$MODEL_API_URL" \
             MODEL_NAME="$MODEL_NAME" \
+            MODEL_API_KEY_SECRET_NAME="$MODEL_API_KEY_SECRET_NAME" \
             MODEL_API_KEY="$MODEL_API_KEY" \
+            RUNTIME_CONFIG_SUPABASE_URL="$RUNTIME_CONFIG_SUPABASE_URL" \
+            RUNTIME_CONFIG_SERVICE_ROLE_KEY="$SUPABASE_SERVICE_ROLE_KEY" \
             --project-ref "$PROJECT_ID"
 
       - name: Deploy translate function
@@ -56,3 +68,27 @@ jobs:
         run: |
           set -euo pipefail
           supabase functions deploy translate --project-ref "$PROJECT_ID"
+
+      - name: Upsert translation runtime config
+        if: env.TRANSLATION_RUNTIME_CONFIG_JSON != ''
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          payload="$(python3 - <<'PY'
+import json
+import os
+
+raw = os.environ["TRANSLATION_RUNTIME_CONFIG_JSON"]
+value = json.loads(raw)
+print(json.dumps({"key": "translation_proxy", "value": value}, ensure_ascii=False))
+PY
+)"
+
+          curl --fail-with-body \
+            -X POST "${RUNTIME_CONFIG_SUPABASE_URL}/rest/v1/app_runtime_config?on_conflict=key" \
+            -H "Content-Type: application/json" \
+            -H "apikey: ${SUPABASE_SERVICE_ROLE_KEY}" \
+            -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}" \
+            -H "Prefer: resolution=merge-duplicates,return=representation" \
+            -d "$payload"

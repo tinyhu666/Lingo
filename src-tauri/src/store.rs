@@ -1,29 +1,8 @@
 use serde_json::json;
-use std::collections::HashMap;
 use tauri::AppHandle;
 use tauri_plugin_store::StoreExt;
 
 const STORE_FILENAME: &str = "store.json";
-
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-#[serde(default)]
-pub struct ModelConfig {
-    pub provider: String,
-    pub auth: String,
-    pub api_url: String,
-    pub model_name: String,
-}
-
-impl Default for ModelConfig {
-    fn default() -> Self {
-        Self {
-            provider: "openai".to_string(),
-            auth: String::new(),
-            api_url: "https://api.openai.com/v1/chat/completions".to_string(),
-            model_name: "gpt-4.1-mini".to_string(),
-        }
-    }
-}
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 #[serde(default)]
@@ -54,7 +33,7 @@ pub struct HotkeyConfig {
 impl HotkeyConfig {
     fn new_platform_specific(key: &str) -> Self {
         #[cfg(target_os = "macos")]
-        let (modifier, symbol) = ("Meta", "⌘");
+        let (modifier, symbol) = ("Meta", "\u{2318}");
         #[cfg(not(target_os = "macos"))]
         let (modifier, symbol) = ("Alt", "Alt");
 
@@ -83,20 +62,11 @@ pub struct AppSettings {
     pub game_scene: String,
     pub translation_mode: String,
     pub daily_mode: bool,
-    pub model_type: String,
-    pub model_configs: HashMap<String, ModelConfig>,
-    pub custom_model: ModelConfig,
     pub phrases: Vec<Phrase>,
 }
 
 impl Default for AppSettings {
     fn default() -> Self {
-        let model_configs = default_model_configs();
-        let custom_model = model_configs
-            .get("custom")
-            .cloned()
-            .unwrap_or_else(ModelConfig::default);
-
         Self {
             app_enabled: true,
             trans_hotkey: HotkeyConfig::default(),
@@ -105,9 +75,6 @@ impl Default for AppSettings {
             game_scene: "general".to_string(),
             translation_mode: "auto".to_string(),
             daily_mode: false,
-            model_type: "openai".to_string(),
-            model_configs,
-            custom_model,
             phrases: default_phrases(),
         }
     }
@@ -115,93 +82,6 @@ impl Default for AppSettings {
 
 fn default_true() -> bool {
     true
-}
-
-fn default_model_configs() -> HashMap<String, ModelConfig> {
-    let mut configs = HashMap::new();
-
-    configs.insert(
-        "openai".to_string(),
-        ModelConfig {
-            provider: "openai".to_string(),
-            auth: String::new(),
-            api_url: "https://api.openai.com/v1/chat/completions".to_string(),
-            model_name: "gpt-4.1-mini".to_string(),
-        },
-    );
-
-    configs.insert(
-        "deepseek".to_string(),
-        ModelConfig {
-            provider: "openai".to_string(),
-            auth: String::new(),
-            api_url: "https://api.deepseek.com/v1/chat/completions".to_string(),
-            model_name: "deepseek-chat".to_string(),
-        },
-    );
-
-    configs.insert(
-        "qwen".to_string(),
-        ModelConfig {
-            provider: "openai".to_string(),
-            auth: String::new(),
-            api_url: "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions"
-                .to_string(),
-            model_name: "qwen-plus".to_string(),
-        },
-    );
-
-    configs.insert(
-        "moonshot".to_string(),
-        ModelConfig {
-            provider: "openai".to_string(),
-            auth: String::new(),
-            api_url: "https://api.moonshot.cn/v1/chat/completions".to_string(),
-            model_name: "moonshot-v1-8k".to_string(),
-        },
-    );
-
-    configs.insert(
-        "siliconflow".to_string(),
-        ModelConfig {
-            provider: "openai".to_string(),
-            auth: String::new(),
-            api_url: "https://api.siliconflow.cn/v1/chat/completions".to_string(),
-            model_name: "deepseek-ai/DeepSeek-V3".to_string(),
-        },
-    );
-
-    configs.insert(
-        "anthropic".to_string(),
-        ModelConfig {
-            provider: "anthropic".to_string(),
-            auth: String::new(),
-            api_url: "https://api.anthropic.com/v1/messages".to_string(),
-            model_name: "claude-3-5-haiku-latest".to_string(),
-        },
-    );
-
-    configs.insert(
-        "stepfun".to_string(),
-        ModelConfig {
-            provider: "openai".to_string(),
-            auth: String::new(),
-            api_url: "https://api.stepfun.com/v1/chat/completions".to_string(),
-            model_name: "step-2-16k".to_string(),
-        },
-    );
-
-    configs.insert(
-        "custom".to_string(),
-        ModelConfig {
-            provider: "openai".to_string(),
-            auth: String::new(),
-            api_url: "https://api.openai.com/v1/chat/completions".to_string(),
-            model_name: "gpt-4.1-mini".to_string(),
-        },
-    );
-
-    configs
 }
 
 fn default_phrases() -> Vec<Phrase> {
@@ -228,102 +108,7 @@ fn default_phrases() -> Vec<Phrase> {
         .collect()
 }
 
-fn normalize_model_type(model_type: &str) -> String {
-    match model_type {
-        "deepseek-R1" => "deepseek".to_string(),
-        "custom" => "custom".to_string(),
-        "openai" | "deepseek" | "qwen" | "moonshot" | "siliconflow" | "anthropic" | "stepfun" => {
-            model_type.to_string()
-        }
-        _ => "openai".to_string(),
-    }
-}
-
-fn normalize_provider(provider: &str) -> String {
-    match provider.trim().to_lowercase().as_str() {
-        "anthropic" => "anthropic".to_string(),
-        _ => "openai".to_string(),
-    }
-}
-
-fn normalize_api_url_by_provider(api_url: &str, provider: &str) -> String {
-    let trimmed = api_url.trim();
-    let normalized_provider = normalize_provider(provider);
-
-    if trimmed.is_empty() {
-        return if normalized_provider == "anthropic" {
-            "https://api.anthropic.com/v1/messages".to_string()
-        } else {
-            "https://api.openai.com/v1/chat/completions".to_string()
-        };
-    }
-
-    let openai_path = "/v1/chat/completions";
-    let anthropic_path = "/v1/messages";
-
-    if normalized_provider == "anthropic" && trimmed.ends_with(openai_path) {
-        return format!(
-            "{}{}",
-            &trimmed[..trimmed.len() - openai_path.len()],
-            anthropic_path
-        );
-    }
-
-    if normalized_provider == "openai" && trimmed.ends_with(anthropic_path) {
-        return format!(
-            "{}{}",
-            &trimmed[..trimmed.len() - anthropic_path.len()],
-            openai_path
-        );
-    }
-
-    trimmed.to_string()
-}
-
 fn normalize_settings(settings: &mut AppSettings) {
-    settings.model_type = normalize_model_type(&settings.model_type);
-
-    for (key, default_config) in default_model_configs() {
-        let current = settings
-            .model_configs
-            .entry(key)
-            .or_insert_with(|| default_config.clone());
-
-        current.provider = if current.provider.is_empty() {
-            normalize_provider(&default_config.provider)
-        } else {
-            normalize_provider(&current.provider)
-        };
-        if current.api_url.is_empty() {
-            current.api_url = default_config.api_url.clone();
-        }
-        if current.model_name.is_empty() {
-            current.model_name = default_config.model_name.clone();
-        }
-
-        current.api_url = normalize_api_url_by_provider(&current.api_url, &current.provider);
-    }
-
-    if settings.custom_model.api_url.is_empty() {
-        if let Some(custom) = settings.model_configs.get("custom") {
-            settings.custom_model = custom.clone();
-        }
-    }
-
-    if let Some(custom) = settings.model_configs.get_mut("custom") {
-        if custom.auth.is_empty() && !settings.custom_model.auth.is_empty() {
-            custom.auth = settings.custom_model.auth.clone();
-        }
-        if custom.model_name.is_empty() && !settings.custom_model.model_name.is_empty() {
-            custom.model_name = settings.custom_model.model_name.clone();
-        }
-        if custom.api_url.is_empty() && !settings.custom_model.api_url.is_empty() {
-            custom.api_url = settings.custom_model.api_url.clone();
-        }
-
-        settings.custom_model = custom.clone();
-    }
-
     if settings.trans_hotkey.key.is_empty() {
         settings.trans_hotkey = HotkeyConfig::default();
     }
