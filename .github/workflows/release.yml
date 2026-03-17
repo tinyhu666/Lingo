@@ -66,6 +66,43 @@ jobs:
           "$($wix.FullName)\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
           candle.exe -?
 
+      - name: Import Windows Code Signing Certificate
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        env:
+          WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
+          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:WINDOWS_CERTIFICATE)) {
+            throw "WINDOWS_CERTIFICATE secret is required for Windows release signing."
+          }
+
+          if ([string]::IsNullOrWhiteSpace($env:WINDOWS_CERTIFICATE_PASSWORD)) {
+            throw "WINDOWS_CERTIFICATE_PASSWORD secret is required for Windows release signing."
+          }
+
+          $certDir = Join-Path $PWD ".github/windows-signing"
+          New-Item -ItemType Directory -Path $certDir -Force | Out-Null
+
+          $encodedPath = Join-Path $certDir "certificate.txt"
+          $pfxPath = Join-Path $certDir "certificate.pfx"
+
+          Set-Content -Path $encodedPath -Value ($env:WINDOWS_CERTIFICATE -replace '\s', '') -NoNewline
+          certutil -decode $encodedPath $pfxPath | Out-Null
+
+          $securePassword = ConvertTo-SecureString -String $env:WINDOWS_CERTIFICATE_PASSWORD -AsPlainText -Force
+          $importedCertificates = @(Import-PfxCertificate -FilePath $pfxPath -CertStoreLocation Cert:\CurrentUser\My -Password $securePassword)
+          $signingCertificate = $importedCertificates |
+            Where-Object { $_.HasPrivateKey } |
+            Select-Object -First 1
+
+          if (-not $signingCertificate) {
+            throw "The imported PFX does not contain a private key."
+          }
+
+          "WINDOWS_CERTIFICATE_THUMBPRINT=$($signingCertificate.Thumbprint)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "WINDOWS_TIMESTAMP_URL=https://timestamp.digicert.com" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
       - name: Load And Normalize Updater Signing Key
         shell: bash
         env:
@@ -183,6 +220,23 @@ jobs:
           prerelease: false
           includeUpdaterJson: true
           args: ${{ matrix.args }}
+
+      - name: Verify Windows Installer Signatures
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          $installers = Get-ChildItem -Path "src-tauri/target/release/bundle" -Recurse -Include *.exe,*.msi
+          if (-not $installers) {
+            throw "No Windows installer artifacts were produced."
+          }
+
+          foreach ($installer in $installers) {
+            $signature = Get-AuthenticodeSignature $installer.FullName
+            if ($signature.Status -ne "Valid") {
+              $signature | Format-List *
+              throw "Installer is not Authenticode-signed: $($installer.FullName)"
+            }
+          }
 
   mirror_to_cos:
     name: Mirror Release To Tencent COS

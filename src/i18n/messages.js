@@ -101,7 +101,7 @@ export const messages = {
       switchFailed: '切换翻译风格失败: {{error}}',
       mode: {
         auto: {
-          title: '自动',
+          title: '普通',
           desc: '平衡准确、自然和可读性，适合大部分对局沟通。',
           detail: '优先输出自然、稳妥、可直接发送的表达。',
         },
@@ -111,7 +111,7 @@ export const messages = {
           detail: '保留更多游戏术语和节奏词，更适合高频协同。',
         },
         toxic: {
-          title: '高压',
+          title: '喷子',
           desc: '语气更重、施压更强，适合抢节奏、压气势的对局场景。',
           detail: '嘴强、喷子、压力怪风格，表达语气更强烈。',
         },
@@ -329,7 +329,7 @@ export const messages = {
       switchFailed: 'Failed to switch translation style: {{error}}',
       mode: {
         auto: {
-          title: 'Auto',
+          title: 'Normal',
           desc: 'Balanced and natural output for most matches.',
           detail: 'Prioritizes natural, stable, and send-ready phrasing.',
         },
@@ -339,7 +339,7 @@ export const messages = {
           detail: 'Keeps more game terms for high-frequency cooperation.',
         },
         toxic: {
-          title: 'Pressure',
+          title: 'Toxic',
           desc: 'Stronger tone and pressure for tempo and intimidation.',
           detail: 'Sharper wording with stronger emotional tone.',
         },
@@ -557,17 +557,17 @@ export const messages = {
       switchFailed: 'Не удалось переключить стиль перевода: {{error}}',
       mode: {
         auto: {
-          title: 'Авто',
+          title: 'Обычный',
           desc: 'Сбалансированный и естественный стиль для большинства матчей.',
           detail: 'Приоритет: естественность, стабильность и готовность к отправке.',
         },
         pro: {
-          title: 'Про',
+          title: 'Профи',
           desc: 'Больше терминов и коротких команд для командной игры.',
           detail: 'Сохраняет игровые термины для интенсивной координации.',
         },
         toxic: {
-          title: 'Давление',
+          title: 'Токсик',
           desc: 'Более резкий тон для давления и темпа.',
           detail: 'Более жесткая подача и эмоциональная окраска.',
         },
