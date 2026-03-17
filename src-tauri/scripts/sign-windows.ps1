@@ -6,11 +6,6 @@ param(
 $ErrorActionPreference = "Stop"
 
 function Get-SignToolPath {
-  $fromPath = Get-Command signtool.exe -ErrorAction SilentlyContinue
-  if ($fromPath) {
-    return $fromPath.Source
-  }
-
   $patterns = @(
     "$env:ProgramFiles(x86)\Windows Kits\10\bin\*\x64\signtool.exe",
     "$env:ProgramFiles(x86)\Windows Kits\10\App Certification Kit\signtool.exe"
@@ -21,6 +16,11 @@ function Get-SignToolPath {
     Select-Object -First 1
 
   if (-not $tool) {
+    $fromPath = Get-Command signtool.exe -ErrorAction SilentlyContinue
+    if ($fromPath) {
+      return $fromPath.Source
+    }
+
     throw "signtool.exe was not found. Install the Windows SDK or add signtool.exe to PATH."
   }
 
@@ -56,6 +56,40 @@ function Get-CodeSigningCertificate {
 }
 
 $resolvedTarget = (Resolve-Path -LiteralPath $TargetPath).Path
+$signTool = Get-SignToolPath
+
+if ($env:WINDOWS_SIGNING_MODE -eq "artifact") {
+  if ([string]::IsNullOrWhiteSpace($env:ARTIFACT_SIGNING_DLIB_PATH) -or [string]::IsNullOrWhiteSpace($env:ARTIFACT_SIGNING_METADATA_PATH)) {
+    throw "Artifact Signing mode requires ARTIFACT_SIGNING_DLIB_PATH and ARTIFACT_SIGNING_METADATA_PATH."
+  }
+
+  $timestampUrl = if ([string]::IsNullOrWhiteSpace($env:WINDOWS_TIMESTAMP_URL)) {
+    "http://timestamp.acs.microsoft.com"
+  } else {
+    $env:WINDOWS_TIMESTAMP_URL
+  }
+
+  $arguments = @(
+    "sign",
+    "/v",
+    "/fd", "sha256",
+    "/td", "sha256",
+    "/tr", $timestampUrl,
+    "/dlib", $env:ARTIFACT_SIGNING_DLIB_PATH,
+    "/dmdf", $env:ARTIFACT_SIGNING_METADATA_PATH,
+    $resolvedTarget
+  )
+
+  Write-Host "Artifact Signing $resolvedTarget"
+  & $signTool @arguments
+
+  if ($LASTEXITCODE -ne 0) {
+    throw "signtool.exe exited with code $LASTEXITCODE while Artifact Signing $resolvedTarget"
+  }
+
+  exit 0
+}
+
 $certificate = Get-CodeSigningCertificate
 
 if (-not $certificate) {
@@ -67,7 +101,6 @@ if (-not $certificate) {
   exit 0
 }
 
-$signTool = Get-SignToolPath
 $timestampUrl = if ([string]::IsNullOrWhiteSpace($env:WINDOWS_TIMESTAMP_URL)) {
   "https://timestamp.digicert.com"
 } else {

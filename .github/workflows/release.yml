@@ -16,6 +16,7 @@ jobs:
     if: github.event_name != 'workflow_dispatch'
     permissions:
       contents: write
+      id-token: write
     strategy:
       fail-fast: false
       matrix:
@@ -66,21 +67,63 @@ jobs:
           "$($wix.FullName)\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
           candle.exe -?
 
-      - name: Import Windows Code Signing Certificate
+      - name: Resolve Windows Signing Strategy
         if: matrix.os == 'windows-latest'
         shell: pwsh
         env:
           WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
           WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          AZURE_ARTIFACT_SIGNING_ENDPOINT: ${{ vars.AZURE_ARTIFACT_SIGNING_ENDPOINT }}
+          AZURE_ARTIFACT_SIGNING_ACCOUNT_NAME: ${{ vars.AZURE_ARTIFACT_SIGNING_ACCOUNT_NAME }}
+          AZURE_ARTIFACT_SIGNING_CERTIFICATE_PROFILE_NAME: ${{ vars.AZURE_ARTIFACT_SIGNING_CERTIFICATE_PROFILE_NAME }}
         run: |
-          if ([string]::IsNullOrWhiteSpace($env:WINDOWS_CERTIFICATE)) {
-            throw "WINDOWS_CERTIFICATE secret is required for Windows release signing."
+          $artifactSigningConfigured =
+            -not [string]::IsNullOrWhiteSpace($env:AZURE_CLIENT_ID) -and
+            -not [string]::IsNullOrWhiteSpace($env:AZURE_TENANT_ID) -and
+            -not [string]::IsNullOrWhiteSpace($env:AZURE_SUBSCRIPTION_ID) -and
+            -not [string]::IsNullOrWhiteSpace($env:AZURE_ARTIFACT_SIGNING_ENDPOINT) -and
+            -not [string]::IsNullOrWhiteSpace($env:AZURE_ARTIFACT_SIGNING_ACCOUNT_NAME) -and
+            -not [string]::IsNullOrWhiteSpace($env:AZURE_ARTIFACT_SIGNING_CERTIFICATE_PROFILE_NAME)
+
+          $pfxConfigured =
+            -not [string]::IsNullOrWhiteSpace($env:WINDOWS_CERTIFICATE) -and
+            -not [string]::IsNullOrWhiteSpace($env:WINDOWS_CERTIFICATE_PASSWORD)
+
+          if ($artifactSigningConfigured) {
+            "WINDOWS_SIGNING_MODE=artifact" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+            Write-Host "Using Azure Artifact Signing for Windows release artifacts."
+            exit 0
           }
 
-          if ([string]::IsNullOrWhiteSpace($env:WINDOWS_CERTIFICATE_PASSWORD)) {
-            throw "WINDOWS_CERTIFICATE_PASSWORD secret is required for Windows release signing."
+          if ($pfxConfigured) {
+            "WINDOWS_SIGNING_MODE=pfx" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+            Write-Host "Using local PFX-based Authenticode signing for Windows release artifacts."
+            exit 0
           }
 
+          $message = @(
+            "No Windows signing configuration was found.",
+            "",
+            "Configure one of the following before tagging a release:",
+            "- Azure Artifact Signing:",
+            "  - secrets: AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID",
+            "  - variables: AZURE_ARTIFACT_SIGNING_ENDPOINT, AZURE_ARTIFACT_SIGNING_ACCOUNT_NAME, AZURE_ARTIFACT_SIGNING_CERTIFICATE_PROFILE_NAME",
+            "- PFX fallback:",
+            "  - secrets: WINDOWS_CERTIFICATE, WINDOWS_CERTIFICATE_PASSWORD"
+          ) -join [Environment]::NewLine
+
+          throw $message
+
+      - name: Import Windows Code Signing Certificate
+        if: matrix.os == 'windows-latest' && !(secrets.AZURE_CLIENT_ID != '' && secrets.AZURE_TENANT_ID != '' && secrets.AZURE_SUBSCRIPTION_ID != '' && vars.AZURE_ARTIFACT_SIGNING_ENDPOINT != '' && vars.AZURE_ARTIFACT_SIGNING_ACCOUNT_NAME != '' && vars.AZURE_ARTIFACT_SIGNING_CERTIFICATE_PROFILE_NAME != '') && secrets.WINDOWS_CERTIFICATE != '' && secrets.WINDOWS_CERTIFICATE_PASSWORD != ''
+        shell: pwsh
+        env:
+          WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
+          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+        run: |
           $certDir = Join-Path $PWD ".github/windows-signing"
           New-Item -ItemType Directory -Path $certDir -Force | Out-Null
 
@@ -102,6 +145,59 @@ jobs:
 
           "WINDOWS_CERTIFICATE_THUMBPRINT=$($signingCertificate.Thumbprint)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
           "WINDOWS_TIMESTAMP_URL=https://timestamp.digicert.com" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Setup .NET 8 Runtime For Artifact Signing
+        if: matrix.os == 'windows-latest' && secrets.AZURE_CLIENT_ID != '' && secrets.AZURE_TENANT_ID != '' && secrets.AZURE_SUBSCRIPTION_ID != '' && vars.AZURE_ARTIFACT_SIGNING_ENDPOINT != '' && vars.AZURE_ARTIFACT_SIGNING_ACCOUNT_NAME != '' && vars.AZURE_ARTIFACT_SIGNING_CERTIFICATE_PROFILE_NAME != ''
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Azure Login For Artifact Signing
+        if: matrix.os == 'windows-latest' && secrets.AZURE_CLIENT_ID != '' && secrets.AZURE_TENANT_ID != '' && secrets.AZURE_SUBSCRIPTION_ID != '' && vars.AZURE_ARTIFACT_SIGNING_ENDPOINT != '' && vars.AZURE_ARTIFACT_SIGNING_ACCOUNT_NAME != '' && vars.AZURE_ARTIFACT_SIGNING_CERTIFICATE_PROFILE_NAME != ''
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Prepare Artifact Signing SignTool Integration
+        if: matrix.os == 'windows-latest' && secrets.AZURE_CLIENT_ID != '' && secrets.AZURE_TENANT_ID != '' && secrets.AZURE_SUBSCRIPTION_ID != '' && vars.AZURE_ARTIFACT_SIGNING_ENDPOINT != '' && vars.AZURE_ARTIFACT_SIGNING_ACCOUNT_NAME != '' && vars.AZURE_ARTIFACT_SIGNING_CERTIFICATE_PROFILE_NAME != ''
+        shell: pwsh
+        env:
+          AZURE_ARTIFACT_SIGNING_ENDPOINT: ${{ vars.AZURE_ARTIFACT_SIGNING_ENDPOINT }}
+          AZURE_ARTIFACT_SIGNING_ACCOUNT_NAME: ${{ vars.AZURE_ARTIFACT_SIGNING_ACCOUNT_NAME }}
+          AZURE_ARTIFACT_SIGNING_CERTIFICATE_PROFILE_NAME: ${{ vars.AZURE_ARTIFACT_SIGNING_CERTIFICATE_PROFILE_NAME }}
+        run: |
+          $artifactDir = Join-Path $PWD ".github/windows-signing/artifact-signing"
+          New-Item -ItemType Directory -Path $artifactDir -Force | Out-Null
+
+          $nugetPath = Join-Path $artifactDir "nuget.exe"
+          Invoke-WebRequest -Uri "https://dist.nuget.org/win-x86-commandline/latest/nuget.exe" -OutFile $nugetPath
+
+          $packagesDir = Join-Path $artifactDir "packages"
+          & $nugetPath install Microsoft.ArtifactSigning.Client -x -OutputDirectory $packagesDir | Out-Host
+
+          $dlib = Get-ChildItem -Path $packagesDir -Recurse -Filter "Azure.CodeSigning.Dlib.dll" |
+            Sort-Object FullName -Descending |
+            Select-Object -First 1
+
+          if (-not $dlib) {
+            throw "Azure.CodeSigning.Dlib.dll was not found after installing Microsoft.ArtifactSigning.Client."
+          }
+
+          $metadataPath = Join-Path $artifactDir "metadata.json"
+          $metadata = [ordered]@{
+            Endpoint = $env:AZURE_ARTIFACT_SIGNING_ENDPOINT
+            CodeSigningAccountName = $env:AZURE_ARTIFACT_SIGNING_ACCOUNT_NAME
+            CertificateProfileName = $env:AZURE_ARTIFACT_SIGNING_CERTIFICATE_PROFILE_NAME
+            CorrelationId = "$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"
+          } | ConvertTo-Json
+
+          Set-Content -Path $metadataPath -Value $metadata -Encoding utf8
+
+          "ARTIFACT_SIGNING_DLIB_PATH=$($dlib.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "ARTIFACT_SIGNING_METADATA_PATH=$metadataPath" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "WINDOWS_TIMESTAMP_URL=http://timestamp.acs.microsoft.com" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
 
       - name: Load And Normalize Updater Signing Key
         shell: bash
