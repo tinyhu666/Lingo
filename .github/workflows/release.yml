@@ -104,18 +104,8 @@ jobs:
             exit 0
           }
 
-          $message = @(
-            "No Windows signing configuration was found.",
-            "",
-            "Configure one of the following before tagging a release:",
-            "- Azure Artifact Signing:",
-            "  - secrets: AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID",
-            "  - variables: AZURE_ARTIFACT_SIGNING_ENDPOINT, AZURE_ARTIFACT_SIGNING_ACCOUNT_NAME, AZURE_ARTIFACT_SIGNING_CERTIFICATE_PROFILE_NAME",
-            "- PFX fallback:",
-            "  - secrets: WINDOWS_CERTIFICATE, WINDOWS_CERTIFICATE_PASSWORD"
-          ) -join [Environment]::NewLine
-
-          throw $message
+          "WINDOWS_SIGNING_MODE=none" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          Write-Warning "No Windows signing configuration was found. Release builds will continue without Authenticode signing, and Windows may show trust warnings."
 
       - name: Import Windows Code Signing Certificate
         if: matrix.os == 'windows-latest' && !(secrets.AZURE_CLIENT_ID != '' && secrets.AZURE_TENANT_ID != '' && secrets.AZURE_SUBSCRIPTION_ID != '' && vars.AZURE_ARTIFACT_SIGNING_ENDPOINT != '' && vars.AZURE_ARTIFACT_SIGNING_ACCOUNT_NAME != '' && vars.AZURE_ARTIFACT_SIGNING_CERTIFICATE_PROFILE_NAME != '') && secrets.WINDOWS_CERTIFICATE != '' && secrets.WINDOWS_CERTIFICATE_PASSWORD != ''
@@ -317,6 +307,34 @@ jobs:
           includeUpdaterJson: true
           args: ${{ matrix.args }}
 
+      - name: Create Windows Portable ZIP
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          $version = node -p "JSON.parse(require('node:fs').readFileSync('package.json', 'utf8')).version"
+          $portableDir = Join-Path "src-tauri/target/release/bundle" "portable"
+          New-Item -ItemType Directory -Path $portableDir -Force | Out-Null
+
+          $binaryPath = Join-Path "src-tauri/target/release" "Lingo.exe"
+          if (-not (Test-Path -LiteralPath $binaryPath)) {
+            throw "Portable binary was not produced at $binaryPath"
+          }
+
+          $zipPath = Join-Path $portableDir ("Lingo_{0}_x64-portable.zip" -f $version)
+          if (Test-Path -LiteralPath $zipPath) {
+            Remove-Item -LiteralPath $zipPath -Force
+          }
+
+          Compress-Archive -Path $binaryPath -DestinationPath $zipPath
+          "WINDOWS_PORTABLE_ZIP_PATH=$((Resolve-Path -LiteralPath $zipPath).Path)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Upload Windows Portable ZIP
+        if: matrix.os == 'windows-latest'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: ${{ env.WINDOWS_PORTABLE_ZIP_PATH }}
+
       - name: Verify Windows Installer Signatures
         if: matrix.os == 'windows-latest'
         shell: pwsh
@@ -324,6 +342,15 @@ jobs:
           $installers = Get-ChildItem -Path "src-tauri/target/release/bundle" -Recurse -Include *.exe,*.msi
           if (-not $installers) {
             throw "No Windows installer artifacts were produced."
+          }
+
+          if ($env:WINDOWS_SIGNING_MODE -eq "none") {
+            Write-Warning "Windows release artifacts were generated without Authenticode signing."
+            foreach ($installer in $installers) {
+              $signature = Get-AuthenticodeSignature $installer.FullName
+              Write-Host "$($installer.Name): $($signature.Status)"
+            }
+            exit 0
           }
 
           foreach ($installer in $installers) {

@@ -115,6 +115,18 @@ async function uploadStableAliases() {
     'releases/Lingo_latest_x64-setup.exe',
     'public,max-age=60',
   );
+
+  const portableZipPath = path.join(versionRoot, `Lingo_${version}_x64-portable.zip`);
+  try {
+    await fs.access(portableZipPath);
+    await uploadFile(
+      portableZipPath,
+      'releases/Lingo_latest_x64-portable.zip',
+      'public,max-age=60',
+    );
+  } catch {
+    console.log(`Portable ZIP not found for v${version}; skipping portable alias upload.`);
+  }
 }
 
 async function uploadLatestManifests() {

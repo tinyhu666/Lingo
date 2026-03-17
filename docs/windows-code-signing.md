@@ -60,3 +60,5 @@ Workflow behavior:
 - OV certificates improve trust, but SmartScreen reputation may still take time to build.
 - EV certificates usually improve SmartScreen trust faster than OV certificates.
 - Re-signing old assets is not enough; rebuild and re-upload the release so users download the signed files.
+- If no Windows signing configuration is present, this repo now allows the release workflow to continue with unsigned Windows installers.
+- Unsigned Windows builds will still trigger browser and SmartScreen warnings. To make downloads friendlier for personal releases, the workflow also publishes a portable `zip` bundle alongside the installer assets.

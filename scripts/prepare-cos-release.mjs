@@ -38,6 +38,7 @@ const releasePageUrl = `https://github.com/${RELEASE_REPO}/releases/latest`;
 const stableDownloads = {
   macos: `${COS_PUBLIC_BASE_URL}/releases/Lingo_latest_aarch64.dmg`,
   windows: `${COS_PUBLIC_BASE_URL}/releases/Lingo_latest_x64-setup.exe`,
+  windows_portable: `${COS_PUBLIC_BASE_URL}/releases/Lingo_latest_x64-portable.zip`,
 };
 
 async function fetchJson(url, headers = githubHeaders) {
@@ -76,6 +77,10 @@ function getReleaseAsset(release, assetName) {
   return asset;
 }
 
+function findReleaseAsset(release, assetName) {
+  return release.assets.find((item) => item.name === assetName) ?? null;
+}
+
 function buildMirrorUrl(assetName) {
   return `${COS_PUBLIC_BASE_URL}/releases/v${releaseVersion}/${assetName}`;
 }
@@ -96,10 +101,15 @@ async function main() {
 
   const latestPayload = JSON.parse(await fs.readFile(latestJsonPath, 'utf8'));
   const platformEntries = Object.values(latestPayload.platforms || {});
+  const portableAssetName = `Lingo_${releaseVersion}_x64-portable.zip`;
   const assetNames = new Set([
     `Lingo_${releaseVersion}_aarch64.dmg`,
     `Lingo_${releaseVersion}_x64-setup.exe`,
   ]);
+
+  if (findReleaseAsset(release, portableAssetName)) {
+    assetNames.add(portableAssetName);
+  }
 
   for (const platform of platformEntries) {
     if (platform && typeof platform.url === 'string' && platform.url) {

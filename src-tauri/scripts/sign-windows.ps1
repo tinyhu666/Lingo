@@ -56,6 +56,12 @@ function Get-CodeSigningCertificate {
 }
 
 $resolvedTarget = (Resolve-Path -LiteralPath $TargetPath).Path
+
+if ($env:WINDOWS_SIGNING_MODE -eq "none") {
+  Write-Warning "Skipping Authenticode signing for $resolvedTarget because Windows signing mode is set to 'none'."
+  exit 0
+}
+
 $signTool = Get-SignToolPath
 
 if ($env:WINDOWS_SIGNING_MODE -eq "artifact") {
