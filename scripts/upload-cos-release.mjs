@@ -32,6 +32,9 @@ if (!version) {
 
 const versionRoot = path.join(PrepDir, 'releases', `v${version}`);
 const manifestRoot = path.join(PrepDir, 'releases');
+const MULTIPART_THRESHOLD_BYTES = 5 * 1024 * 1024;
+const MAX_UPLOAD_ATTEMPTS = 4;
+const RETRY_BASE_DELAY_MS = 2_000;
 
 const cos = new COS({
   SecretId,
@@ -74,21 +77,110 @@ function putObject(params) {
   });
 }
 
+function managedUpload(params) {
+  return new Promise((resolve, reject) => {
+    if (typeof cos.uploadFile !== 'function') {
+      reject(new Error('cos.uploadFile is not available in current SDK.'));
+      return;
+    }
+
+    cos.uploadFile(params, (error, data) => {
+      if (error) {
+        reject(error);
+        return;
+      }
+
+      resolve(data);
+    });
+  });
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
+
+function isRetryableUploadError(error) {
+  const message = String(error?.message || '');
+  const code = String(error?.code || error?.error?.Code || '');
+  const statusCode = Number(error?.statusCode || error?.error?.statusCode || 0);
+
+  if (statusCode >= 500 || statusCode === 408 || statusCode === 429) {
+    return true;
+  }
+
+  return [
+    'UserNetworkTooSlow',
+    'RequestTimeout',
+    'TimeoutError',
+    'NetworkingError',
+    'ECONNRESET',
+    'ETIMEDOUT',
+    'EPIPE',
+    'EAI_AGAIN',
+  ].includes(code) || /network|timeout|socket hang up|temporarily unavailable/i.test(message);
+}
+
+async function retryUpload(taskLabel, handler) {
+  let lastError = null;
+
+  for (let attempt = 1; attempt <= MAX_UPLOAD_ATTEMPTS; attempt += 1) {
+    try {
+      if (attempt > 1) {
+        console.log(`Retrying ${taskLabel} (attempt ${attempt}/${MAX_UPLOAD_ATTEMPTS})...`);
+      }
+
+      return await handler(attempt);
+    } catch (error) {
+      lastError = error;
+
+      if (attempt >= MAX_UPLOAD_ATTEMPTS || !isRetryableUploadError(error)) {
+        throw error;
+      }
+
+      const waitMs = RETRY_BASE_DELAY_MS * 2 ** (attempt - 1);
+      console.warn(
+        `Upload failed for ${taskLabel} with retryable error (${error?.code || error?.error?.Code || error?.message || 'unknown'}). Waiting ${waitMs}ms before retry...`,
+      );
+      await sleep(waitMs);
+    }
+  }
+
+  throw lastError;
+}
+
 async function uploadFile(localPath, remoteKey, cacheControl) {
   const key = normalizeKey(remoteKey);
-  const body = await fs.readFile(localPath);
+  const stats = await fs.stat(localPath);
 
-  const data = await putObject({
-    Bucket,
-    Region,
-    Key: key,
-    Body: body,
-    ACL: 'public-read',
-    CacheControl: cacheControl,
-    ContentLength: body.length,
+  const data = await retryUpload(`cos://${Bucket}/${key}`, async () => {
+    if (typeof cos.uploadFile === 'function') {
+      return managedUpload({
+        Bucket,
+        Region,
+        Key: key,
+        FilePath: localPath,
+        ACL: 'public-read',
+        CacheControl: cacheControl,
+        SliceSize: MULTIPART_THRESHOLD_BYTES,
+      });
+    }
+
+    const body = await fs.readFile(localPath);
+
+    return putObject({
+      Bucket,
+      Region,
+      Key: key,
+      Body: body,
+      ACL: 'public-read',
+      CacheControl: cacheControl,
+      ContentLength: body.length,
+    });
   });
 
-  console.log(`Uploaded ${localPath} => cos://${Bucket}/${key}`);
+  console.log(`Uploaded ${localPath} (${stats.size} bytes) => cos://${Bucket}/${key}`);
   return data;
 }
 
