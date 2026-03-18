@@ -33,13 +33,21 @@ if (!version) {
 const versionRoot = path.join(PrepDir, 'releases', `v${version}`);
 const manifestRoot = path.join(PrepDir, 'releases');
 const MULTIPART_THRESHOLD_BYTES = 5 * 1024 * 1024;
+const MULTIPART_CHUNK_SIZE_BYTES = 1024 * 1024;
+const MULTIPART_ASYNC_LIMIT = 1;
 const MAX_UPLOAD_ATTEMPTS = 4;
 const RETRY_BASE_DELAY_MS = 2_000;
+const SDK_REQUEST_TIMEOUT_MS = 120_000;
+const SDK_PROGRESS_INTERVAL_MS = 5_000;
 
 const cos = new COS({
   SecretId,
   SecretKey,
   SecurityToken: SecurityToken || undefined,
+  Timeout: SDK_REQUEST_TIMEOUT_MS,
+  ProgressInterval: SDK_PROGRESS_INTERVAL_MS,
+  ChunkParallelLimit: MULTIPART_ASYNC_LIMIT,
+  FileParallelLimit: 1,
 });
 
 function normalizeKey(value) {
@@ -154,6 +162,8 @@ async function uploadFile(localPath, remoteKey, cacheControl) {
   const key = normalizeKey(remoteKey);
   const stats = await fs.stat(localPath);
 
+  console.log(`Starting upload ${localPath} (${stats.size} bytes) => cos://${Bucket}/${key}`);
+
   const data = await retryUpload(`cos://${Bucket}/${key}`, async () => {
     if (typeof cos.uploadFile === 'function') {
       return managedUpload({
@@ -164,6 +174,19 @@ async function uploadFile(localPath, remoteKey, cacheControl) {
         ACL: 'public-read',
         CacheControl: cacheControl,
         SliceSize: MULTIPART_THRESHOLD_BYTES,
+        ChunkSize: MULTIPART_CHUNK_SIZE_BYTES,
+        AsyncLimit: MULTIPART_ASYNC_LIMIT,
+        onProgress: (progress) => {
+          if (!progress) {
+            return;
+          }
+
+          const loaded = Number(progress.loaded || 0);
+          const total = Number(progress.total || stats.size || 0);
+          const percent = total > 0 ? ((loaded / total) * 100).toFixed(1) : '0.0';
+          const speedKib = progress.speed ? `${Math.round(progress.speed / 1024)} KiB/s` : 'n/a';
+          console.log(`Progress ${key}: ${percent}% (${loaded}/${total} bytes, ${speedKib})`);
+        },
       });
     }
 
