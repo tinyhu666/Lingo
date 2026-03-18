@@ -379,10 +379,12 @@
   }
 
   .sidebar-panel {
+    --sidebar-panel-gutter: clamp(14px, 1.8vw, 18px);
+    --sidebar-content-offset: 14px;
     display: flex;
     height: 100%;
     flex-direction: column;
-    padding: clamp(20px, 2.2vw, 26px) clamp(14px, 1.8vw, 18px) 18px;
+    padding: clamp(20px, 2.2vw, 26px) var(--sidebar-panel-gutter) 18px;
     background:
       radial-gradient(300px 210px at 0% 0%, rgba(83, 118, 205, 0.34), transparent 74%),
       radial-gradient(340px 240px at 100% 100%, rgba(91, 173, 224, 0.24), transparent 74%),
@@ -429,7 +431,7 @@
     align-items: center;
     gap: 12px;
     min-height: 52px;
-    padding: 0 14px;
+    padding: 0 var(--sidebar-content-offset);
     border-radius: 16px;
     border: 1px solid transparent;
     background: transparent;
@@ -519,7 +521,7 @@
 
   .sidebar-footer {
     margin-top: auto;
-    padding: 16px 6px 2px;
+    padding: 16px var(--sidebar-content-offset) 2px;
     border-top: 1px solid rgba(218, 227, 239, 0.84);
   }
 
@@ -1087,7 +1089,8 @@
 
   html.platform-desktop .sidebar-panel,
   body.platform-desktop .sidebar-panel {
-    padding: 26px 18px 18px;
+    --sidebar-panel-gutter: 18px;
+    padding: 26px var(--sidebar-panel-gutter) 18px;
   }
 
   html.platform-desktop .workspace-content,
@@ -1200,8 +1203,11 @@
 
     .sidebar-nav__item {
       min-height: 48px;
-      padding-inline: 12px;
       font-size: 15px;
+    }
+
+    .sidebar-panel {
+      --sidebar-content-offset: 12px;
     }
 
     .sidebar-nav__icon-wrap {

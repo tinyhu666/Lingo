@@ -1,3 +1,5 @@
+declare const __APP_VERSION__: string;
+
 declare module '@tauri-apps/plugin-updater' {
   export interface CheckOptions {
     headers?: HeadersInit;
