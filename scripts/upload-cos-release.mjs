@@ -9,6 +9,9 @@ const SecretKey = String(process.env.TENCENT_SECRET_KEY || '').trim();
 const SecurityToken = String(process.env.TENCENT_COS_SESSION_TOKEN || '').trim();
 const Bucket = String(process.env.TENCENT_COS_BUCKET || '').trim();
 const Region = String(process.env.TENCENT_COS_REGION || '').trim();
+const PublicBaseUrl = String(process.env.TENCENT_COS_PUBLIC_BASE_URL || '')
+  .trim()
+  .replace(/\/+$/, '');
 const ReleaseTag = String(process.env.RELEASE_TAG || '').trim();
 const PrepDir = path.resolve(process.cwd(), process.env.COS_PREP_DIR || '.mirror-cos');
 
@@ -52,6 +55,30 @@ const cos = new COS({
 
 function normalizeKey(value) {
   return value.replace(/\\/g, '/').replace(/^\/+/, '');
+}
+
+async function getRemoteObjectSize(remoteKey) {
+  if (!PublicBaseUrl) {
+    return null;
+  }
+
+  const key = normalizeKey(remoteKey);
+  const url = new URL(key, `${PublicBaseUrl}/`).toString();
+  const response = await fetch(url, {
+    method: 'HEAD',
+    redirect: 'follow',
+  });
+
+  if (response.status === 404) {
+    return null;
+  }
+
+  if (!response.ok) {
+    throw new Error(`Failed to inspect ${url}: HTTP ${response.status}`);
+  }
+
+  const contentLength = Number(response.headers.get('content-length') || 0);
+  return Number.isFinite(contentLength) && contentLength > 0 ? contentLength : null;
 }
 
 async function collectFiles(rootDir) {
@@ -158,9 +185,22 @@ async function retryUpload(taskLabel, handler) {
   throw lastError;
 }
 
-async function uploadFile(localPath, remoteKey, cacheControl) {
+async function uploadFile(localPath, remoteKey, cacheControl, options = {}) {
   const key = normalizeKey(remoteKey);
   const stats = await fs.stat(localPath);
+  const { skipIfSameSize = false } = options;
+
+  if (skipIfSameSize) {
+    try {
+      const remoteSize = await getRemoteObjectSize(key);
+      if (remoteSize === stats.size) {
+        console.log(`Skipping already mirrored file ${localPath} (${stats.size} bytes) => cos://${Bucket}/${key}`);
+        return null;
+      }
+    } catch (error) {
+      console.warn(`Unable to inspect existing object for cos://${Bucket}/${key}: ${error?.message || error}`);
+    }
+  }
 
   console.log(`Starting upload ${localPath} (${stats.size} bytes) => cos://${Bucket}/${key}`);
 
@@ -214,7 +254,9 @@ async function uploadVersionedReleaseFiles() {
   for (const localPath of files) {
     const relativePath = path.relative(versionRoot, localPath);
     const remoteKey = path.posix.join('releases', `v${version}`, normalizeKey(relativePath));
-    await uploadFile(localPath, remoteKey, 'public,max-age=31536000,immutable');
+    await uploadFile(localPath, remoteKey, 'public,max-age=31536000,immutable', {
+      skipIfSameSize: true,
+    });
   }
 }
 
