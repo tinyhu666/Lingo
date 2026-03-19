@@ -265,12 +265,18 @@ async function uploadStableAliases() {
     path.join(versionRoot, `Lingo_${version}_aarch64.dmg`),
     'releases/Lingo_latest_aarch64.dmg',
     'public,max-age=60',
+    {
+      skipIfSameSize: true,
+    },
   );
 
   await uploadFile(
     path.join(versionRoot, `Lingo_${version}_x64-setup.exe`),
     'releases/Lingo_latest_x64-setup.exe',
     'public,max-age=60',
+    {
+      skipIfSameSize: true,
+    },
   );
 
   const portableZipPath = path.join(versionRoot, `Lingo_${version}_x64-portable.zip`);
@@ -280,21 +286,42 @@ async function uploadStableAliases() {
       portableZipPath,
       'releases/Lingo_latest_x64-portable.zip',
       'public,max-age=60',
+      {
+        skipIfSameSize: true,
+      },
     );
   } catch {
     console.log(`Portable ZIP not found for v${version}; skipping portable alias upload.`);
   }
 }
 
-async function uploadLatestManifests() {
+async function uploadUpdaterManifest() {
   await uploadFile(path.join(manifestRoot, 'latest.json'), 'releases/latest.json', 'public,max-age=60');
+}
+
+async function uploadWebsiteManifest() {
   await uploadFile(path.join(manifestRoot, 'latest-web.json'), 'releases/latest-web.json', 'public,max-age=60');
 }
 
 try {
   await uploadVersionedReleaseFiles();
-  await uploadStableAliases();
-  await uploadLatestManifests();
+  await uploadUpdaterManifest();
+
+  let stableAliasesUploaded = false;
+  try {
+    await uploadStableAliases();
+    stableAliasesUploaded = true;
+  } catch (error) {
+    console.warn(
+      `Stable alias upload did not complete for v${version}. Updater manifest is already refreshed, but download aliases may still point to the previous release. ${error?.message || error}`,
+    );
+  }
+
+  if (stableAliasesUploaded) {
+    await uploadWebsiteManifest();
+  } else {
+    console.warn(`Skipping latest-web.json upload for v${version} because stable aliases are not fully refreshed yet.`);
+  }
 
   console.log(`Tencent COS upload completed for v${version}.`);
   process.exit(0);
