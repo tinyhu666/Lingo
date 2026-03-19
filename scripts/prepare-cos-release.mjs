@@ -81,6 +81,16 @@ function findReleaseAsset(release, assetName) {
   return release.assets.find((item) => item.name === assetName) ?? null;
 }
 
+function maybeAddAssetName(release, assetNames, assetName) {
+  if (findReleaseAsset(release, assetName)) {
+    assetNames.add(assetName);
+  }
+}
+
+function maybeAddSignatureAssetName(release, assetNames, assetName) {
+  maybeAddAssetName(release, assetNames, `${assetName}.sig`);
+}
+
 function buildMirrorUrl(assetName) {
   return `${COS_PUBLIC_BASE_URL}/releases/v${releaseVersion}/${assetName}`;
 }
@@ -102,10 +112,11 @@ async function main() {
   const latestPayload = JSON.parse(await fs.readFile(latestJsonPath, 'utf8'));
   const platformEntries = Object.values(latestPayload.platforms || {});
   const portableAssetName = `Lingo_${releaseVersion}_x64-portable.zip`;
-  const assetNames = new Set([
-    `Lingo_${releaseVersion}_aarch64.dmg`,
-    `Lingo_${releaseVersion}_x64-setup.exe`,
-  ]);
+  const assetNames = new Set();
+
+  maybeAddAssetName(release, assetNames, `Lingo_${releaseVersion}_aarch64.dmg`);
+  maybeAddAssetName(release, assetNames, `Lingo_${releaseVersion}_x64-setup.exe`);
+  maybeAddSignatureAssetName(release, assetNames, `Lingo_${releaseVersion}_x64-setup.exe`);
 
   if (findReleaseAsset(release, portableAssetName)) {
     assetNames.add(portableAssetName);
@@ -113,7 +124,9 @@ async function main() {
 
   for (const platform of platformEntries) {
     if (platform && typeof platform.url === 'string' && platform.url) {
-      assetNames.add(path.posix.basename(new URL(platform.url).pathname));
+      const assetName = path.posix.basename(new URL(platform.url).pathname);
+      assetNames.add(assetName);
+      maybeAddSignatureAssetName(release, assetNames, assetName);
     }
   }
 
