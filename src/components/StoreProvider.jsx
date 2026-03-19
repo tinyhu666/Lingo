@@ -7,7 +7,18 @@ import {
 } from '../services/settingsStore';
 
 const StoreContext = createContext(null);
-const isEqualSettings = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+
+const isEqualSettings = (a, b) => {
+  if (Object.is(a, b)) {
+    return true;
+  }
+
+  try {
+    return JSON.stringify(a) === JSON.stringify(b);
+  } catch {
+    return false;
+  }
+};
 
 export function StoreProvider({ children }) {
   const [settings, setSettings] = useState(null);
@@ -18,7 +29,7 @@ export function StoreProvider({ children }) {
   const enqueueCommit = useCallback((producer) => {
     const run = async () => {
       const currentSettings = latestSettingsRef.current || {};
-      const nextSettings = producer(currentSettings);
+      const nextSettings = producer(currentSettings) ?? currentSettings;
       if (isEqualSettings(currentSettings, nextSettings)) {
         return currentSettings;
       }

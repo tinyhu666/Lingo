@@ -156,7 +156,7 @@ export default function HotkeyCard() {
     <motion.button
       type='button'
       onClick={beginRecording}
-      className='dota-card tool-rise w-full min-h-[248px] min-w-0 flex-1 flex flex-col rounded-2xl px-6 pt-6 pb-3 text-left transition-all duration-200'
+      className='home-stat-card dota-card tool-rise transition-all duration-200'
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.2 }}>
@@ -165,7 +165,7 @@ export default function HotkeyCard() {
         <h3 className='tool-card-title'>{t('home.hotkey.title')}</h3>
       </div>
 
-      <div className='flex-1 flex flex-col mt-4'>
+      <div className='home-stat-card__body'>
         <div className='home-top-copy'>
           <p className='tool-body'>
             {recording

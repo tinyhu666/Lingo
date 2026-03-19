@@ -28,20 +28,20 @@ export default function Home() {
 
   return (
     <div className='home-grid'>
-      <div className='home-grid__stat flex min-h-[252px] min-w-0'>
+      <div className='home-grid__stat home-grid__stat--translation'>
         <TranslationDirectionCard />
       </div>
 
-      <div className='home-grid__stat flex min-h-[252px] min-w-0'>
+      <div className='home-grid__stat home-grid__stat--hotkey'>
         <HotkeyCard />
       </div>
 
-      <div className='home-grid__stat flex min-h-[252px] min-w-0'>
+      <div className='home-grid__stat home-grid__stat--status'>
         <EnableStatusCard />
       </div>
 
       <motion.section
-        className='home-grid__guide dota-card tool-rise min-w-0 p-6'
+        className='home-grid__guide home-panel dota-card tool-rise'
         initial={{ opacity: 0, y: 18 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.08 }}>
@@ -55,19 +55,19 @@ export default function Home() {
         </div>
         <p className='tool-body tool-section-summary'>{t('home.guide.summary')}</p>
 
-        <div className='home-guide-grid mt-6'>
+        <div className='home-guide-grid'>
           {steps.map((step) => (
-            <article key={step.id} className='tool-subcard tool-rise p-5'>
+            <article key={step.id} className='home-guide-step tool-subcard tool-rise'>
               <div className='tool-caption tracking-[0.16em]'>{step.id}</div>
               <h3 className='tool-card-title mt-2'>{step.title}</h3>
-              <p className='tool-body mt-2'>{step.desc}</p>
+              <p className='tool-body'>{step.desc}</p>
             </article>
           ))}
         </div>
       </motion.section>
 
       <motion.section
-        className='home-grid__demo dota-card tool-rise min-w-0 p-6'
+        className='home-grid__demo home-panel dota-card tool-rise'
         initial={{ opacity: 0, y: 18 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.12 }}>
@@ -82,7 +82,7 @@ export default function Home() {
         </div>
         <p className='tool-body tool-section-summary'>{t('home.demo.summary')}</p>
 
-        <div className='mt-5 space-y-4'>
+        <div className='home-demo-stack'>
           <div className='tool-subcard p-4'>
             <div className='flex items-center gap-2 text-zinc-800'>
               <KeyboardAlt className='h-4 w-4 stroke-zinc-500' />

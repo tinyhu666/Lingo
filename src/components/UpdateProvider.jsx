@@ -1,8 +1,7 @@
 ﻿import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { check } from '@tauri-apps/plugin-updater';
 import { relaunch } from '@tauri-apps/plugin-process';
-import { hasTauriRuntime } from '../services/tauriRuntime';
-import { invokeCommand } from '../services/tauriRuntime';
+import { hasTauriRuntime, invokeCommand } from '../services/tauriRuntime';
 import { showError, showSuccess } from '../utils/toast';
 import {
   APP_VERSION,
@@ -242,7 +241,9 @@ export function UpdateProvider({ children }) {
       patchState({ currentVersion: version });
       return version;
     } catch {
-      return null;
+      currentVersionRef.current = APP_VERSION;
+      patchState({ currentVersion: APP_VERSION });
+      return APP_VERSION;
     }
   }, [patchState]);
 

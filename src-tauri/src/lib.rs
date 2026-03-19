@@ -9,7 +9,8 @@ pub mod shortcut;
 pub mod store;
 pub mod tray;
 
-const RELEASE_LATEST_JSON_URL: &str = "https://github.com/tinyhu666/Lingo/releases/latest/download/latest.json";
+const RELEASE_LATEST_JSON_URL: &str =
+    "https://lingo-1259551686.cos.ap-shanghai.myqcloud.com/releases/latest.json";
 const RELEASE_API_URL: &str = "https://api.github.com/repos/tinyhu666/Lingo/releases/latest";
 
 #[derive(Debug, Default, Serialize)]
@@ -173,7 +174,7 @@ async fn get_latest_release_metadata() -> Result<ReleaseMetadata, String> {
 pub fn run() {
     println!("Starting application...");
 
-    let mut builder = tauri::Builder::default()
+    let builder = tauri::Builder::default()
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_store::Builder::default().build())
@@ -220,7 +221,7 @@ pub fn run() {
     // 只在非Windows系统上添加窗口事件监听
     #[cfg(not(target_os = "windows"))]
     {
-        builder = builder.on_window_event(|window, event| {
+        let builder = builder.on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                 if let Err(error) = window.hide() {
                     eprintln!("隐藏窗口失败: {}", error);
@@ -232,6 +233,12 @@ pub fn run() {
                 api.prevent_close();
             }
         });
+
+        builder
+            .run(tauri::generate_context!())
+            .expect("error while running tauri application");
+
+        return;
     }
 
     builder

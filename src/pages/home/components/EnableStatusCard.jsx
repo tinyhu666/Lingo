@@ -53,7 +53,7 @@ export default function EnableStatusCard() {
 
   return (
     <motion.section
-      className='dota-card tool-rise w-full min-h-[248px] min-w-0 flex-1 rounded-2xl px-6 pt-6 pb-3 flex flex-col text-left'
+      className='home-stat-card dota-card tool-rise'
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.06 }}>
@@ -62,7 +62,7 @@ export default function EnableStatusCard() {
         <h3 className='tool-card-title'>{t('home.enableStatus.title')}</h3>
       </div>
 
-      <div className='flex-1 flex flex-col mt-4'>
+      <div className='home-stat-card__body'>
         <div className='home-top-copy'>
           <p className='tool-body'>{t('home.enableStatus.desc')}</p>
         </div>

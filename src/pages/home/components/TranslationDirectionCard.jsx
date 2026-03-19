@@ -122,7 +122,7 @@ export default function TranslationDirectionCard() {
 
   return (
     <motion.section
-      className='dota-card tool-rise relative w-full min-h-[248px] min-w-0 flex-1 flex flex-col rounded-2xl px-6 pt-6 pb-3 text-left'
+      className='home-stat-card dota-card tool-rise relative'
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}>
       <div className='flex items-center gap-3'>
@@ -130,10 +130,10 @@ export default function TranslationDirectionCard() {
         <h3 className='tool-card-title'>{t('home.translationLanguage.title')}</h3>
       </div>
 
-      <div className='flex-1 flex flex-col mt-4'>
+      <div className='home-stat-card__body'>
         <div className='home-top-copy'>
           <p className='tool-body'>{t('home.translationLanguage.desc1')}</p>
-          <p className='tool-body mt-2'>{t('home.translationLanguage.desc2')}</p>
+          <p className='tool-body'>{t('home.translationLanguage.desc2')}</p>
         </div>
 
         <div className='home-top-actions'>
