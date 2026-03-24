@@ -46,31 +46,67 @@ function sanitizeNotes(input) {
 
   const lines = input
     .split('\n')
-    .filter((line) => !/版本升级到\s*v?\d/i.test(line));
+    .filter((line) => !/版本升级到\s*v?\d/i.test(line))
+    .map((line) => line.trimEnd());
 
   return lines.join('\n').trim();
 }
 
-let notes = sanitizeNotes(getSectionBody(releaseVersion));
+function formatNotes(input) {
+  if (!input) {
+    return '';
+  }
+
+  const lines = sanitizeNotes(input).split('\n');
+  const items = [];
+  let currentCategory = null;
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+
+    if (!line) {
+      continue;
+    }
+
+    const sectionHeading = line.match(/^###\s*(新增|优化|修复|更新日志)\s*$/);
+    if (sectionHeading) {
+      currentCategory = sectionHeading[1] === '更新日志' ? null : sectionHeading[1];
+      continue;
+    }
+
+    const numberedLine = line.match(/^\d+\.\s*(新增|优化|修复)\s*[：:]\s*(.+)$/);
+    if (numberedLine) {
+      items.push({ category: numberedLine[1], text: numberedLine[2].trim() });
+      continue;
+    }
+
+    const bulletLine = line.match(/^[-*]\s+(.+)$/);
+    if (bulletLine && currentCategory) {
+      items.push({ category: currentCategory, text: bulletLine[1].trim() });
+    }
+  }
+
+  if (!items.length) {
+    return '';
+  }
+
+  return ['### 更新日志', '', ...items.map((item, index) => `${index + 1}. ${item.category}：${item.text}`)].join('\n');
+}
+
+let notes = formatNotes(getSectionBody(releaseVersion));
 
 if (!notes) {
   const latestStable = sections.find((section) => /^\d+\.\d+\.\d+$/.test(section.name));
-  notes = sanitizeNotes(latestStable ? latestStable.lines.join('\n').trim() : '');
+  notes = formatNotes(latestStable ? latestStable.lines.join('\n').trim() : '');
 }
 
 if (!notes) {
   notes = [
-    '### 新增',
+    '### 更新日志',
     '',
-    '- 暂无',
-    '',
-    '### 优化',
-    '',
-    '- 持续优化整体体验，让使用过程更顺手。',
-    '',
-    '### 修复',
-    '',
-    '- 修复已知问题，提升版本稳定性。',
+    '1. 新增：暂无。',
+    '2. 优化：持续优化整体体验，让使用过程更顺手。',
+    '3. 修复：修复已知问题，提升版本稳定性。',
   ].join('\n');
 }
 
