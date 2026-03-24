@@ -1,13 +1,14 @@
 {
   "name": "lingo",
   "private": true,
-  "version": "0.3.15",
+  "version": "0.3.16",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
     "tauri": "tauri",
+    "brand:assets": "node scripts/generate-brand-assets.mjs",
     "clean": "node -e \"const fs = require('fs'); fs.rmSync('src-tauri/target', { recursive: true, force: true }); fs.rmSync('dist', { recursive: true, force: true });\"",
     "build:mac-arm": "tauri build --target aarch64-apple-darwin"
   },

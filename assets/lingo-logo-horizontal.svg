@@ -1,78 +1,145 @@
-<svg width="1200" height="360" viewBox="0 0 1200 360" fill="none" xmlns="http://www.w3.org/2000/svg">
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1200" height="320" viewBox="0 0 1200 320" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <linearGradient id="iconBg" x1="22" y1="18" x2="198" y2="208" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#D4DFF5"/>
-      <stop offset="1" stop-color="#B7C8EE"/>
+    <linearGradient id="lingoWordmark" x1="340" y1="86" x2="760" y2="232" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#111827" />
+      <stop offset="0.52" stop-color="#2947A7" />
+      <stop offset="1" stop-color="#6E50DB" />
     </linearGradient>
-    <linearGradient id="panel" x1="54" y1="40" x2="174" y2="188" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#EAF1FD"/>
-      <stop offset="1" stop-color="#C9D7F3"/>
-    </linearGradient>
-    <linearGradient id="paper" x1="0" y1="0" x2="0" y2="1">
-      <stop stop-color="#F9FBFF"/>
-      <stop offset="1" stop-color="#E5ECFB"/>
-    </linearGradient>
-    <linearGradient id="badgeBg" x1="72" y1="123" x2="168" y2="165" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#F7FBFF"/>
-      <stop offset="1" stop-color="#DDE6FA"/>
-    </linearGradient>
-    <linearGradient id="displayBg" x1="112" y1="131" x2="146" y2="157" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#F7FAFF"/>
-      <stop offset="1" stop-color="#E7EEFF"/>
-    </linearGradient>
-    <linearGradient id="gameBg" x1="84" y1="132" x2="108" y2="156" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#FFD774"/>
-      <stop offset="1" stop-color="#F2A83E"/>
-    </linearGradient>
-    <linearGradient id="buttonBlue" x1="146" y1="132" x2="160" y2="147" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#6D92FF"/>
-      <stop offset="1" stop-color="#3F67DA"/>
-    </linearGradient>
-    <linearGradient id="buttonCyan" x1="154" y1="142" x2="168" y2="158" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#8DB4FF"/>
-      <stop offset="1" stop-color="#5E85EE"/>
-    </linearGradient>
-    <filter id="shadow" x="0" y="0" width="236" height="236" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
-      <feDropShadow dx="0" dy="10" stdDeviation="10" flood-color="#233872" flood-opacity="0.15"/>
-    </filter>
   </defs>
 
-  <g filter="url(#shadow)">
-    <rect x="12" y="12" width="212" height="212" rx="56" fill="url(#iconBg)"/>
-    <rect x="24" y="24" width="188" height="188" rx="48" fill="url(#panel)" stroke="#EEF4FF" stroke-width="3"/>
+  
+  <svg x="20" y="42" width="264" height="236" viewBox="140 260 744 500" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+
+    <!-- Controller gradient: cyan → blue → purple -->
+    <linearGradient id="ctrlGrad"
+        x1="172.00" y1="321.52" x2="852.00" y2="741.52"
+        gradientUnits="userSpaceOnUse">
+      <stop offset="0%"   stop-color="rgb(97,235,255)"/>
+      <stop offset="25%"  stop-color="rgb(77,184,255)"/>
+      <stop offset="50%"  stop-color="rgb(112,133,250)"/>
+      <stop offset="75%"  stop-color="rgb(138,97,235)"/>
+      <stop offset="100%" stop-color="rgb(140,71,217)"/>
+    </linearGradient>
+
+    <!-- Top specular highlight -->
+    <linearGradient id="hlGrad"
+        x1="512.00" y1="333.52" x2="512.00" y2="423.52"
+        gradientUnits="userSpaceOnUse">
+      <stop offset="0%"   stop-color="white" stop-opacity="0.24"/>
+      <stop offset="50%"  stop-color="white" stop-opacity="0.06"/>
+      <stop offset="100%" stop-color="white" stop-opacity="0"/>
+    </linearGradient>
+
+    <!-- Bottom darken -->
+    <linearGradient id="blGrad"
+        x1="512.00" y1="621.52" x2="512.00" y2="711.52"
+        gradientUnits="userSpaceOnUse">
+      <stop offset="0%"   stop-color="black" stop-opacity="0"/>
+      <stop offset="100%" stop-color="black" stop-opacity="0.12"/>
+    </linearGradient>
+
+    <!-- Bubble fill gradient (left) -->
+    <linearGradient id="bubGradL"
+        x1="324.00" y1="439.52" x2="324.00" y2="489.52"
+        gradientUnits="userSpaceOnUse">
+      <stop offset="0%"   stop-color="white" stop-opacity="0.34"/>
+      <stop offset="100%" stop-color="white" stop-opacity="0.22"/>
+    </linearGradient>
+
+    <!-- Bubble fill gradient (right) -->
+    <linearGradient id="bubGradR"
+        x1="626.00" y1="435.52" x2="626.00" y2="485.52"
+        gradientUnits="userSpaceOnUse">
+      <stop offset="0%"   stop-color="white" stop-opacity="0.34"/>
+      <stop offset="100%" stop-color="white" stop-opacity="0.22"/>
+    </linearGradient>
+
+    <!-- Controller mask: union of body + two grips -->
+    <mask id="ctrlMask">
+      <!-- Body -->
+      <rect x="207.00" y="350.02"
+            width="610.00" height="255.00"
+            rx="118.00" ry="118.00" fill="white"/>
+      <!-- Right grip -->
+      <rect x="-76.00" y="-65.00"
+            width="152.00" height="235.00"
+            rx="66.00" ry="66.00" fill="white"
+            transform="translate(684.00,513.52) rotate(-3)"/>
+      <!-- Left grip -->
+      <rect x="-76.00" y="-65.00"
+            width="152.00" height="235.00"
+            rx="66.00" ry="66.00" fill="white"
+            transform="translate(340.00,513.52) rotate(3)"/>
+    </mask>
+
+  </defs>
+
+  <!-- ── Controller body ── -->
+  <g mask="url(#ctrlMask)">
+    <!-- Gradient fill -->
+    <rect x="0" y="0" width="1024" height="1024" fill="url(#ctrlGrad)"/>
+    <!-- Top specular -->
+    <rect x="0" y="0" width="1024" height="1024" fill="url(#hlGrad)"/>
+    <!-- Bottom darken -->
+    <rect x="0" y="0" width="1024" height="1024" fill="url(#blGrad)"/>
   </g>
 
-  <rect x="58" y="46" width="120" height="150" rx="34" fill="#1F2F66"/>
-  <rect x="88" y="60" width="60" height="90" rx="16" fill="url(#paper)"/>
-  <rect x="98" y="48" width="40" height="18" rx="9" fill="#DFE8FB"/>
-  <rect x="96" y="82" width="44" height="8" rx="4" fill="#C7D3F0"/>
-  <rect x="96" y="100" width="32" height="8" rx="4" fill="#C7D3F0"/>
-  <rect x="96" y="118" width="40" height="8" rx="4" fill="#C7D3F0"/>
+  <!-- ── Chat bubble buttons ── -->
 
-  <g>
-    <rect x="72" y="123" width="96" height="42" rx="21" fill="url(#badgeBg)" stroke="#8DA5E5" stroke-width="2"/>
-
-    <circle cx="96" cy="144" r="12" fill="url(#gameBg)"/>
-    <path d="M94 136H98V141H103V145H98V150H94V145H89V141H94V136Z" fill="#26376E"/>
-    <circle cx="96" cy="143" r="1.5" fill="#F2C04D"/>
-
-    <rect x="112" y="131" width="34" height="26" rx="13" fill="url(#displayBg)" stroke="#9FB0E6" stroke-width="1.5"/>
-    <text x="120" y="147.5" fill="#22356E" font-size="7.8" font-family="SF Pro Display, PingFang SC, Microsoft YaHei, sans-serif" font-weight="700">A</text>
-    <text x="134" y="147.5" fill="#22356E" font-size="7.2" font-family="SF Pro Display, PingFang SC, Microsoft YaHei, sans-serif" font-weight="700">文</text>
-    <path d="M124.5 138.5H129" stroke="#5C79D4" stroke-width="1.5" stroke-linecap="round"/>
-    <path d="M127.3 136.6L129 138.5L127.3 140.4" stroke="#5C79D4" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-    <path d="M129 149.5H124.5" stroke="#5C79D4" stroke-width="1.5" stroke-linecap="round"/>
-    <path d="M126.2 147.6L124.5 149.5L126.2 151.4" stroke="#5C79D4" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-
-    <circle cx="156.5" cy="137.5" r="4.2" fill="url(#buttonBlue)" stroke="#25438D" stroke-width="1.5"/>
-    <circle cx="151" cy="143.5" r="4.2" fill="url(#buttonCyan)" stroke="#25438D" stroke-width="1.5"/>
-    <circle cx="162" cy="143.5" r="4.2" fill="url(#buttonBlue)" stroke="#25438D" stroke-width="1.5"/>
-    <circle cx="156.5" cy="149.5" r="4.2" fill="url(#buttonCyan)" stroke="#25438D" stroke-width="1.5"/>
-    <text x="155.1" y="139.25" fill="#F8FBFF" font-size="2.9" font-family="SF Pro Display, PingFang SC, Microsoft YaHei, sans-serif" font-weight="700">Y</text>
-    <text x="149.6" y="145.25" fill="#F8FBFF" font-size="2.9" font-family="SF Pro Display, PingFang SC, Microsoft YaHei, sans-serif" font-weight="700">X</text>
-    <text x="160.7" y="145.25" fill="#F8FBFF" font-size="2.9" font-family="SF Pro Display, PingFang SC, Microsoft YaHei, sans-serif" font-weight="700">B</text>
-    <text x="155.2" y="151.25" fill="#F8FBFF" font-size="2.9" font-family="SF Pro Display, PingFang SC, Microsoft YaHei, sans-serif" font-weight="700">A</text>
+  <!-- Left bubble -->
+  <path d="M 340.00,439.52 L 382.00,439.52 A 16.00,16.00 0 0,1 398.00,455.52 L 398.00,473.52 A 16.00,16.00 0 0,1 382.00,489.52 L 350.64,489.52 C 338.80,489.52   331.40,495.52   324.74,504.52 C 329.18,492.52   331.40,489.52   340.00,489.52 A 16.00,16.00 0 0,1 324.00,473.52 L 324.00,455.52 A 16.00,16.00 0 0,1 340.00,439.52 Z"
+        fill="url(#bubGradL)"
+        stroke="white" stroke-opacity="0.18" stroke-width="1.5"/>
+  <!-- Left bubble dots -->
+  <g fill="white" fill-opacity="0.80">
+    <circle cx="343.24" cy="462.52" r="4.50"/>
+    <circle cx="358.24" cy="462.52" r="4.50"/>
+    <circle cx="373.24" cy="462.52" r="4.50"/>
   </g>
 
-  <text x="282" y="156" fill="#20336C" font-size="104" font-family="SF Pro Display, PingFang SC, Microsoft YaHei, sans-serif" font-weight="700" letter-spacing="-2">Lingo</text>
+  <!-- Right bubble -->
+  <path d="M 642.00,435.52 L 684.00,435.52 A 16.00,16.00 0 0,1 700.00,451.52 L 700.00,469.52 A 16.00,16.00 0 0,1 684.00,485.52 L 684.00,485.52 C 692.60,485.52   694.82,488.52   699.26,500.52 C 692.60,491.52   685.20,485.52   673.36,485.52 L 642.00,485.52 A 16.00,16.00 0 0,1 626.00,469.52 L 626.00,451.52 A 16.00,16.00 0 0,1 642.00,435.52 Z"
+        fill="url(#bubGradR)"
+        stroke="white" stroke-opacity="0.18" stroke-width="1.5"/>
+  <!-- Right bubble dots -->
+  <g fill="white" fill-opacity="0.80">
+    <circle cx="645.24" cy="458.52" r="4.50"/>
+    <circle cx="660.24" cy="458.52" r="4.50"/>
+    <circle cx="675.24" cy="458.52" r="4.50"/>
+  </g>
+
+  <!-- ── Bidirectional translation arrows ── -->
+  <g stroke="rgba(230,242,255,0.92)" stroke-width="7.00"
+     stroke-linecap="round" stroke-linejoin="round" fill="none">
+
+    <!-- → top arrow -->
+    <line x1="468.00" y1="456.52"
+          x2="556.00" y2="456.52"/>
+    <polyline points="539.00,446.32
+                      556.00,456.52
+                      539.00,466.72"/>
+
+    <!-- ← bottom arrow -->
+    <line x1="556.00" y1="486.52"
+          x2="468.00" y2="486.52"/>
+    <polyline points="485.00,476.32
+                      468.00,486.52
+                      485.00,496.72"/>
+
+  </g>
+  </svg>
+
+  <text
+    x="324"
+    y="192"
+    fill="url(#lingoWordmark)"
+    font-size="126"
+    font-family="-apple-system, BlinkMacSystemFont, SF Pro Display, Segoe UI, PingFang SC, Microsoft YaHei, sans-serif"
+    font-weight="700"
+    letter-spacing="-4"
+  >
+    Lingo
+  </text>
 </svg>
