@@ -131,10 +131,7 @@ fn create_trans_handler(
             tauri::async_runtime::spawn(async move {
                 if let Err(e) = trans_and_replace_text(app_clone.as_ref()).await {
                     println!("翻译替换失败: {:?}", e);
-                    let _ = app_clone.emit(
-                        "translation_failed",
-                        format!("翻译失败：{}", e),
-                    );
+                    let _ = app_clone.emit("translation_failed", format!("翻译失败：{}", e));
                 }
                 TRANSLATION_IN_FLIGHT.store(false, Ordering::Release);
             });

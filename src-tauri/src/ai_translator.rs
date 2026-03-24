@@ -247,9 +247,8 @@ pub async fn translate_with_gpt(app: &AppHandle, original: &str) -> Result<Strin
             .get("trace_id")
             .and_then(|value| value.as_str())
             .unwrap_or("-");
-        let message = extract_error_message(&json).unwrap_or_else(|| {
-            format!("翻译代理请求失败 (HTTP {})", status.as_u16())
-        });
+        let message = extract_error_message(&json)
+            .unwrap_or_else(|| format!("翻译代理请求失败 (HTTP {})", status.as_u16()));
         return Err(anyhow!("{} [trace_id={}]", message, trace_id));
     }
 

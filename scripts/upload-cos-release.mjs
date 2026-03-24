@@ -99,6 +99,24 @@ async function collectFiles(rootDir) {
   return files;
 }
 
+async function collectCriticalUpdaterFiles() {
+  const manifestPath = path.join(manifestRoot, 'latest.json');
+  const manifestPayload = JSON.parse(await fs.readFile(manifestPath, 'utf8'));
+  const criticalFiles = new Set([path.join(versionRoot, 'latest.json')]);
+
+  for (const platform of Object.values(manifestPayload.platforms || {})) {
+    if (!platform || typeof platform.url !== 'string' || !platform.url) {
+      continue;
+    }
+
+    const assetName = path.posix.basename(new URL(platform.url).pathname);
+    criticalFiles.add(path.join(versionRoot, assetName));
+    criticalFiles.add(path.join(versionRoot, `${assetName}.sig`));
+  }
+
+  return Array.from(criticalFiles);
+}
+
 function putObject(params) {
   return new Promise((resolve, reject) => {
     cos.putObject(params, (error, data) => {
@@ -247,8 +265,7 @@ async function uploadFile(localPath, remoteKey, cacheControl, options = {}) {
   return data;
 }
 
-async function uploadVersionedReleaseFiles() {
-  const files = await collectFiles(versionRoot);
+async function uploadVersionedReleaseFiles(files) {
   files.sort();
 
   for (const localPath of files) {
@@ -304,8 +321,15 @@ async function uploadWebsiteManifest() {
 }
 
 try {
-  await uploadVersionedReleaseFiles();
+  const versionedFiles = await collectFiles(versionRoot);
+  const criticalUpdaterFiles = await collectCriticalUpdaterFiles();
+  const criticalFileSet = new Set(criticalUpdaterFiles.map((filePath) => path.resolve(filePath)));
+
+  await uploadVersionedReleaseFiles(criticalUpdaterFiles);
   await uploadUpdaterManifest();
+  await uploadVersionedReleaseFiles(
+    versionedFiles.filter((filePath) => !criticalFileSet.has(path.resolve(filePath))),
+  );
 
   let stableAliasesUploaded = false;
   try {

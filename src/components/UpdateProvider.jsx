@@ -5,7 +5,7 @@ import { hasTauriRuntime, invokeCommand } from '../services/tauriRuntime';
 import { showError, showSuccess } from '../utils/toast';
 import {
   APP_VERSION,
-  RELEASE_API_URL,
+  RELEASE_GITHUB_LATEST_JSON_URL,
   RELEASE_LATEST_JSON_URL,
   RELEASE_PAGE_URL,
 } from '../constants/version';
@@ -17,6 +17,7 @@ const DEFAULT_STATE = {
   checking: false,
   downloading: false,
   hasUpdate: false,
+  manualUpdateRequired: false,
   latestVersion: null,
   currentVersion: null,
   releaseDate: null,
@@ -27,6 +28,21 @@ const DEFAULT_STATE = {
 };
 
 const normalizeVersion = (value) => String(value || '').replace(/^v/i, '').trim();
+
+const pickLatestVersion = (...candidates) =>
+  candidates.reduce((winner, candidate) => {
+    const normalized = normalizeVersion(candidate);
+
+    if (!normalized) {
+      return winner;
+    }
+
+    if (!winner || isVersionNewer(normalized, winner)) {
+      return normalized;
+    }
+
+    return winner;
+  }, null);
 
 const isVersionNewer = (incoming, current) => {
   const nextParts = normalizeVersion(incoming)
@@ -93,6 +109,39 @@ const buildReleaseDatePatch = (value) => {
   return normalized ? { releaseDate: normalized } : {};
 };
 
+const mergeReleaseMetadata = (manifest, releaseManifest) => {
+  const manifestVersion = normalizeVersion(manifest?.version) || null;
+  const releaseVersion = normalizeVersion(releaseManifest?.version) || null;
+  const version = pickLatestVersion(manifestVersion, releaseVersion);
+  const shouldPreferReleaseMetadata = Boolean(releaseVersion && version === releaseVersion);
+
+  return {
+    version,
+    manifestVersion,
+    releaseVersion,
+    publishedAt: shouldPreferReleaseMetadata
+      ? releaseManifest?.publishedAt || manifest?.publishedAt || null
+      : manifest?.publishedAt || releaseManifest?.publishedAt || null,
+    body: releaseManifest?.body || manifest?.body || null,
+  };
+};
+
+const hasRemoteNewerVersion = (latestRelease, currentVersion) =>
+  Boolean(latestRelease?.version && isVersionNewer(latestRelease.version, currentVersion || APP_VERSION));
+
+const buildManualUpdatePatch = (latestRelease, currentVersion) => ({
+  checking: false,
+  downloading: false,
+  hasUpdate: true,
+  manualUpdateRequired: true,
+  latestVersion: latestRelease?.version || currentVersion || APP_VERSION,
+  currentVersion: currentVersion || APP_VERSION,
+  ...buildReleaseDatePatch(latestRelease?.publishedAt),
+  releaseBody: latestRelease?.body || null,
+  progressPercent: 0,
+  checkedAt: Date.now(),
+});
+
 const formatUpdaterError = (error, { currentVersion, latestRelease, t } = {}) => {
   const message = String(error?.message || error || t('update.unknownError'));
   const isKeyMismatch = /UnexpectedKeyId/i.test(message) || /key id/i.test(message);
@@ -101,6 +150,9 @@ const formatUpdaterError = (error, { currentVersion, latestRelease, t } = {}) =>
     /latest\.json/i.test(message) ||
     /\b404\b/i.test(message) ||
     /Not Found/i.test(message);
+  const releaseAheadOfManifest =
+    latestRelease?.releaseVersion &&
+    isVersionNewer(latestRelease.releaseVersion, latestRelease?.manifestVersion || '0.0.0');
 
   if (isKeyMismatch) {
     const hasNewerRelease = latestRelease?.version && isVersionNewer(latestRelease.version, currentVersion || APP_VERSION);
@@ -117,6 +169,13 @@ const formatUpdaterError = (error, { currentVersion, latestRelease, t } = {}) =>
     return message;
   }
 
+  if (releaseAheadOfManifest) {
+    return t('update.manifestSyncingWithVersion', {
+      version: latestRelease.releaseVersion,
+      url: RELEASE_PAGE_URL,
+    });
+  }
+
   if (latestRelease?.version && isVersionNewer(latestRelease.version, currentVersion || APP_VERSION)) {
     return t('update.missingManifestWithVersion', {
       version: latestRelease.version,
@@ -126,10 +185,10 @@ const formatUpdaterError = (error, { currentVersion, latestRelease, t } = {}) =>
   return t('update.missingManifest');
 };
 
-const fetchLatestReleaseFromApi = async (t) => {
-  const response = await fetch(RELEASE_API_URL, {
+const fetchLatestReleaseFromReleaseManifest = async (t) => {
+  const response = await fetch(RELEASE_GITHUB_LATEST_JSON_URL, {
     headers: {
-      Accept: 'application/vnd.github+json',
+      Accept: 'application/json',
     },
     cache: 'no-store',
   });
@@ -141,9 +200,9 @@ const fetchLatestReleaseFromApi = async (t) => {
   const payload = await response.json();
 
   return {
-    version: normalizeVersion(payload.tag_name),
-    publishedAt: payload.published_at || payload.created_at || null,
-    body: payload.body || null,
+    version: normalizeVersion(payload.version),
+    publishedAt: payload.pub_date || payload.published_at || payload.created_at || null,
+    body: payload.notes || null,
   };
 };
 
@@ -172,37 +231,43 @@ const fetchLatestReleaseMetadata = async (t) => {
   if (hasTauriRuntime()) {
     try {
       const payload = await invokeCommand('get_latest_release_metadata');
-      return {
-        version: normalizeVersion(payload?.version),
-        publishedAt: normalizeReleaseDate(
-          payload?.publishedAt ?? payload?.published_at ?? payload?.pubDate ?? payload?.pub_date ?? null,
-        ),
-        body: typeof payload?.body === 'string' ? payload.body : null,
-      };
+      return mergeReleaseMetadata(
+        {
+          version: payload?.manifestVersion ?? payload?.manifest_version ?? null,
+          publishedAt: payload?.manifestPublishedAt ?? payload?.manifest_published_at ?? null,
+          body: typeof payload?.body === 'string' ? payload.body : null,
+        },
+        {
+          version: payload?.releaseVersion ?? payload?.release_version ?? payload?.version ?? null,
+          publishedAt:
+            payload?.releasePublishedAt ??
+            payload?.release_published_at ??
+            payload?.publishedAt ??
+            payload?.published_at ??
+            payload?.pubDate ??
+            payload?.pub_date ??
+            null,
+          body: typeof payload?.body === 'string' ? payload.body : null,
+        },
+      );
     } catch {
       // Fallback to frontend fetch flow when backend metadata command is unavailable.
     }
   }
 
-  const [manifestResult, apiResult] = await Promise.allSettled([
+  const [manifestResult, releaseManifestResult] = await Promise.allSettled([
     fetchLatestReleaseFromManifest(t),
-    fetchLatestReleaseFromApi(t),
+    fetchLatestReleaseFromReleaseManifest(t),
   ]);
 
   const manifest = manifestResult.status === 'fulfilled' ? manifestResult.value : null;
-  const api = apiResult.status === 'fulfilled' ? apiResult.value : null;
+  const releaseManifest = releaseManifestResult.status === 'fulfilled' ? releaseManifestResult.value : null;
 
-  if (!manifest && !api) {
+  if (!manifest && !releaseManifest) {
     throw new Error(t('update.metadataFailed'));
   }
 
-  const version = normalizeVersion(manifest?.version || api?.version);
-
-  return {
-    version: version || null,
-    publishedAt: manifest?.publishedAt || api?.publishedAt || null,
-    body: api?.body || manifest?.body || null,
-  };
+  return mergeReleaseMetadata(manifest, releaseManifest);
 };
 
 export function UpdateProvider({ children }) {
@@ -255,15 +320,15 @@ export function UpdateProvider({ children }) {
 
       try {
         currentVersion = currentVersion || (await loadCurrentVersion());
+        const fallbackVersion = currentVersion || APP_VERSION;
 
         if (!hasTauriRuntime()) {
-          const previewVersion = currentVersion || APP_VERSION;
-
           patchState({
             checking: false,
+            manualUpdateRequired: false,
             hasUpdate: false,
-            latestVersion: previewVersion,
-            currentVersion: previewVersion,
+            latestVersion: fallbackVersion,
+            currentVersion: fallbackVersion,
             releaseDate: null,
             releaseBody: null,
             progressPercent: 0,
@@ -279,12 +344,23 @@ export function UpdateProvider({ children }) {
         const update = await check();
 
         if (!update) {
+          if (hasRemoteNewerVersion(latestRelease, fallbackVersion)) {
+            patchState(buildManualUpdatePatch(latestRelease, fallbackVersion));
+
+            if (!silent) {
+              showSuccess(t('update.manualFound', { version: latestRelease.version }));
+            }
+
+            return null;
+          }
+
           await closePreviousUpdateHandle();
           patchState({
             checking: false,
+            manualUpdateRequired: false,
             hasUpdate: false,
             latestVersion: latestRelease?.version || currentVersion,
-            currentVersion: currentVersion || APP_VERSION,
+            currentVersion: fallbackVersion,
             ...buildReleaseDatePatch(latestRelease?.publishedAt),
             releaseBody: latestRelease?.body || null,
             progressPercent: 0,
@@ -304,6 +380,7 @@ export function UpdateProvider({ children }) {
         patchState({
           checking: false,
           hasUpdate: true,
+          manualUpdateRequired: false,
           latestVersion: update.version,
           currentVersion: update.currentVersion,
           ...buildReleaseDatePatch(resolveReleaseDate(update.date, latestRelease?.publishedAt)),
@@ -319,11 +396,27 @@ export function UpdateProvider({ children }) {
         return update;
       } catch (error) {
         const errorMessage = formatUpdaterError(error, { currentVersion, latestRelease, t });
+        const fallbackVersion = currentVersion || APP_VERSION;
+
+        if (hasRemoteNewerVersion(latestRelease, fallbackVersion)) {
+          patchState({
+            ...buildManualUpdatePatch(latestRelease, fallbackVersion),
+            errorMessage,
+          });
+
+          if (!silent) {
+            showSuccess(t('update.manualFound', { version: latestRelease.version }));
+          }
+
+          return null;
+        }
+
         patchState({
           checking: false,
+          manualUpdateRequired: false,
           hasUpdate: false,
-          latestVersion: latestRelease?.version || currentVersion || APP_VERSION,
-          currentVersion: currentVersion || APP_VERSION,
+          latestVersion: latestRelease?.version || fallbackVersion,
+          currentVersion: fallbackVersion,
           ...buildReleaseDatePatch(latestRelease?.publishedAt),
           releaseBody: latestRelease?.body || null,
           progressPercent: 0,
@@ -390,6 +483,7 @@ export function UpdateProvider({ children }) {
       patchState({
         downloading: false,
         hasUpdate: false,
+        manualUpdateRequired: false,
         currentVersion: update.version,
         latestVersion: update.version,
       });

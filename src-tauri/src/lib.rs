@@ -11,14 +11,57 @@ pub mod tray;
 
 const RELEASE_LATEST_JSON_URL: &str =
     "https://lingo-1259551686.cos.ap-shanghai.myqcloud.com/releases/latest.json";
-const RELEASE_API_URL: &str = "https://api.github.com/repos/tinyhu666/Lingo/releases/latest";
+const RELEASE_GITHUB_LATEST_JSON_URL: &str =
+    "https://github.com/tinyhu666/Lingo/releases/latest/download/latest.json";
 
 #[derive(Debug, Default, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct ReleaseMetadata {
     version: Option<String>,
+    manifest_version: Option<String>,
+    release_version: Option<String>,
     published_at: Option<String>,
+    manifest_published_at: Option<String>,
+    release_published_at: Option<String>,
     body: Option<String>,
+}
+
+fn compare_versions(left: &str, right: &str) -> std::cmp::Ordering {
+    let left_parts = left
+        .split('.')
+        .map(|part| part.parse::<u64>().unwrap_or(0))
+        .collect::<Vec<_>>();
+    let right_parts = right
+        .split('.')
+        .map(|part| part.parse::<u64>().unwrap_or(0))
+        .collect::<Vec<_>>();
+    let max_len = left_parts.len().max(right_parts.len());
+
+    for index in 0..max_len {
+        let left_value = *left_parts.get(index).unwrap_or(&0);
+        let right_value = *right_parts.get(index).unwrap_or(&0);
+
+        match left_value.cmp(&right_value) {
+            std::cmp::Ordering::Equal => continue,
+            ordering => return ordering,
+        }
+    }
+
+    std::cmp::Ordering::Equal
+}
+
+fn pick_newer_version(left: Option<String>, right: Option<String>) -> Option<String> {
+    match (left, right) {
+        (Some(left_version), Some(right_version)) => {
+            if compare_versions(&left_version, &right_version).is_lt() {
+                Some(right_version)
+            } else {
+                Some(left_version)
+            }
+        }
+        (Some(version), None) | (None, Some(version)) => Some(version),
+        (None, None) => None,
+    }
 }
 
 fn normalize_version(value: Option<String>) -> Option<String> {
@@ -50,16 +93,30 @@ fn pick_release_date(payload: &Value, keys: &[&str]) -> Option<String> {
 fn extract_from_manifest(payload: &Value) -> ReleaseMetadata {
     ReleaseMetadata {
         version: normalize_version(value_as_non_empty_string(payload.get("version"))),
+        manifest_version: normalize_version(value_as_non_empty_string(payload.get("version"))),
+        release_version: None,
         published_at: pick_release_date(payload, &["pub_date", "published_at", "created_at"]),
+        manifest_published_at: pick_release_date(
+            payload,
+            &["pub_date", "published_at", "created_at"],
+        ),
+        release_published_at: None,
         body: value_as_non_empty_string(payload.get("notes")),
     }
 }
 
-fn extract_from_release_api(payload: &Value) -> ReleaseMetadata {
+fn extract_from_release_manifest(payload: &Value) -> ReleaseMetadata {
     ReleaseMetadata {
-        version: normalize_version(value_as_non_empty_string(payload.get("tag_name"))),
-        published_at: pick_release_date(payload, &["published_at", "created_at"]),
-        body: value_as_non_empty_string(payload.get("body")),
+        version: normalize_version(value_as_non_empty_string(payload.get("version"))),
+        manifest_version: None,
+        release_version: normalize_version(value_as_non_empty_string(payload.get("version"))),
+        published_at: pick_release_date(payload, &["pub_date", "published_at", "created_at"]),
+        manifest_published_at: None,
+        release_published_at: pick_release_date(
+            payload,
+            &["pub_date", "published_at", "created_at"],
+        ),
+        body: value_as_non_empty_string(payload.get("notes")),
     }
 }
 
@@ -136,39 +193,71 @@ async fn update_phrases(
 async fn get_latest_release_metadata() -> Result<ReleaseMetadata, String> {
     let manifest_task =
         tauri::async_runtime::spawn(async { fetch_release_json(RELEASE_LATEST_JSON_URL).await });
-    let release_api_task =
-        tauri::async_runtime::spawn(async { fetch_release_json(RELEASE_API_URL).await });
+    let release_manifest_task = tauri::async_runtime::spawn(async {
+        fetch_release_json(RELEASE_GITHUB_LATEST_JSON_URL).await
+    });
 
     let manifest = manifest_task
         .await
         .ok()
         .and_then(|result| result.ok())
         .map(|payload| extract_from_manifest(&payload));
-    let release_api = release_api_task
+    let release_manifest = release_manifest_task
         .await
         .ok()
         .and_then(|result| result.ok())
-        .map(|payload| extract_from_release_api(&payload));
+        .map(|payload| extract_from_release_manifest(&payload));
 
-    if manifest.is_none() && release_api.is_none() {
+    if manifest.is_none() && release_manifest.is_none() {
         return Err("failed to load release metadata".to_string());
     }
 
-    let mut merged = ReleaseMetadata::default();
+    let manifest_version = manifest
+        .as_ref()
+        .and_then(|data| data.manifest_version.clone());
+    let release_version = release_manifest
+        .as_ref()
+        .and_then(|data| data.release_version.clone());
+    let version = pick_newer_version(manifest_version.clone(), release_version.clone());
+    let should_prefer_release = matches!(
+        (&version, &release_version),
+        (Some(version), Some(release_version)) if version == release_version
+    );
 
-    if let Some(manifest_data) = manifest {
-        merged.version = manifest_data.version;
-        merged.published_at = manifest_data.published_at;
-        merged.body = manifest_data.body;
-    }
-
-    if let Some(api_data) = release_api {
-        merged.version = merged.version.or(api_data.version);
-        merged.published_at = merged.published_at.or(api_data.published_at);
-        merged.body = api_data.body.or(merged.body);
-    }
-
-    Ok(merged)
+    Ok(ReleaseMetadata {
+        version,
+        manifest_version,
+        release_version,
+        published_at: if should_prefer_release {
+            release_manifest
+                .as_ref()
+                .and_then(|data| data.release_published_at.clone())
+                .or_else(|| {
+                    manifest
+                        .as_ref()
+                        .and_then(|data| data.manifest_published_at.clone())
+                })
+        } else {
+            manifest
+                .as_ref()
+                .and_then(|data| data.manifest_published_at.clone())
+                .or_else(|| {
+                    release_manifest
+                        .as_ref()
+                        .and_then(|data| data.release_published_at.clone())
+                })
+        },
+        manifest_published_at: manifest
+            .as_ref()
+            .and_then(|data| data.manifest_published_at.clone()),
+        release_published_at: release_manifest
+            .as_ref()
+            .and_then(|data| data.release_published_at.clone()),
+        body: release_manifest
+            .as_ref()
+            .and_then(|data| data.body.clone())
+            .or_else(|| manifest.as_ref().and_then(|data| data.body.clone())),
+    })
 }
 
 pub fn run() {

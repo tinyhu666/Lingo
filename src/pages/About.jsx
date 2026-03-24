@@ -2,7 +2,7 @@ import { motion } from 'framer-motion';
 import { openUrl } from '@tauri-apps/plugin-opener';
 import { ChatBubbleMessage, CircleInfo, Dock, GamingPad, Globe } from '../icons';
 import { useUpdater } from '../components/UpdateProvider';
-import { APP_VERSION_LABEL } from '../constants/version';
+import { APP_VERSION_LABEL, RELEASE_PAGE_URL } from '../constants/version';
 import { hasTauriRuntime } from '../services/tauriRuntime';
 import { useI18n } from '../i18n/I18nProvider';
 import { showError } from '../utils/toast';
@@ -59,6 +59,7 @@ export default function About() {
     currentVersion,
     latestVersion,
     hasUpdate,
+    manualUpdateRequired,
     checking,
     downloading,
     progressPercent,
@@ -106,9 +107,17 @@ export default function About() {
       : downloading
         ? t('about.update.actionDownloading')
         : hasUpdate
-          ? t('about.update.actionInstall')
+          ? manualUpdateRequired
+            ? t('about.update.actionOpenRelease')
+            : t('about.update.actionInstall')
           : t('about.update.actionCheck');
-  const actionHandler = hasUpdate ? installUpdate : () => checkForUpdates({ silent: false });
+  const actionHandler = manualUpdateRequired
+    ? () => {
+        void openContactLink(RELEASE_PAGE_URL, t);
+      }
+    : hasUpdate
+      ? installUpdate
+      : () => checkForUpdates({ silent: false });
   const actionDisabled = !supportsUpdater || checking || downloading;
   const releaseNotesBody = normalizeReleaseNotes(releaseBody);
   const shouldShowReleaseNotes = hasUpdate && Boolean(releaseNotesBody);
@@ -178,7 +187,9 @@ export default function About() {
 
           {hasUpdate ? (
             <div className='rounded-2xl border border-[rgba(252,202,212,0.94)] bg-[rgba(255,241,245,0.96)] p-4 text-sm text-red-600'>
-              {t('about.update.updateFound', { version: latestVersionLabel })}
+              {manualUpdateRequired
+                ? t('about.update.manualUpdateFound', { version: latestVersionLabel })
+                : t('about.update.updateFound', { version: latestVersionLabel })}
             </div>
           ) : null}
 
