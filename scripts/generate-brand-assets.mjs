@@ -28,6 +28,14 @@ const redundantTauriOutputs = [
   join(tauriIconsDir, 'android/mipmap-anydpi-v26'),
   join(tauriIconsDir, 'android/values'),
 ];
+const cachedBundleIconPaths = [
+  join(repoRoot, 'src-tauri/target/debug/resources/icon.ico'),
+  join(repoRoot, 'src-tauri/target/debug/resources/icon.icns'),
+  join(repoRoot, 'src-tauri/target/debug/resources/icon.png'),
+  join(repoRoot, 'src-tauri/target/release/resources/icon.ico'),
+  join(repoRoot, 'src-tauri/target/release/resources/icon.icns'),
+  join(repoRoot, 'src-tauri/target/release/resources/icon.png'),
+];
 
 const APP_ICON_VIEWBOX = '140 260 744 500';
 const BRAND_FONT_STACK =
@@ -208,6 +216,9 @@ try {
   copyFileSync(join(tempDir, '256x256.png'), faviconPath);
   redundantTauriOutputs.forEach((targetPath) => {
     rmSync(targetPath, { recursive: true, force: true });
+  });
+  cachedBundleIconPaths.forEach((targetPath) => {
+    rmSync(targetPath, { force: true });
   });
 
   if (websiteExists) {

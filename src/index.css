@@ -112,12 +112,12 @@
   .lingo-theme--desktop::before {
     content: '';
     position: absolute;
-    inset: 0;
+    inset: 1px;
     z-index: 0;
-    border-radius: inherit;
+    border-radius: calc(var(--app-radius-outer) - 3px);
     background:
-      radial-gradient(1080px 460px at -10% -20%, rgba(60, 93, 186, 0.2), transparent 68%),
-      radial-gradient(920px 420px at 114% -2%, rgba(57, 145, 208, 0.16), transparent 72%),
+      radial-gradient(900px 420px at 16% 8%, rgba(60, 93, 186, 0.16), transparent 74%),
+      radial-gradient(760px 360px at 84% 9%, rgba(57, 145, 208, 0.12), transparent 76%),
       linear-gradient(165deg, #d0dcf1 0%, #bccce8 44%, #afc1e1 100%);
     pointer-events: none;
   }
@@ -129,6 +129,7 @@
 
   .lingo-app-shell {
     position: relative;
+    isolation: isolate;
     height: 100%;
     padding: 10px 12px 12px;
     display: flex;
@@ -137,14 +138,28 @@
     border-radius: calc(var(--app-radius-outer) - 2px);
     overflow: hidden;
     border: 1px solid rgba(139, 160, 197, 0.76);
-    background:
-      radial-gradient(1080px 460px at -10% -20%, rgba(60, 93, 186, 0.48), transparent 68%),
-      radial-gradient(920px 420px at 114% -2%, rgba(57, 145, 208, 0.4), transparent 72%),
-      radial-gradient(740px 420px at 50% 118%, rgba(45, 71, 131, 0.24), transparent 76%),
-      linear-gradient(165deg, #d0dcf1 0%, #bccce8 44%, #afc1e1 100%);
+    background: linear-gradient(165deg, #d0dcf1 0%, #bccce8 44%, #afc1e1 100%);
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.62),
       0 22px 52px rgba(20, 34, 62, 0.16);
+  }
+
+  .lingo-app-shell::before {
+    content: '';
+    position: absolute;
+    inset: 1px;
+    z-index: 0;
+    border-radius: calc(var(--app-radius-outer) - 4px);
+    background:
+      radial-gradient(900px 420px at 15% 7%, rgba(60, 93, 186, 0.34), transparent 74%),
+      radial-gradient(780px 360px at 86% 10%, rgba(57, 145, 208, 0.24), transparent 76%),
+      radial-gradient(720px 360px at 50% 100%, rgba(45, 71, 131, 0.16), transparent 80%);
+    pointer-events: none;
+  }
+
+  .lingo-app-shell > * {
+    position: relative;
+    z-index: 1;
   }
 
   .lingo-theme--desktop .lingo-app-shell {
