@@ -48,7 +48,7 @@
   body.platform-desktop #root {
     border-radius: var(--app-radius-outer);
     overflow: hidden;
-    background: linear-gradient(165deg, #d0dcf1 0%, #bccce8 44%, #afc1e1 100%) !important;
+    background: transparent !important;
   }
 
   body {
