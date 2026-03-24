@@ -34,6 +34,7 @@ function getSectionBody(name) {
   if (!name) {
     return null;
   }
+
   const target = sections.find((section) => section.name.toLowerCase() === name.toLowerCase());
   return target ? target.lines.join('\n').trim() : null;
 }
@@ -43,7 +44,10 @@ function sanitizeNotes(input) {
     return '';
   }
 
-  const lines = input.split('\n').filter((line) => !/版本升级到\s*v?\d/i.test(line));
+  const lines = input
+    .split('\n')
+    .filter((line) => !/版本升级到\s*v?\d/i.test(line));
+
   return lines.join('\n').trim();
 }
 
@@ -55,7 +59,19 @@ if (!notes) {
 }
 
 if (!notes) {
-  notes = ['### 新增', '', '- 暂无', '', '### 优化', '', '- 包含稳定性与体验优化。', '', '### 修复', '', '- 修复已知问题并提升整体可用性。'].join('\n');
+  notes = [
+    '### 新增',
+    '',
+    '- 暂无',
+    '',
+    '### 优化',
+    '',
+    '- 持续优化整体体验，让使用过程更顺手。',
+    '',
+    '### 修复',
+    '',
+    '- 修复已知问题，提升版本稳定性。',
+  ].join('\n');
 }
 
 if (process.env.GITHUB_OUTPUT) {

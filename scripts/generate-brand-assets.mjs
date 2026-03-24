@@ -86,7 +86,28 @@ const brandIcon = ({ x, y, width, height }) => `
 
 const buildAppIconSvg = () => `<?xml version="1.0" encoding="UTF-8"?>
 <svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
-  ${brandIcon({ x: 64, y: 243, width: 896, height: 538 })}
+  <defs>
+    <linearGradient id="appTileBg" x1="132" y1="112" x2="892" y2="936" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#F7FBFF" />
+      <stop offset="0.34" stop-color="#EDF4FF" />
+      <stop offset="0.76" stop-color="#DCE7FF" />
+      <stop offset="1" stop-color="#C5D6F6" />
+    </linearGradient>
+    <linearGradient id="appTileOverlay" x1="118" y1="94" x2="926" y2="956" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.82" />
+      <stop offset="0.42" stop-color="#E8F1FF" stop-opacity="0.2" />
+      <stop offset="1" stop-color="#8EAFFF" stop-opacity="0.12" />
+    </linearGradient>
+    <linearGradient id="appTileStroke" x1="132" y1="112" x2="892" y2="936" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.9" />
+      <stop offset="1" stop-color="#8EA6D9" stop-opacity="0.78" />
+    </linearGradient>
+  </defs>
+
+  <rect x="72" y="72" width="880" height="880" rx="246" fill="url(#appTileBg)" />
+  <rect x="72" y="72" width="880" height="880" rx="246" fill="url(#appTileOverlay)" />
+  <rect x="72.5" y="72.5" width="879" height="879" rx="245.5" stroke="url(#appTileStroke)" stroke-width="1" />
+  ${brandIcon({ x: 150, y: 291, width: 724, height: 434 })}
 </svg>
 `;
 
@@ -160,6 +181,8 @@ try {
   copyFileSync(join(tempDir, '1024x1024.png'), appIconRoot);
   copyFileSync(join(tempDir, '1024x1024.png'), appIconSrc);
   copyFileSync(join(tempDir, '256x256.png'), faviconPath);
+  copyFileSync(join(tauriIconsDir, 'icon.png'), join(tauriIconsDir, 'window.png'));
+  copyFileSync(join(tauriIconsDir, 'icon.png'), join(tauriIconsDir, 'quit.png'));
   redundantTauriOutputs.forEach((targetPath) => {
     rmSync(targetPath, { recursive: true, force: true });
   });

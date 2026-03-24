@@ -43,15 +43,10 @@
 
   html.platform-desktop,
   html.platform-desktop body,
-  body.platform-desktop {
-    border-radius: calc(var(--app-radius-outer) - 2px);
-    overflow: hidden;
-    background: linear-gradient(165deg, #d0dcf1 0%, #bccce8 44%, #afc1e1 100%) !important;
-  }
-
+  body.platform-desktop,
   html.platform-desktop #root,
   body.platform-desktop #root {
-    border-radius: calc(var(--app-radius-outer) - 2px);
+    border-radius: var(--app-radius-outer);
     overflow: hidden;
     background: linear-gradient(165deg, #d0dcf1 0%, #bccce8 44%, #afc1e1 100%) !important;
   }
@@ -95,31 +90,21 @@
   .lingo-theme {
     height: 100%;
     min-height: 100%;
-    border-radius: calc(var(--app-radius-outer) - 2px);
-    overflow: hidden;
     color: var(--text-1);
-    background: linear-gradient(160deg, #bfd0ea 0%, #afc2e2 48%, #a2b8dc 100%);
+    background: transparent;
   }
 
   .lingo-theme--desktop {
     position: relative;
-    border-radius: calc(var(--app-radius-outer) - 2px);
+    border-radius: var(--app-radius-outer);
     overflow: hidden;
     isolation: isolate;
     background: linear-gradient(165deg, #d0dcf1 0%, #bccce8 44%, #afc1e1 100%);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.42);
   }
 
   .lingo-theme--desktop::before {
-    content: '';
-    position: absolute;
-    inset: 1px;
-    z-index: 0;
-    border-radius: calc(var(--app-radius-outer) - 3px);
-    background:
-      radial-gradient(900px 420px at 16% 8%, rgba(60, 93, 186, 0.16), transparent 74%),
-      radial-gradient(760px 360px at 84% 9%, rgba(57, 145, 208, 0.12), transparent 76%),
-      linear-gradient(165deg, #d0dcf1 0%, #bccce8 44%, #afc1e1 100%);
-    pointer-events: none;
+    content: none;
   }
 
   .lingo-theme--desktop > * {
@@ -147,9 +132,9 @@
   .lingo-app-shell::before {
     content: '';
     position: absolute;
-    inset: 1px;
+    inset: 0;
     z-index: 0;
-    border-radius: calc(var(--app-radius-outer) - 4px);
+    border-radius: inherit;
     background:
       radial-gradient(900px 420px at 15% 7%, rgba(60, 93, 186, 0.34), transparent 74%),
       radial-gradient(780px 360px at 86% 10%, rgba(57, 145, 208, 0.24), transparent 76%),
@@ -192,9 +177,9 @@
   .lingo-titlebar__brand {
     display: inline-flex;
     align-items: center;
-    gap: 12px;
+    gap: 14px;
     height: 100%;
-    padding: 0 14px;
+    padding: 0 16px 0 14px;
     min-width: 0;
     border-radius: 14px;
     border: none;
@@ -203,20 +188,20 @@
   }
 
   .lingo-titlebar__icon {
-    width: 34px;
-    height: 34px;
-    border-radius: 10px;
+    width: 40px;
+    height: 40px;
+    border-radius: 14px;
     object-fit: contain;
     filter: drop-shadow(0 6px 14px rgba(30, 58, 120, 0.24));
   }
 
   .lingo-titlebar__title {
     font-family: var(--font-display);
-    font-size: 21px;
+    font-size: 22px;
     line-height: 1;
     font-weight: 800;
     color: #1a2f54;
-    letter-spacing: 0.015em;
+    letter-spacing: 0.01em;
     text-shadow: 0 1px 0 rgba(255, 255, 255, 0.42);
     user-select: none;
   }
