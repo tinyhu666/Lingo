@@ -1,0 +1,5 @@
+translate.example.com {
+  encode gzip
+
+  reverse_proxy translate-proxy:8787
+}

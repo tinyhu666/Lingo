@@ -38,3 +38,4 @@ assets/previews/
 .playwright-cli/
 output/
 .mirror-cos/
+server/translate-proxy/data/runtime-config.json
