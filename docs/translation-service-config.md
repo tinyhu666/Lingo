@@ -83,3 +83,20 @@ summary. The response includes:
 - `api_url`
 - `config_source`
 - `updated_at`
+
+## Recovering a Paused Supabase Project
+
+Free-tier Supabase projects can be paused automatically after inactivity. When that
+happens, rerun the GitHub Actions workflow `Deploy Translate Proxy`.
+
+The workflow now:
+
+1. Detects whether `SUPABASE_PROJECT_ID` is paused.
+2. Requests a restore through the Supabase management API when needed.
+3. Waits for the project to come back online.
+4. Re-syncs function secrets, redeploys `translate`, and writes
+   `public.app_runtime_config` again.
+
+This means the same deployment workflow doubles as the backend recovery path, so
+you do not need a separate manual runbook when the hosted translation service is
+paused.
