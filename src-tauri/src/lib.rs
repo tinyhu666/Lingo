@@ -294,6 +294,11 @@ pub fn run() {
                 Err(e) => eprintln!("创建托盘失败: {}", e),
             }
 
+            // 设置 WebView 背景为全透明，消除圆角外的矩形残留
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.set_background_color(Some(tauri::window::Color(0, 0, 0, 0)));
+            }
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
