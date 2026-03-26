@@ -1,5 +1,6 @@
 # Client Stability Changes
 
+change095 日期:2026-03-26 | 文件:src/i18n/messages.js | 操作:Modify | 影响:历史导航文案残留 | 说明:移除多语言侧边栏中的 settings 导航键，避免已下线模块因文案残留被再次误接回入口 | 关联:task011
 change085 日期:2026-03-26 | 文件:package.json | 操作:Modify | 影响:版本元数据与打包脚本 | 说明:将前端版本号同步为 0.4.0 并用于后续 Tauri 发版链路 | 关联:task016
 change086 日期:2026-03-26 | 文件:package-lock.json | 操作:Modify | 影响:NPM 锁文件版本元数据 | 说明:将锁文件中的根版本号同步为 0.4.0 | 关联:task016
 change087 日期:2026-03-26 | 文件:src-tauri/Cargo.toml | 操作:Modify | 影响:Rust 包版本元数据 | 说明:将 Tauri/Rust 应用版本同步为 0.4.0 | 关联:task016
