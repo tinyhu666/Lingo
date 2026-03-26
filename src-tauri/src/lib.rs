@@ -159,8 +159,9 @@ fn greet(name: &str) -> String {
 async fn update_translator_shortcut(
     app_handle: tauri::AppHandle,
     keys: Vec<String>,
-) -> Result<(), String> {
-    shortcut::update_translator_shortcut(&app_handle, keys)
+) -> Result<store::AppSettings, String> {
+    shortcut::update_translator_shortcut(&app_handle, keys)?;
+    store::get_settings(&app_handle).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -178,6 +179,14 @@ async fn set_app_enabled(
     })
     .map_err(|e| e.to_string())?;
 
+    if enabled {
+        tauri::async_runtime::spawn(async {
+            if let Err(error) = ai_translator::warm_translation_backend().await {
+                eprintln!("启用时预热翻译代理失败: {}", error);
+            }
+        });
+    }
+
     store::get_settings(&app_handle).map_err(|e| e.to_string())
 }
 
@@ -185,8 +194,9 @@ async fn set_app_enabled(
 async fn update_phrases(
     app_handle: tauri::AppHandle,
     phrases: Vec<store::Phrase>,
-) -> Result<Vec<store::Phrase>, String> {
-    shortcut::update_phrases(&app_handle, phrases)
+) -> Result<store::AppSettings, String> {
+    shortcut::update_phrases(&app_handle, phrases)?;
+    store::get_settings(&app_handle).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -281,6 +291,18 @@ pub fn run() {
                 Err(e) => eprintln!("初始化设置失败: {}", e),
             }
 
+            match store::get_settings(app.app_handle()) {
+                Ok(settings) if settings.app_enabled => {
+                    tauri::async_runtime::spawn(async {
+                        if let Err(error) = ai_translator::warm_translation_backend().await {
+                            eprintln!("启动时预热翻译代理失败: {}", error);
+                        }
+                    });
+                }
+                Ok(_) => println!("应用当前处于暂停状态，跳过翻译代理预热"),
+                Err(error) => eprintln!("读取设置以决定是否预热失败: {}", error),
+            }
+
             // 初始化所有快捷键
             println!("正在注册全局快捷键...");
             match shortcut::init_shortcuts(app.app_handle()) {
@@ -312,28 +334,19 @@ pub fn run() {
             get_latest_release_metadata
         ]);
 
-    // 只在非Windows系统上添加窗口事件监听
     #[cfg(not(target_os = "windows"))]
-    {
-        let builder = builder.on_window_event(|window, event| {
-            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
-                if let Err(error) = window.hide() {
-                    eprintln!("隐藏窗口失败: {}", error);
-                }
-                #[cfg(target_os = "macos")]
-                let _ = window
-                    .app_handle()
-                    .set_activation_policy(tauri::ActivationPolicy::Accessory);
-                api.prevent_close();
+    let builder = builder.on_window_event(|window, event| {
+        if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+            if let Err(error) = window.hide() {
+                eprintln!("隐藏窗口失败: {}", error);
             }
-        });
-
-        builder
-            .run(tauri::generate_context!())
-            .expect("error while running tauri application");
-
-        return;
-    }
+            #[cfg(target_os = "macos")]
+            let _ = window
+                .app_handle()
+                .set_activation_policy(tauri::ActivationPolicy::Accessory);
+            api.prevent_close();
+        }
+    });
 
     builder
         .run(tauri::generate_context!())

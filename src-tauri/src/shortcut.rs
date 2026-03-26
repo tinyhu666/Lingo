@@ -124,6 +124,7 @@ fn create_trans_handler(
                 .is_err()
             {
                 println!("翻译任务进行中，忽略重复触发");
+                let _ = app.emit("translation_busy", "busy");
                 return;
             }
 

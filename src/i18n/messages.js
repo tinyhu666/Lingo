@@ -36,6 +36,7 @@ export const messages = {
       closeTitle: '关闭',
       minimizeFailed: '最小化失败，请重试',
       actionFailed: '窗口操作失败，请重试',
+      translationBusy: '翻译仍在处理中，请稍候。',
       translationFailed: '翻译失败，请检查服务配置或稍后重试。',
     },
     sidebar: {
@@ -43,6 +44,7 @@ export const messages = {
         home: '主页',
         translate: '翻译风格',
         phrases: '常用语',
+        settings: '设置',
         about: '关于',
       },
       updateAvailable: '可更新',
@@ -268,6 +270,7 @@ export const messages = {
       closeTitle: 'Close',
       minimizeFailed: 'Failed to minimize, please try again.',
       actionFailed: 'Window action failed, please try again.',
+      translationBusy: 'Translation is still running. Please wait a moment.',
       translationFailed: 'Translation failed. Check service config or try again later.',
     },
     sidebar: {
@@ -275,6 +278,7 @@ export const messages = {
         home: 'Home',
         translate: 'Style',
         phrases: 'Phrases',
+        settings: 'Settings',
         about: 'About',
       },
       updateAvailable: 'Update',
@@ -500,6 +504,7 @@ export const messages = {
       closeTitle: 'Закрыть',
       minimizeFailed: 'Не удалось свернуть окно. Повторите попытку.',
       actionFailed: 'Не удалось выполнить действие окна. Повторите попытку.',
+      translationBusy: 'Перевод еще выполняется. Пожалуйста, подождите.',
       translationFailed: 'Ошибка перевода. Проверьте настройки сервиса или повторите позже.',
     },
     sidebar: {
@@ -507,6 +512,7 @@ export const messages = {
         home: 'Главная',
         translate: 'Стиль',
         phrases: 'Фразы',
+        settings: 'Настройки',
         about: 'О приложении',
       },
       updateAvailable: 'Обновление',

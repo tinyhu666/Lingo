@@ -1,10 +1,11 @@
 {
   "name": "lingo",
   "private": true,
-  "version": "0.3.22",
+  "version": "0.4.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:desktop": "node scripts/dev-desktop.mjs",
     "build": "vite build",
     "preview": "vite preview",
     "tauri": "tauri",

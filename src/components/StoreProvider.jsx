@@ -26,7 +26,7 @@ export function StoreProvider({ children }) {
   const latestSettingsRef = useRef(null);
   const commitQueueRef = useRef(Promise.resolve());
 
-  const enqueueCommit = useCallback((producer) => {
+  const enqueueCommit = useCallback((producer, { persist = true } = {}) => {
     const run = async () => {
       const currentSettings = latestSettingsRef.current || {};
       const nextSettings = producer(currentSettings) ?? currentSettings;
@@ -36,9 +36,20 @@ export function StoreProvider({ children }) {
 
       latestSettingsRef.current = nextSettings;
       setSettings(nextSettings);
-      await writeSettingsToStore(nextSettings);
-      writePreviewSettings(nextSettings);
-      return nextSettings;
+
+      try {
+        if (persist) {
+          await writeSettingsToStore(nextSettings);
+        } else {
+          writePreviewSettings(nextSettings);
+        }
+
+        return nextSettings;
+      } catch (error) {
+        latestSettingsRef.current = currentSettings;
+        setSettings(currentSettings);
+        throw error;
+      }
     };
 
     commitQueueRef.current = commitQueueRef.current.then(run, run);
@@ -46,11 +57,22 @@ export function StoreProvider({ children }) {
   }, []);
 
   const replaceSettings = useCallback(
-    async (nextSettings) => {
+    async (nextSettings, options) => {
       const normalized = nextSettings || {};
-      return enqueueCommit(() => normalized);
+      return enqueueCommit(() => normalized, options);
     },
     [enqueueCommit],
+  );
+
+  const syncSettings = useCallback(
+    async (nextSettings) => {
+      const normalized = nextSettings || {};
+      latestSettingsRef.current = normalized;
+      setSettings(normalized);
+      writePreviewSettings(normalized);
+      return normalized;
+    },
+    [],
   );
 
   const updateSettings = useCallback(
@@ -69,9 +91,9 @@ export function StoreProvider({ children }) {
       return latestSettingsRef.current;
     }
 
-    await replaceSettings(latestFromBackend);
+    await syncSettings(latestFromBackend);
     return latestFromBackend;
-  }, [replaceSettings]);
+  }, [syncSettings]);
 
   useEffect(() => {
     let mounted = true;
@@ -104,11 +126,12 @@ export function StoreProvider({ children }) {
       loading,
       updateSettings,
       replaceSettings,
+      syncSettings,
       reloadSettings,
       // 兼容旧代码结构，避免其他页面读取 store 字段时报错
       store: null,
     }),
-    [settings, loading, updateSettings, replaceSettings, reloadSettings],
+    [settings, loading, updateSettings, replaceSettings, syncSettings, reloadSettings],
   );
 
   return <StoreContext.Provider value={contextValue}>{children}</StoreContext.Provider>;

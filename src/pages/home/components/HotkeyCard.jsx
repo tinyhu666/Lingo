@@ -26,7 +26,7 @@ const formatPreview = (codes) =>
     .join(' + ');
 
 export default function HotkeyCard() {
-  const { settings, updateSettings, replaceSettings } = useStore();
+  const { settings, updateSettings, syncSettings } = useStore();
   const { t } = useI18n();
   const [recording, setRecording] = useState(false);
   const [capturedCodes, setCapturedCodes] = useState([]);
@@ -56,9 +56,8 @@ export default function HotkeyCard() {
 
     try {
       if (hasTauriRuntime()) {
-        await invokeCommand('update_translator_shortcut', { keys });
-        const latest = await invokeCommand('get_settings');
-        await replaceSettings(latest);
+        const latest = await invokeCommand('update_translator_shortcut', { keys });
+        await syncSettings(latest);
         showSuccess(t('home.hotkey.setSuccess'));
       } else {
         const hotkey = buildHotkeyFromKeyCodes(keys);
@@ -70,7 +69,7 @@ export default function HotkeyCard() {
     } finally {
       stopRecording();
     }
-  }, [replaceSettings, stopRecording, updateSettings, t]);
+  }, [syncSettings, stopRecording, updateSettings, t]);
 
   const handleKeyDown = useCallback(
     (event) => {
@@ -80,6 +79,11 @@ export default function HotkeyCard() {
 
       event.preventDefault();
       event.stopPropagation();
+
+      if (event.key === 'Escape') {
+        stopRecording();
+        return;
+      }
 
       const code = event.code;
       if (!code) {
@@ -99,6 +103,11 @@ export default function HotkeyCard() {
   const handleKeyUp = useCallback(
     (event) => {
       if (!recording) {
+        return;
+      }
+
+      const hasMainKey = codesRef.current.some((code) => !isModifierKeyCode(code));
+      if (!hasMainKey) {
         return;
       }
 
@@ -125,6 +134,7 @@ export default function HotkeyCard() {
 
   const beginRecording = () => {
     if (recording) {
+      stopRecording();
       return;
     }
     setRecording(true);

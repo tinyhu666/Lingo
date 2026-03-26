@@ -53,7 +53,7 @@ const createRow = (id, phrase = '', keyCode = `Digit${Math.min(id, 9)}`) => ({
 });
 
 export default function Phrases() {
-  const { settings, updateSettings, replaceSettings } = useStore();
+  const { settings, updateSettings, syncSettings } = useStore();
   const { t } = useI18n();
   const [rows, setRows] = useState([]);
   const [saving, setSaving] = useState(false);
@@ -184,9 +184,8 @@ export default function Phrases() {
 
     try {
       if (hasTauriRuntime()) {
-        await invokeCommand('update_phrases', { phrases: payload });
-        const latest = await invokeCommand('get_settings');
-        await replaceSettings(latest);
+        const latest = await invokeCommand('update_phrases', { phrases: payload });
+        await syncSettings(latest);
         showSuccess(t('phrases.toasts.saved'));
       } else {
         await updateSettings({ phrases: payload });

@@ -17,6 +17,24 @@ const corsHeaders = {
 };
 
 const MAX_BODY_BYTES = 128 * 1024;
+const TRANSLATION_CACHE_TTL_MS = 15_000;
+const TRANSLATION_CACHE_MAX_ENTRIES = 256;
+const FAST_LANE_CIRCUIT_BREAK_MS = 60_000;
+const LANGUAGE_LABELS = {
+  zh: 'Chinese',
+  en: 'English',
+  'en-SEA': 'Southeast Asian English',
+  ko: 'Korean',
+  fr: 'French',
+  ru: 'Russian',
+  es: 'Spanish',
+  ja: 'Japanese',
+  de: 'German',
+  auto: 'the detected source language',
+};
+const translationCache = new Map();
+const translationInflight = new Map();
+const fastLaneCircuit = new Map();
 
 const jsonResponse = (res, status, payload) => {
   res.writeHead(status, corsHeaders);
@@ -57,6 +75,84 @@ const readJsonResponse = async (response) => {
   }
 };
 
+const evictExpiredTranslationCache = (now = Date.now()) => {
+  for (const [cacheKey, entry] of translationCache.entries()) {
+    if (entry.expiresAt <= now) {
+      translationCache.delete(cacheKey);
+    }
+  }
+};
+
+const getCachedTranslation = (cacheKey) => {
+  evictExpiredTranslationCache();
+  const entry = translationCache.get(cacheKey);
+  if (!entry) {
+    return null;
+  }
+
+  translationCache.delete(cacheKey);
+  translationCache.set(cacheKey, entry);
+  return entry.value;
+};
+
+const setCachedTranslation = (cacheKey, value) => {
+  evictExpiredTranslationCache();
+  if (translationCache.size >= TRANSLATION_CACHE_MAX_ENTRIES) {
+    const oldestKey = translationCache.keys().next().value;
+    if (oldestKey) {
+      translationCache.delete(oldestKey);
+    }
+  }
+
+  translationCache.set(cacheKey, {
+    value,
+    expiresAt: Date.now() + TRANSLATION_CACHE_TTL_MS,
+  });
+};
+
+const buildModelIdentity = (config) =>
+  JSON.stringify({
+    provider: config.provider,
+    api_url: config.api_url,
+    model_name: config.model_name,
+    api_key_env_name: config.api_key_env_name,
+  });
+
+const getFastLaneCircuitExpiresAt = (fastLaneConfig) => {
+  const identity = buildModelIdentity(fastLaneConfig);
+  const expiresAt = fastLaneCircuit.get(identity) || 0;
+  if (expiresAt <= Date.now()) {
+    fastLaneCircuit.delete(identity);
+    return 0;
+  }
+  return expiresAt;
+};
+
+const openFastLaneCircuit = (fastLaneConfig) => {
+  fastLaneCircuit.set(buildModelIdentity(fastLaneConfig), Date.now() + FAST_LANE_CIRCUIT_BREAK_MS);
+};
+
+const shouldOpenFastLaneCircuit = (error) => {
+  const status = Number(error?.status || 0);
+  return [400, 401, 403, 404, 405, 422].includes(status);
+};
+
+const buildTranslationCacheKey = ({ routeConfig, routeName, tuning, payload, text }) =>
+  JSON.stringify({
+    route_name: routeName,
+    provider: routeConfig.provider,
+    api_url: routeConfig.api_url,
+    model: routeConfig.model_name,
+    temperature: tuning.effectiveTemperature,
+    max_tokens: tuning.effectiveMaxTokens,
+    translation_from: String(payload?.translation_from || 'auto').trim() || 'auto',
+    translation_to: String(payload?.translation_to || 'en').trim() || 'en',
+    translation_mode: String(payload?.translation_mode || 'auto').trim() || 'auto',
+    game_scene: String(payload?.game_scene || 'general').trim() || 'general',
+    daily_mode: Boolean(payload?.daily_mode),
+    text,
+  });
+
 const extractOpenAIContent = (payload) => {
   const content = payload?.choices?.[0]?.message?.content;
   if (typeof content === 'string') {
@@ -79,22 +175,98 @@ const extractAnthropicContent = (payload) =>
         .trim()
     : '';
 
+const describeLanguage = (value, fallback = 'the requested language') => {
+  const normalized = String(value || '').trim();
+  if (!normalized) {
+    return fallback;
+  }
+  return LANGUAGE_LABELS[normalized] || normalized;
+};
+
+const getTranslationIntent = (payload) => {
+  const translationFrom = String(payload?.translation_from || 'auto').trim() || 'auto';
+  const translationTo = String(payload?.translation_to || 'en').trim() || 'en';
+  return {
+    translationFrom,
+    translationTo,
+    isRewrite: translationFrom === translationTo,
+  };
+};
+
 const buildSystemPrompt = (payload) => {
-  const translationFrom = payload?.translation_from || 'auto';
-  const translationTo = payload?.translation_to || 'en';
+  const { translationFrom, translationTo, isRewrite } = getTranslationIntent(payload);
   const translationMode = payload?.translation_mode || 'auto';
   const gameScene = payload?.game_scene || 'general';
   const dailyMode = Boolean(payload?.daily_mode);
+  const sourceLabel = describeLanguage(translationFrom, 'the detected source language');
+  const targetLabel = describeLanguage(translationTo, 'the requested language');
+
+  if (isRewrite) {
+    return [
+      `Rewrite in-game chat in ${targetLabel}.`,
+      `Tone:${translationMode}.`,
+      `Scene:${gameScene}.`,
+      `Daily:${dailyMode ? 'on' : 'off'}.`,
+      'Keep meaning. Output one concise send-ready line only.',
+    ].join(' ');
+  }
 
   return [
-    'You are a concise in-game chat translator.',
-    `Translate from ${translationFrom} to ${translationTo}.`,
-    `Tone mode: ${translationMode}.`,
-    `Game scene: ${gameScene}.`,
-    `Daily mode: ${dailyMode ? 'enabled' : 'disabled'}.`,
-    'Output only translated text without explanations.',
-    'Keep tactical terms short and send-ready.',
+    `Translate in-game chat from ${sourceLabel} to ${targetLabel}.`,
+    `Tone:${translationMode}.`,
+    `Scene:${gameScene}.`,
+    `Daily:${dailyMode ? 'on' : 'off'}.`,
+    'Output concise send-ready text only. Keep tactical terms short.',
   ].join(' ');
+};
+
+const resolveRequestTuning = ({ config, payload, text }) => {
+  const { isRewrite } = getTranslationIntent(payload);
+  const textLength = Array.from(String(text || '').trim()).length;
+  const configuredMaxTokens = Number(config.max_tokens) || 96;
+  let effectiveMaxTokens = configuredMaxTokens;
+
+  if (textLength <= 24) {
+    effectiveMaxTokens = Math.min(configuredMaxTokens, isRewrite ? 32 : 40);
+  } else if (textLength <= 72) {
+    effectiveMaxTokens = Math.min(configuredMaxTokens, isRewrite ? 48 : 56);
+  } else if (textLength <= 160) {
+    effectiveMaxTokens = Math.min(configuredMaxTokens, isRewrite ? 64 : 80);
+  }
+
+  const configuredTemperature = Number(config.temperature);
+  const effectiveTemperature = Number.isFinite(configuredTemperature)
+    ? Math.min(configuredTemperature, isRewrite ? 0.15 : 0.1)
+    : config.temperature;
+
+  return {
+    promptVariant: isRewrite ? 'rewrite' : 'translate',
+    systemPrompt: buildSystemPrompt(payload),
+    effectiveMaxTokens,
+    effectiveTemperature,
+  };
+};
+
+const canUseFastLane = ({ config, payload, text, promptVariant }) => {
+  const fastLane = config.fast_lane;
+  if (!fastLane?.enabled || !fastLane.model_name) {
+    return false;
+  }
+
+  if (String(payload?.translation_mode || 'auto').trim() === 'toxic') {
+    return false;
+  }
+
+  if (!fastLane.allowed_prompt_variants.includes(promptVariant)) {
+    return false;
+  }
+
+  const textLength = Array.from(String(text || '').trim()).length;
+  if (textLength > fastLane.max_text_length) {
+    return false;
+  }
+
+  return getFastLaneCircuitExpiresAt(fastLane) === 0;
 };
 
 const readJsonBody = async (req) => {
@@ -170,7 +342,16 @@ const validateClientKey = (req) => {
   throw error;
 };
 
-const requestModel = async ({ config, apiKey, systemPrompt, text }) => {
+const requestModelOnce = async ({
+  config,
+  apiKey,
+  systemPrompt,
+  text,
+  traceId,
+  effectiveMaxTokens,
+  effectiveTemperature,
+}) => {
+  const startedAt = Date.now();
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(new Error('MODEL_TIMEOUT')), config.timeout_ms);
 
@@ -187,8 +368,8 @@ const requestModel = async ({ config, apiKey, systemPrompt, text }) => {
         body: JSON.stringify({
           model: config.model_name,
           system: systemPrompt,
-          max_tokens: config.max_tokens,
-          temperature: config.temperature,
+          max_tokens: effectiveMaxTokens,
+          temperature: effectiveTemperature,
           messages: [{ role: 'user', content: text }],
         }),
       });
@@ -205,12 +386,24 @@ const requestModel = async ({ config, apiKey, systemPrompt, text }) => {
 
       const translatedText = extractAnthropicContent(body);
       if (!translatedText) {
+        console.warn(
+          JSON.stringify({
+            trace_id: traceId,
+            provider: config.provider,
+            model: config.model_name,
+            message: 'Anthropic returned empty content',
+            raw_summary: summarizeText(raw),
+          }),
+        );
         const error = new Error('Empty model response');
         error.status = 502;
         throw error;
       }
 
-      return translatedText;
+      return {
+        translatedText,
+        modelLatencyMs: Date.now() - startedAt,
+      };
     }
 
     const response = await fetch(config.api_url, {
@@ -226,8 +419,8 @@ const requestModel = async ({ config, apiKey, systemPrompt, text }) => {
           { role: 'system', content: systemPrompt },
           { role: 'user', content: text },
         ],
-        temperature: config.temperature,
-        max_tokens: config.max_tokens,
+        temperature: effectiveTemperature,
+        max_tokens: effectiveMaxTokens,
       }),
     });
 
@@ -243,14 +436,126 @@ const requestModel = async ({ config, apiKey, systemPrompt, text }) => {
 
     const translatedText = extractOpenAIContent(body);
     if (!translatedText) {
+      console.warn(
+        JSON.stringify({
+          trace_id: traceId,
+          provider: config.provider,
+          model: config.model_name,
+          message: 'OpenAI-compatible provider returned empty content',
+          raw_summary: summarizeText(raw),
+        }),
+      );
       const error = new Error('Empty model response');
       error.status = 502;
       throw error;
     }
 
-    return translatedText;
+    return {
+      translatedText,
+      modelLatencyMs: Date.now() - startedAt,
+    };
   } finally {
     clearTimeout(timer);
+  }
+};
+
+const shouldRetryModelRequest = (error) => String(error?.message || '').includes('Empty model response');
+
+const requestModel = async ({
+  config,
+  apiKey,
+  systemPrompt,
+  text,
+  traceId,
+  effectiveMaxTokens,
+  effectiveTemperature,
+}) => {
+  const startedAt = Date.now();
+  try {
+    const result = await requestModelOnce({
+      config,
+      apiKey,
+      systemPrompt,
+      text,
+      traceId,
+      effectiveMaxTokens,
+      effectiveTemperature,
+    });
+    return {
+      ...result,
+      attemptCount: 1,
+      modelLatencyMs: Date.now() - startedAt,
+    };
+  } catch (error) {
+    if (!shouldRetryModelRequest(error)) {
+      throw error;
+    }
+
+    console.warn(
+      JSON.stringify({
+        trace_id: traceId,
+        provider: config.provider,
+        model: config.model_name,
+        message: 'Retrying translation after empty model response',
+      }),
+    );
+
+    const retryResult = await requestModelOnce({
+      config,
+      apiKey,
+      text,
+      traceId,
+      effectiveMaxTokens,
+      effectiveTemperature,
+      systemPrompt: `${systemPrompt} Never return an empty response.`,
+    });
+    return {
+      ...retryResult,
+      attemptCount: 2,
+      modelLatencyMs: Date.now() - startedAt,
+    };
+  }
+};
+
+const requestTranslatedText = async ({ cacheKey, load }) => {
+  const cachedValue = getCachedTranslation(cacheKey);
+  if (cachedValue) {
+    return {
+      ...cachedValue,
+      responseSource: 'memory-cache',
+      attemptCount: 0,
+      modelLatencyMs: 0,
+    };
+  }
+
+  const inflightRequest = translationInflight.get(cacheKey);
+  if (inflightRequest) {
+    const sharedResult = await inflightRequest;
+    return {
+      ...sharedResult,
+      responseSource: 'shared-inflight',
+      attemptCount: 0,
+      modelLatencyMs: 0,
+    };
+  }
+
+  const requestPromise = load().then((result) => {
+    const { cacheable = true, ...cacheValue } = result;
+    if (cacheable) {
+      setCachedTranslation(cacheKey, cacheValue);
+    }
+    return cacheValue;
+  });
+  translationInflight.set(cacheKey, requestPromise);
+
+  try {
+    const modelResult = await requestPromise;
+    return {
+      ...modelResult,
+      responseSource: 'model',
+    };
+  } finally {
+    translationInflight.delete(cacheKey);
   }
 };
 
@@ -321,39 +626,156 @@ const routeTranslate = async (req, res, traceId) => {
     return jsonResponse(res, 400, { message: 'text is required', trace_id: traceId });
   }
 
-  const apiKey = resolveApiKey(process.env, config);
-  if (!apiKey) {
-    return jsonResponse(res, 500, {
-      message: `Missing API key env: ${config.api_key_env_name}`,
-      trace_id: traceId,
-    });
-  }
-
-  const translatedText = await requestModel({
+  const primaryTuning = resolveRequestTuning({ config, payload, text });
+  const useFastLane = canUseFastLane({
     config,
-    apiKey,
-    systemPrompt: buildSystemPrompt(payload),
+    payload,
     text,
+    promptVariant: primaryTuning.promptVariant,
+  });
+  const selectedRouteName = useFastLane ? 'fast-lane' : 'primary';
+  const selectedRouteConfig = useFastLane ? config.fast_lane : config;
+  const selectedTuning = useFastLane
+    ? resolveRequestTuning({ config: selectedRouteConfig, payload, text })
+    : primaryTuning;
+  const cacheKey = buildTranslationCacheKey({
+    routeConfig: selectedRouteConfig,
+    routeName: selectedRouteName,
+    tuning: selectedTuning,
+    payload,
+    text,
+  });
+  const {
+    translatedText,
+    responseSource,
+    attemptCount,
+    modelLatencyMs,
+    modelRoute,
+    modelName,
+    modelProvider,
+    promptVariant,
+    effectiveMaxTokens,
+    effectiveTemperature,
+  } = await requestTranslatedText({
+    cacheKey,
+    load: async () => {
+      const runPrimaryModel = async (modelRouteName) => {
+        const primaryApiKey = resolveApiKey(process.env, config);
+        if (!primaryApiKey) {
+          const error = new Error(`Missing API key env: ${config.api_key_env_name}`);
+          error.status = 500;
+          throw error;
+        }
+
+        const result = await requestModel({
+          config,
+          apiKey: primaryApiKey,
+          systemPrompt: primaryTuning.systemPrompt,
+          text,
+          traceId,
+          effectiveMaxTokens: primaryTuning.effectiveMaxTokens,
+          effectiveTemperature: primaryTuning.effectiveTemperature,
+        });
+        return {
+          ...result,
+          cacheable: modelRouteName === 'primary',
+          modelRoute: modelRouteName,
+          modelName: config.model_name,
+          modelProvider: config.provider,
+          promptVariant: primaryTuning.promptVariant,
+          effectiveMaxTokens: primaryTuning.effectiveMaxTokens,
+          effectiveTemperature: primaryTuning.effectiveTemperature,
+        };
+      };
+
+      if (!useFastLane) {
+        return runPrimaryModel('primary');
+      }
+
+      const fastLaneApiKey = resolveApiKey(process.env, selectedRouteConfig);
+      if (!fastLaneApiKey) {
+        openFastLaneCircuit(selectedRouteConfig);
+        console.warn(
+          JSON.stringify({
+            trace_id: traceId,
+            message: 'Fast lane missing API key, falling back to primary model',
+            model_route: 'fast-fallback',
+            fast_model: selectedRouteConfig.model_name,
+          }),
+        );
+        return runPrimaryModel('fast-fallback');
+      }
+
+      try {
+        const fastLaneResult = await requestModel({
+          config: selectedRouteConfig,
+          apiKey: fastLaneApiKey,
+          systemPrompt: selectedTuning.systemPrompt,
+          text,
+          traceId,
+          effectiveMaxTokens: selectedTuning.effectiveMaxTokens,
+          effectiveTemperature: selectedTuning.effectiveTemperature,
+        });
+        return {
+          ...fastLaneResult,
+          modelRoute: 'fast-lane',
+          modelName: selectedRouteConfig.model_name,
+          modelProvider: selectedRouteConfig.provider,
+          promptVariant: selectedTuning.promptVariant,
+          effectiveMaxTokens: selectedTuning.effectiveMaxTokens,
+          effectiveTemperature: selectedTuning.effectiveTemperature,
+        };
+      } catch (error) {
+        if (shouldOpenFastLaneCircuit(error)) {
+          openFastLaneCircuit(selectedRouteConfig);
+        }
+        console.warn(
+          JSON.stringify({
+            trace_id: traceId,
+            message: 'Fast lane failed, falling back to primary model',
+            model_route: 'fast-fallback',
+            fast_model: selectedRouteConfig.model_name,
+            fast_status: Number(error?.status || 0),
+            fast_error: String(error?.message || error),
+          }),
+        );
+        return runPrimaryModel('fast-fallback');
+      }
+    },
   });
 
   const latencyMs = Date.now() - startedAt;
   console.log(
     JSON.stringify({
       trace_id: traceId,
-      provider: config.provider,
-      model: config.model_name,
+      provider: modelProvider,
+      model: modelName,
       config_source: config.source,
       latency_ms: latencyMs,
+      model_latency_ms: modelLatencyMs,
+      attempt_count: attemptCount,
+      response_source: responseSource,
+      model_route: modelRoute,
+      prompt_variant: promptVariant,
+      effective_max_tokens: effectiveMaxTokens,
+      effective_temperature: effectiveTemperature,
       text_length: text.length,
     }),
   );
 
   return jsonResponse(res, 200, {
     translated_text: translatedText,
-    model: config.model_name,
-    provider: config.provider,
+    model: modelName,
+    provider: modelProvider,
     config_source: config.source,
     latency_ms: latencyMs,
+    model_latency_ms: modelLatencyMs,
+    attempt_count: attemptCount,
+    response_source: responseSource,
+    model_route: modelRoute,
+    prompt_variant: promptVariant,
+    effective_max_tokens: effectiveMaxTokens,
+    effective_temperature: effectiveTemperature,
     trace_id: traceId,
   });
 };
@@ -365,6 +787,7 @@ const routeHealthz = async (res, traceId) => {
     enabled: config.enabled,
     provider: config.provider,
     model: config.model_name,
+    config_source: config.source,
     trace_id: traceId,
   });
 };

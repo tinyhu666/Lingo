@@ -76,13 +76,20 @@ export const readSettingsFromStore = async () => {
 };
 
 export const writeSettingsToStore = async (settings) => {
+  if (!hasTauriRuntime()) {
+    writePreviewSettings(settings);
+    return true;
+  }
+
   try {
     const store = await getStore();
     await store.set(SETTINGS_KEY, settings);
-    return true;
-  } catch {
+    await store.save();
     writePreviewSettings(settings);
-    return false;
+    return true;
+  } catch (error) {
+    writePreviewSettings(settings);
+    throw error;
   }
 };
 

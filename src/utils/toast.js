@@ -28,6 +28,10 @@ export const showSuccess = (message) => {
     toast.success(message, toastStyle);
 };
 
+export const showInfo = (message) => {
+    toast(message, toastStyle);
+};
+
 export const showError = (message) => {
     toast.error(message, errorToastStyle);
-}; 
+};

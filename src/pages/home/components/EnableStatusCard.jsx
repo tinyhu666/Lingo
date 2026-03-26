@@ -8,7 +8,7 @@ import { toErrorMessage } from '../../../utils/error';
 import { useI18n } from '../../../i18n/I18nProvider';
 
 export default function EnableStatusCard() {
-  const { settings, updateSettings, replaceSettings } = useStore();
+  const { settings, updateSettings, syncSettings } = useStore();
   const { t } = useI18n();
   const [pending, setPending] = useState(false);
   const [draftState, setDraftState] = useState(null);
@@ -34,7 +34,7 @@ export default function EnableStatusCard() {
       if (hasTauriRuntime()) {
         const latest = await invokeCommand('set_app_enabled', { enabled: nextEnabled });
         if (latest && typeof latest === 'object') {
-          await replaceSettings(latest);
+          await syncSettings(latest);
         } else {
           await updateSettings({ app_enabled: nextEnabled });
         }

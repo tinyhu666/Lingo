@@ -4,7 +4,7 @@ version = 4
 
 [[package]]
 name = "Lingo"
-version = "0.3.22"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "reqwest",
@@ -19,6 +19,7 @@ dependencies = [
  "tauri-plugin-shell",
  "tauri-plugin-store",
  "tauri-plugin-updater",
+ "tokio",
 ]
 
 [[package]]

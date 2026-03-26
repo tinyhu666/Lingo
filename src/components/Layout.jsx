@@ -8,13 +8,14 @@ import { UpdateProvider } from './UpdateProvider';
 import appIcon from '../assets/app-icon.png';
 import { ChevronRight, Globe, XClose } from '../icons';
 import { hasTauriRuntime } from '../services/tauriRuntime';
-import { showError } from '../utils/toast';
+import { showError, showInfo } from '../utils/toast';
 import { useI18n } from '../i18n/I18nProvider';
 
 function LayoutShell({ children, activeItem, setActiveItem }) {
   const { locale, setLocale, t, localeOptions } = useI18n();
   const [showLocaleMenu, setShowLocaleMenu] = useState(false);
   const localeTriggerRef = useRef(null);
+  const busyToastAtRef = useRef(0);
 
   const localeMap = useMemo(
     () =>
@@ -59,26 +60,42 @@ function LayoutShell({ children, activeItem, setActiveItem }) {
     }
 
     let disposed = false;
-    let cleanup = null;
+    let cleanups = [];
 
     const bind = async () => {
       try {
-        const unlisten = await listen('translation_failed', (event) => {
-          const message =
-            typeof event.payload === 'string' && event.payload.trim()
-              ? event.payload
-              : t('titlebar.translationFailed');
-          showError(message);
-        });
+        const [unlistenFailed, unlistenBusy] = await Promise.all([
+          listen('translation_failed', (event) => {
+            const message =
+              typeof event.payload === 'string' && event.payload.trim()
+                ? event.payload
+                : t('titlebar.translationFailed');
+            showError(message);
+          }),
+          listen('translation_busy', (event) => {
+            const now = Date.now();
+            if (now - busyToastAtRef.current < 1200) {
+              return;
+            }
+
+            busyToastAtRef.current = now;
+            const message =
+              typeof event.payload === 'string' && event.payload.trim() && event.payload !== 'busy'
+                ? event.payload
+                : t('titlebar.translationBusy');
+            showInfo(message);
+          }),
+        ]);
 
         if (disposed) {
-          unlisten();
+          unlistenFailed();
+          unlistenBusy();
           return;
         }
 
-        cleanup = unlisten;
+        cleanups = [unlistenFailed, unlistenBusy];
       } catch (error) {
-        console.error('Failed to bind translation_failed listener', error);
+        console.error('Failed to bind translation event listeners', error);
       }
     };
 
@@ -86,7 +103,7 @@ function LayoutShell({ children, activeItem, setActiveItem }) {
 
     return () => {
       disposed = true;
-      if (typeof cleanup === 'function') {
+      for (const cleanup of cleanups) {
         cleanup();
       }
     };

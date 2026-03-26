@@ -23,10 +23,26 @@ It provides:
 - `GET /admin/runtime-config` for current server-side config
 - `PUT /admin/runtime-config` for changing model/API routing without shipping a new client
 
+`POST /translate` responses also include lightweight diagnostics such as
+`response_source`, `attempt_count`, `latency_ms`, `model_latency_ms`,
+`model_route`, `prompt_variant`, `effective_max_tokens`,
+`effective_temperature`, and `trace_id`, so you can tell whether a request came from model execution,
+in-memory hot cache, or a shared in-flight request, and which adaptive request
+budget was actually used.
+
 ## Server-Side Config Model
 
 Sensitive values stay in server environment variables.
 Mutable runtime settings are stored in `data/runtime-config.json`.
+The proxy keeps a short in-memory cache for both runtime config reads and recent
+translation results to reduce repeat-request latency without changing deploy
+workflow.
+It also adapts prompt length and generation budget based on text length and
+whether the request is a translation or a same-language rewrite, so first-hit
+latency stays lower without requiring separate client logic.
+If you need a lower-latency model for short new messages, you can optionally
+enable `fast_lane`; the proxy will try that model first for eligible requests
+and fall back to the primary model on failure.
 
 Suggested split:
 
@@ -43,6 +59,7 @@ Suggested split:
   - `timeout_ms`
   - `max_tokens`
   - `temperature`
+  - `fast_lane` (optional)
 
 ## Deploy On Tencent Cloud Lightweight Server
 
@@ -112,9 +129,21 @@ curl -X PUT "https://your-domain.example.com/admin/runtime-config" \
     "api_url": "https://api.siliconflow.cn/v1/chat/completions",
     "model_name": "deepseek-ai/DeepSeek-V3",
     "api_key_env_name": "MODEL_API_KEY",
-    "timeout_ms": 20000,
-    "max_tokens": 140,
-    "temperature": 0.4
+    "timeout_ms": 12000,
+    "max_tokens": 96,
+    "temperature": 0.2,
+    "fast_lane": {
+      "enabled": false,
+      "provider": "openai-compatible",
+      "api_url": "https://api.siliconflow.cn/v1/chat/completions",
+      "model_name": "",
+      "api_key_env_name": "MODEL_API_KEY",
+      "timeout_ms": 5000,
+      "max_tokens": 48,
+      "temperature": 0.1,
+      "max_text_length": 72,
+      "allowed_prompt_variants": ["translate"]
+    }
   }'
 ```
 

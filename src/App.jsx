@@ -11,8 +11,8 @@ const PhrasesPage = lazy(() => import('./pages/Phrases'));
 const pages = {
   home: Home,
   translate: TranslatePage,
-  about: AboutPage,
   phrases: PhrasesPage,
+  about: AboutPage,
 };
 
 function PageFallback() {
