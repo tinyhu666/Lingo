@@ -62,6 +62,7 @@
 - 测试中的环境变量改写和本地端口占用不能互相污染，否则会让客户端链路测试变得不稳定。
 - 即使 OS 级热键和真实输入框回填仍需手工验证，底层的纯逻辑判断也应先被自动化测试拦住。
 - 本地打包可以验证版本同步与 macOS 产物链路，但不能替代 tag 推送后由 GitHub Actions 产出的 Windows 安装包与 `latest.json`。
+- COS 镜像链路在 GitHub Hosted Runner 上会受跨境网络影响，上传策略需要避免大文件在接近完成时被 `UserNetworkTooSlow` 直接打断。
 
 ## Acceptance Criteria
 
@@ -80,3 +81,4 @@
 - `cargo test --manifest-path src-tauri/Cargo.toml -- --nocapture` 至少会通过两条客户端翻译链路测试：真实翻译请求 smoke 和本地代理不可达提示。
 - `cargo test --manifest-path src-tauri/Cargo.toml -- --nocapture` 还会通过 `shell_helper` 的快捷键路径和剪贴板 probe 过滤测试。
 - `package.json`、`package-lock.json`、`src-tauri/Cargo.toml`、`src-tauri/Cargo.lock` 与 `src-tauri/tauri.conf.json` 的版本号需同步到 `0.4.0`，并通过 `npm run build:mac-arm` 产出 `Lingo_0.4.0_aarch64.dmg` 与 `Lingo.app.tar.gz.sig`。
+- 对已发布的 `v0.4.0` 执行镜像补跑时，COS 上传需能完成 macOS/Windows 安装包与 `latest.json` 的同步，而不是在大文件尾段因慢网报错退出。

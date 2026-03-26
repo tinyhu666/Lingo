@@ -35,12 +35,12 @@ if (!version) {
 
 const versionRoot = path.join(PrepDir, 'releases', `v${version}`);
 const manifestRoot = path.join(PrepDir, 'releases');
-const MULTIPART_THRESHOLD_BYTES = 5 * 1024 * 1024;
-const MULTIPART_CHUNK_SIZE_BYTES = 1024 * 1024;
-const MULTIPART_ASYNC_LIMIT = 1;
-const MAX_UPLOAD_ATTEMPTS = 4;
+const MULTIPART_THRESHOLD_BYTES = Number(process.env.COS_MULTIPART_THRESHOLD_BYTES || 1024 * 1024);
+const MULTIPART_CHUNK_SIZE_BYTES = Number(process.env.COS_MULTIPART_CHUNK_SIZE_BYTES || 512 * 1024);
+const MULTIPART_ASYNC_LIMIT = Number(process.env.COS_MULTIPART_ASYNC_LIMIT || 2);
+const MAX_UPLOAD_ATTEMPTS = Number(process.env.COS_MAX_UPLOAD_ATTEMPTS || 6);
 const RETRY_BASE_DELAY_MS = 2_000;
-const SDK_REQUEST_TIMEOUT_MS = 120_000;
+const SDK_REQUEST_TIMEOUT_MS = Number(process.env.COS_REQUEST_TIMEOUT_MS || 300_000);
 const SDK_PROGRESS_INTERVAL_MS = 5_000;
 
 const cos = new COS({

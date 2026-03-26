@@ -1,5 +1,10 @@
 # Client Stability Changes
 
+change096 日期:2026-03-26 | 文件:scripts/upload-cos-release.mjs | 操作:Modify | 影响:COS 镜像上传策略 | 说明:将镜像上传改为更早启用分片、更小 chunk、更长请求超时和更多重试次数，以降低慢网下的大文件上传失败概率 | 关联:task017
+change097 日期:2026-03-26 | 文件:.github/workflows/release.yml | 操作:Modify | 影响:COS 镜像 workflow 超时 | 说明:将自动镜像和手动镜像任务的超时提高到 60 分钟，为慢网重试留出完成空间 | 关联:task017
+change098 日期:2026-03-26 | 文件:.phrase/phases/phase-client-stability-20260326/spec_client-stability_20260326.md | 操作:Modify | 影响:阶段需求说明 | 说明:补充 COS 镜像慢网失败场景、分片上传目标与验收标准 | 关联:task017
+change099 日期:2026-03-26 | 文件:.phrase/phases/phase-client-stability-20260326/plan_client-stability_20260326.md | 操作:Modify | 影响:阶段计划 | 说明:补充 COS 镜像慢网上传风险和补跑里程碑 | 关联:task017
+change100 日期:2026-03-26 | 文件:.phrase/phases/phase-client-stability-20260326/task_client-stability_20260326.md | 操作:Modify | 影响:任务清单 | 说明:新增 task017 记录 0.4.0 发版后补齐 COS 镜像的闭环任务 | 关联:task017
 change095 日期:2026-03-26 | 文件:src/i18n/messages.js | 操作:Modify | 影响:历史导航文案残留 | 说明:移除多语言侧边栏中的 settings 导航键，避免已下线模块因文案残留被再次误接回入口 | 关联:task011
 change085 日期:2026-03-26 | 文件:package.json | 操作:Modify | 影响:版本元数据与打包脚本 | 说明:将前端版本号同步为 0.4.0 并用于后续 Tauri 发版链路 | 关联:task016
 change086 日期:2026-03-26 | 文件:package-lock.json | 操作:Modify | 影响:NPM 锁文件版本元数据 | 说明:将锁文件中的根版本号同步为 0.4.0 | 关联:task016

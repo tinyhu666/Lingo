@@ -17,6 +17,7 @@
 13. 为 Rust 客户端翻译链路补充最小自动化测试，替代纯手工回归。
 14. 为 shell_helper 的快捷键路径和 probe 过滤补充纯逻辑测试，提前拦住系统交互层下方的回归。
 15. 完成 0.4.0 版本同步、发版文案更新与本地 macOS ARM 安装包打包验证。
+16. 收敛 COS 镜像链路在慢网环境下的大文件上传失败风险，并补跑已有 0.4.0 release 的镜像同步。
 
 ## Scope
 
@@ -79,3 +80,4 @@
 - 系统级剪贴板与按键模拟仍然难以稳定自动化，因此需要把可拆出的纯逻辑优先沉淀到单元测试里。
 - 本地 macOS 打包需要沿用仓库内 updater key 的既有归一化格式，否则会在 updater 签名阶段失败。
 - 本地打包只能验证 macOS ARM 产物；Windows 安装包与 `latest.json` 仍依赖 tag 推送触发的 GitHub Actions 发版链。
+- GitHub Hosted Runner 到腾讯 COS 的链路可能明显慢于 GitHub Release 资产分发，需要更激进地使用分片上传和更宽松的 job 超时来兜底。
