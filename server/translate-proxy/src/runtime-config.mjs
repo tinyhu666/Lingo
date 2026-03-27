@@ -8,13 +8,14 @@ const CONFIG_CACHE_TTL_MS = 1_000;
 const DEFAULT_TIMEOUT_MS = 12_000;
 const DEFAULT_MAX_TOKENS = 96;
 const DEFAULT_TEMPERATURE = 0.2;
-const DEFAULT_MODEL_NAME = 'deepseek-ai/DeepSeek-V3';
+const DEFAULT_MODEL_NAME = 'deepseek-ai/DeepSeek-V3.2';
 const DEFAULT_API_KEY_ENV_NAME = 'MODEL_API_KEY';
+const DEFAULT_FAST_LANE_MODEL_NAME = 'Qwen/Qwen3-14B';
 const DEFAULT_FAST_LANE_TIMEOUT_MS = 5_000;
 const DEFAULT_FAST_LANE_MAX_TOKENS = 48;
 const DEFAULT_FAST_LANE_TEMPERATURE = 0.1;
 const DEFAULT_FAST_LANE_MAX_TEXT_LENGTH = 72;
-const DEFAULT_FAST_LANE_ALLOWED_PROMPT_VARIANTS = ['translate'];
+const DEFAULT_FAST_LANE_ALLOWED_PROMPT_VARIANTS = ['translate', 'rewrite'];
 
 let runtimeConfigCache = null;
 
@@ -160,8 +161,10 @@ export const sanitizeRuntimeConfig = (candidate, source = 'environment', updated
   };
 };
 
-export const environmentRuntimeConfig = (env) =>
-  sanitizeRuntimeConfig(
+export const environmentRuntimeConfig = (env) => {
+  const fastLaneEnabled = env.FAST_MODEL_ENABLED === 'true';
+
+  return sanitizeRuntimeConfig(
     {
       enabled: env.MODEL_ENABLED !== 'false',
       provider: env.MODEL_PROVIDER || 'openai-compatible',
@@ -172,10 +175,12 @@ export const environmentRuntimeConfig = (env) =>
       max_tokens: env.MODEL_MAX_TOKENS || DEFAULT_MAX_TOKENS,
       temperature: env.MODEL_TEMPERATURE || DEFAULT_TEMPERATURE,
       fast_lane: {
-        enabled: env.FAST_MODEL_ENABLED === 'true',
+        enabled: fastLaneEnabled,
         provider: env.FAST_MODEL_PROVIDER || env.MODEL_PROVIDER || 'openai-compatible',
         api_url: env.FAST_MODEL_API_URL || env.MODEL_API_URL || defaultApiUrl('openai-compatible'),
-        model_name: env.FAST_MODEL_NAME || '',
+        model_name: fastLaneEnabled
+          ? env.FAST_MODEL_NAME || DEFAULT_FAST_LANE_MODEL_NAME
+          : env.FAST_MODEL_NAME || '',
         api_key_env_name:
           env.FAST_MODEL_API_KEY_ENV_NAME ||
           env.MODEL_API_KEY_ENV_NAME ||
@@ -191,6 +196,30 @@ export const environmentRuntimeConfig = (env) =>
     },
     'environment',
   );
+};
+
+export const createSiliconFlowLatencyFirstRuntimeConfig = () => ({
+  enabled: true,
+  provider: 'openai-compatible',
+  api_url: defaultApiUrl('openai-compatible'),
+  model_name: DEFAULT_MODEL_NAME,
+  api_key_env_name: DEFAULT_API_KEY_ENV_NAME,
+  timeout_ms: DEFAULT_TIMEOUT_MS,
+  max_tokens: DEFAULT_MAX_TOKENS,
+  temperature: DEFAULT_TEMPERATURE,
+  fast_lane: {
+    enabled: true,
+    provider: 'openai-compatible',
+    api_url: defaultApiUrl('openai-compatible'),
+    model_name: DEFAULT_FAST_LANE_MODEL_NAME,
+    api_key_env_name: DEFAULT_API_KEY_ENV_NAME,
+    timeout_ms: DEFAULT_FAST_LANE_TIMEOUT_MS,
+    max_tokens: DEFAULT_FAST_LANE_MAX_TOKENS,
+    temperature: DEFAULT_FAST_LANE_TEMPERATURE,
+    max_text_length: DEFAULT_FAST_LANE_MAX_TEXT_LENGTH,
+    allowed_prompt_variants: [...DEFAULT_FAST_LANE_ALLOWED_PROMPT_VARIANTS],
+  },
+});
 
 const setRuntimeConfigCache = (configPath, config) => {
   runtimeConfigCache = {

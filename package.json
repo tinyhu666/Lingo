@@ -1,7 +1,7 @@
 {
   "name": "lingo",
   "private": true,
-  "version": "0.4.1",
+  "version": "0.5.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -11,6 +11,8 @@
     "tauri": "tauri",
     "proxy:dev": "node server/translate-proxy/src/server.mjs",
     "proxy:smoke": "node server/translate-proxy/scripts/smoke-test.mjs",
+    "proxy:diagnose": "node server/translate-proxy/scripts/diagnose-latency.mjs",
+    "proxy:print-siliconflow-config": "node server/translate-proxy/scripts/print-siliconflow-config.mjs",
     "brand:assets": "node scripts/generate-brand-assets.mjs",
     "release:sync-notes": "node scripts/sync-github-release-notes.mjs",
     "clean": "node -e \"const fs = require('fs'); fs.rmSync('src-tauri/target', { recursive: true, force: true }); fs.rmSync('dist', { recursive: true, force: true });\"",

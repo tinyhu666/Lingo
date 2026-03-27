@@ -60,15 +60,19 @@ const upstreamState = {
   primaryHits: 0,
   fastHits: 0,
   fastTransientFailures: 0,
+  lastPrimarySystemPrompt: '',
+  lastFastSystemPrompt: '',
 };
 
 const upstream = createServer(async (req, res) => {
   const payload = await readJsonBody(req);
   const userText = String(payload?.messages?.[1]?.content || '').trim();
+  const systemPrompt = String(payload?.messages?.[0]?.content || payload?.system || '').trim();
   const auth = String(req.headers.authorization || '');
 
   if (req.url === primaryPath) {
     upstreamState.primaryHits += 1;
+    upstreamState.lastPrimarySystemPrompt = systemPrompt;
     expect(auth === 'Bearer primary-model-key', 'primary model auth should use primary key');
     return jsonResponse(res, 200, {
       choices: [{ message: { content: `PRIMARY:${userText}` } }],
@@ -77,6 +81,7 @@ const upstream = createServer(async (req, res) => {
 
   if (req.url === fastPath) {
     upstreamState.fastHits += 1;
+    upstreamState.lastFastSystemPrompt = systemPrompt;
     expect(auth === 'Bearer fast-model-key', 'fast model auth should use fast key');
 
     if (userText === 'fallback once' && upstreamState.fastTransientFailures === 0) {
@@ -126,7 +131,7 @@ const updateRuntimeConfig = async (payload) => {
   return json;
 };
 
-const translate = async (text) => {
+const translate = async (payloadOverrides = {}) => {
   const response = await fetch(`${baseUrl}/translate`, {
     method: 'POST',
     headers: {
@@ -134,9 +139,12 @@ const translate = async (text) => {
       Authorization: 'Bearer test-public-key',
     },
     body: JSON.stringify({
-      text,
+      text: 'hello',
       translation_from: 'en',
       translation_to: 'zh',
+      translation_mode: 'auto',
+      game_scene: 'dota2',
+      ...payloadOverrides,
     }),
   });
   return {
@@ -160,56 +168,96 @@ try {
     enabled: true,
     provider: 'openai-compatible',
     api_url: `${upstreamBaseUrl}${primaryPath}`,
-    model_name: 'deepseek-ai/DeepSeek-R1',
+    model_name: 'deepseek-ai/DeepSeek-V3.2',
     api_key_env_name: 'MISSING_PRIMARY_MODEL_KEY',
     temperature: 0.2,
     fast_lane: {
       enabled: true,
       provider: 'openai-compatible',
       api_url: `${upstreamBaseUrl}${fastPath}`,
-      model_name: 'deepseek-ai/DeepSeek-R1-Distill-Qwen-7B',
+      model_name: 'Qwen/Qwen3-14B',
       api_key_env_name: 'FAST_MODEL_API_KEY',
       timeout_ms: 5000,
       max_tokens: 48,
       temperature: 0.1,
       max_text_length: 72,
-      allowed_prompt_variants: ['translate'],
+      allowed_prompt_variants: ['translate', 'rewrite'],
     },
   });
   expect(fastOnlyConfig.fast_lane?.enabled === true, 'fast lane config should round-trip');
   expect(
-    fastOnlyConfig.fast_lane?.model === 'deepseek-ai/DeepSeek-R1-Distill-Qwen-7B',
+    fastOnlyConfig.fast_lane?.model === 'Qwen/Qwen3-14B',
     'fast lane model should be returned',
   );
 
-  const fastOnlyResult = await translate('hello');
+  const fastOnlyResult = await translate({
+    text: 'hello',
+    translation_mode: 'pro',
+    game_scene: 'dota2',
+  });
   expect(fastOnlyResult.status === 200, 'fast-lane request should succeed without primary key');
   expect(fastOnlyResult.json.model_route === 'fast-lane', 'short request should use fast lane');
   expect(fastOnlyResult.json.translated_text === 'FAST:hello', 'fast lane response should be returned');
+  expect(fastOnlyResult.json.style_profile === 'pro', 'style profile should be returned');
+  expect(
+    Number.isFinite(Number(fastOnlyResult.json.proxy_overhead_ms)),
+    'proxy overhead should be returned',
+  );
+  expect(
+    upstreamState.lastFastSystemPrompt.includes('Game:Dota 2'),
+    'dota2 prompt should include explicit Dota 2 context',
+  );
+  expect(
+    upstreamState.lastFastSystemPrompt.includes('Roshan'),
+    'dota2 prompt should mention Dota 2 terminology',
+  );
+  expect(
+    upstreamState.lastFastSystemPrompt.includes('Style:pro'),
+    'pro prompt should include style profile',
+  );
+
+  const rewriteFast = await translate({
+    text: 'clean it up and push',
+    translation_from: 'en',
+    translation_to: 'en',
+    translation_mode: 'auto',
+    game_scene: 'other',
+  });
+  expect(rewriteFast.status === 200, 'rewrite request should succeed');
+  expect(rewriteFast.json.model_route === 'fast-lane', 'rewrite request should use fast lane');
+  expect(rewriteFast.json.prompt_variant === 'rewrite', 'rewrite request should report rewrite variant');
+  expect(
+    upstreamState.lastFastSystemPrompt.includes('Rewrite in-game chat in English.'),
+    'rewrite prompt should keep rewrite intent',
+  );
+  expect(
+    upstreamState.lastFastSystemPrompt.includes('Do not force Dota 2, League of Legends, World of Warcraft, or Overwatch terminology.'),
+    'other game prompt should avoid game-specific terminology',
+  );
 
   const fallbackConfig = await updateRuntimeConfig({
     enabled: true,
     provider: 'openai-compatible',
     api_url: `${upstreamBaseUrl}${primaryPath}`,
-    model_name: 'deepseek-ai/DeepSeek-R1',
+    model_name: 'deepseek-ai/DeepSeek-V3.2',
     api_key_env_name: 'PRIMARY_MODEL_API_KEY',
     temperature: 0.2,
     fast_lane: {
       enabled: true,
       provider: 'openai-compatible',
       api_url: `${upstreamBaseUrl}${fastPath}`,
-      model_name: 'deepseek-ai/DeepSeek-R1-Distill-Qwen-7B',
+      model_name: 'Qwen/Qwen3-14B',
       api_key_env_name: 'FAST_MODEL_API_KEY',
       timeout_ms: 5000,
       max_tokens: 48,
       temperature: 0.1,
       max_text_length: 72,
-      allowed_prompt_variants: ['translate'],
+      allowed_prompt_variants: ['translate', 'rewrite'],
     },
   });
-  expect(fallbackConfig.model === 'deepseek-ai/DeepSeek-R1', 'primary model should round-trip');
+  expect(fallbackConfig.model === 'deepseek-ai/DeepSeek-V3.2', 'primary model should round-trip');
 
-  const firstFallback = await translate('fallback once');
+  const firstFallback = await translate({ text: 'fallback once' });
   expect(firstFallback.status === 200, 'fallback request should still succeed');
   expect(firstFallback.json.model_route === 'fast-fallback', 'first request should fall back to primary');
   expect(
@@ -217,7 +265,7 @@ try {
     'fallback should return primary model content',
   );
 
-  const secondFallback = await translate('fallback once');
+  const secondFallback = await translate({ text: 'fallback once' });
   expect(secondFallback.status === 200, 'second request should succeed');
   expect(secondFallback.json.model_route === 'fast-lane', 'second request should retry fast lane');
   expect(
@@ -226,24 +274,45 @@ try {
   );
   expect(upstreamState.fastHits >= 3, 'fast lane should be retried after transient fallback');
 
+  const toxicPrimary = await translate({
+    text: 'stop feeding and play baron side',
+    translation_mode: 'toxic',
+    game_scene: 'lol',
+  });
+  expect(toxicPrimary.status === 200, 'toxic request should succeed');
+  expect(toxicPrimary.json.model_route === 'primary', 'toxic request should stay on primary model');
+  expect(toxicPrimary.json.style_profile === 'toxic', 'toxic style profile should be returned');
+  expect(
+    upstreamState.lastPrimarySystemPrompt.includes('Game:League of Legends'),
+    'lol prompt should include explicit game context',
+  );
+  expect(
+    upstreamState.lastPrimarySystemPrompt.includes('baron'),
+    'lol prompt should mention League of Legends terminology',
+  );
+  expect(
+    upstreamState.lastPrimarySystemPrompt.includes('Style:toxic'),
+    'toxic prompt should include toxic style profile',
+  );
+
   const disabledConfig = await updateRuntimeConfig({
     enabled: false,
     fast_lane: {
       enabled: true,
       provider: 'openai-compatible',
       api_url: `${upstreamBaseUrl}${fastPath}`,
-      model_name: 'deepseek-ai/DeepSeek-R1-Distill-Qwen-7B',
+      model_name: 'Qwen/Qwen3-14B',
       api_key_env_name: 'FAST_MODEL_API_KEY',
       timeout_ms: 5000,
       max_tokens: 48,
       temperature: 0.1,
       max_text_length: 72,
-      allowed_prompt_variants: ['translate'],
+      allowed_prompt_variants: ['translate', 'rewrite'],
     },
   });
   expect(disabledConfig.enabled === false, 'updated config should disable service');
 
-  const blockedResponse = await translate('hello');
+  const blockedResponse = await translate({ text: 'hello' });
   expect(blockedResponse.status === 503, 'disabled config should block translate requests');
   expect(blockedResponse.json.message === 'Translation service is disabled', 'disabled message should match');
 

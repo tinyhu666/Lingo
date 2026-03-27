@@ -1,5 +1,87 @@
 # Client Stability Changes
 
+change187 日期:2026-03-27 | 文件:.phrase/phases/phase-client-stability-20260326/spec_client-stability_20260326.md | 操作:Modify | 影响:阶段需求说明 | 说明:补充 0.5.0 回归与正式发版验收目标，明确完整测试与版本同步要求 | 关联:task030
+change188 日期:2026-03-27 | 文件:.phrase/phases/phase-client-stability-20260326/plan_client-stability_20260326.md | 操作:Modify | 影响:阶段计划 | 说明:新增 0.5.0 回归与发版里程碑、优先级和本地打包与 Actions 分工风险说明 | 关联:task030
+change189 日期:2026-03-27 | 文件:.phrase/phases/phase-client-stability-20260326/task_client-stability_20260326.md | 操作:Modify | 影响:任务清单 | 说明:新增并完成 task030 与 task031，记录 0.5.0 回归、版本同步、提交与发版闭环 | 关联:task031
+change190 日期:2026-03-27 | 文件:package.json | 操作:Modify | 影响:前端版本元数据与脚本入口 | 说明:将应用版本同步到 0.5.0，并保留代理诊断与配置导出脚本作为正式发布的一部分 | 关联:task031
+change191 日期:2026-03-27 | 文件:package-lock.json | 操作:Modify | 影响:npm 锁文件版本元数据 | 说明:将 lockfile 顶层版本同步到 0.5.0，保持构建产物与包元数据一致 | 关联:task031
+change192 日期:2026-03-27 | 文件:src-tauri/Cargo.toml | 操作:Modify | 影响:Tauri Rust 包版本 | 说明:将桌面端 Cargo 版本同步到 0.5.0 | 关联:task031
+change193 日期:2026-03-27 | 文件:src-tauri/Cargo.lock | 操作:Modify | 影响:Rust 锁文件顶层包版本 | 说明:将锁文件中的 Lingo 包版本同步到 0.5.0 | 关联:task031
+change194 日期:2026-03-27 | 文件:src-tauri/tauri.conf.json | 操作:Modify | 影响:Tauri 打包版本元数据 | 说明:将安装包与 updater 元数据版本同步到 0.5.0 | 关联:task031
+change195 日期:2026-03-27 | 文件:.github/workflows/release.yml | 操作:Modify | 影响:Release workflow 默认输入 | 说明:将手动镜像补跑入口的默认 release_tag 更新到 v0.5.0，避免后续误补旧版本 | 关联:task031
+change196 日期:2026-03-27 | 文件:CHANGELOG.md | 操作:Modify | 影响:0.5.0 发布说明 | 说明:新增 0.5.0 更新日志，收口游戏语境、翻译性能与 Windows UI 修复等用户可见变化 | 关联:task031
+
+change173 日期:2026-03-27 | 文件:.phrase/phases/phase-client-stability-20260326/spec_client-stability_20260326.md | 操作:Modify | 影响:阶段需求说明 | 说明:补充 fast lane 可行性评估、批量延迟诊断聚合结果和线上副模型重调验收标准 | 关联:task029
+change174 日期:2026-03-27 | 文件:.phrase/phases/phase-client-stability-20260326/plan_client-stability_20260326.md | 操作:Modify | 影响:阶段计划 | 说明:新增 fast lane 模型重调里程碑与多次采样评估风险说明 | 关联:task029
+change175 日期:2026-03-27 | 文件:.phrase/phases/phase-client-stability-20260326/task_client-stability_20260326.md | 操作:Modify | 影响:任务清单 | 说明:新增并完成 task029，记录 SiliconFlow fast lane 可行性调优与前后对比测速结论 | 关联:task029
+change176 日期:2026-03-27 | 文件:server/translate-proxy/src/runtime-config.mjs | 操作:Modify | 影响:运行时推荐模型默认值 | 说明:将默认 fast lane 从 Qwen/Qwen3-32B 下调到 Qwen/Qwen3-14B，并把快路由超时预算收敛到 5000ms | 关联:task029
+change177 日期:2026-03-27 | 文件:server/translate-proxy/runtime-config.example.json | 操作:Modify | 影响:代理示例配置 | 说明:将示例 fast lane 调整为 Qwen/Qwen3-14B 与 5000ms 超时，和当前低延迟推荐保持一致 | 关联:task029
+change178 日期:2026-03-27 | 文件:server/translate-proxy/scripts/smoke-test.mjs | 操作:Modify | 影响:代理自动化验证 | 说明:将 smoke 中的 fast lane 模型期望同步到 Qwen/Qwen3-14B，保持测试与推荐配置一致 | 关联:task029
+change179 日期:2026-03-27 | 文件:server/translate-proxy/scripts/diagnose-latency.mjs | 操作:Add | 影响:代理批量延迟诊断 | 说明:新增可配置 runs 与 delay 的批量测速能力，输出 p50/p95、快路由命中率、回退率与 assessment 结论 | 关联:task029
+change180 日期:2026-03-27 | 文件:server/translate-proxy/Caddyfile | 操作:Modify | 影响:Caddy 域名配置 | 说明:将 Caddy 站点地址改为读取 CADDY_DOMAIN 环境变量，避免同步仓库后把线上真实域名覆写回示例域名 | 关联:task029
+change181 日期:2026-03-27 | 文件:server/translate-proxy/docker-compose.yml | 操作:Modify | 影响:Caddy 容器环境注入 | 说明:为 caddy 服务接入 .env，确保 CADDY_DOMAIN 能进入容器配置渲染路径 | 关联:task029
+change182 日期:2026-03-27 | 文件:server/translate-proxy/.env.example | 操作:Modify | 影响:代理环境变量示例 | 说明:新增 CADDY_DOMAIN 并把环境回退主模型默认值同步到 DeepSeek-V3.2 与当前预算 | 关联:task029
+change183 日期:2026-03-27 | 文件:docs/tencent-cloud-translate-proxy.md | 操作:Modify | 影响:代理部署文档 | 说明:更新当前推荐为 DeepSeek-V3.2 加 Qwen/Qwen3-14B，补充 32B fast lane 不可行原因、批量测速命令与 CADDY_DOMAIN 说明 | 关联:task029
+change184 日期:2026-03-27 | 文件:服务器:/home/ubuntu/lingo-translate-proxy/data/runtime-config.json | 操作:Modify | 影响:线上翻译代理运行时配置 | 说明:将 buffpp.com 线上 fast lane 从 Qwen/Qwen3-32B 切换到 Qwen/Qwen3-14B，并保留 DeepSeek-V3.2 作为主模型 | 关联:task029
+change185 日期:2026-03-27 | 文件:服务器:/home/ubuntu/lingo-translate-proxy/Caddyfile | 操作:Modify | 影响:线上反向代理域名与 TLS | 说明:通过同步新的 Caddyfile 与 docker-compose，并在 .env 写入 CADDY_DOMAIN=buffpp.com，恢复重启后公网 TLS 与摘要可用 | 关联:task029
+change186 日期:2026-03-27 | 文件:服务器:https://buffpp.com/translate | 操作:Modify | 影响:线上翻译代理真实表现 | 说明:批量测速确认 32B 方案 fast-fallback_rate=100% 不可行，切换到 14B 后冷请求 p50 576ms、rewrite p50 555ms、assessment=viable | 关联:task029
+
+change171 日期:2026-03-27 | 文件:.phrase/phases/phase-client-stability-20260326/spec_client-stability_20260326.md | 操作:Modify | 影响:阶段需求说明 | 说明:补充线上 buffpp.com 代理必须真实切到新模型组合及其公网验收标准 | 关联:task028
+change172 日期:2026-03-27 | 文件:.phrase/phases/phase-client-stability-20260326/plan_client-stability_20260326.md | 操作:Modify | 影响:阶段计划 | 说明:新增线上 buffpp.com 真实部署里程碑、优先级与备份回滚风险说明 | 关联:task028
+
+change167 日期:2026-03-27 | 文件:.phrase/phases/phase-client-stability-20260326/task_client-stability_20260326.md | 操作:Modify | 影响:任务清单 | 说明:新增并完成 task028，记录线上 buffpp.com 翻译代理的真实切换与验证闭环 | 关联:task028
+change168 日期:2026-03-27 | 文件:服务器:/home/ubuntu/lingo-translate-proxy | 操作:Modify | 影响:线上翻译代理代码 | 说明:通过 SSH 备份并同步最新 server/translate-proxy 代码到 buffpp.com 部署目录，确保线上服务具备 fast_lane 与新诊断字段能力 | 关联:task028
+change169 日期:2026-03-27 | 文件:服务器:/home/ubuntu/lingo-translate-proxy/data/runtime-config.json | 操作:Modify | 影响:线上翻译代理运行时配置 | 说明:将线上运行时配置切换为 DeepSeek-V3.2 主模型与 Qwen/Qwen3-32B fast lane，并用 docker compose 重建服务 | 关联:task028
+change170 日期:2026-03-27 | 文件:服务器:https://buffpp.com/translate | 操作:Modify | 影响:线上翻译代理公网摘要与真实请求 | 说明:验证公网摘要已返回新模型组合，且带 BACKEND_PUBLIC_KEY 的真实 POST 翻译成功但当前表现为 fast-fallback | 关联:task028
+
+change160 日期:2026-03-27 | 文件:.phrase/phases/phase-client-stability-20260326/spec_client-stability_20260326.md | 操作:Modify | 影响:阶段需求说明 | 说明:补充 Supabase 翻译运行时默认值也需同步到新的主模型与预算，避免多入口配置漂移 | 关联:task027
+change161 日期:2026-03-27 | 文件:.phrase/phases/phase-client-stability-20260326/plan_client-stability_20260326.md | 操作:Modify | 影响:阶段计划 | 说明:新增 Supabase 遗留翻译运行时默认值同步的里程碑、优先级与 fast lane 能力边界说明 | 关联:task027
+change162 日期:2026-03-27 | 文件:.phrase/phases/phase-client-stability-20260326/task_client-stability_20260326.md | 操作:Modify | 影响:任务清单 | 说明:新增 task027 以收口 Supabase 翻译运行时默认值与文档同步 | 关联:task027
+change163 日期:2026-03-27 | 文件:supabase/translation-runtime.example.json | 操作:Modify | 影响:Supabase 翻译示例配置 | 说明:将 Supabase 翻译运行时示例的默认主模型升级为 DeepSeek-V3.2，并同步低延迟预算 | 关联:task027
+change164 日期:2026-03-27 | 文件:docs/translation-service-config.md | 操作:Modify | 影响:Supabase 翻译运行时文档 | 说明:同步 Supabase 示例主模型与预算，并明确该路径不具备代理的双模型 fast lane | 关联:task027
+change165 日期:2026-03-27 | 文件:supabase/functions/translate/index.ts | 操作:Modify | 影响:Supabase Edge Function 默认模型 | 说明:将函数运行时和环境回退的默认主模型统一升级到 DeepSeek-V3.2 | 关联:task027
+change166 日期:2026-03-27 | 文件:supabase/migrations/20260317160000_translation_runtime_config.sql | 操作:Modify | 影响:Supabase 运行时配置种子 | 说明:将数据库种子中的默认主模型与预算同步为 DeepSeek-V3.2 和低延迟预算 | 关联:task027
+
+change153 日期:2026-03-27 | 文件:.phrase/phases/phase-client-stability-20260326/spec_client-stability_20260326.md | 操作:Modify | 影响:阶段需求说明 | 说明:将 SiliconFlow 推荐默认模型组合升级为 DeepSeek-V3.2 和 Qwen/Qwen3-32B，并明确当前官方未公开 Qwen3.5 model id | 关联:task026
+change154 日期:2026-03-27 | 文件:.phrase/phases/phase-client-stability-20260326/plan_client-stability_20260326.md | 操作:Modify | 影响:阶段计划 | 说明:将默认模型组合提强目标收敛为 DeepSeek-V3.2 加 Qwen/Qwen3-32B，并补充回退到 Qwen/Qwen3-14B 的风险说明 | 关联:task026
+change155 日期:2026-03-27 | 文件:.phrase/phases/phase-client-stability-20260326/task_client-stability_20260326.md | 操作:Modify | 影响:任务清单 | 说明:更新 task026 为更强的主副模型组合目标，要求同步说明当前官方未公开的 Qwen3.5 现状 | 关联:task026
+change156 日期:2026-03-27 | 文件:server/translate-proxy/src/runtime-config.mjs | 操作:Modify | 影响:运行时推荐模型默认值 | 说明:将默认主模型升级为 DeepSeek-V3.2、默认副模型升级为 Qwen/Qwen3-32B，并同步放宽副模型超时预算 | 关联:task026
+change157 日期:2026-03-27 | 文件:server/translate-proxy/runtime-config.example.json | 操作:Modify | 影响:代理示例配置 | 说明:将示例配置中的主副模型升级为 DeepSeek-V3.2 和 Qwen/Qwen3-32B，并同步超时预算 | 关联:task026
+change158 日期:2026-03-27 | 文件:server/translate-proxy/scripts/smoke-test.mjs | 操作:Modify | 影响:代理自动化验证 | 说明:将 smoke 中的推荐主副模型切换到 DeepSeek-V3.2 和 Qwen/Qwen3-32B，保持测试与默认推荐一致 | 关联:task026
+change159 日期:2026-03-27 | 文件:docs/tencent-cloud-translate-proxy.md | 操作:Modify | 影响:代理部署文档 | 说明:将默认推荐模型组合升级为 DeepSeek-V3.2 和 Qwen/Qwen3-32B，并写明官方文档中未发现 Qwen3.5 model id | 关联:task026
+
+change144 日期:2026-03-27 | 文件:.phrase/phases/phase-client-stability-20260326/spec_client-stability_20260326.md | 操作:Modify | 影响:阶段需求说明 | 说明:补充 SiliconFlow 翻译默认模型组合与推荐配置输出能力的目标、边界和验收标准 | 关联:task025
+change145 日期:2026-03-27 | 文件:.phrase/phases/phase-client-stability-20260326/plan_client-stability_20260326.md | 操作:Modify | 影响:阶段计划 | 说明:新增 SiliconFlow 推荐模型组合统一与部署配置导出里程碑、优先级和风险说明 | 关联:task025
+change146 日期:2026-03-27 | 文件:.phrase/phases/phase-client-stability-20260326/task_client-stability_20260326.md | 操作:Modify | 影响:任务清单 | 说明:新增 task025 以收口 SiliconFlow 低延迟模型组合与推荐配置输出 | 关联:task025
+change147 日期:2026-03-27 | 文件:server/translate-proxy/src/runtime-config.mjs | 操作:Modify | 影响:运行时推荐模型默认值 | 说明:为启用 fast lane 但未显式指定模型名的环境配置提供 Qwen2.5-7B 推荐默认值，并导出 SiliconFlow 低延迟推荐配置工厂 | 关联:task025
+change148 日期:2026-03-27 | 文件:server/translate-proxy/runtime-config.example.json | 操作:Modify | 影响:代理示例配置 | 说明:将示例配置统一为 DeepSeek-V3 主模型加 Qwen2.5-7B fast lane 的 SiliconFlow 低延迟组合 | 关联:task025
+change149 日期:2026-03-27 | 文件:server/translate-proxy/scripts/print-siliconflow-config.mjs | 操作:Add | 影响:运维配置输出脚本 | 说明:新增可直接输出 JSON 或 curl 的 SiliconFlow 推荐运行时配置脚本 | 关联:task025
+change150 日期:2026-03-27 | 文件:server/translate-proxy/scripts/smoke-test.mjs | 操作:Modify | 影响:代理自动化验证 | 说明:将 smoke 中的主模型与快模型示例统一切换到 DeepSeek-V3 和 Qwen2.5-7B，避免继续用 R1 作为翻译基线 | 关联:task025
+change151 日期:2026-03-27 | 文件:docs/tencent-cloud-translate-proxy.md | 操作:Modify | 影响:代理部署文档 | 说明:新增 SiliconFlow 低延迟模型组合建议、推荐配置脚本用法与可直接 PUT 的推荐 payload | 关联:task025
+change152 日期:2026-03-27 | 文件:package.json | 操作:Modify | 影响:本地运维脚本入口 | 说明:新增 npm run proxy:print-siliconflow-config 便于直接导出推荐配置或 curl 命令 | 关联:task025
+
+change123 日期:2026-03-27 | 文件:.phrase/phases/phase-client-stability-20260326/spec_client-stability_20260326.md | 操作:Modify | 影响:阶段需求说明 | 说明:补充翻译耗时归因、风格 profile、首页游戏选择与具体游戏术语语境增强的目标、边界与验收标准 | 关联:task021
+change124 日期:2026-03-27 | 文件:.phrase/phases/phase-client-stability-20260326/plan_client-stability_20260326.md | 操作:Modify | 影响:阶段计划 | 说明:新增翻译耗时诊断、风格重构、游戏选择接入与 rewrite 快路径优化里程碑、范围和风险约束 | 关联:task022
+change125 日期:2026-03-27 | 文件:.phrase/phases/phase-client-stability-20260326/task_client-stability_20260326.md | 操作:Modify | 影响:任务清单 | 说明:新增并完成 task021-task024，记录翻译提速、风格重构与游戏语境增强闭环 | 关联:task024
+change126 日期:2026-03-27 | 文件:src/constants/gameScenes.js | 操作:Add | 影响:游戏场景枚举与标签 | 说明:新增具体游戏枚举、国际化标签和旧 game_scene 值统一迁移到 dota2 的归一化逻辑 | 关联:task023
+change127 日期:2026-03-27 | 文件:src/services/settingsStore.js | 操作:Modify | 影响:前端设置读写归一化 | 说明:在预览态与桌面端统一归一化 game_scene，确保旧场景值加载和保存时都迁移到新枚举 | 关联:task023
+change128 日期:2026-03-27 | 文件:src/pages/home/components/GameSceneCard.jsx | 操作:Add | 影响:首页游戏选择入口 | 说明:新增首页游戏选择卡片与下拉菜单，支持 Dota 2、英雄联盟、魔兽世界、守望先锋和其他游戏 | 关联:task023
+change129 日期:2026-03-27 | 文件:src/pages/home/index.jsx | 操作:Modify | 影响:首页顶区布局 | 说明:将首页顶区扩展为翻译语言、游戏选择、快捷键和启用状态四张核心卡片 | 关联:task023
+change130 日期:2026-03-27 | 文件:src/index.css | 操作:Modify | 影响:首页卡片网格布局 | 说明:为新增游戏选择卡片调整首页桌面端栅格跨度，保持四张主设置卡的布局平衡 | 关联:task023
+change131 日期:2026-03-27 | 文件:src/pages/Settings.jsx | 操作:Modify | 影响:策略展示页场景标签 | 说明:隐藏设置页改为展示新的具体游戏名称，避免继续回落到旧的 general/moba/fps/mmo 文案 | 关联:task023
+change132 日期:2026-03-27 | 文件:src/i18n/messages.js | 操作:Modify | 影响:游戏选择与场景国际化文案 | 说明:新增首页游戏选择中英俄文案，并将场景标签升级为具体游戏名称 | 关联:task023
+change133 日期:2026-03-27 | 文件:src/i18n/messages.js | 操作:Modify | 影响:翻译风格说明文案 | 说明:强化 auto、pro、toxic 三种风格在词汇、句长和语气上的差异说明，匹配新的 style profile | 关联:task022
+change134 日期:2026-03-27 | 文件:src-tauri/src/store.rs | 操作:Modify | 影响:桌面端设置默认值与迁移 | 说明:将 game_scene 默认值改为 dota2，统一迁移旧场景值并新增归一化单元测试 | 关联:task023
+change135 日期:2026-03-27 | 文件:server/translate-proxy/src/server.mjs | 操作:Modify | 影响:代理耗时诊断 | 说明:为代理响应与日志新增 proxy_overhead_ms 和 style_profile，直接区分模型耗时与接口开销 | 关联:task021
+change136 日期:2026-03-27 | 文件:src-tauri/src/ai_translator.rs | 操作:Modify | 影响:客户端翻译性能日志 | 说明:客户端日志新增 proxy_overhead_ms、model_route 与 style_profile 输出，用于追踪慢请求根因 | 关联:task021
+change137 日期:2026-03-27 | 文件:server/translate-proxy/scripts/diagnose-latency.mjs | 操作:Add | 影响:翻译耗时诊断脚本 | 说明:新增可重复执行的诊断脚本，输出冷请求、热缓存与 rewrite 场景下的模型/接口耗时结论 | 关联:task021
+change138 日期:2026-03-27 | 文件:package.json | 操作:Modify | 影响:本地诊断脚本入口 | 说明:新增 npm run proxy:diagnose 便于直接运行翻译耗时归因脚本 | 关联:task021
+change139 日期:2026-03-27 | 文件:server/translate-proxy/src/server.mjs | 操作:Modify | 影响:翻译风格与游戏术语 prompt | 说明:重构 style profile 和具体游戏语境 prompt，让 auto/pro/toxic 区分更明显并显式注入指定游戏术语 | 关联:task022
+change140 日期:2026-03-27 | 文件:server/translate-proxy/src/runtime-config.mjs | 操作:Modify | 影响:快路径默认路由策略 | 说明:将 fast lane 默认允许的 prompt variant 扩展到 translate 和 rewrite，支持短文本润色走快路径 | 关联:task024
+change141 日期:2026-03-27 | 文件:server/translate-proxy/runtime-config.example.json | 操作:Modify | 影响:代理示例配置 | 说明:同步 fast lane 示例配置的 allowed_prompt_variants 到 translate+rewrite | 关联:task024
+change142 日期:2026-03-27 | 文件:server/translate-proxy/scripts/smoke-test.mjs | 操作:Modify | 影响:代理自动化验证 | 说明:扩展 smoke 覆盖 rewrite 快路径、风格 profile 返回、指定游戏 prompt 注入与 toxic 主模型路由 | 关联:task024
+change143 日期:2026-03-27 | 文件:docs/tencent-cloud-translate-proxy.md | 操作:Modify | 影响:代理部署文档 | 说明:补充 proxy_overhead_ms、style_profile 和 rewrite 快路径的诊断与配置说明 | 关联:task021
+
 change113 日期:2026-03-27 | 文件:package.json | 操作:Modify | 影响:前端版本元数据 | 说明:将前端版本号同步到 0.4.1 以承载本次补丁发版 | 关联:task020
 change114 日期:2026-03-27 | 文件:package-lock.json | 操作:Modify | 影响:NPM 锁文件版本元数据 | 说明:同步锁文件根版本号到 0.4.1 | 关联:task020
 change115 日期:2026-03-27 | 文件:src-tauri/Cargo.toml | 操作:Modify | 影响:Rust 包版本元数据 | 说明:将桌面端 Rust 包版本同步到 0.4.1 | 关联:task020

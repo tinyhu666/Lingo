@@ -141,7 +141,9 @@ const parseRuntimeConfig = (
     enabled: record.enabled !== false,
     provider,
     apiUrl: normalizeApiUrlByProvider(record.api_url, provider),
-    modelName: String(record.model_name || 'deepseek-ai/DeepSeek-V3').trim() || 'deepseek-ai/DeepSeek-V3',
+    modelName:
+      String(record.model_name || 'deepseek-ai/DeepSeek-V3.2').trim() ||
+      'deepseek-ai/DeepSeek-V3.2',
     apiKeySecretName:
       String(record.api_key_secret_name || 'MODEL_API_KEY').trim() || 'MODEL_API_KEY',
     timeoutMs: clampNumber(record.timeout_ms, DEFAULT_TIMEOUT_MS, 3_000, 120_000),
@@ -157,7 +159,7 @@ const environmentRuntimeConfig = () =>
     {
       provider: Deno.env.get('MODEL_PROVIDER') || 'openai-compatible',
       api_url: Deno.env.get('MODEL_API_URL') || 'https://api.siliconflow.cn/v1/chat/completions',
-      model_name: Deno.env.get('MODEL_NAME') || 'deepseek-ai/DeepSeek-V3',
+      model_name: Deno.env.get('MODEL_NAME') || 'deepseek-ai/DeepSeek-V3.2',
       api_key_secret_name: Deno.env.get('MODEL_API_KEY_SECRET_NAME') || 'MODEL_API_KEY',
       timeout_ms: Deno.env.get('MODEL_TIMEOUT_MS') || DEFAULT_TIMEOUT_MS,
       max_tokens: Deno.env.get('MODEL_MAX_TOKENS') || DEFAULT_MAX_TOKENS,

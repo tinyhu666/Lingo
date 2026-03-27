@@ -1108,7 +1108,11 @@
     }
 
     .home-grid__stat--translation {
-      grid-column: span 5 / span 5;
+      grid-column: span 4 / span 4;
+    }
+
+    .home-grid__stat--game {
+      grid-column: span 3 / span 3;
     }
 
     .home-grid__stat--hotkey {
@@ -1116,7 +1120,7 @@
     }
 
     .home-grid__stat--status {
-      grid-column: span 4 / span 4;
+      grid-column: span 2 / span 2;
     }
 
     .home-grid__guide {
@@ -1266,7 +1270,12 @@
 
   html.platform-desktop .home-grid__stat--translation,
   body.platform-desktop .home-grid__stat--translation {
-    grid-column: span 5 / span 5;
+    grid-column: span 4 / span 4;
+  }
+
+  html.platform-desktop .home-grid__stat--game,
+  body.platform-desktop .home-grid__stat--game {
+    grid-column: span 3 / span 3;
   }
 
   html.platform-desktop .home-grid__stat--hotkey,
@@ -1276,7 +1285,7 @@
 
   html.platform-desktop .home-grid__stat--status,
   body.platform-desktop .home-grid__stat--status {
-    grid-column: span 4 / span 4;
+    grid-column: span 2 / span 2;
   }
 
   html.platform-desktop .home-grid__guide,

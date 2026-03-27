@@ -25,10 +25,11 @@ It provides:
 
 `POST /translate` responses also include lightweight diagnostics such as
 `response_source`, `attempt_count`, `latency_ms`, `model_latency_ms`,
-`model_route`, `prompt_variant`, `effective_max_tokens`,
-`effective_temperature`, and `trace_id`, so you can tell whether a request came from model execution,
-in-memory hot cache, or a shared in-flight request, and which adaptive request
-budget was actually used.
+`proxy_overhead_ms`, `model_route`, `prompt_variant`, `style_profile`,
+`effective_max_tokens`, `effective_temperature`, and `trace_id`, so you can tell
+whether a request was slow because of model execution or proxy/interface overhead,
+whether it came from model execution, in-memory hot cache, or a shared in-flight
+request, and which adaptive request budget was actually used.
 
 ## Server-Side Config Model
 
@@ -42,7 +43,33 @@ whether the request is a translation or a same-language rewrite, so first-hit
 latency stays lower without requiring separate client logic.
 If you need a lower-latency model for short new messages, you can optionally
 enable `fast_lane`; the proxy will try that model first for eligible requests
-and fall back to the primary model on failure.
+and fall back to the primary model on failure. By default, both short
+`translate` and short `rewrite` requests can be routed through fast lane as long
+as the selected style profile allows it.
+
+## SiliconFlow Model Recommendation
+
+For SiliconFlow-backed translation, avoid using `deepseek-ai/DeepSeek-R1` or
+`DeepSeek-R1-Distill-*` as the primary translation model. They are reasoning
+models and usually add latency without improving short chat-style translation.
+As of March 27, 2026, SiliconFlow's official docs show `deepseek-ai/DeepSeek-V3.2`,
+`Qwen/Qwen3-32B`, and `Qwen/Qwen3-14B` as supported chat-completions model IDs;
+I did not find a published `Qwen3.5` model ID in the current official docs.
+
+Recommended split for Lingo:
+
+- Primary model: `deepseek-ai/DeepSeek-V3.2`
+- Fast lane model: `Qwen/Qwen3-14B`
+
+If this is still not strong enough for your game terminology, stay on the same
+primary model and move the fast lane to a larger Qwen3-tier model that is
+actually listed in SiliconFlow's official model catalog. In Lingo's live
+testing, `Qwen/Qwen3-32B` was strong enough but too heavy for the fast-lane
+role: short requests repeatedly waited for the fast model and then returned via
+`fast-fallback`, which erased most latency gains. `Qwen/Qwen3-14B` keeps the
+Qwen3 family while fitting the fast-lane budget more realistically. Do not
+switch the primary model to `R1` unless you specifically want slower
+reasoning-heavy behavior.
 
 Suggested split:
 
@@ -89,10 +116,28 @@ At minimum set:
 
 - `ADMIN_TOKEN`
 - `BACKEND_PUBLIC_KEY`
+- `CADDY_DOMAIN`
 - `MODEL_API_KEY`
 - `MODEL_PROVIDER`
 - `MODEL_API_URL`
 - `MODEL_NAME`
+
+`server/translate-proxy/Caddyfile` now reads `{$CADDY_DOMAIN}` from the
+container environment, so you can safely sync repository updates to the server
+without overwriting your real public domain back to `translate.example.com`.
+
+If you want to print the repository's recommended SiliconFlow payload instead of
+copying the example file by hand, run:
+
+```bash
+npm run proxy:print-siliconflow-config
+```
+
+To print a ready-to-run `curl` for your deployed proxy:
+
+```bash
+npm run proxy:print-siliconflow-config -- --format=curl --url=https://your-domain.example.com
+```
 
 5. Edit `Caddyfile`.
 
@@ -127,28 +172,43 @@ curl -X PUT "https://your-domain.example.com/admin/runtime-config" \
     "enabled": true,
     "provider": "openai-compatible",
     "api_url": "https://api.siliconflow.cn/v1/chat/completions",
-    "model_name": "deepseek-ai/DeepSeek-V3",
+    "model_name": "deepseek-ai/DeepSeek-V3.2",
     "api_key_env_name": "MODEL_API_KEY",
     "timeout_ms": 12000,
     "max_tokens": 96,
     "temperature": 0.2,
     "fast_lane": {
-      "enabled": false,
+      "enabled": true,
       "provider": "openai-compatible",
       "api_url": "https://api.siliconflow.cn/v1/chat/completions",
-      "model_name": "",
+      "model_name": "Qwen/Qwen3-14B",
       "api_key_env_name": "MODEL_API_KEY",
       "timeout_ms": 5000,
       "max_tokens": 48,
       "temperature": 0.1,
       "max_text_length": 72,
-      "allowed_prompt_variants": ["translate"]
+      "allowed_prompt_variants": ["translate", "rewrite"]
     }
   }'
 ```
 
 The server writes the result into `data/runtime-config.json`, so the settings
 survive container restarts.
+
+This repository's current latency-first recommendation is the same payload:
+`DeepSeek-V3.2` stays as the primary model, and `Qwen/Qwen3-14B`
+handles short `translate` and `rewrite` requests through fast lane.
+
+For a repeatable feasibility check against your live proxy, run:
+
+```bash
+npm run proxy:diagnose -- --url=https://your-domain.example.com --token=YOUR_BACKEND_PUBLIC_KEY --runs=5
+```
+
+The script now prints per-run rows plus scenario summaries with `p50`, `p95`,
+`fast_lane_rate`, `fast_fallback_rate`, `cache_hit_rate`, and a coarse
+`assessment=` conclusion, so you can tell whether the current fast-lane model is
+actually viable.
 
 ## Connect Lingo To Tencent Cloud
 
@@ -165,5 +225,5 @@ Run the included smoke test:
 
 ```bash
 cd server/translate-proxy
-npm run smoke
+npm run proxy:smoke
 ```

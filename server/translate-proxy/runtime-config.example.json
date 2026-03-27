@@ -2,21 +2,21 @@
   "enabled": true,
   "provider": "openai-compatible",
   "api_url": "https://api.siliconflow.cn/v1/chat/completions",
-  "model_name": "deepseek-ai/DeepSeek-V3",
+  "model_name": "deepseek-ai/DeepSeek-V3.2",
   "api_key_env_name": "MODEL_API_KEY",
   "timeout_ms": 12000,
   "max_tokens": 96,
   "temperature": 0.2,
   "fast_lane": {
-    "enabled": false,
+    "enabled": true,
     "provider": "openai-compatible",
     "api_url": "https://api.siliconflow.cn/v1/chat/completions",
-    "model_name": "",
+    "model_name": "Qwen/Qwen3-14B",
     "api_key_env_name": "MODEL_API_KEY",
     "timeout_ms": 5000,
     "max_tokens": 48,
     "temperature": 0.1,
     "max_text_length": 72,
-    "allowed_prompt_variants": ["translate"]
+    "allowed_prompt_variants": ["translate", "rewrite"]
   }
 }

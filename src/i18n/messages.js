@@ -56,6 +56,12 @@ export const messages = {
         desc2: '语言相同也可用于润色或增强表达语气。',
         updateFailed: '更新翻译语言失败: {{error}}',
       },
+      gameScene: {
+        title: '游戏选择',
+        desc1: '指定当前主要游戏，翻译会优先贴近该游戏的常用术语。',
+        desc2: '默认 Dota 2；选择其他游戏时，不额外注入特定游戏术语。',
+        updateFailed: '更新游戏选择失败: {{error}}',
+      },
       hotkey: {
         title: '快捷键',
         recordingHint: '按下组合键，松开任意键完成设置。',
@@ -104,18 +110,18 @@ export const messages = {
       mode: {
         auto: {
           title: '普通',
-          desc: '平衡准确、自然和可读性，适合大部分对局沟通。',
-          detail: '优先输出自然、稳妥、可直接发送的表达。',
+          desc: '自然、稳妥、好理解，像正常队友在语音里清楚地说话。',
+          detail: '优先保留原意，用顺口、平衡、可直接发送的表达完成翻译。',
         },
         pro: {
           title: '职业',
-          desc: '术语更集中，指令更短，适合团队配合与节奏交流。',
-          detail: '保留更多游戏术语和节奏词，更适合高频协同。',
+          desc: '术语更硬，句子更短，更像高分局里的指令和节奏沟通。',
+          detail: '优先压缩废话，保留节奏词、目标词和常见游戏缩略，更适合高频协同。',
         },
         toxic: {
           title: '喷子',
-          desc: '语气更重、施压更强，适合抢节奏、压气势的对局场景。',
-          detail: '嘴强、喷子、压力怪风格，表达语气更强烈。',
+          desc: '语气更冲、压力更足，适合带节奏和心理压制，但仍保持游戏内可用。',
+          detail: '会更挑衅、更带火药味，但不会越界到仇恨、威胁或极端辱骂。',
         },
       },
     },
@@ -173,10 +179,11 @@ export const messages = {
       },
       serviceSummary: '当客户端启用时，翻译会通过服务端统一模型配置执行；Lingo 负责把结果回填到当前输入框，让你少切换、少停顿、少卡壳。',
       scene: {
-        general: '通用',
-        moba: 'MOBA',
-        fps: 'FPS',
-        mmo: 'MMO',
+        dota2: 'Dota 2',
+        lol: '英雄联盟',
+        wow: '魔兽世界',
+        overwatch: '守望先锋',
+        other: '其他游戏',
       },
     },
     about: {
@@ -290,6 +297,12 @@ export const messages = {
         desc2: 'Selecting the same language can be used for polishing tone.',
         updateFailed: 'Failed to update translation languages: {{error}}',
       },
+      gameScene: {
+        title: 'Game',
+        desc1: 'Choose the game you are playing so translations can stay closer to its common jargon.',
+        desc2: 'Default is Dota 2. Selecting Other Game keeps the output generic.',
+        updateFailed: 'Failed to update game selection: {{error}}',
+      },
       hotkey: {
         title: 'Hotkey',
         recordingHint: 'Press a combo and release any key to save.',
@@ -338,18 +351,18 @@ export const messages = {
       mode: {
         auto: {
           title: 'Normal',
-          desc: 'Balanced and natural output for most matches.',
-          detail: 'Prioritizes natural, stable, and send-ready phrasing.',
+          desc: 'Natural, steady, and easy to understand, like a normal teammate speaking clearly.',
+          detail: 'Keeps the meaning intact and favors balanced, send-ready phrasing.',
         },
         pro: {
           title: 'Pro',
-          desc: 'Denser terminology and shorter commands for team coordination.',
-          detail: 'Keeps more game terms for high-frequency cooperation.',
+          desc: 'Denser terminology and shorter, harder calls for coordinated team play.',
+          detail: 'Cuts filler, keeps tempo words, and preserves common game shorthand where it helps.',
         },
         toxic: {
           title: 'Toxic',
-          desc: 'Stronger tone and pressure for tempo and intimidation.',
-          detail: 'Sharper wording with stronger emotional tone.',
+          desc: 'Sharper and more confrontational for pressure and tempo, while staying in-game usable.',
+          detail: 'Pushes harder with taunting energy, but avoids hate speech, threats, or extreme abuse.',
         },
       },
     },
@@ -407,10 +420,11 @@ export const messages = {
       },
       serviceSummary: 'When enabled, translation runs through backend unified model configuration, and Lingo writes the result straight back into the current input box to keep momentum intact.',
       scene: {
-        general: 'General',
-        moba: 'MOBA',
-        fps: 'FPS',
-        mmo: 'MMO',
+        dota2: 'Dota 2',
+        lol: 'League of Legends',
+        wow: 'World of Warcraft',
+        overwatch: 'Overwatch',
+        other: 'Other Game',
       },
     },
     about: {
@@ -524,6 +538,12 @@ export const messages = {
         desc2: 'Одинаковые языки можно использовать для стилистической правки.',
         updateFailed: 'Не удалось обновить языки перевода: {{error}}',
       },
+      gameScene: {
+        title: 'Игра',
+        desc1: 'Выберите игру, чтобы перевод лучше держался ее привычной терминологии.',
+        desc2: 'По умолчанию Dota 2. Режим «Другая игра» оставляет перевод без специального игрового словаря.',
+        updateFailed: 'Не удалось обновить выбор игры: {{error}}',
+      },
       hotkey: {
         title: 'Горячая клавиша',
         recordingHint: 'Нажмите комбинацию и отпустите любую клавишу для сохранения.',
@@ -572,18 +592,18 @@ export const messages = {
       mode: {
         auto: {
           title: 'Обычный',
-          desc: 'Сбалансированный и естественный стиль для большинства матчей.',
-          detail: 'Приоритет: естественность, стабильность и готовность к отправке.',
+          desc: 'Естественный, ровный и понятный стиль, как у обычного тиммейта в голосе.',
+          detail: 'Сохраняет смысл и делает реплику удобной для мгновенной отправки.',
         },
         pro: {
           title: 'Профи',
-          desc: 'Больше терминов и коротких команд для командной игры.',
-          detail: 'Сохраняет игровые термины для интенсивной координации.',
+          desc: 'Больше терминов, короче команды и жестче подача для командной координации.',
+          detail: 'Срезает лишнее, оставляет темповые слова и привычные игровые сокращения.',
         },
         toxic: {
           title: 'Токсик',
-          desc: 'Более резкий тон для давления и темпа.',
-          detail: 'Более жесткая подача и эмоциональная окраска.',
+          desc: 'Более резкий и давящий стиль для темпа и психологического давления, но все еще уместный в игре.',
+          detail: 'Добавляет колкость и давление, но не уходит в ненависть, угрозы или крайние оскорбления.',
         },
       },
     },
@@ -641,10 +661,11 @@ export const messages = {
       },
       serviceSummary: 'Когда клиент включен, перевод выполняется по единой серверной конфигурации, а Lingo автоматически возвращает результат в текущее поле ввода без лишних переключений.',
       scene: {
-        general: 'Общий',
-        moba: 'MOBA',
-        fps: 'FPS',
-        mmo: 'MMO',
+        dota2: 'Dota 2',
+        lol: 'League of Legends',
+        wow: 'World of Warcraft',
+        overwatch: 'Overwatch',
+        other: 'Другая игра',
       },
     },
     about: {

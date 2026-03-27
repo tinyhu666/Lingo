@@ -28,7 +28,7 @@ Example payload:
   "enabled": true,
   "provider": "openai-compatible",
   "api_url": "https://api.siliconflow.cn/v1/chat/completions",
-  "model_name": "deepseek-ai/DeepSeek-V3",
+  "model_name": "deepseek-ai/DeepSeek-V3.2",
   "api_key_secret_name": "MODEL_API_KEY",
   "timeout_ms": 12000,
   "max_tokens": 96,
@@ -38,6 +38,12 @@ Example payload:
 
 The same example is also stored in
 `supabase/translation-runtime.example.json`.
+
+If you still use the Supabase Edge Function path instead of the standalone
+translate proxy, keep its primary model aligned with the proxy recommendation:
+use `deepseek-ai/DeepSeek-V3.2` for the main translation model. This legacy path
+does not currently expose the proxy's dual-model fast-lane routing, so it
+should not be treated as the place to tune short-text latency.
 
 ## Required Secrets
 

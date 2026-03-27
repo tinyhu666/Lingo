@@ -3,6 +3,7 @@ import { useMemo } from 'react';
 import { Server, Sparkles, Globe, Cpu } from '../icons';
 import { useStore } from '../components/StoreProvider';
 import { getLanguageMeta } from '../constants/languages';
+import { DEFAULT_GAME_SCENE, getGameSceneLabel } from '../constants/gameScenes';
 import { useI18n } from '../i18n/I18nProvider';
 
 export default function Settings() {
@@ -35,7 +36,7 @@ export default function Settings() {
 
   const from = settings?.translation_from || 'zh';
   const to = settings?.translation_to || 'en';
-  const scene = t(`settings.scene.${settings?.game_scene || 'general'}`);
+  const scene = getGameSceneLabel(settings?.game_scene || DEFAULT_GAME_SCENE, locale);
   const modeKey = `translate.mode.${settings?.translation_mode || 'auto'}.title`;
   const modeLabel = t(modeKey) === modeKey ? t('translate.mode.auto.title') : t(modeKey);
 

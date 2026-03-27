@@ -30,11 +30,11 @@ values (
     'enabled', true,
     'provider', 'openai-compatible',
     'api_url', 'https://api.siliconflow.cn/v1/chat/completions',
-    'model_name', 'deepseek-ai/DeepSeek-V3',
+    'model_name', 'deepseek-ai/DeepSeek-V3.2',
     'api_key_secret_name', 'MODEL_API_KEY',
-    'timeout_ms', 20000,
-    'max_tokens', 140,
-    'temperature', 0.4
+    'timeout_ms', 12000,
+    'max_tokens', 96,
+    'temperature', 0.2
   )
 )
 on conflict (key) do nothing;

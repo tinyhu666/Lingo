@@ -5,6 +5,7 @@ use tauri_plugin_store::StoreExt;
 const STORE_FILENAME: &str = "store.json";
 const UI_LOCALE_KEY: &str = "ui_locale";
 const DEFAULT_UI_LOCALE: &str = "zh-CN";
+const DEFAULT_GAME_SCENE: &str = "dota2";
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 #[serde(default)]
@@ -74,7 +75,7 @@ impl Default for AppSettings {
             trans_hotkey: HotkeyConfig::default(),
             translation_from: "zh".to_string(),
             translation_to: "en".to_string(),
-            game_scene: "general".to_string(),
+            game_scene: DEFAULT_GAME_SCENE.to_string(),
             translation_mode: "auto".to_string(),
             daily_mode: false,
             phrases: default_phrases(),
@@ -84,6 +85,16 @@ impl Default for AppSettings {
 
 fn default_true() -> bool {
     true
+}
+
+fn normalize_game_scene(scene: &str) -> String {
+    let normalized = scene.trim().to_ascii_lowercase();
+
+    match normalized.as_str() {
+        "dota2" | "lol" | "wow" | "overwatch" | "other" => normalized,
+        "general" | "moba" | "fps" | "mmo" | "" => DEFAULT_GAME_SCENE.to_string(),
+        _ => DEFAULT_GAME_SCENE.to_string(),
+    }
 }
 
 fn normalize_ui_locale(locale: Option<&str>) -> String {
@@ -141,9 +152,7 @@ fn normalize_settings(settings: &mut AppSettings) {
         settings.translation_to = "en".to_string();
     }
 
-    if settings.game_scene.is_empty() {
-        settings.game_scene = "general".to_string();
-    }
+    settings.game_scene = normalize_game_scene(&settings.game_scene);
 
     if settings.translation_mode.is_empty() {
         settings.translation_mode = "auto".to_string();
@@ -232,4 +241,38 @@ pub fn get_ui_locale(app: &AppHandle) -> Result<String, anyhow::Error> {
         .get(UI_LOCALE_KEY)
         .and_then(|value| value.as_str().map(|item| item.to_string()));
     Ok(normalize_ui_locale(current.as_deref()))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn default_settings_use_dota2_game_scene() {
+        assert_eq!(AppSettings::default().game_scene, DEFAULT_GAME_SCENE);
+    }
+
+    #[test]
+    fn normalize_settings_resets_legacy_game_scene_values_to_dota2() {
+        for legacy in ["general", "moba", "fps", "mmo", "", "unknown-scene"] {
+            let mut settings = AppSettings {
+                game_scene: legacy.to_string(),
+                ..AppSettings::default()
+            };
+            normalize_settings(&mut settings);
+            assert_eq!(settings.game_scene, DEFAULT_GAME_SCENE, "legacy={legacy}");
+        }
+    }
+
+    #[test]
+    fn normalize_settings_preserves_new_game_scene_values() {
+        for scene in ["dota2", "lol", "wow", "overwatch", "other"] {
+            let mut settings = AppSettings {
+                game_scene: scene.to_string(),
+                ..AppSettings::default()
+            };
+            normalize_settings(&mut settings);
+            assert_eq!(settings.game_scene, scene, "scene={scene}");
+        }
+    }
 }

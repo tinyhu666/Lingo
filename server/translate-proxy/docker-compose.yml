@@ -17,6 +17,8 @@ services:
     restart: unless-stopped
     depends_on:
       - translate-proxy
+    env_file:
+      - .env
     ports:
       - "80:80"
       - "443:443"

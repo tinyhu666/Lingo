@@ -481,6 +481,14 @@ pub async fn translate_with_gpt(original: &str, settings: &AppSettings) -> Resul
             .get("prompt_variant")
             .and_then(|value| value.as_str())
             .unwrap_or("-");
+        let style_profile = json
+            .get("style_profile")
+            .and_then(|value| value.as_str())
+            .unwrap_or("-");
+        let model_route = json
+            .get("model_route")
+            .and_then(|value| value.as_str())
+            .unwrap_or("-");
         let effective_max_tokens = json
             .get("effective_max_tokens")
             .and_then(|value| value.as_u64())
@@ -489,13 +497,21 @@ pub async fn translate_with_gpt(original: &str, settings: &AppSettings) -> Resul
             .get("effective_temperature")
             .and_then(|value| value.as_f64())
             .unwrap_or(0.0);
+        let proxy_elapsed_ms = request_started.elapsed().as_millis() as u64;
+        let proxy_overhead_ms = json
+            .get("proxy_overhead_ms")
+            .and_then(|value| value.as_u64())
+            .unwrap_or_else(|| proxy_elapsed_ms.saturating_sub(model_latency_ms));
         println!(
-            "[perf] backend_translate elapsed_ms={} model_latency_ms={} attempts={} source={} prompt_variant={} max_tokens={} temperature={} trace_id={} model={}",
-            request_started.elapsed().as_millis(),
+            "[perf] backend_translate elapsed_ms={} model_latency_ms={} proxy_overhead_ms={} attempts={} source={} route={} prompt_variant={} style_profile={} max_tokens={} temperature={} trace_id={} model={}",
+            proxy_elapsed_ms,
             model_latency_ms,
+            proxy_overhead_ms,
             attempt_count,
             response_source,
+            model_route,
             prompt_variant,
+            style_profile,
             effective_max_tokens,
             effective_temperature,
             trace_id,

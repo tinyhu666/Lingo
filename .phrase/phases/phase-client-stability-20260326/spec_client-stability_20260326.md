@@ -24,6 +24,18 @@
 - 准备正式发版时，前端、Tauri 与 Cargo 的版本元数据需要保持一致，并能产出对应版本号的本地安装包。
 - 翻译慢请求时写入输入框的占位提示需要跟随客户端当前 UI 语言，而不是固定显示中文。
 - 在 `0.4.0` 已发版后，需要能够基于已完成修复快速补发 `0.4.1` 补丁版本，保持版本号、更新日志与自动发版链路一致。
+- 代理需要明确区分模型执行耗时与代理/接口开销，便于直接判断翻译慢主要发生在哪一段。
+- 首页需要增加独立的游戏选择入口，默认 Dota 2，并在翻译时把指定游戏语境明确传给大模型。
+- 三种翻译风格需要从轻量 tone 标签升级为差异明显的风格 profile，避免输出体感过于接近。
+- 指定游戏为 Dota 2、英雄联盟、魔兽世界、守望先锋时，翻译结果应尽量贴近对应游戏术语；选择其他游戏时不做专属术语强化。
+- `auto` 与 `pro` 的短文本翻译和同语种润色需要优先走更低延迟的快路径，同时保留 `toxic` 风格的主模型兜底。
+- 使用 SiliconFlow 时，仓库默认推荐与示例配置需要明确指向适合翻译的低延迟模型组合，而不是继续用推理模型做翻译示例。
+- 已投产的 `buffpp.com` 翻译代理需要真实切到新的主副模型组合，而不只是停留在仓库默认值和示例配置层面。
+- 在保持 `DeepSeek-V3.2` 主模型质量的前提下，需要确认当前 fast lane 副模型是否真的适合低延迟翻译场景，并把可行结论沉淀为可重复测速结果。
+- 在正式发版前，需要对前端 UI、Rust/Tauri 客户端、translate-proxy 和线上 buffpp.com 链路做一次完整回归，而不是只验证局部任务。
+- 当前这一轮稳定性与翻译性能修复需要统一打包为 `0.5.0`，确保版本号、更新日志、本地安装包与 GitHub Release 一致。
+- 在进入下一个正式版本前，需要对 UI、翻译链路、桌面构建与发版产物做一次完整回归，并把通过结果收口到 `0.5.0`。
+- 在收口这一阶段修复时，需要能把 UI、客户端、代理与线上配置一起回归并打成 `0.5.0` 正式版本，避免稳定性修复长期停留在未发布状态。
 
 ## Non-goals
 
@@ -49,6 +61,17 @@
 - 发布者同步到 `0.4.0` 后执行完整验证与本地打包时，可以直接得到对应版本号的 macOS 安装包和 updater 签名文件。
 - 用户把客户端界面语言切换为英文或俄文后，慢请求期间写回输入框的“翻译中”占位提示也会切换成同语言文案。
 - 发布者在合并这批稳定性修复后，可以直接把版本号同步到 `0.4.1`、生成对应 changelog，并通过 tag 推送触发正式 GitHub Release。
+- 用户在首页选择 Dota 2、英雄联盟、魔兽世界或守望先锋后，后续翻译会显式带上对应游戏语境，让术语表达更贴近该游戏常用说法。
+- 用户在首页选择其他游戏后，翻译继续保持通用游戏聊天表达，不再强行引入任何特定游戏术语。
+- 开发者查看代理诊断日志时，可以直接看到总耗时、模型耗时和代理开销三段信息，而不是只看到一个总时间。
+- 用户在翻译风格页切换 `auto / pro / toxic` 后，同一句话的结果在词汇、句长和语气上会更明显地区分开。
+- 运维查看 SiliconFlow 部署文档或导出推荐配置时，可以直接拿到 `DeepSeek-V3.2` 主模型与 `Qwen/Qwen3-14B` fast lane 的当前低延迟默认组合。
+- 发布者登录 `buffpp.com` 对应服务器并重建代理后，公网 `/translate` 摘要会直接显示新的主副模型组合。
+- 运维在调整 fast lane 模型后，可以重复运行批量测速脚本，直接看到 p50/p95、路由命中与回退率，而不是只看单条请求日志。
+- 发布者在发版前可以通过浏览器预览回归主页、翻译风格、常用语和关于页，确认共享前端没有引入新的可见回归。
+- 发布者完成所有验证后，可以直接把版本同步到 `0.5.0`、产出本地 macOS 安装包，并通过 tag 触发正式 GitHub Release。
+- 发布者准备 `0.5.0` 时，会先完成前端、proxy、Rust、浏览器预览与本地打包回归，再同步版本号、更新日志并推送正式 tag。
+- 发布者同步版本到 `0.5.0` 后，可以一次完成浏览器 UI 回归、客户端回归、本地打包验证和正式 tag 推送。
 
 ## Edge Cases
 
@@ -70,6 +93,16 @@
 - COS 镜像链路在 GitHub Hosted Runner 上会受跨境网络影响，上传策略需要避免大文件在接近完成时被 `UserNetworkTooSlow` 直接打断。
 - 前端 UI 语言此前只保存在浏览器 `localStorage` 中，Rust 侧如果读不到同一份语言状态，就会继续把翻译占位提示写成中文。
 - 补丁发版不能复用已存在的 `v0.4.0` tag，否则会与现有 GitHub Release 冲突；需要使用新的 `v0.4.1` tag 触发构建和发布。
+- 老用户本地仍可能保留旧的 `general / moba / fps / mmo` 场景值，升级后需要一次性迁移到新的具体游戏枚举。
+- `other` 不能错误命中特定游戏词表，否则会把原本通用的翻译变得生硬或误导。
+- `rewrite` 快路径虽然能降延迟，但不能把风格 prompt 压到过于模糊，导致同语种润色结果失真。
+- 具体游戏术语引导必须保持轻量，不能把 prompt 堆得过长反过来拖慢首包。
+- 推荐模型组合不能只停留在口头结论里，否则部署者仍可能照着旧的 `R1` 示例继续配置，导致首包延迟问题反复出现。
+- 线上代理目录与仓库代码可能已经脱节，仅修改本地仓库并不会自动改变 `buffpp.com` 的真实行为，因此需要单独记录真实部署与验证。
+- 批量测速如果只跑单次样本，很容易被 SiliconFlow 队列抖动误导，因此脚本需要输出多次采样后的聚合结果和 fast-fallback 占比。
+- 浏览器预览环境和 Tauri 桌面环境共享大部分前端，但窗口控制、透明外轮廓和 updater 等桌面能力仍需通过构建或桌面命令补验。
+- 本地浏览器预览可以覆盖大部分 UI 布局回归，但不能替代真实桌面端热键链路和 GitHub Actions 产出的 Windows 安装包验证，因此回归结论需要明确哪些环节是本机实跑、哪些仍依赖发版流水线。
+- 本地只能直接打出 macOS 安装包，Windows 安装包与 updater 元数据仍依赖 GitHub Actions；因此发布结论需要明确区分“本地已验证产物”和“CI 将产出的跨平台产物”。
 
 ## Acceptance Criteria
 
@@ -92,3 +125,15 @@
 - 对已发布的 `v0.4.0` 执行镜像补跑时，COS 上传需能完成 macOS/Windows 安装包与 `latest.json` 的同步，而不是在大文件尾段因慢网报错退出。
 - 切换客户端 UI 语言后，慢请求时输入框占位提示应跟随显示 `翻译中，请稍候`、`Translating, please wait.` 或 `Идет перевод, пожалуйста, подождите.`，且 `npm run build` 与 `cargo test --manifest-path src-tauri/Cargo.toml -- --nocapture` 继续通过。
 - `package.json`、`package-lock.json`、`src-tauri/Cargo.toml`、`src-tauri/Cargo.lock` 与 `src-tauri/tauri.conf.json` 的版本号需同步到 `0.4.1`，`CHANGELOG.md` 需新增 `0.4.1` 更新日志，并通过本地验证后推送 `v0.4.1` tag 触发正式 release。
+- 代理响应与日志需同时提供 `latency_ms`、`model_latency_ms`、`proxy_overhead_ms`、`model_route`、`prompt_variant` 与 `style_profile`，并能据此判断慢请求主要耗在模型还是接口。
+- 首页需展示新的游戏选择卡片，默认值为 Dota 2，切换后设置立即持久化且下一次翻译即时生效。
+- 旧 `game_scene` 值升级后统一迁移到 `dota2`，并在 Tauri/Rust 侧与前端预览侧保持一致。
+- 当 `game_scene` 为 `dota2 / lol / wow / overwatch` 时，system prompt 必须包含明确游戏名与对应术语约束；当为 `other` 时不得注入专属术语提示。
+- `auto / pro / toxic` 三种风格的 prompt profile 需明显不同，且 `auto`、`pro` 的短文本 `translate / rewrite` 请求都能走快路径，`toxic` 继续走主模型。
+- SiliconFlow 的示例配置、smoke 模型名与部署文档需统一推荐 `deepseek-ai/DeepSeek-V3.2` 作为主模型、`Qwen/Qwen3-14B` 作为 fast lane，并提供可直接生成的 `PUT /admin/runtime-config` 配置体。
+- 仓库中仍保留的 Supabase 翻译运行时示例和默认值也需要同步到 `DeepSeek-V3.2`，避免另一个部署入口继续使用旧模型和旧预算。
+- `buffpp.com` 的公网 `GET /translate` 需返回 `DeepSeek-V3.2` 主模型与 `Qwen/Qwen3-14B` fast lane 摘要，且带 `BACKEND_PUBLIC_KEY` 的真实 `POST /translate` 需成功返回译文。
+- 针对线上 `buffpp.com` 的批量诊断结果需要能明确回答当前副模型方案是否可行；若当前快路径模型的 fast-fallback 占比过高或 p50 明显失控，则默认快路径需继续下调或缩小适用范围。
+- `0.5.0` 的版本号需要同步到 `package.json`、`package-lock.json`、`src-tauri/Cargo.toml`、`src-tauri/Cargo.lock`、`src-tauri/tauri.conf.json` 与 `CHANGELOG.md`，并通过本地打包与 GitHub Release 一起验证。
+- `package.json`、`package-lock.json`、`src-tauri/Cargo.toml`、`src-tauri/Cargo.lock`、`src-tauri/tauri.conf.json` 与 `CHANGELOG.md` 需统一同步到 `0.5.0`，并在本地回归通过后推送 `v0.5.0` tag 触发正式 release。
+- `package.json`、`package-lock.json`、`src-tauri/Cargo.toml`、`src-tauri/Cargo.lock`、`src-tauri/tauri.conf.json` 与 `CHANGELOG.md` 需要同步到 `0.5.0`，并在回归通过后推送 `v0.5.0` 触发正式 release。

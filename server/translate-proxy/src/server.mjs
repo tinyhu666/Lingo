@@ -32,6 +32,78 @@ const LANGUAGE_LABELS = {
   de: 'German',
   auto: 'the detected source language',
 };
+const DEFAULT_GAME_SCENE = 'dota2';
+const DEFAULT_TRANSLATION_MODE = 'auto';
+const GAME_SCENE_PROFILES = {
+  dota2: {
+    id: 'dota2',
+    label: 'Dota 2',
+    promptInstruction:
+      'Prefer Dota 2 terms such as hero, lane, rune, buyback, Roshan, BKB, smoke, and high ground when they fit naturally.',
+  },
+  lol: {
+    id: 'lol',
+    label: 'League of Legends',
+    promptInstruction:
+      'Prefer League of Legends terms such as champion, lane, jungle, dragon, baron, flash, TP, and objective when they fit naturally.',
+  },
+  wow: {
+    id: 'wow',
+    label: 'World of Warcraft',
+    promptInstruction:
+      'Prefer World of Warcraft terms such as dungeon, raid, healer, tank, aggro, pull, cooldown, and wipe when they fit naturally.',
+  },
+  overwatch: {
+    id: 'overwatch',
+    label: 'Overwatch',
+    promptInstruction:
+      'Prefer Overwatch terms such as hero, ult, payload, point, flank, support, dive, and stagger when they fit naturally.',
+  },
+  other: {
+    id: 'other',
+    label: 'Other Game',
+    promptInstruction:
+      'Keep the wording generic for multiplayer game chat. Do not force Dota 2, League of Legends, World of Warcraft, or Overwatch terminology.',
+  },
+};
+const STYLE_PROFILES = {
+  auto: {
+    id: 'auto',
+    fastLaneEligible: true,
+    translateTemperatureCap: 0.12,
+    rewriteTemperatureCap: 0.16,
+    translateTokenAdjustment: 0,
+    rewriteTokenAdjustment: 0,
+    translateInstruction:
+      'Sound natural, steady, and clear like a normal teammate speaking plainly. Keep meaning intact and avoid overacting.',
+    rewriteInstruction:
+      'Rewrite into natural, steady, send-ready in-game chat. Keep the meaning intact and avoid sounding theatrical.',
+  },
+  pro: {
+    id: 'pro',
+    fastLaneEligible: true,
+    translateTemperatureCap: 0.05,
+    rewriteTemperatureCap: 0.08,
+    translateTokenAdjustment: -8,
+    rewriteTokenAdjustment: -8,
+    translateInstruction:
+      'Prefer tighter tactical wording, shorter commands, stronger tempo words, and common in-game shorthand when natural.',
+    rewriteInstruction:
+      'Compress the line into sharper teamplay comms. Cut filler, keep tactical intent obvious, and favor crisp call-style wording.',
+  },
+  toxic: {
+    id: 'toxic',
+    fastLaneEligible: false,
+    translateTemperatureCap: 0.18,
+    rewriteTemperatureCap: 0.22,
+    translateTokenAdjustment: 10,
+    rewriteTokenAdjustment: 8,
+    translateInstruction:
+      'Make it sharper, more confrontational, and more pressuring like in-game trash talk, but avoid hate speech, slurs, threats, or extreme abuse.',
+    rewriteInstruction:
+      'Rewrite with more taunting, pressure, and swagger for in-game trash talk, but keep it usable in chat and avoid hate speech, slurs, threats, or extreme abuse.',
+  },
+};
 const translationCache = new Map();
 const translationInflight = new Map();
 const fastLaneCircuit = new Map();
@@ -147,8 +219,8 @@ const buildTranslationCacheKey = ({ routeConfig, routeName, tuning, payload, tex
     max_tokens: tuning.effectiveMaxTokens,
     translation_from: String(payload?.translation_from || 'auto').trim() || 'auto',
     translation_to: String(payload?.translation_to || 'en').trim() || 'en',
-    translation_mode: String(payload?.translation_mode || 'auto').trim() || 'auto',
-    game_scene: String(payload?.game_scene || 'general').trim() || 'general',
+    translation_mode: normalizeTranslationMode(payload?.translation_mode),
+    game_scene: normalizeGameScene(payload?.game_scene),
     daily_mode: Boolean(payload?.daily_mode),
     text,
   });
@@ -183,67 +255,117 @@ const describeLanguage = (value, fallback = 'the requested language') => {
   return LANGUAGE_LABELS[normalized] || normalized;
 };
 
-const getTranslationIntent = (payload) => {
+const normalizeTranslationMode = (value) => {
+  const normalized = String(value || DEFAULT_TRANSLATION_MODE).trim().toLowerCase();
+  return STYLE_PROFILES[normalized]?.id || DEFAULT_TRANSLATION_MODE;
+};
+
+const normalizeGameScene = (value) => {
+  const normalized = String(value || DEFAULT_GAME_SCENE).trim().toLowerCase();
+  if (GAME_SCENE_PROFILES[normalized]) {
+    return normalized;
+  }
+  if (['general', 'moba', 'fps', 'mmo', ''].includes(normalized)) {
+    return DEFAULT_GAME_SCENE;
+  }
+  return DEFAULT_GAME_SCENE;
+};
+
+const getTranslationContext = (payload) => {
   const translationFrom = String(payload?.translation_from || 'auto').trim() || 'auto';
   const translationTo = String(payload?.translation_to || 'en').trim() || 'en';
+  const translationMode = normalizeTranslationMode(payload?.translation_mode);
+  const gameScene = normalizeGameScene(payload?.game_scene);
   return {
     translationFrom,
     translationTo,
+    translationMode,
+    gameScene,
     isRewrite: translationFrom === translationTo,
+    styleProfile: STYLE_PROFILES[translationMode],
+    gameSceneProfile: GAME_SCENE_PROFILES[gameScene],
   };
 };
 
 const buildSystemPrompt = (payload) => {
-  const { translationFrom, translationTo, isRewrite } = getTranslationIntent(payload);
-  const translationMode = payload?.translation_mode || 'auto';
-  const gameScene = payload?.game_scene || 'general';
+  const {
+    translationFrom,
+    translationTo,
+    translationMode,
+    isRewrite,
+    styleProfile,
+    gameSceneProfile,
+  } = getTranslationContext(payload);
   const dailyMode = Boolean(payload?.daily_mode);
   const sourceLabel = describeLanguage(translationFrom, 'the detected source language');
   const targetLabel = describeLanguage(translationTo, 'the requested language');
+  const styleInstruction = isRewrite
+    ? styleProfile.rewriteInstruction
+    : styleProfile.translateInstruction;
+  const dailyInstruction = dailyMode
+    ? 'Daily mode:on. Keep it conversational and send-ready.'
+    : 'Daily mode:off. Keep it concise and paced for in-game chat.';
 
   if (isRewrite) {
     return [
       `Rewrite in-game chat in ${targetLabel}.`,
-      `Tone:${translationMode}.`,
-      `Scene:${gameScene}.`,
-      `Daily:${dailyMode ? 'on' : 'off'}.`,
-      'Keep meaning. Output one concise send-ready line only.',
+      `Style:${translationMode}. ${styleInstruction}`,
+      `Game:${gameSceneProfile.label}. ${gameSceneProfile.promptInstruction}`,
+      dailyInstruction,
+      'Keep the meaning intact. Output one concise send-ready line only. No notes or quotes.',
     ].join(' ');
   }
 
   return [
     `Translate in-game chat from ${sourceLabel} to ${targetLabel}.`,
-    `Tone:${translationMode}.`,
-    `Scene:${gameScene}.`,
-    `Daily:${dailyMode ? 'on' : 'off'}.`,
-    'Output concise send-ready text only. Keep tactical terms short.',
+    `Style:${translationMode}. ${styleInstruction}`,
+    `Game:${gameSceneProfile.label}. ${gameSceneProfile.promptInstruction}`,
+    dailyInstruction,
+    'Output one concise send-ready line only. Prefer established in-game terms when they help. No notes or quotes.',
   ].join(' ');
 };
 
 const resolveRequestTuning = ({ config, payload, text }) => {
-  const { isRewrite } = getTranslationIntent(payload);
+  const { isRewrite, styleProfile } = getTranslationContext(payload);
   const textLength = Array.from(String(text || '').trim()).length;
   const configuredMaxTokens = Number(config.max_tokens) || 96;
-  let effectiveMaxTokens = configuredMaxTokens;
+  let budgetCap = configuredMaxTokens;
 
-  if (textLength <= 24) {
-    effectiveMaxTokens = Math.min(configuredMaxTokens, isRewrite ? 32 : 40);
-  } else if (textLength <= 72) {
-    effectiveMaxTokens = Math.min(configuredMaxTokens, isRewrite ? 48 : 56);
+  if (textLength <= 18) {
+    budgetCap = isRewrite ? 24 : 30;
+  } else if (textLength <= 48) {
+    budgetCap = isRewrite ? 32 : 40;
+  } else if (textLength <= 96) {
+    budgetCap = isRewrite ? 44 : 56;
   } else if (textLength <= 160) {
-    effectiveMaxTokens = Math.min(configuredMaxTokens, isRewrite ? 64 : 80);
+    budgetCap = isRewrite ? 56 : 72;
+  } else {
+    budgetCap = isRewrite ? 72 : 88;
   }
 
+  const styleTokenAdjustment = isRewrite
+    ? styleProfile.rewriteTokenAdjustment
+    : styleProfile.translateTokenAdjustment;
+  const minimumBudget = isRewrite ? 20 : 24;
+  const effectiveMaxTokens = Math.min(
+    configuredMaxTokens,
+    Math.max(minimumBudget, budgetCap + styleTokenAdjustment),
+  );
+
   const configuredTemperature = Number(config.temperature);
+  const temperatureCap = isRewrite
+    ? styleProfile.rewriteTemperatureCap
+    : styleProfile.translateTemperatureCap;
   const effectiveTemperature = Number.isFinite(configuredTemperature)
-    ? Math.min(configuredTemperature, isRewrite ? 0.15 : 0.1)
-    : config.temperature;
+    ? Math.min(configuredTemperature, temperatureCap)
+    : temperatureCap;
 
   return {
     promptVariant: isRewrite ? 'rewrite' : 'translate',
     systemPrompt: buildSystemPrompt(payload),
     effectiveMaxTokens,
     effectiveTemperature,
+    styleProfile: styleProfile.id,
   };
 };
 
@@ -253,7 +375,8 @@ const canUseFastLane = ({ config, payload, text, promptVariant }) => {
     return false;
   }
 
-  if (String(payload?.translation_mode || 'auto').trim() === 'toxic') {
+  const styleProfile = STYLE_PROFILES[normalizeTranslationMode(payload?.translation_mode)];
+  if (!styleProfile.fastLaneEligible) {
     return false;
   }
 
@@ -656,6 +779,7 @@ const routeTranslate = async (req, res, traceId) => {
     promptVariant,
     effectiveMaxTokens,
     effectiveTemperature,
+    styleProfile,
   } = await requestTranslatedText({
     cacheKey,
     load: async () => {
@@ -685,6 +809,7 @@ const routeTranslate = async (req, res, traceId) => {
           promptVariant: primaryTuning.promptVariant,
           effectiveMaxTokens: primaryTuning.effectiveMaxTokens,
           effectiveTemperature: primaryTuning.effectiveTemperature,
+          styleProfile: primaryTuning.styleProfile,
         };
       };
 
@@ -724,6 +849,7 @@ const routeTranslate = async (req, res, traceId) => {
           promptVariant: selectedTuning.promptVariant,
           effectiveMaxTokens: selectedTuning.effectiveMaxTokens,
           effectiveTemperature: selectedTuning.effectiveTemperature,
+          styleProfile: selectedTuning.styleProfile,
         };
       } catch (error) {
         if (shouldOpenFastLaneCircuit(error)) {
@@ -745,6 +871,7 @@ const routeTranslate = async (req, res, traceId) => {
   });
 
   const latencyMs = Date.now() - startedAt;
+  const proxyOverheadMs = Math.max(0, latencyMs - modelLatencyMs);
   console.log(
     JSON.stringify({
       trace_id: traceId,
@@ -753,10 +880,12 @@ const routeTranslate = async (req, res, traceId) => {
       config_source: config.source,
       latency_ms: latencyMs,
       model_latency_ms: modelLatencyMs,
+      proxy_overhead_ms: proxyOverheadMs,
       attempt_count: attemptCount,
       response_source: responseSource,
       model_route: modelRoute,
       prompt_variant: promptVariant,
+      style_profile: styleProfile,
       effective_max_tokens: effectiveMaxTokens,
       effective_temperature: effectiveTemperature,
       text_length: text.length,
@@ -770,10 +899,12 @@ const routeTranslate = async (req, res, traceId) => {
     config_source: config.source,
     latency_ms: latencyMs,
     model_latency_ms: modelLatencyMs,
+    proxy_overhead_ms: proxyOverheadMs,
     attempt_count: attemptCount,
     response_source: responseSource,
     model_route: modelRoute,
     prompt_variant: promptVariant,
+    style_profile: styleProfile,
     effective_max_tokens: effectiveMaxTokens,
     effective_temperature: effectiveTemperature,
     trace_id: traceId,
