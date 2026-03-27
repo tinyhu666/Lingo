@@ -1,5 +1,29 @@
 # Client Stability Changes
 
+change113 日期:2026-03-27 | 文件:package.json | 操作:Modify | 影响:前端版本元数据 | 说明:将前端版本号同步到 0.4.1 以承载本次补丁发版 | 关联:task020
+change114 日期:2026-03-27 | 文件:package-lock.json | 操作:Modify | 影响:NPM 锁文件版本元数据 | 说明:同步锁文件根版本号到 0.4.1 | 关联:task020
+change115 日期:2026-03-27 | 文件:src-tauri/Cargo.toml | 操作:Modify | 影响:Rust 包版本元数据 | 说明:将桌面端 Rust 包版本同步到 0.4.1 | 关联:task020
+change116 日期:2026-03-27 | 文件:src-tauri/Cargo.lock | 操作:Modify | 影响:Cargo 锁文件根包版本 | 说明:同步 Cargo 锁文件中的根包版本号到 0.4.1 | 关联:task020
+change117 日期:2026-03-27 | 文件:src-tauri/tauri.conf.json | 操作:Modify | 影响:Tauri 应用版本元数据 | 说明:将桌面应用版本号同步到 0.4.1 供安装包和自动更新链路使用 | 关联:task020
+change118 日期:2026-03-27 | 文件:CHANGELOG.md | 操作:Modify | 影响:0.4.1 更新日志 | 说明:新增 0.4.1 面向用户的发布说明，覆盖多语言翻译占位提示与 Windows 边缘 UI 修复 | 关联:task020
+change119 日期:2026-03-27 | 文件:.github/workflows/release.yml | 操作:Modify | 影响:手动镜像工作流默认参数 | 说明:将 release_tag 默认值更新为 v0.4.1，避免手工补跑镜像时继续回落到旧版本 | 关联:task020
+change120 日期:2026-03-27 | 文件:.phrase/phases/phase-client-stability-20260326/spec_client-stability_20260326.md | 操作:Modify | 影响:阶段需求说明 | 说明:补充 0.4.1 补丁发布的目标、边界与验收标准 | 关联:task020
+change121 日期:2026-03-27 | 文件:.phrase/phases/phase-client-stability-20260326/plan_client-stability_20260326.md | 操作:Modify | 影响:阶段计划 | 说明:补充 0.4.1 补丁发版里程碑、优先级与 release 风险约束 | 关联:task020
+change122 日期:2026-03-27 | 文件:.phrase/phases/phase-client-stability-20260326/task_client-stability_20260326.md | 操作:Modify | 影响:任务清单 | 说明:新增并完成 task020，记录 0.4.1 补丁发版闭环 | 关联:task020
+
+change105 日期:2026-03-27 | 文件:src/services/settingsStore.js | 操作:Modify | 影响:UI 语言持久化 | 说明:新增 UI 语言写入 Tauri store 的同步路径，并在桌面端保存失败时降级为告警而非打断主流程 | 关联:task019
+change106 日期:2026-03-27 | 文件:src/i18n/I18nProvider.jsx | 操作:Modify | 影响:客户端语言切换同步 | 说明:在客户端语言状态变化时统一同步 UI 语言到桌面端存储，避免慢请求占位提示继续读取旧语言 | 关联:task019
+change107 日期:2026-03-27 | 文件:src/i18n/messages.js | 操作:Modify | 影响:翻译占位文案国际化 | 说明:补充慢请求翻译占位提示的中英俄文案，保持前端文案定义与桌面端行为一致 | 关联:task019
+change108 日期:2026-03-27 | 文件:src-tauri/src/store.rs | 操作:Modify | 影响:UI 语言读取与初始化 | 说明:为 Tauri store 增加 ui_locale 的归一化读取与初始化逻辑，供 Rust 侧慢请求占位提示复用 | 关联:task019
+change109 日期:2026-03-27 | 文件:src-tauri/src/shell_helper.rs | 操作:Modify | 影响:翻译慢请求占位提示 | 说明:移除固定中文占位文本，改为按当前 UI 语言写入对应提示并补充单元测试 | 关联:task019
+change110 日期:2026-03-27 | 文件:.phrase/phases/phase-client-stability-20260326/spec_client-stability_20260326.md | 操作:Modify | 影响:阶段需求说明 | 说明:补充翻译慢请求占位提示需跟随客户端 UI 语言的目标、边界与验收标准 | 关联:task019
+change111 日期:2026-03-27 | 文件:.phrase/phases/phase-client-stability-20260326/plan_client-stability_20260326.md | 操作:Modify | 影响:阶段计划 | 说明:补充前端与 Rust UI 语言状态同步的里程碑、范围与风险约束 | 关联:task019
+change112 日期:2026-03-27 | 文件:.phrase/phases/phase-client-stability-20260326/task_client-stability_20260326.md | 操作:Modify | 影响:任务清单 | 说明:新增并完成 task019，记录翻译慢请求占位提示多语言同步修复闭环 | 关联:task019
+
+change101 日期:2026-03-27 | 文件:src/index.css | 操作:Modify | 影响:Windows 贴边主面板外轮廓 | 说明:针对 Windows 单独收紧侧栏与工作区大面板的外侧圆角、描边和阴影，避免贴边区域再出现第二层轮廓 | 关联:task018
+change102 日期:2026-03-27 | 文件:.phrase/phases/phase-client-stability-20260326/spec_client-stability_20260326.md | 操作:Modify | 影响:阶段需求说明 | 说明:补充 Windows 贴边大面板不能再模拟第二层边缘轮廓的目标与验收标准 | 关联:task018
+change103 日期:2026-03-27 | 文件:.phrase/phases/phase-client-stability-20260326/plan_client-stability_20260326.md | 操作:Modify | 影响:阶段计划 | 说明:补充 Windows 贴边大面板边缘重叠问题的里程碑与风险说明 | 关联:task018
+change104 日期:2026-03-27 | 文件:.phrase/phases/phase-client-stability-20260326/task_client-stability_20260326.md | 操作:Modify | 影响:任务清单 | 说明:新增并完成 task018，记录 Windows 边缘第二层面板轮廓修复闭环 | 关联:task018
 change096 日期:2026-03-26 | 文件:scripts/upload-cos-release.mjs | 操作:Modify | 影响:COS 镜像上传策略 | 说明:将镜像上传改为更早启用分片、更小 chunk、更长请求超时和更多重试次数，以降低慢网下的大文件上传失败概率 | 关联:task017
 change097 日期:2026-03-26 | 文件:.github/workflows/release.yml | 操作:Modify | 影响:COS 镜像 workflow 超时 | 说明:将自动镜像和手动镜像任务的超时提高到 60 分钟，为慢网重试留出完成空间 | 关联:task017
 change098 日期:2026-03-26 | 文件:.phrase/phases/phase-client-stability-20260326/spec_client-stability_20260326.md | 操作:Modify | 影响:阶段需求说明 | 说明:补充 COS 镜像慢网失败场景、分片上传目标与验收标准 | 关联:task017

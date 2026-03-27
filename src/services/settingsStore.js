@@ -1,8 +1,10 @@
 import { load } from '@tauri-apps/plugin-store';
 import { hasTauriRuntime, invokeCommand } from './tauriRuntime';
+import { UI_LOCALE_STORAGE_KEY } from '../i18n/messages';
 
 const STORE_FILE = 'store.json';
 const SETTINGS_KEY = 'settings';
+const UI_LOCALE_KEY = 'ui_locale';
 const WEB_SETTINGS_KEY = 'lingo.settings';
 const PREVIOUS_WEB_SETTINGS_KEY = 'cliplingo.settings';
 const LEGACY_WEB_SETTINGS_KEY = ['auto', 'gg.settings'].join('');
@@ -51,6 +53,37 @@ export const writePreviewSettings = (settings) => {
     localStorage.setItem(WEB_SETTINGS_KEY, JSON.stringify(settings));
   } catch {
     // ignore preview write errors
+  }
+};
+
+export const writePreviewUiLocale = (locale) => {
+  try {
+    localStorage.setItem(UI_LOCALE_STORAGE_KEY, locale);
+  } catch {
+    // ignore preview write errors
+  }
+};
+
+export const writeUiLocalePreference = async (locale) => {
+  const normalized = String(locale || '').trim();
+  if (!normalized) {
+    return false;
+  }
+
+  writePreviewUiLocale(normalized);
+
+  if (!hasTauriRuntime()) {
+    return true;
+  }
+
+  try {
+    const store = await getStore();
+    await store.set(UI_LOCALE_KEY, normalized);
+    await store.save();
+    return true;
+  } catch (error) {
+    console.warn('Failed to persist UI locale preference:', error);
+    return false;
   }
 };
 

@@ -169,6 +169,26 @@
     border-radius: 0;
   }
 
+  /* Windows already supplies the outer window curve. Keep the shell panels
+     visually quieter at the edges so they don't read as a second outline. */
+  .lingo-theme--windows .lingo-shell__sidebar,
+  .lingo-theme--windows .lingo-shell__workspace {
+    border-radius: 18px;
+    border-color: rgba(167, 184, 212, 0.9);
+    box-shadow: 0 18px 34px rgba(24, 38, 70, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.88);
+    background-clip: padding-box;
+  }
+
+  .lingo-theme--windows .lingo-shell__sidebar {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+  }
+
+  .lingo-theme--windows .lingo-shell__workspace {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+  }
+
   .lingo-titlebar {
     display: flex;
     align-items: center;

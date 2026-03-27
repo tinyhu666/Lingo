@@ -3,6 +3,8 @@ use tauri::AppHandle;
 use tauri_plugin_store::StoreExt;
 
 const STORE_FILENAME: &str = "store.json";
+const UI_LOCALE_KEY: &str = "ui_locale";
+const DEFAULT_UI_LOCALE: &str = "zh-CN";
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 #[serde(default)]
@@ -84,6 +86,24 @@ fn default_true() -> bool {
     true
 }
 
+fn normalize_ui_locale(locale: Option<&str>) -> String {
+    let raw = locale.unwrap_or_default().trim().to_ascii_lowercase();
+
+    if raw.starts_with("en") {
+        return "en-US".to_string();
+    }
+
+    if raw.starts_with("ru") {
+        return "ru-RU".to_string();
+    }
+
+    if raw.starts_with("zh") {
+        return "zh-CN".to_string();
+    }
+
+    DEFAULT_UI_LOCALE.to_string()
+}
+
 fn default_phrases() -> Vec<Phrase> {
     (1..=8)
         .map(|id| {
@@ -156,6 +176,21 @@ fn save_settings_to_store(app: &AppHandle, settings: &AppSettings) -> Result<(),
     Ok(())
 }
 
+fn initialize_ui_locale(app: &AppHandle) -> Result<(), anyhow::Error> {
+    let store = app.store(STORE_FILENAME)?;
+    let current = store
+        .get(UI_LOCALE_KEY)
+        .and_then(|value| value.as_str().map(|item| item.to_string()));
+    let normalized = normalize_ui_locale(current.as_deref());
+
+    if current.as_deref() != Some(normalized.as_str()) {
+        store.set(UI_LOCALE_KEY, json!(normalized));
+        store.save()?;
+    }
+
+    Ok(())
+}
+
 pub fn initialize_settings(app: &AppHandle) -> Result<(), anyhow::Error> {
     let (mut settings, has_existing) = load_settings_from_store(app)?;
     let original = serde_json::to_value(&settings)?;
@@ -165,6 +200,8 @@ pub fn initialize_settings(app: &AppHandle) -> Result<(), anyhow::Error> {
     if !has_existing || original != normalized {
         save_settings_to_store(app, &settings)?;
     }
+
+    initialize_ui_locale(app)?;
 
     Ok(())
 }
@@ -187,4 +224,12 @@ pub fn update_settings_field<T: serde::Serialize>(
     save_settings_to_store(app, &settings)?;
 
     Ok(result)
+}
+
+pub fn get_ui_locale(app: &AppHandle) -> Result<String, anyhow::Error> {
+    let store = app.store(STORE_FILENAME)?;
+    let current = store
+        .get(UI_LOCALE_KEY)
+        .and_then(|value| value.as_str().map(|item| item.to_string()));
+    Ok(normalize_ui_locale(current.as_deref()))
 }

@@ -17,10 +17,13 @@
 - 桌面端开发态调试时也应尽量复用真实翻译代理链路，避免本机验证路径与发布行为脱节。
 - 已下线的内部或历史页面不应因为共享导航回归而重新暴露给桌面端用户。
 - Windows 桌面端的外层窗口四角不能再叠加前端壳层圆角，必须只保留单一外轮廓。
+- Windows 桌面端贴近窗口边缘的侧栏与工作区大面板也不能再模仿系统外轮廓，否则会形成第二层边缘圆角与描边。
 - 开发者在本机运行桌面端时，应尽量一次命令就拉起完整调试链路，而不是手工拼装多个依赖进程。
 - 客户端翻译链路至少需要最小自动化测试覆盖，避免每次都靠人工启动桌面端回归。
 - 热键复制、probe 过滤和回填路径中的基础判断也需要最小自动化覆盖，避免系统交互层之下的纯逻辑反复回归。
 - 准备正式发版时，前端、Tauri 与 Cargo 的版本元数据需要保持一致，并能产出对应版本号的本地安装包。
+- 翻译慢请求时写入输入框的占位提示需要跟随客户端当前 UI 语言，而不是固定显示中文。
+- 在 `0.4.0` 已发版后，需要能够基于已完成修复快速补发 `0.4.1` 补丁版本，保持版本号、更新日志与自动发版链路一致。
 
 ## Non-goals
 
@@ -44,6 +47,8 @@
 - 开发者执行 Rust 测试时，也能验证 `daily_mode` 与普通模式的复制/粘贴快捷键路径，以及 probe 过滤逻辑是否仍然正确。
 - Windows 桌面端用户打开客户端时，原生窗口外轮廓是唯一的四角圆角来源，前端壳层不再额外收圆。
 - 发布者同步到 `0.4.0` 后执行完整验证与本地打包时，可以直接得到对应版本号的 macOS 安装包和 updater 签名文件。
+- 用户把客户端界面语言切换为英文或俄文后，慢请求期间写回输入框的“翻译中”占位提示也会切换成同语言文案。
+- 发布者在合并这批稳定性修复后，可以直接把版本号同步到 `0.4.1`、生成对应 changelog，并通过 tag 推送触发正式 GitHub Release。
 
 ## Edge Cases
 
@@ -63,6 +68,8 @@
 - 即使 OS 级热键和真实输入框回填仍需手工验证，底层的纯逻辑判断也应先被自动化测试拦住。
 - 本地打包可以验证版本同步与 macOS 产物链路，但不能替代 tag 推送后由 GitHub Actions 产出的 Windows 安装包与 `latest.json`。
 - COS 镜像链路在 GitHub Hosted Runner 上会受跨境网络影响，上传策略需要避免大文件在接近完成时被 `UserNetworkTooSlow` 直接打断。
+- 前端 UI 语言此前只保存在浏览器 `localStorage` 中，Rust 侧如果读不到同一份语言状态，就会继续把翻译占位提示写成中文。
+- 补丁发版不能复用已存在的 `v0.4.0` tag，否则会与现有 GitHub Release 冲突；需要使用新的 `v0.4.1` tag 触发构建和发布。
 
 ## Acceptance Criteria
 
@@ -77,8 +84,11 @@
 - 开发态同时运行本地代理和 Tauri 客户端时，启动预热日志应显示真实命中本地代理而不是因为缺少后端地址直接失败。
 - 桌面端侧边栏不再展示 Settings 入口，且共享页面映射不再包含该项。
 - Windows 桌面端外层四角不再出现双层或重叠圆角，macOS 当前正常表现不被回归破坏。
+- Windows 桌面端侧栏与工作区在贴边一侧不再出现第二层大面板圆角或高亮边线，外轮廓视觉只由系统窗口决定。
 - `npm run tauri dev -- --no-watch` 会自动拉起 Vite 和本地代理，并在启动日志中看到预热成功命中本地代理。
 - `cargo test --manifest-path src-tauri/Cargo.toml -- --nocapture` 至少会通过两条客户端翻译链路测试：真实翻译请求 smoke 和本地代理不可达提示。
 - `cargo test --manifest-path src-tauri/Cargo.toml -- --nocapture` 还会通过 `shell_helper` 的快捷键路径和剪贴板 probe 过滤测试。
 - `package.json`、`package-lock.json`、`src-tauri/Cargo.toml`、`src-tauri/Cargo.lock` 与 `src-tauri/tauri.conf.json` 的版本号需同步到 `0.4.0`，并通过 `npm run build:mac-arm` 产出 `Lingo_0.4.0_aarch64.dmg` 与 `Lingo.app.tar.gz.sig`。
 - 对已发布的 `v0.4.0` 执行镜像补跑时，COS 上传需能完成 macOS/Windows 安装包与 `latest.json` 的同步，而不是在大文件尾段因慢网报错退出。
+- 切换客户端 UI 语言后，慢请求时输入框占位提示应跟随显示 `翻译中，请稍候`、`Translating, please wait.` 或 `Идет перевод, пожалуйста, подождите.`，且 `npm run build` 与 `cargo test --manifest-path src-tauri/Cargo.toml -- --nocapture` 继续通过。
+- `package.json`、`package-lock.json`、`src-tauri/Cargo.toml`、`src-tauri/Cargo.lock` 与 `src-tauri/tauri.conf.json` 的版本号需同步到 `0.4.1`，`CHANGELOG.md` 需新增 `0.4.1` 更新日志，并通过本地验证后推送 `v0.4.1` tag 触发正式 release。

@@ -18,6 +18,9 @@
 14. 为 shell_helper 的快捷键路径和 probe 过滤补充纯逻辑测试，提前拦住系统交互层下方的回归。
 15. 完成 0.4.0 版本同步、发版文案更新与本地 macOS ARM 安装包打包验证。
 16. 收敛 COS 镜像链路在慢网环境下的大文件上传失败风险，并补跑已有 0.4.0 release 的镜像同步。
+17. 收敛 Windows 客户端贴边大面板的第二层圆角与描边，让系统窗口继续作为唯一边缘轮廓。
+18. 同步前端与 Rust 的 UI 语言状态，让慢请求翻译占位提示跟随客户端当前语言显示。
+19. 基于已完成的稳定性修复补发 0.4.1，统一版本元数据、更新日志、tag 与 GitHub Release。
 
 ## Scope
 
@@ -26,9 +29,11 @@
 - `src/utils/toast.js`
 - `src/index.css`
 - `src/components/StoreProvider.jsx`
+- `src/i18n/I18nProvider.jsx`
 - `src/pages/home/**`
 - `src/pages/Translate.jsx`
 - `src/i18n/messages.js`
+- `src/services/settingsStore.js`
 - `src-tauri/Cargo.toml`
 - `src-tauri/src/lib.rs`
 - `src-tauri/src/shortcut.rs`
@@ -61,6 +66,8 @@
 - P1: shell_helper 纯逻辑测试兜底
 - P1: 0.4.0 发版元数据同步与本地安装包产出
 - P1: 设置变更后立即生效与相关 UI 稳定性
+- P1: 慢请求翻译占位提示与客户端 UI 语言保持一致
+- P1: 0.4.1 补丁版本打包与正式发版闭环
 
 ## Risks & Dependencies
 
@@ -81,3 +88,6 @@
 - 本地 macOS 打包需要沿用仓库内 updater key 的既有归一化格式，否则会在 updater 签名阶段失败。
 - 本地打包只能验证 macOS ARM 产物；Windows 安装包与 `latest.json` 仍依赖 tag 推送触发的 GitHub Actions 发版链。
 - GitHub Hosted Runner 到腾讯 COS 的链路可能明显慢于 GitHub Release 资产分发，需要更激进地使用分片上传和更宽松的 job 超时来兜底。
+- Windows 边缘问题不能只看最外层壳体，贴边主面板的圆角、阴影和描边也会在透明窗口里被误读成第二层外轮廓。
+- 慢请求占位文案由 Rust 直接写入输入框，因此前端切换 UI 语言后必须把同一状态同步到 Tauri store，不能只停留在浏览器 localStorage。
+- `v0.4.0` 已经存在于 GitHub Release，补丁发布必须使用新的语义化版本和 tag；本机只能验证 macOS 打包，Windows 安装包需要等待 GitHub Actions 发版流程完成。

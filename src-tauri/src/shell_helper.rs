@@ -10,7 +10,6 @@ use tokio::time::sleep;
 
 const COPY_SETTLE_MAX_ATTEMPTS: usize = 8;
 const COPY_SETTLE_DELAY_MS: u64 = 20;
-const TRANSLATION_PLACEHOLDER_TEXT: &str = "翻译中，请稍候";
 
 pub async fn trans_and_replace_text(app: &AppHandle) -> Result<()> {
     let clipboard_backup = app.clipboard().read_text().ok();
@@ -45,8 +44,10 @@ pub async fn trans_and_replace_text(app: &AppHandle) -> Result<()> {
         let translation_finished = Arc::new(AtomicBool::new(false));
         let placeholder_shown = Arc::new(AtomicBool::new(false));
         if !settings.daily_mode {
+            let translation_placeholder = resolve_translation_placeholder(app);
             schedule_translation_placeholder(
                 app.clone(),
+                translation_placeholder,
                 Arc::clone(&translation_finished),
                 Arc::clone(&placeholder_shown),
             );
@@ -244,6 +245,7 @@ fn schedule_clipboard_restore(app: AppHandle, backup: Option<String>) {
 
 fn schedule_translation_placeholder(
     app: AppHandle,
+    placeholder_text: String,
     translation_finished: Arc<AtomicBool>,
     placeholder_shown: Arc<AtomicBool>,
 ) {
@@ -253,7 +255,7 @@ fn schedule_translation_placeholder(
             return;
         }
 
-        if let Err(error) = app.clipboard().write_text(TRANSLATION_PLACEHOLDER_TEXT) {
+        if let Err(error) = app.clipboard().write_text(placeholder_text) {
             eprintln!("写入翻译占位提示失败: {}", error);
             return;
         }
@@ -265,6 +267,27 @@ fn schedule_translation_placeholder(
 
         placeholder_shown.store(true, Ordering::Release);
     });
+}
+
+fn resolve_translation_placeholder(app: &AppHandle) -> String {
+    let locale = crate::store::get_ui_locale(app).unwrap_or_else(|error| {
+        eprintln!("读取 UI 语言失败，使用默认翻译占位提示: {}", error);
+        "zh-CN".to_string()
+    });
+
+    translation_placeholder_text(&locale).to_string()
+}
+
+fn translation_placeholder_text(locale: &str) -> &'static str {
+    let normalized = locale.trim().to_ascii_lowercase();
+
+    if normalized.starts_with("en") {
+        "Translating, please wait."
+    } else if normalized.starts_with("ru") {
+        "Идет перевод, пожалуйста, подождите."
+    } else {
+        "翻译中，请稍候"
+    }
 }
 
 async fn restore_original_text(
@@ -319,5 +342,19 @@ mod tests {
         let probe = build_clipboard_probe();
         assert!(probe.starts_with("__LINGO_COPY_PROBE__"));
         assert!(probe.len() > "__LINGO_COPY_PROBE__".len());
+    }
+
+    #[test]
+    fn translation_placeholder_text_follows_locale() {
+        assert_eq!(translation_placeholder_text("zh-CN"), "翻译中，请稍候");
+        assert_eq!(
+            translation_placeholder_text("en-US"),
+            "Translating, please wait."
+        );
+        assert_eq!(
+            translation_placeholder_text("ru-RU"),
+            "Идет перевод, пожалуйста, подождите."
+        );
+        assert_eq!(translation_placeholder_text("unknown"), "翻译中，请稍候");
     }
 }

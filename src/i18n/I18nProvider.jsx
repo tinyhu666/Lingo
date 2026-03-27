@@ -1,4 +1,4 @@
-﻿import { createContext, useCallback, useContext, useMemo, useState } from 'react';
+﻿import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import {
   DEFAULT_LOCALE,
   UI_LOCALE_STORAGE_KEY,
@@ -6,6 +6,7 @@ import {
   LOCALE_DISPLAY_NAMES,
   messages,
 } from './messages';
+import { writeUiLocalePreference } from '../services/settingsStore';
 
 const I18nContext = createContext(null);
 const SYSTEM_FALLBACK_LOCALE = 'en-US';
@@ -106,15 +107,11 @@ export function I18nProvider({ children }) {
   const setLocale = useCallback((nextLocale) => {
     const normalized = normalizeLocale(nextLocale);
     setLocaleState(normalized);
-
-    if (typeof window !== 'undefined') {
-      try {
-        window.localStorage.setItem(UI_LOCALE_STORAGE_KEY, normalized);
-      } catch {
-        // ignore localStorage write failures
-      }
-    }
   }, []);
+
+  useEffect(() => {
+    void writeUiLocalePreference(locale);
+  }, [locale]);
 
   const t = useCallback(
     (key, vars) => {
