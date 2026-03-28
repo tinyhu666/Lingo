@@ -126,9 +126,18 @@ jobs:
           rm -f /tmp/lingo-translate-proxy.tgz
 
           cd "$target_dir"
-          docker compose up -d --build
-          docker compose ps
+          if docker compose version >/dev/null 2>&1; then
+            compose() { docker compose "$@"; }
+          elif sudo -n docker compose version >/dev/null 2>&1; then
+            compose() { sudo -n docker compose "$@"; }
+          else
+            echo "docker compose is not available for ${USER}"
+            exit 1
+          fi
 
-          docker compose exec -T translate-proxy node -e "fetch('http://127.0.0.1:8787/healthz').then(async (response) => { if (!response.ok) throw new Error('healthz failed: ' + response.status); console.log(await response.text()); })"
-          docker compose exec -T translate-proxy node -e "fetch('http://127.0.0.1:8787/analytics/public/overview').then(async (response) => { if (!response.ok) throw new Error('overview failed: ' + response.status); console.log(await response.text()); })"
+          compose up -d --build
+          compose ps
+
+          compose exec -T translate-proxy node -e "fetch('http://127.0.0.1:8787/healthz').then(async (response) => { if (!response.ok) throw new Error('healthz failed: ' + response.status); console.log(await response.text()); })"
+          compose exec -T translate-proxy node -e "fetch('http://127.0.0.1:8787/analytics/public/overview').then(async (response) => { if (!response.ok) throw new Error('overview failed: ' + response.status); console.log(await response.text()); })"
           REMOTE
