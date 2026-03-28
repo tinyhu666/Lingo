@@ -328,10 +328,15 @@ jobs:
 
       - name: Upload Windows Portable ZIP
         if: matrix.os == 'windows-latest'
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ github.ref_name }}
-          files: ${{ env.WINDOWS_PORTABLE_ZIP_PATH }}
+        shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if (-not (Test-Path -LiteralPath $env:WINDOWS_PORTABLE_ZIP_PATH)) {
+            throw "Portable ZIP was not found at $env:WINDOWS_PORTABLE_ZIP_PATH"
+          }
+
+          gh release upload $env:GITHUB_REF_NAME $env:WINDOWS_PORTABLE_ZIP_PATH --clobber --repo $env:GITHUB_REPOSITORY
 
       - name: Verify Windows Installer Signatures
         if: matrix.os == 'windows-latest'
