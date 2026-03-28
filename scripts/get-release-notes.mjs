@@ -64,15 +64,16 @@ function createGroupedItems() {
 }
 
 function ensureSentenceEnd(text) {
-  if (!text) {
-    return `${LABEL_NONE}\u3002`;
-  }
-
   return /[\u3002\uff01\uff1f]$/.test(text) ? text : `${text}\u3002`;
 }
 
 function normalizeSummaryItem(text) {
   return text.trim().replace(/[\u3002\uff01\uff1f]+$/g, '');
+}
+
+function isEmptyCategoryItem(text) {
+  const normalized = normalizeSummaryItem(text);
+  return !normalized || normalized === LABEL_NONE;
 }
 
 function formatNotes(input) {
@@ -98,25 +99,34 @@ function formatNotes(input) {
       }
 
       const numberedMatch = line.match(
-        new RegExp(`^\\d+\\.\\s*(${LABEL_ADDED}|${LABEL_OPTIMIZED}|${LABEL_FIXED})\\s*[：:]\\s*(.+)$`),
+        new RegExp(`^\\d+\\.\\s*(${LABEL_ADDED}|${LABEL_OPTIMIZED}|${LABEL_FIXED})\\s*[:：]\\s*(.+)$`),
       );
       if (numberedMatch) {
-        grouped.get(numberedMatch[1]).push(numberedMatch[2].trim());
+        if (!isEmptyCategoryItem(numberedMatch[2])) {
+          grouped.get(numberedMatch[1]).push(numberedMatch[2].trim());
+        }
         continue;
       }
 
       const bulletMatch = line.match(/^[-*]\s+(.+)$/);
-      if (bulletMatch) {
+      if (bulletMatch && !isEmptyCategoryItem(bulletMatch[1])) {
         grouped.get(currentCategory ?? LABEL_FIXED).push(bulletMatch[1].trim());
       }
     }
   }
 
+  const visibleCategories = CATEGORY_ORDER
+    .map((category) => [category, grouped.get(category) ?? []])
+    .filter(([, items]) => items.length);
+
+  if (!visibleCategories.length) {
+    return `### ${LABEL_UPDATE_LOG}`;
+  }
+
   const lines = [`### ${LABEL_UPDATE_LOG}`, ''];
 
-  CATEGORY_ORDER.forEach((category, index) => {
-    const items = grouped.get(category) ?? [];
-    const summary = items.length ? items.map(normalizeSummaryItem).join('\uff1b') : LABEL_NONE;
+  visibleCategories.forEach(([category, items], index) => {
+    const summary = items.map(normalizeSummaryItem).join('\uff1b');
     lines.push(`${index + 1}. ${category}\uff1a${ensureSentenceEnd(summary)}`);
   });
 
@@ -131,13 +141,7 @@ if (!notes) {
 }
 
 if (!notes) {
-  notes = [
-    `### ${LABEL_UPDATE_LOG}`,
-    '',
-    `1. ${LABEL_ADDED}\uff1a${LABEL_NONE}\u3002`,
-    `2. ${LABEL_OPTIMIZED}\uff1a\u6301\u7eed\u4f18\u5316\u6574\u4f53\u4f53\u9a8c\uff0c\u8ba9\u4f7f\u7528\u8fc7\u7a0b\u66f4\u987a\u624b\u3002`,
-    `3. ${LABEL_FIXED}\uff1a\u4fee\u590d\u5df2\u77e5\u95ee\u9898\uff0c\u63d0\u5347\u7248\u672c\u7a33\u5b9a\u6027\u3002`,
-  ].join('\n');
+  notes = `### ${LABEL_UPDATE_LOG}`;
 }
 
 if (process.env.GITHUB_OUTPUT) {
