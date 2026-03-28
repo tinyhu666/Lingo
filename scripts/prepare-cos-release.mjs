@@ -95,6 +95,10 @@ function buildMirrorUrl(assetName) {
   return `${COS_PUBLIC_BASE_URL}/releases/v${releaseVersion}/${assetName}`;
 }
 
+function stripBom(value) {
+  return typeof value === 'string' ? value.replace(/^\uFEFF/, '') : value;
+}
+
 async function main() {
   const release = await fetchJson(releaseApiUrl);
   const latestAsset = getReleaseAsset(release, 'latest.json');
@@ -109,7 +113,7 @@ async function main() {
   const latestJsonPath = path.join(versionRoot, 'latest.json');
   await downloadFile(latestAsset.browser_download_url, latestJsonPath);
 
-  const latestPayload = JSON.parse(await fs.readFile(latestJsonPath, 'utf8'));
+  const latestPayload = JSON.parse(stripBom(await fs.readFile(latestJsonPath, 'utf8')));
   const platformEntries = Object.values(latestPayload.platforms || {});
   const portableAssetName = `Lingo_${releaseVersion}_x64-portable.zip`;
   const assetNames = new Set();

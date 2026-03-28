@@ -10,6 +10,7 @@ const LABEL_OPTIMIZED = '\u4f18\u5316';
 const LABEL_FIXED = '\u4fee\u590d';
 const LABEL_NONE = '\u6682\u65e0';
 const CATEGORY_ORDER = [LABEL_ADDED, LABEL_OPTIMIZED, LABEL_FIXED];
+const DEFAULT_RELEASE_NOTES = `### ${LABEL_UPDATE_LOG}\n\n1. ${LABEL_FIXED}\uff1a\u4fee\u590d\u5df2\u77e5\u95ee\u9898\u3002`;
 
 const rawVersion = process.argv[2] || process.env.RELEASE_VERSION || '';
 const releaseVersion = String(rawVersion).replace(/^v/i, '').trim();
@@ -120,7 +121,7 @@ function formatNotes(input) {
     .filter(([, items]) => items.length);
 
   if (!visibleCategories.length) {
-    return `### ${LABEL_UPDATE_LOG}`;
+    return DEFAULT_RELEASE_NOTES;
   }
 
   const lines = [`### ${LABEL_UPDATE_LOG}`, ''];
@@ -141,7 +142,7 @@ if (!notes) {
 }
 
 if (!notes) {
-  notes = `### ${LABEL_UPDATE_LOG}`;
+  notes = DEFAULT_RELEASE_NOTES;
 }
 
 if (process.env.GITHUB_OUTPUT) {
