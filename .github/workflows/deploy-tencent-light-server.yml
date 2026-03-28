@@ -126,9 +126,9 @@ jobs:
           rm -f /tmp/lingo-translate-proxy.tgz
 
           cd "$target_dir"
-          if docker compose version >/dev/null 2>&1; then
+          if docker info >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then
             compose() { docker compose "$@"; }
-          elif sudo -n docker compose version >/dev/null 2>&1; then
+          elif sudo -n docker info >/dev/null 2>&1 && sudo -n docker compose version >/dev/null 2>&1; then
             compose() { sudo -n docker compose "$@"; }
           else
             echo "docker compose is not available for ${USER}"
