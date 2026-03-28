@@ -5,12 +5,14 @@ import { useI18n } from './i18n/I18nProvider';
 import { getDesktopPlatform } from './utils/platform';
 
 const TranslatePage = lazy(() => import('./pages/Translate'));
+const TutorialPage = lazy(() => import('./pages/Tutorial'));
 const AboutPage = lazy(() => import('./pages/About'));
 const PhrasesPage = lazy(() => import('./pages/Phrases'));
 
 const pages = {
   home: Home,
   translate: TranslatePage,
+  tutorial: TutorialPage,
   phrases: PhrasesPage,
   about: AboutPage,
 };

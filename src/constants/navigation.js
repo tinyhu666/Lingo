@@ -1,6 +1,7 @@
-﻿import {
+import {
   HomeHLine,
   Translate,
+  BookOpen,
   ChatBubbleMessage,
   CircleInfo,
 } from '../icons';
@@ -15,6 +16,11 @@ export const NAV_ITEMS = [
     id: 'translate',
     labelKey: 'sidebar.nav.translate',
     icon: Translate,
+  },
+  {
+    id: 'tutorial',
+    labelKey: 'sidebar.nav.tutorial',
+    icon: BookOpen,
   },
   {
     id: 'phrases',

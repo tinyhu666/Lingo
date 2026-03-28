@@ -6,7 +6,7 @@ import DropdownMenu from './DropdownMenu';
 import { StoreProvider } from './StoreProvider';
 import { UpdateProvider } from './UpdateProvider';
 import appIcon from '../assets/app-icon.png';
-import { ChevronRight, Globe, XClose } from '../icons';
+import { ChevronRight, Globe, Minus, XClose } from '../icons';
 import { hasTauriRuntime } from '../services/tauriRuntime';
 import { showError, showInfo } from '../utils/toast';
 import { useI18n } from '../i18n/I18nProvider';
@@ -158,7 +158,7 @@ function LayoutShell({ children, activeItem, setActiveItem }) {
             onClick={() => {
               void handleWindowAction('minimize');
             }}>
-            <span className='lingo-titlebar__btn-icon lingo-titlebar__btn-minimize' aria-hidden='true' />
+            <Minus className='lingo-titlebar__btn-icon lingo-titlebar__btn-minimize-icon' aria-hidden='true' />
           </button>
           <button
             type='button'

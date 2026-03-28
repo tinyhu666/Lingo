@@ -21,7 +21,11 @@ function Get-SignToolPath {
       return $fromPath.Source
     }
 
-    throw "signtool.exe was not found. Install the Windows SDK or add signtool.exe to PATH."
+    if ($env:GITHUB_ACTIONS -eq "true") {
+      throw "signtool.exe was not found. Install the Windows SDK or add signtool.exe to PATH."
+    }
+
+    return $null
   }
 
   return $tool.FullName
@@ -63,6 +67,15 @@ if ($env:WINDOWS_SIGNING_MODE -eq "none") {
 }
 
 $signTool = Get-SignToolPath
+
+if (-not $signTool) {
+  if ($env:WINDOWS_SIGNING_MODE -eq "artifact") {
+    throw "signtool.exe was not found. Artifact signing requires the Windows SDK or signtool.exe in PATH."
+  }
+
+  Write-Host "signtool.exe was not found. Skipping Authenticode signing for local build."
+  exit 0
+}
 
 if ($env:WINDOWS_SIGNING_MODE -eq "artifact") {
   if ([string]::IsNullOrWhiteSpace($env:ARTIFACT_SIGNING_DLIB_PATH) -or [string]::IsNullOrWhiteSpace($env:ARTIFACT_SIGNING_METADATA_PATH)) {

@@ -57,13 +57,15 @@ export default function EnableStatusCard() {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.06 }}>
-      <div className='flex items-center gap-3'>
-        <PowerToggle className='w-6 h-6 stroke-zinc-500' />
-        <h3 className='tool-card-title'>{t('home.enableStatus.title')}</h3>
+      <div className='home-stat-card__header'>
+        <span className='home-stat-card__icon-shell'>
+          <PowerToggle className='home-stat-card__header-icon' />
+        </span>
+        <h3 className='home-stat-card__title'>{t('home.enableStatus.title')}</h3>
       </div>
 
       <div className='home-stat-card__body'>
-        <div className='home-top-copy'>
+        <div className='home-top-copy home-stat-card__copy home-stat-card__copy--single'>
           <p className='tool-body'>{t('home.enableStatus.desc')}</p>
         </div>
 

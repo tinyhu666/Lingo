@@ -1,3 +1,8 @@
+import dota2Icon from '../assets/game-icons/dota2.jpg';
+import leagueOfLegendsIcon from '../assets/game-icons/lol.svg';
+import worldOfWarcraftIcon from '../assets/game-icons/wow.png';
+import overwatchIcon from '../assets/game-icons/overwatch.ico';
+
 const localeBucket = (locale = 'zh-CN') => {
   const raw = String(locale || '').toLowerCase();
   if (raw.startsWith('en')) {
@@ -21,6 +26,8 @@ const LEGACY_GAME_SCENE_MAP = {
 export const GAME_SCENE_OPTIONS = [
   {
     id: 'dota2',
+    icon: dota2Icon,
+    iconFit: 'cover',
     labels: {
       zh: 'Dota 2',
       en: 'Dota 2',
@@ -29,34 +36,42 @@ export const GAME_SCENE_OPTIONS = [
   },
   {
     id: 'lol',
+    icon: leagueOfLegendsIcon,
+    iconFit: 'contain',
     labels: {
-      zh: '英雄联盟',
+      zh: '\u82f1\u96c4\u8054\u76df',
       en: 'League of Legends',
       ru: 'League of Legends',
     },
   },
   {
     id: 'wow',
+    icon: worldOfWarcraftIcon,
+    iconFit: 'contain',
     labels: {
-      zh: '魔兽世界',
+      zh: '\u9b54\u517d\u4e16\u754c',
       en: 'World of Warcraft',
       ru: 'World of Warcraft',
     },
   },
   {
     id: 'overwatch',
+    icon: overwatchIcon,
+    iconFit: 'contain',
     labels: {
-      zh: '守望先锋',
+      zh: '\u5b88\u671b\u5148\u950b',
       en: 'Overwatch',
       ru: 'Overwatch',
     },
   },
   {
     id: 'other',
+    icon: null,
+    iconFit: 'contain',
     labels: {
-      zh: '其他游戏',
+      zh: '\u5176\u4ed6\u6e38\u620f',
       en: 'Other Game',
-      ru: 'Другая игра',
+      ru: '\u0414\u0440\u0443\u0433\u0430\u044f \u0438\u0433\u0440\u0430',
     },
   },
 ];

@@ -154,39 +154,17 @@
   }
 
   .lingo-theme--windows .lingo-app-shell {
-    border-radius: 0;
     border-color: rgba(139, 160, 197, 0.88);
     box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.58),
-      0 20px 40px rgba(20, 34, 62, 0.12);
+      inset 0 1px 0 rgba(255, 255, 255, 0.64),
+      0 14px 28px rgba(20, 34, 62, 0.08);
   }
 
-  .lingo-theme--windows.lingo-theme--desktop {
-    border-radius: 0;
-  }
-
-  .lingo-theme--windows .lingo-app-shell::before {
-    border-radius: 0;
-  }
-
-  /* Windows already supplies the outer window curve. Keep the shell panels
-     visually quieter at the edges so they don't read as a second outline. */
   .lingo-theme--windows .lingo-shell__sidebar,
   .lingo-theme--windows .lingo-shell__workspace {
-    border-radius: 18px;
     border-color: rgba(167, 184, 212, 0.9);
-    box-shadow: 0 18px 34px rgba(24, 38, 70, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.88);
+    box-shadow: 0 14px 28px rgba(24, 38, 70, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.88);
     background-clip: padding-box;
-  }
-
-  .lingo-theme--windows .lingo-shell__sidebar {
-    border-top-left-radius: 0;
-    border-bottom-left-radius: 0;
-  }
-
-  .lingo-theme--windows .lingo-shell__workspace {
-    border-top-right-radius: 0;
-    border-bottom-right-radius: 0;
   }
 
   .lingo-titlebar {
@@ -335,9 +313,10 @@
     width: 38px;
     height: 36px;
     border-radius: 12px;
-    border: none;
-    background: transparent;
-    color: #5e7191;
+    border: 1px solid rgba(192, 206, 228, 0.84);
+    background: linear-gradient(180deg, rgba(254, 255, 255, 0.82) 0%, rgba(236, 244, 255, 0.72) 100%);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.94);
+    color: #5b7192;
     transition: all 0.16s ease;
   }
 
@@ -351,29 +330,30 @@
   }
 
   .lingo-titlebar__btn:hover {
-    background: rgba(223, 235, 252, 0.72);
+    border-color: rgba(165, 187, 226, 0.96);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(227, 238, 255, 0.94) 100%);
+    box-shadow:
+      0 10px 18px rgba(76, 111, 255, 0.08),
+      inset 0 1px 0 rgba(255, 255, 255, 0.96);
     color: #2d3f62;
   }
 
   .lingo-titlebar__btn:focus-visible {
     outline: none;
-    box-shadow: 0 0 0 3px rgba(76, 111, 255, 0.18);
+    box-shadow:
+      0 0 0 3px rgba(76, 111, 255, 0.16),
+      inset 0 1px 0 rgba(255, 255, 255, 0.96);
   }
 
   .lingo-titlebar__btn--close:hover {
-    background: rgba(255, 227, 234, 0.86);
+    border-color: rgba(242, 183, 196, 0.95);
+    background: linear-gradient(180deg, rgba(255, 245, 248, 0.98) 0%, rgba(255, 231, 237, 0.94) 100%);
     color: #c43b5d;
   }
 
-  .lingo-titlebar__btn-minimize {
-    width: 12px;
-    height: 2px;
-    border-radius: 999px;
-    background: currentColor;
-  }
-
+  .lingo-titlebar__btn-minimize-icon,
   .lingo-titlebar__btn-close-icon {
-    stroke-width: 2.1;
+    stroke-width: 2.2;
   }
 
   .lingo-shell {
@@ -841,16 +821,69 @@
     min-width: 0;
     display: flex;
     flex-direction: column;
-    padding: 24px 24px 18px;
+    min-height: 236px;
+    padding: 24px 24px 20px;
     text-align: left;
+  }
+
+  .home-stat-card__header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    min-height: 48px;
+    min-width: 0;
+  }
+
+  .home-stat-card__icon-shell {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 42px;
+    height: 42px;
+    min-width: 42px;
+    border-radius: 14px;
+    border: 1px solid rgba(196, 209, 228, 0.92);
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(232, 239, 251, 0.92) 100%);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.96);
+    color: #5b7091;
+  }
+
+  .home-stat-card__header-icon {
+    width: 20px;
+    height: 20px;
+    stroke: currentColor;
+    stroke-width: 2.1;
+  }
+
+  .home-stat-card__title {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: 20px;
+    line-height: 1.1;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: var(--text-1);
+    white-space: nowrap;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .home-stat-card__body {
     flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 18px;
+    gap: 16px;
     margin-top: 18px;
+  }
+
+  .home-stat-card__copy .tool-body {
+    margin: 0;
+  }
+
+  .home-stat-card__copy--single {
+    align-content: start;
   }
 
   .home-top-copy {
@@ -863,7 +896,7 @@
 
   .home-top-actions {
     margin-top: auto;
-    padding-top: 2px;
+    padding-top: 6px;
   }
 
   .home-top-control-slot {
@@ -875,7 +908,7 @@
     display: flex;
     align-items: center;
     width: 100%;
-    min-height: 60px;
+    min-height: 64px;
     padding: 8px;
     box-sizing: border-box;
     border-radius: 20px;
@@ -926,6 +959,59 @@
     justify-content: flex-start;
     gap: 6px;
     overflow: hidden;
+  }
+
+  .home-game-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    min-width: 28px;
+    overflow: hidden;
+    border-radius: 10px;
+    border: 1px solid rgba(196, 211, 232, 0.92);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(235, 242, 252, 0.98) 100%);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.94);
+  }
+
+  .home-game-icon--generic {
+    color: #5e7392;
+  }
+
+  .home-game-icon__image {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+
+  .home-game-icon__image--contain {
+    object-fit: contain;
+  }
+
+  .home-game-icon__image--cover {
+    object-fit: cover;
+  }
+
+  .home-game-icon__fallback {
+    width: 15px;
+    height: 15px;
+    stroke-width: 2.25;
+  }
+
+  .home-game-option {
+    min-width: 0;
+    flex: 1;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .home-game-option__label {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .home-language-chip__label {
@@ -1049,7 +1135,8 @@
   }
 
   .home-grid,
-  .home-guide-grid,
+  .tutorial-layout-grid,
+  .tutorial-step-grid,
   .translate-mode-grid,
   .about-update-grid,
   .about-project-grid {
@@ -1059,13 +1146,11 @@
   .home-grid {
     min-height: 100%;
     grid-template-columns: minmax(0, 1fr);
-    gap: 20px;
+    gap: 18px;
     align-content: start;
   }
 
-  .home-grid__stat,
-  .home-grid__guide,
-  .home-grid__demo {
+  .home-grid__stat {
     min-width: 0;
   }
 
@@ -1081,64 +1166,54 @@
     padding: 24px;
   }
 
-  .home-guide-grid {
+  .tutorial-page {
+    min-height: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .tutorial-layout-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 20px;
     align-items: stretch;
   }
 
-  .home-guide-step {
+  .tutorial-layout-grid__guide,
+  .tutorial-layout-grid__demo {
+    min-width: 0;
+  }
+
+  .tutorial-step-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+    align-items: stretch;
+  }
+
+  .tutorial-step {
     height: 100%;
     display: flex;
     flex-direction: column;
     padding: 20px;
   }
 
-  .home-guide-step .tool-body {
+  .tutorial-step .tool-body {
     margin-top: 10px;
   }
 
-  .home-demo-stack {
+  .tutorial-demo-stack {
     display: grid;
     gap: 14px;
   }
 
-  @media (min-width: 1100px) {
+  @media (min-width: 900px) {
     .home-grid {
-      grid-template-columns: repeat(12, minmax(0, 1fr));
-      gap: 20px;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
-    .home-grid__stat--translation {
-      grid-column: span 4 / span 4;
+    .tutorial-layout-grid {
+      grid-template-columns: minmax(0, 1.8fr) minmax(320px, 1fr);
     }
-
-    .home-grid__stat--game {
-      grid-column: span 3 / span 3;
-    }
-
-    .home-grid__stat--hotkey {
-      grid-column: span 3 / span 3;
-    }
-
-    .home-grid__stat--status {
-      grid-column: span 2 / span 2;
-    }
-
-    .home-grid__guide {
-      grid-column: span 8 / span 8;
-    }
-
-    .home-grid__demo {
-      grid-column: span 4 / span 4;
-    }
-
-    .home-guide-grid {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
-  }
-
-  .home-guide-grid {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 16px;
   }
 
   .translate-mode-grid,
@@ -1159,7 +1234,7 @@
   }
 
   @media (min-width: 768px) {
-    .home-guide-grid {
+    .tutorial-step-grid {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
   }
@@ -1167,6 +1242,10 @@
   @media (min-width: 1024px) {
     .translate-mode-grid {
       grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .tutorial-step-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
     }
   }
 
@@ -1178,7 +1257,7 @@
 
   html.platform-desktop .lingo-titlebar__controls,
   body.platform-desktop .lingo-titlebar__controls {
-    gap: 6px;
+    gap: 8px;
   }
 
   html.platform-desktop .lingo-titlebar__locale-trigger,
@@ -1199,8 +1278,8 @@
   html.platform-desktop .lingo-titlebar__btn,
   body.platform-desktop .lingo-titlebar__btn {
     width: 36px;
-    height: 34px;
-    border-radius: 10px;
+    height: 36px;
+    border-radius: 11px;
   }
 
   html.platform-desktop .lingo-shell,
@@ -1264,42 +1343,50 @@
 
   html.platform-desktop .home-grid,
   body.platform-desktop .home-grid {
-    grid-template-columns: repeat(12, minmax(0, 1fr));
+    height: 100%;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: repeat(2, minmax(0, 1fr));
     gap: 20px;
+    align-content: stretch;
   }
 
   html.platform-desktop .home-grid__stat--translation,
   body.platform-desktop .home-grid__stat--translation {
-    grid-column: span 4 / span 4;
+    grid-column: auto;
   }
 
   html.platform-desktop .home-grid__stat--game,
   body.platform-desktop .home-grid__stat--game {
-    grid-column: span 3 / span 3;
+    grid-column: auto;
   }
 
   html.platform-desktop .home-grid__stat--hotkey,
   body.platform-desktop .home-grid__stat--hotkey {
-    grid-column: span 3 / span 3;
+    grid-column: auto;
   }
 
   html.platform-desktop .home-grid__stat--status,
   body.platform-desktop .home-grid__stat--status {
-    grid-column: span 2 / span 2;
+    grid-column: auto;
   }
 
-  html.platform-desktop .home-grid__guide,
-  body.platform-desktop .home-grid__guide {
-    grid-column: span 8 / span 8;
+  html.platform-desktop .home-grid__stat,
+  body.platform-desktop .home-grid__stat {
+    min-height: 0;
   }
 
-  html.platform-desktop .home-grid__demo,
-  body.platform-desktop .home-grid__demo {
-    grid-column: span 4 / span 4;
+  html.platform-desktop .home-stat-card,
+  body.platform-desktop .home-stat-card {
+    min-height: 0;
   }
 
-  html.platform-desktop .home-guide-grid,
-  body.platform-desktop .home-guide-grid {
+  html.platform-desktop .tutorial-layout-grid,
+  body.platform-desktop .tutorial-layout-grid {
+    grid-template-columns: minmax(0, 1.8fr) minmax(320px, 1fr);
+  }
+
+  html.platform-desktop .tutorial-step-grid,
+  body.platform-desktop .tutorial-step-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
