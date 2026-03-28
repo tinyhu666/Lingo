@@ -1,5 +1,12 @@
 declare const __APP_VERSION__: string;
 
+interface ImportMetaEnv {
+}
+
+interface ImportMeta {
+  readonly env: ImportMetaEnv;
+}
+
 declare module '@tauri-apps/plugin-updater' {
   export interface CheckOptions {
     headers?: HeadersInit;

@@ -11,6 +11,7 @@
     "tauri": "tauri",
     "proxy:dev": "node server/translate-proxy/src/server.mjs",
     "proxy:smoke": "node server/translate-proxy/scripts/smoke-test.mjs",
+    "proxy:analytics-smoke": "node server/translate-proxy/scripts/analytics-smoke-test.mjs",
     "proxy:diagnose": "node server/translate-proxy/scripts/diagnose-latency.mjs",
     "proxy:print-siliconflow-config": "node server/translate-proxy/scripts/print-siliconflow-config.mjs",
     "brand:assets": "node scripts/generate-brand-assets.mjs",

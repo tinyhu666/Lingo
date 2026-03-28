@@ -1,5 +1,8 @@
 import { createServer } from 'node:http';
 import { randomUUID } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import {
   loadRuntimeConfig,
@@ -7,6 +10,11 @@ import {
   resolveApiKey,
   summarizeRuntimeConfig,
 } from './runtime-config.mjs';
+import {
+  ingestAnalyticsEvents,
+  queryAnalyticsDaily,
+  queryAnalyticsOverview,
+} from './analytics-store.mjs';
 
 const corsHeaders = {
   'Content-Type': 'application/json',
@@ -107,10 +115,23 @@ const STYLE_PROFILES = {
 const translationCache = new Map();
 const translationInflight = new Map();
 const fastLaneCircuit = new Map();
+const currentDir = dirname(fileURLToPath(import.meta.url));
+const analyticsDashboardHtml = readFileSync(
+  join(currentDir, '..', 'public', 'analytics-dashboard.html'),
+  'utf8',
+);
 
 const jsonResponse = (res, status, payload) => {
   res.writeHead(status, corsHeaders);
   res.end(JSON.stringify(payload));
+};
+
+const htmlResponse = (res, status, html) => {
+  res.writeHead(status, {
+    'Content-Type': 'text/html; charset=utf-8',
+    'Cache-Control': 'no-store',
+  });
+  res.end(html);
 };
 
 const summarizeText = (value) => {
@@ -923,6 +944,39 @@ const routeHealthz = async (res, traceId) => {
   });
 };
 
+const routeAnalyticsEvents = async (req, res, traceId) => {
+  if (req.method !== 'POST') {
+    return jsonResponse(res, 405, { message: 'Method not allowed', trace_id: traceId });
+  }
+
+  validateClientKey(req);
+  const payload = await readJsonBody(req);
+  const events = Array.isArray(payload?.events) ? payload.events : [];
+  const result = ingestAnalyticsEvents(events);
+
+  return jsonResponse(res, 200, {
+    ...result,
+    trace_id: traceId,
+  });
+};
+
+const routeAnalyticsPublicOverview = (res, traceId) => {
+  return jsonResponse(res, 200, {
+    ...queryAnalyticsOverview(),
+    trace_id: traceId,
+  });
+};
+
+const routeAnalyticsPublicDaily = (url, res, traceId) => {
+  const from = url.searchParams.get('from');
+  const to = url.searchParams.get('to');
+
+  return jsonResponse(res, 200, {
+    ...queryAnalyticsDaily({ from, to }),
+    trace_id: traceId,
+  });
+};
+
 const server = createServer(async (req, res) => {
   const traceId = randomUUID();
 
@@ -942,6 +996,26 @@ const server = createServer(async (req, res) => {
 
     if (url.pathname === '/translate') {
       await routeTranslate(req, res, traceId);
+      return;
+    }
+
+    if (url.pathname === '/analytics/events') {
+      await routeAnalyticsEvents(req, res, traceId);
+      return;
+    }
+
+    if (url.pathname === '/analytics/public/overview') {
+      routeAnalyticsPublicOverview(res, traceId);
+      return;
+    }
+
+    if (url.pathname === '/analytics/public/daily') {
+      routeAnalyticsPublicDaily(url, res, traceId);
+      return;
+    }
+
+    if (url.pathname === '/analytics/dashboard') {
+      htmlResponse(res, 200, analyticsDashboardHtml);
       return;
     }
 

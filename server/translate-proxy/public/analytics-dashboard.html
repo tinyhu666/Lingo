@@ -1,0 +1,409 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Lingo Analytics</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f4efe3;
+        --surface: rgba(255, 255, 255, 0.78);
+        --surface-strong: rgba(255, 255, 255, 0.9);
+        --text: #1f2937;
+        --muted: #6b7280;
+        --line: rgba(15, 23, 42, 0.1);
+        --accent: #db6a3c;
+        --accent-soft: rgba(219, 106, 60, 0.14);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+        color: var(--text);
+        background:
+          radial-gradient(circle at top left, rgba(219, 106, 60, 0.16), transparent 34%),
+          radial-gradient(circle at top right, rgba(26, 115, 232, 0.12), transparent 28%),
+          linear-gradient(180deg, #faf7f0 0%, var(--bg) 100%);
+      }
+
+      main {
+        max-width: 1160px;
+        margin: 0 auto;
+        padding: 40px 20px 60px;
+      }
+
+      .hero {
+        display: flex;
+        justify-content: space-between;
+        gap: 20px;
+        align-items: end;
+        margin-bottom: 28px;
+      }
+
+      .hero h1 {
+        margin: 0 0 10px;
+        font-size: clamp(30px, 5vw, 48px);
+      }
+
+      .hero p {
+        margin: 0;
+        color: var(--muted);
+        max-width: 720px;
+        line-height: 1.6;
+      }
+
+      .hero .meta {
+        color: var(--muted);
+        font-size: 14px;
+        text-align: right;
+      }
+
+      .cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+        gap: 16px;
+        margin-bottom: 24px;
+      }
+
+      .card,
+      .panel {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 22px;
+        backdrop-filter: blur(18px);
+        box-shadow: 0 14px 40px rgba(15, 23, 42, 0.06);
+      }
+
+      .card {
+        padding: 18px 18px 20px;
+      }
+
+      .card .label {
+        color: var(--muted);
+        font-size: 13px;
+        margin-bottom: 10px;
+      }
+
+      .card .value {
+        font-size: 34px;
+        font-weight: 700;
+      }
+
+      .card .hint {
+        margin-top: 8px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .panel {
+        padding: 22px;
+      }
+
+      .panel h2 {
+        margin: 0 0 6px;
+        font-size: 20px;
+      }
+
+      .panel p {
+        margin: 0 0 18px;
+        color: var(--muted);
+      }
+
+      .toolbar {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        flex-wrap: wrap;
+        margin-bottom: 16px;
+      }
+
+      .toolbar label {
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      .toolbar input {
+        border: 1px solid var(--line);
+        background: var(--surface-strong);
+        border-radius: 12px;
+        padding: 10px 12px;
+        font: inherit;
+      }
+
+      .toolbar button {
+        border: none;
+        background: var(--accent);
+        color: white;
+        border-radius: 999px;
+        padding: 10px 18px;
+        font: inherit;
+        cursor: pointer;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+
+      th,
+      td {
+        padding: 12px 10px;
+        border-bottom: 1px solid var(--line);
+        text-align: left;
+        font-size: 14px;
+      }
+
+      th {
+        color: var(--muted);
+        font-weight: 600;
+      }
+
+      .bar {
+        display: inline-flex;
+        align-items: center;
+        min-width: 160px;
+        gap: 10px;
+      }
+
+      .bar-track {
+        flex: 1;
+        height: 8px;
+        border-radius: 999px;
+        background: rgba(15, 23, 42, 0.08);
+        overflow: hidden;
+      }
+
+      .bar-fill {
+        height: 100%;
+        border-radius: 999px;
+        background: linear-gradient(90deg, var(--accent) 0%, #f1a56e 100%);
+      }
+
+      .status {
+        margin-top: 14px;
+        padding: 12px 14px;
+        border-radius: 14px;
+        background: var(--accent-soft);
+        color: #7a3419;
+        display: none;
+      }
+
+      .status.is-visible {
+        display: block;
+      }
+
+      @media (max-width: 720px) {
+        .hero {
+          flex-direction: column;
+          align-items: start;
+        }
+
+        .hero .meta {
+          text-align: left;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section class="hero">
+        <div>
+          <h1>Lingo Analytics</h1>
+          <p>
+            Public lifecycle metrics only. The dashboard groups by Asia/Shanghai while raw event
+            timestamps stay stored in UTC on the server.
+          </p>
+        </div>
+        <div class="meta" id="generated-at">Loading...</div>
+      </section>
+
+      <section class="cards" id="summary-cards"></section>
+
+      <section class="panel">
+        <h2>Daily Metrics</h2>
+        <p>
+          Default range is the last 30 days. Suspected uninstall means the installation has not sent
+          any active ping for 30 days.
+        </p>
+        <div class="toolbar">
+          <label>From <input type="date" id="from-date" /></label>
+          <label>To <input type="date" id="to-date" /></label>
+          <button id="refresh-button" type="button">Refresh</button>
+        </div>
+        <div id="status" class="status" role="status"></div>
+        <div style="overflow-x:auto">
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>DAU</th>
+                <th>Launches</th>
+                <th>Installs</th>
+                <th>Suspected Uninstalls</th>
+              </tr>
+            </thead>
+            <tbody id="daily-body"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      const cardsNode = document.getElementById('summary-cards');
+      const dailyBodyNode = document.getElementById('daily-body');
+      const generatedAtNode = document.getElementById('generated-at');
+      const statusNode = document.getElementById('status');
+      const fromDateInput = document.getElementById('from-date');
+      const toDateInput = document.getElementById('to-date');
+      const refreshButton = document.getElementById('refresh-button');
+
+      const metricCards = [
+        {
+          key: 'dau_today',
+          label: 'DAU Today',
+          hint: 'Unique installations with at least one active ping today',
+        },
+        {
+          key: 'launches_today',
+          label: 'Launches Today',
+          hint: 'Total desktop launches recorded today',
+        },
+        {
+          key: 'installs_today',
+          label: 'Installs Today',
+          hint: 'First-time install reports recorded today',
+        },
+        {
+          key: 'suspected_uninstalls_current',
+          label: 'Suspected Uninstalls',
+          hint: 'Installations inactive for at least 30 days',
+        },
+        {
+          key: 'installations_total',
+          label: 'Installations Total',
+          hint: 'Cumulative installations ever seen by the server',
+        },
+        {
+          key: 'active_installations_30d',
+          label: 'Active 30d',
+          hint: 'Installations active at least once in the last 30 days',
+        },
+      ];
+
+      const setStatus = (message) => {
+        statusNode.textContent = message || '';
+        statusNode.classList.toggle('is-visible', Boolean(message));
+      };
+
+      const formatTimestamp = (value) => {
+        if (!value) {
+          return 'No data';
+        }
+
+        const parsed = new Date(value);
+        if (Number.isNaN(parsed.getTime())) {
+          return value;
+        }
+
+        return parsed.toLocaleString('zh-CN', {
+          hour12: false,
+          timeZone: 'Asia/Shanghai',
+        });
+      };
+
+      const renderCards = (metrics) => {
+        cardsNode.innerHTML = metricCards
+          .map(
+            (item) => `
+              <article class="card">
+                <div class="label">${item.label}</div>
+                <div class="value">${Number(metrics[item.key] || 0).toLocaleString('en-US')}</div>
+                <div class="hint">${item.hint}</div>
+              </article>
+            `,
+          )
+          .join('');
+      };
+
+      const renderDaily = (days) => {
+        const maxDau = Math.max(1, ...days.map((item) => Number(item.dau || 0)));
+        dailyBodyNode.innerHTML = days
+          .map(
+            (item) => `
+              <tr>
+                <td>${item.date}</td>
+                <td>
+                  <div class="bar">
+                    <div class="bar-track">
+                      <div class="bar-fill" style="width:${Math.round((Number(item.dau || 0) / maxDau) * 100)}%"></div>
+                    </div>
+                    <span>${Number(item.dau || 0).toLocaleString('en-US')}</span>
+                  </div>
+                </td>
+                <td>${Number(item.launches || 0).toLocaleString('en-US')}</td>
+                <td>${Number(item.installs || 0).toLocaleString('en-US')}</td>
+                <td>${Number(item.suspected_uninstalls || 0).toLocaleString('en-US')}</td>
+              </tr>
+            `,
+          )
+          .join('');
+      };
+
+      const fetchJson = async (url) => {
+        const response = await fetch(url, { cache: 'no-store' });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(payload.message || `Request failed: ${response.status}`);
+        }
+        return payload;
+      };
+
+      const loadData = async () => {
+        setStatus('');
+        const from = fromDateInput.value;
+        const to = toDateInput.value;
+        const query = new URLSearchParams();
+
+        if (from) {
+          query.set('from', from);
+        }
+
+        if (to) {
+          query.set('to', to);
+        }
+
+        const [overview, daily] = await Promise.all([
+          fetchJson('/analytics/public/overview'),
+          fetchJson(`/analytics/public/daily?${query.toString()}`),
+        ]);
+
+        generatedAtNode.textContent = `Updated ${formatTimestamp(overview.generated_at)} | Timezone ${overview.timezone}`;
+        renderCards(overview.metrics || {});
+        renderDaily(daily.days || []);
+
+        if (!fromDateInput.value) {
+          fromDateInput.value = daily.from || '';
+        }
+
+        if (!toDateInput.value) {
+          toDateInput.value = daily.to || '';
+        }
+      };
+
+      refreshButton.addEventListener('click', () => {
+        void loadData().catch((error) => {
+          setStatus(error.message || String(error));
+        });
+      });
+
+      void loadData().catch((error) => {
+        setStatus(error.message || String(error));
+      });
+    </script>
+  </body>
+</html>

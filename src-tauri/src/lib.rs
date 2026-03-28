@@ -225,6 +225,11 @@ fn get_version(app_handle: tauri::AppHandle) -> String {
 }
 
 #[tauri::command]
+fn get_public_backend_config() -> ai_translator::PublicBackendConfig {
+    ai_translator::public_backend_config()
+}
+
+#[tauri::command]
 fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
 }
@@ -414,6 +419,7 @@ pub fn run() {
             log_to_backend,
             get_settings,
             get_version,
+            get_public_backend_config,
             set_app_enabled,
             update_phrases,
             get_latest_release_metadata
