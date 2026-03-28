@@ -6,7 +6,7 @@ on:
       release_tag:
         description: Existing release tag to mirror to Tencent COS
         required: true
-        default: v0.6.1
+        default: v0.6.2
   push:
     tags:
       - 'v*'
