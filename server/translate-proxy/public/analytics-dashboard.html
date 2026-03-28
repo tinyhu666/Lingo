@@ -171,6 +171,15 @@
         cursor: pointer;
       }
 
+      .toolbar button:disabled {
+        opacity: 0.65;
+        cursor: progress;
+      }
+
+      .toolbar input:disabled {
+        opacity: 0.72;
+      }
+
       table {
         width: 100%;
         border-collapse: collapse;
@@ -331,6 +340,12 @@
           generatedAtUpdated: '更新时间',
           generatedAtTimezone: '时区',
           noData: '暂无数据',
+          loadingStatus: '正在加载最新数据...',
+          refreshing: '刷新中...',
+          requestFailed: '请求失败（HTTP {status}）',
+          networkError: '网络连接失败，请稍后重试。',
+          unexpectedError: '发生未知错误。',
+          unexpectedErrorWithDetail: '发生未知错误：{detail}',
           dailyTitle: '每日指标',
           dailyDescription: '默认展示最近 30 天。疑似卸载表示该安装实例已连续 30 天没有发送活跃 ping。',
           fromLabel: '开始日期',
@@ -363,6 +378,12 @@
           generatedAtUpdated: 'Updated',
           generatedAtTimezone: 'Timezone',
           noData: 'No data',
+          loadingStatus: 'Loading latest metrics...',
+          refreshing: 'Refreshing...',
+          requestFailed: 'Request failed (HTTP {status})',
+          networkError: 'Network request failed. Please try again later.',
+          unexpectedError: 'Unexpected error.',
+          unexpectedErrorWithDetail: 'Unexpected error: {detail}',
           dailyTitle: 'Daily Metrics',
           dailyDescription: 'Default range is the last 30 days. Suspected uninstall means the installation has not sent any active ping for 30 days.',
           fromLabel: 'From',
@@ -433,8 +454,13 @@
       let currentLanguage = readStoredLanguage();
       let currentOverview = null;
       let currentDaily = null;
+      let currentStatusState = null;
+      let isLoading = false;
 
-      const t = (key) => translations[currentLanguage]?.[key] || translations[defaultLanguage][key] || key;
+      const t = (key, params = {}) => {
+        const template = translations[currentLanguage]?.[key] || translations[defaultLanguage][key] || key;
+        return String(template).replace(/\{(\w+)\}/g, (_, token) => String(params[token] ?? ''));
+      };
 
       const saveLanguage = (value) => {
         try {
@@ -447,9 +473,25 @@
       const formatNumber = (value) =>
         Number(value || 0).toLocaleString(currentLanguage === 'zh-CN' ? 'zh-CN' : 'en-US');
 
-      const setStatus = (message) => {
-        statusNode.textContent = message || '';
+      const setStatus = (state) => {
+        currentStatusState = state || null;
+        const message =
+          !currentStatusState
+            ? ''
+            : typeof currentStatusState === 'string'
+              ? currentStatusState
+              : t(currentStatusState.key, currentStatusState.params);
+
+        statusNode.textContent = message;
         statusNode.classList.toggle('is-visible', Boolean(message));
+      };
+
+      const setLoadingState = (value) => {
+        isLoading = Boolean(value);
+        refreshButton.disabled = isLoading;
+        fromDateInput.disabled = isLoading;
+        toDateInput.disabled = isLoading;
+        refreshButton.textContent = t(isLoading ? 'refreshing' : 'refresh');
       };
 
       const formatTimestamp = (value) => {
@@ -543,22 +585,58 @@
         thLaunchesNode.textContent = t('launches');
         thInstallsNode.textContent = t('installs');
         thSuspectedUninstallsNode.textContent = t('suspectedUninstalls');
+        setLoadingState(isLoading);
+        setStatus(currentStatusState);
         renderGeneratedAt();
         renderCards(currentOverview?.metrics || {});
         renderDaily(currentDaily?.days || []);
       };
 
+      const createHttpError = (status, detail) => {
+        const error = new Error(detail || `Request failed: ${status}`);
+        error.status = status;
+        error.detail = detail || '';
+        return error;
+      };
+
+      const toStatusState = (error) => {
+        if (error && typeof error.status === 'number') {
+          return { key: 'requestFailed', params: { status: error.status } };
+        }
+
+        const message = String(error?.message || '').trim();
+        if (/failed to fetch|fetch failed|networkerror|network request failed/i.test(message)) {
+          return { key: 'networkError' };
+        }
+
+        if (message) {
+          return { key: 'unexpectedErrorWithDetail', params: { detail: message } };
+        }
+
+        return { key: 'unexpectedError' };
+      };
+
       const fetchJson = async (url) => {
-        const response = await fetch(url, { cache: 'no-store' });
+        let response;
+
+        try {
+          response = await fetch(url, { cache: 'no-store' });
+        } catch (error) {
+          const wrapped = new Error(error?.message || 'fetch failed');
+          wrapped.code = 'NETWORK_ERROR';
+          throw wrapped;
+        }
+
         const payload = await response.json().catch(() => ({}));
         if (!response.ok) {
-          throw new Error(payload.message || `Request failed: ${response.status}`);
+          throw createHttpError(response.status, payload.message);
         }
         return payload;
       };
 
       const loadData = async () => {
-        setStatus('');
+        setLoadingState(true);
+        setStatus({ key: 'loadingStatus' });
         const from = fromDateInput.value;
         const to = toDateInput.value;
         const query = new URLSearchParams();
@@ -589,6 +667,9 @@
         if (!toDateInput.value) {
           toDateInput.value = daily.to || '';
         }
+
+        setStatus(null);
+        setLoadingState(false);
       };
 
       languageSelect.value = currentLanguage;
@@ -603,12 +684,14 @@
 
       refreshButton.addEventListener('click', () => {
         void loadData().catch((error) => {
-          setStatus(error.message || String(error));
+          setStatus(toStatusState(error));
+          setLoadingState(false);
         });
       });
 
       void loadData().catch((error) => {
-        setStatus(error.message || String(error));
+        setStatus(toStatusState(error));
+        setLoadingState(false);
       });
     </script>
   </body>
