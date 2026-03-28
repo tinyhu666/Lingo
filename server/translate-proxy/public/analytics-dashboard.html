@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="en">
+<html lang="zh-CN">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Lingo Analytics</title>
+    <title>Lingo 数据看板</title>
     <style>
       :root {
         color-scheme: light;
@@ -57,10 +57,36 @@
         line-height: 1.6;
       }
 
+      .hero-actions {
+        display: flex;
+        flex-direction: column;
+        align-items: end;
+        gap: 12px;
+      }
+
       .hero .meta {
         color: var(--muted);
         font-size: 14px;
         text-align: right;
+      }
+
+      .language-switch {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 14px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        background: var(--surface-strong);
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      .language-switch select {
+        border: none;
+        background: transparent;
+        color: var(--text);
+        font: inherit;
       }
 
       .cards {
@@ -197,9 +223,18 @@
         display: block;
       }
 
+      .empty-row td {
+        text-align: center;
+        color: var(--muted);
+      }
+
       @media (max-width: 720px) {
         .hero {
           flex-direction: column;
+          align-items: start;
+        }
+
+        .hero-actions {
           align-items: start;
         }
 
@@ -213,38 +248,45 @@
     <main>
       <section class="hero">
         <div>
-          <h1>Lingo Analytics</h1>
-          <p>
-            Public lifecycle metrics only. The dashboard groups by Asia/Shanghai while raw event
-            timestamps stay stored in UTC on the server.
+          <h1 id="page-title">Lingo 数据看板</h1>
+          <p id="hero-description">
+            仅展示公开生命周期指标。看板按 Asia/Shanghai 聚合，服务端仍以 UTC 存储原始事件时间戳。
           </p>
         </div>
-        <div class="meta" id="generated-at">Loading...</div>
+        <div class="hero-actions">
+          <label class="language-switch">
+            <span id="language-label">语言</span>
+            <select id="language-select" aria-label="Language">
+              <option value="zh-CN">简体中文</option>
+              <option value="en">English</option>
+            </select>
+          </label>
+          <div class="meta" id="generated-at">加载中...</div>
+        </div>
       </section>
 
       <section class="cards" id="summary-cards"></section>
 
       <section class="panel">
-        <h2>Daily Metrics</h2>
-        <p>
-          Default range is the last 30 days. Suspected uninstall means the installation has not sent
-          any active ping for 30 days.
+        <h2 id="daily-title">每日指标</h2>
+        <p id="daily-description">
+          默认展示最近 30 天。疑似卸载表示该安装实例已连续 30 天没有发送活跃 ping。
         </p>
         <div class="toolbar">
-          <label>From <input type="date" id="from-date" /></label>
-          <label>To <input type="date" id="to-date" /></label>
-          <button id="refresh-button" type="button">Refresh</button>
+          <label><span id="from-label">开始日期</span> <input type="date" id="from-date" /></label>
+          <label><span id="to-label">结束日期</span> <input type="date" id="to-date" /></label>
+          <button id="refresh-button" type="button">刷新</button>
         </div>
         <div id="status" class="status" role="status"></div>
         <div style="overflow-x:auto">
           <table>
             <thead>
               <tr>
-                <th>Date</th>
-                <th>DAU</th>
-                <th>Launches</th>
-                <th>Installs</th>
-                <th>Suspected Uninstalls</th>
+                <th id="th-date">日期</th>
+                <th id="th-dau">日活</th>
+                <th id="th-launches">启动</th>
+                <th id="th-installs">安装</th>
+                <th id="th-suspected-uninstalls">疑似卸载</th>
               </tr>
             </thead>
             <tbody id="daily-body"></tbody>
@@ -261,39 +303,149 @@
       const fromDateInput = document.getElementById('from-date');
       const toDateInput = document.getElementById('to-date');
       const refreshButton = document.getElementById('refresh-button');
+      const pageTitleNode = document.getElementById('page-title');
+      const heroDescriptionNode = document.getElementById('hero-description');
+      const languageLabelNode = document.getElementById('language-label');
+      const languageSelect = document.getElementById('language-select');
+      const dailyTitleNode = document.getElementById('daily-title');
+      const dailyDescriptionNode = document.getElementById('daily-description');
+      const fromLabelNode = document.getElementById('from-label');
+      const toLabelNode = document.getElementById('to-label');
+      const thDateNode = document.getElementById('th-date');
+      const thDauNode = document.getElementById('th-dau');
+      const thLaunchesNode = document.getElementById('th-launches');
+      const thInstallsNode = document.getElementById('th-installs');
+      const thSuspectedUninstallsNode = document.getElementById('th-suspected-uninstalls');
+
+      const defaultLanguage = 'zh-CN';
+      const languageStorageKey = 'lingo.analytics.dashboard.language';
+      const hasLanguage = (value) => Object.prototype.hasOwnProperty.call(translations, value);
+
+      const translations = {
+        'zh-CN': {
+          pageTitle: 'Lingo 数据看板',
+          heroDescription: '仅展示公开生命周期指标。看板按 Asia/Shanghai 聚合，服务端仍以 UTC 存储原始事件时间戳。',
+          languageLabel: '语言',
+          languageAriaLabel: '语言',
+          generatedAtLoading: '加载中...',
+          generatedAtUpdated: '更新时间',
+          generatedAtTimezone: '时区',
+          noData: '暂无数据',
+          dailyTitle: '每日指标',
+          dailyDescription: '默认展示最近 30 天。疑似卸载表示该安装实例已连续 30 天没有发送活跃 ping。',
+          fromLabel: '开始日期',
+          toLabel: '结束日期',
+          refresh: '刷新',
+          date: '日期',
+          dau: '日活',
+          launches: '启动',
+          installs: '安装',
+          suspectedUninstalls: '疑似卸载',
+          cardDauTodayLabel: '今日日活',
+          cardDauTodayHint: '今天至少有一次活跃 ping 的唯一安装实例数',
+          cardLaunchesTodayLabel: '今日启动',
+          cardLaunchesTodayHint: '今天记录到的桌面端启动总次数',
+          cardInstallsTodayLabel: '今日安装',
+          cardInstallsTodayHint: '今天首次上报的安装实例数',
+          cardSuspectedUninstallsLabel: '疑似卸载',
+          cardSuspectedUninstallsHint: '至少 30 天未活跃的安装实例数',
+          cardInstallationsTotalLabel: '累计安装',
+          cardInstallationsTotalHint: '服务端观察到的累计安装实例总数',
+          cardActive30dLabel: '近 30 天活跃',
+          cardActive30dHint: '近 30 天内至少活跃过一次的安装实例数',
+        },
+        en: {
+          pageTitle: 'Lingo Analytics',
+          heroDescription: 'Public lifecycle metrics only. The dashboard groups by Asia/Shanghai while raw event timestamps stay stored in UTC on the server.',
+          languageLabel: 'Language',
+          languageAriaLabel: 'Language',
+          generatedAtLoading: 'Loading...',
+          generatedAtUpdated: 'Updated',
+          generatedAtTimezone: 'Timezone',
+          noData: 'No data',
+          dailyTitle: 'Daily Metrics',
+          dailyDescription: 'Default range is the last 30 days. Suspected uninstall means the installation has not sent any active ping for 30 days.',
+          fromLabel: 'From',
+          toLabel: 'To',
+          refresh: 'Refresh',
+          date: 'Date',
+          dau: 'DAU',
+          launches: 'Launches',
+          installs: 'Installs',
+          suspectedUninstalls: 'Suspected Uninstalls',
+          cardDauTodayLabel: 'DAU Today',
+          cardDauTodayHint: 'Unique installations with at least one active ping today',
+          cardLaunchesTodayLabel: 'Launches Today',
+          cardLaunchesTodayHint: 'Total desktop launches recorded today',
+          cardInstallsTodayLabel: 'Installs Today',
+          cardInstallsTodayHint: 'First-time install reports recorded today',
+          cardSuspectedUninstallsLabel: 'Suspected Uninstalls',
+          cardSuspectedUninstallsHint: 'Installations inactive for at least 30 days',
+          cardInstallationsTotalLabel: 'Installations Total',
+          cardInstallationsTotalHint: 'Cumulative installations ever seen by the server',
+          cardActive30dLabel: 'Active 30d',
+          cardActive30dHint: 'Installations active at least once in the last 30 days',
+        },
+      };
 
       const metricCards = [
         {
           key: 'dau_today',
-          label: 'DAU Today',
-          hint: 'Unique installations with at least one active ping today',
+          labelKey: 'cardDauTodayLabel',
+          hintKey: 'cardDauTodayHint',
         },
         {
           key: 'launches_today',
-          label: 'Launches Today',
-          hint: 'Total desktop launches recorded today',
+          labelKey: 'cardLaunchesTodayLabel',
+          hintKey: 'cardLaunchesTodayHint',
         },
         {
           key: 'installs_today',
-          label: 'Installs Today',
-          hint: 'First-time install reports recorded today',
+          labelKey: 'cardInstallsTodayLabel',
+          hintKey: 'cardInstallsTodayHint',
         },
         {
           key: 'suspected_uninstalls_current',
-          label: 'Suspected Uninstalls',
-          hint: 'Installations inactive for at least 30 days',
+          labelKey: 'cardSuspectedUninstallsLabel',
+          hintKey: 'cardSuspectedUninstallsHint',
         },
         {
           key: 'installations_total',
-          label: 'Installations Total',
-          hint: 'Cumulative installations ever seen by the server',
+          labelKey: 'cardInstallationsTotalLabel',
+          hintKey: 'cardInstallationsTotalHint',
         },
         {
           key: 'active_installations_30d',
-          label: 'Active 30d',
-          hint: 'Installations active at least once in the last 30 days',
+          labelKey: 'cardActive30dLabel',
+          hintKey: 'cardActive30dHint',
         },
       ];
+
+      const readStoredLanguage = () => {
+        try {
+          const stored = window.localStorage.getItem(languageStorageKey);
+          return hasLanguage(stored) ? stored : defaultLanguage;
+        } catch {
+          return defaultLanguage;
+        }
+      };
+
+      let currentLanguage = readStoredLanguage();
+      let currentOverview = null;
+      let currentDaily = null;
+
+      const t = (key) => translations[currentLanguage]?.[key] || translations[defaultLanguage][key] || key;
+
+      const saveLanguage = (value) => {
+        try {
+          window.localStorage.setItem(languageStorageKey, value);
+        } catch {
+          // Ignore browsers that block storage for public pages.
+        }
+      };
+
+      const formatNumber = (value) =>
+        Number(value || 0).toLocaleString(currentLanguage === 'zh-CN' ? 'zh-CN' : 'en-US');
 
       const setStatus = (message) => {
         statusNode.textContent = message || '';
@@ -302,7 +454,7 @@
 
       const formatTimestamp = (value) => {
         if (!value) {
-          return 'No data';
+          return t('noData');
         }
 
         const parsed = new Date(value);
@@ -310,10 +462,21 @@
           return value;
         }
 
-        return parsed.toLocaleString('zh-CN', {
+        return parsed.toLocaleString(currentLanguage === 'zh-CN' ? 'zh-CN' : 'en-US', {
           hour12: false,
           timeZone: 'Asia/Shanghai',
         });
+      };
+
+      const renderGeneratedAt = () => {
+        if (!currentOverview) {
+          generatedAtNode.textContent = t('generatedAtLoading');
+          return;
+        }
+
+        generatedAtNode.textContent =
+          `${t('generatedAtUpdated')} ${formatTimestamp(currentOverview.generated_at)}` +
+          ` | ${t('generatedAtTimezone')} ${currentOverview.timezone || 'Asia/Shanghai'}`;
       };
 
       const renderCards = (metrics) => {
@@ -321,9 +484,9 @@
           .map(
             (item) => `
               <article class="card">
-                <div class="label">${item.label}</div>
-                <div class="value">${Number(metrics[item.key] || 0).toLocaleString('en-US')}</div>
-                <div class="hint">${item.hint}</div>
+                <div class="label">${t(item.labelKey)}</div>
+                <div class="value">${formatNumber(metrics[item.key])}</div>
+                <div class="hint">${t(item.hintKey)}</div>
               </article>
             `,
           )
@@ -331,6 +494,15 @@
       };
 
       const renderDaily = (days) => {
+        if (!days.length) {
+          dailyBodyNode.innerHTML = `
+            <tr class="empty-row">
+              <td colspan="5">${t('noData')}</td>
+            </tr>
+          `;
+          return;
+        }
+
         const maxDau = Math.max(1, ...days.map((item) => Number(item.dau || 0)));
         dailyBodyNode.innerHTML = days
           .map(
@@ -342,16 +514,38 @@
                     <div class="bar-track">
                       <div class="bar-fill" style="width:${Math.round((Number(item.dau || 0) / maxDau) * 100)}%"></div>
                     </div>
-                    <span>${Number(item.dau || 0).toLocaleString('en-US')}</span>
+                    <span>${formatNumber(item.dau)}</span>
                   </div>
                 </td>
-                <td>${Number(item.launches || 0).toLocaleString('en-US')}</td>
-                <td>${Number(item.installs || 0).toLocaleString('en-US')}</td>
-                <td>${Number(item.suspected_uninstalls || 0).toLocaleString('en-US')}</td>
+                <td>${formatNumber(item.launches)}</td>
+                <td>${formatNumber(item.installs)}</td>
+                <td>${formatNumber(item.suspected_uninstalls)}</td>
               </tr>
             `,
           )
           .join('');
+      };
+
+      const applyTranslations = () => {
+        document.documentElement.lang = currentLanguage;
+        document.title = t('pageTitle');
+        pageTitleNode.textContent = t('pageTitle');
+        heroDescriptionNode.textContent = t('heroDescription');
+        languageLabelNode.textContent = t('languageLabel');
+        languageSelect.setAttribute('aria-label', t('languageAriaLabel'));
+        dailyTitleNode.textContent = t('dailyTitle');
+        dailyDescriptionNode.textContent = t('dailyDescription');
+        fromLabelNode.textContent = t('fromLabel');
+        toLabelNode.textContent = t('toLabel');
+        refreshButton.textContent = t('refresh');
+        thDateNode.textContent = t('date');
+        thDauNode.textContent = t('dau');
+        thLaunchesNode.textContent = t('launches');
+        thInstallsNode.textContent = t('installs');
+        thSuspectedUninstallsNode.textContent = t('suspectedUninstalls');
+        renderGeneratedAt();
+        renderCards(currentOverview?.metrics || {});
+        renderDaily(currentDaily?.days || []);
       };
 
       const fetchJson = async (url) => {
@@ -382,7 +576,9 @@
           fetchJson(`/analytics/public/daily?${query.toString()}`),
         ]);
 
-        generatedAtNode.textContent = `Updated ${formatTimestamp(overview.generated_at)} | Timezone ${overview.timezone}`;
+        currentOverview = overview;
+        currentDaily = daily;
+        renderGeneratedAt();
         renderCards(overview.metrics || {});
         renderDaily(daily.days || []);
 
@@ -394,6 +590,16 @@
           toDateInput.value = daily.to || '';
         }
       };
+
+      languageSelect.value = currentLanguage;
+      applyTranslations();
+
+      languageSelect.addEventListener('change', (event) => {
+        const nextLanguage = event.target.value;
+        currentLanguage = hasLanguage(nextLanguage) ? nextLanguage : defaultLanguage;
+        saveLanguage(currentLanguage);
+        applyTranslations();
+      });
 
       refreshButton.addEventListener('click', () => {
         void loadData().catch((error) => {
