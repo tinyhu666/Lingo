@@ -10,7 +10,8 @@ const LABEL_OPTIMIZED = '\u4f18\u5316';
 const LABEL_FIXED = '\u4fee\u590d';
 const LABEL_NONE = '\u6682\u65e0';
 const CATEGORY_ORDER = [LABEL_ADDED, LABEL_OPTIMIZED, LABEL_FIXED];
-const DEFAULT_RELEASE_NOTES = `### ${LABEL_UPDATE_LOG}\n\n1. ${LABEL_FIXED}\uff1a\u4fee\u590d\u5df2\u77e5\u95ee\u9898\u3002`;
+const FALLBACK_RELEASE_TEXT = '\u4fee\u590d\u5df2\u77e5\u95ee\u9898';
+const DEFAULT_RELEASE_NOTES = `### ${LABEL_UPDATE_LOG}\n\n1. ${FALLBACK_RELEASE_TEXT}\u3002`;
 
 const rawVersion = process.argv[2] || process.env.RELEASE_VERSION || '';
 const releaseVersion = String(rawVersion).replace(/^v/i, '').trim();
@@ -77,6 +78,10 @@ function isEmptyCategoryItem(text) {
   return !normalized || normalized === LABEL_NONE;
 }
 
+function isFallbackCategoryItem(text) {
+  return normalizeSummaryItem(text) === FALLBACK_RELEASE_TEXT;
+}
+
 function formatNotes(input) {
   const cleaned = sanitizeNotes(input);
   const grouped = createGroupedItems();
@@ -121,6 +126,15 @@ function formatNotes(input) {
     .filter(([, items]) => items.length);
 
   if (!visibleCategories.length) {
+    return DEFAULT_RELEASE_NOTES;
+  }
+
+  if (
+    visibleCategories.length === 1 &&
+    visibleCategories[0][0] === LABEL_FIXED &&
+    visibleCategories[0][1].length === 1 &&
+    isFallbackCategoryItem(visibleCategories[0][1][0])
+  ) {
     return DEFAULT_RELEASE_NOTES;
   }
 
