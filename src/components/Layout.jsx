@@ -3,6 +3,7 @@ import { Toaster } from 'react-hot-toast';
 import { listen } from '@tauri-apps/api/event';
 import Sidebar from './Sidebar';
 import DropdownMenu from './DropdownMenu';
+import { AnalyticsProvider } from './AnalyticsProvider';
 import { StoreProvider } from './StoreProvider';
 import { UpdateProvider } from './UpdateProvider';
 import appIcon from '../assets/app-icon.png';
@@ -203,11 +204,13 @@ function LayoutShell({ children, activeItem, setActiveItem }) {
 export default function Layout({ children, activeItem, setActiveItem }) {
   return (
     <StoreProvider>
-      <UpdateProvider>
-        <LayoutShell activeItem={activeItem} setActiveItem={setActiveItem}>
-          {children}
-        </LayoutShell>
-      </UpdateProvider>
+      <AnalyticsProvider>
+        <UpdateProvider>
+          <LayoutShell activeItem={activeItem} setActiveItem={setActiveItem}>
+            {children}
+          </LayoutShell>
+        </UpdateProvider>
+      </AnalyticsProvider>
     </StoreProvider>
   );
 }

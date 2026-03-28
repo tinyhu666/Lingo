@@ -1,6 +1,7 @@
 use crate::store::AppSettings;
 use anyhow::{anyhow, Result};
 use reqwest::{Client, StatusCode};
+use serde::Serialize;
 use serde_json::{json, Value};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::OnceLock;
@@ -24,6 +25,15 @@ struct BackendConfig {
     base_url: String,
     api_key: Option<String>,
     source: &'static str,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PublicBackendConfig {
+    pub base_url: Option<String>,
+    pub public_key: Option<String>,
+    pub source: Option<String>,
+    pub public_key_source: Option<String>,
 }
 
 fn shared_http_client() -> &'static Client {
@@ -144,6 +154,20 @@ fn read_compiled_backend_api_key() -> Option<(String, &'static str)> {
                 .filter(|value| !value.is_empty())
                 .map(|value| (value, "compiled:SUPABASE_ANON_KEY"))
         })
+}
+
+pub fn public_backend_config() -> PublicBackendConfig {
+    let base = read_runtime_backend_base_url()
+        .or_else(read_compiled_backend_base_url)
+        .or_else(read_debug_backend_base_url);
+    let public_key = read_runtime_backend_api_key().or_else(read_compiled_backend_api_key);
+
+    PublicBackendConfig {
+        base_url: base.as_ref().map(|(value, _)| value.clone()),
+        public_key: public_key.as_ref().map(|(value, _)| value.clone()),
+        source: base.map(|(_, source)| source.to_string()),
+        public_key_source: public_key.map(|(_, source)| source.to_string()),
+    }
 }
 
 fn backend_config() -> Result<BackendConfig> {

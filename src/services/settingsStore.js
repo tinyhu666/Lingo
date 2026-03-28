@@ -2,11 +2,18 @@ import { load } from '@tauri-apps/plugin-store';
 import { hasTauriRuntime, invokeCommand } from './tauriRuntime';
 import { UI_LOCALE_STORAGE_KEY } from '../i18n/messages';
 import { DEFAULT_GAME_SCENE, normalizeGameScene } from '../constants/gameScenes';
+import { normalizeAnalyticsQueue, normalizeAnalyticsState, toNonEmptyString } from './analyticsUtils';
 
 const STORE_FILE = 'store.json';
 const SETTINGS_KEY = 'settings';
 const UI_LOCALE_KEY = 'ui_locale';
+const INSTALLATION_ID_KEY = 'installation_id';
+const ANALYTICS_STATE_KEY = 'analytics';
+const ANALYTICS_QUEUE_KEY = 'analytics_queue';
 const WEB_SETTINGS_KEY = 'lingo.settings';
+const WEB_INSTALLATION_ID_KEY = 'lingo.installation_id';
+const WEB_ANALYTICS_STATE_KEY = 'lingo.analytics';
+const WEB_ANALYTICS_QUEUE_KEY = 'lingo.analytics_queue';
 const PREVIOUS_WEB_SETTINGS_KEY = 'cliplingo.settings';
 const LEGACY_WEB_SETTINGS_KEY = ['auto', 'gg.settings'].join('');
 
@@ -76,6 +83,48 @@ export const writePreviewUiLocale = (locale) => {
   }
 };
 
+const readPreviewJson = (storageKey, normalizer = (value) => value) => {
+  try {
+    const raw = localStorage.getItem(storageKey);
+    if (!raw) {
+      return null;
+    }
+    return normalizer(JSON.parse(raw));
+  } catch {
+    return null;
+  }
+};
+
+const writePreviewJson = (storageKey, value) => {
+  try {
+    if (value === null || value === undefined) {
+      localStorage.removeItem(storageKey);
+      return true;
+    }
+
+    localStorage.setItem(storageKey, JSON.stringify(value));
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+const readStoreValue = async (key, fallback = null) => {
+  try {
+    const store = await getStore();
+    const value = await store.get(key);
+    return value ?? fallback;
+  } catch {
+    return fallback;
+  }
+};
+
+const writeStoreValue = async (key, value) => {
+  const store = await getStore();
+  await store.set(key, value);
+  await store.save();
+};
+
 export const writeUiLocalePreference = async (locale) => {
   const normalized = String(locale || '').trim();
   if (!normalized) {
@@ -113,8 +162,7 @@ export const readSettingsFromBackend = async () => {
 
 export const readSettingsFromStore = async () => {
   try {
-    const store = await getStore();
-    return normalizeSettingsPayload(await store.get(SETTINGS_KEY));
+    return normalizeSettingsPayload(await readStoreValue(SETTINGS_KEY));
   } catch {
     return null;
   }
@@ -136,6 +184,102 @@ export const writeSettingsToStore = async (settings) => {
   } catch (error) {
     writePreviewSettings(normalized);
     throw error;
+  }
+};
+
+export const readInstallationId = async () => {
+  const previewInstallationId = toNonEmptyString(readPreviewJson(WEB_INSTALLATION_ID_KEY));
+
+  if (!hasTauriRuntime()) {
+    return previewInstallationId;
+  }
+
+  const storedInstallationId = toNonEmptyString(await readStoreValue(INSTALLATION_ID_KEY));
+  return storedInstallationId || previewInstallationId;
+};
+
+export const writeInstallationId = async (installationId) => {
+  const normalized = toNonEmptyString(installationId);
+  if (!normalized) {
+    return false;
+  }
+
+  writePreviewJson(WEB_INSTALLATION_ID_KEY, normalized);
+
+  if (!hasTauriRuntime()) {
+    return true;
+  }
+
+  try {
+    await writeStoreValue(INSTALLATION_ID_KEY, normalized);
+    return true;
+  } catch (error) {
+    console.warn('Failed to persist installation id:', error);
+    return false;
+  }
+};
+
+export const readAnalyticsState = async () => {
+  const previewAnalyticsState = normalizeAnalyticsState(readPreviewJson(WEB_ANALYTICS_STATE_KEY));
+
+  if (!hasTauriRuntime()) {
+    return previewAnalyticsState;
+  }
+
+  const storedAnalyticsState = normalizeAnalyticsState(await readStoreValue(ANALYTICS_STATE_KEY));
+
+  return {
+    ...previewAnalyticsState,
+    ...storedAnalyticsState,
+  };
+};
+
+export const writeAnalyticsState = async (analyticsState) => {
+  const normalized = normalizeAnalyticsState(analyticsState);
+  writePreviewJson(WEB_ANALYTICS_STATE_KEY, normalized);
+
+  if (!hasTauriRuntime()) {
+    return true;
+  }
+
+  try {
+    await writeStoreValue(ANALYTICS_STATE_KEY, normalized);
+    return true;
+  } catch (error) {
+    console.warn('Failed to persist analytics state:', error);
+    return false;
+  }
+};
+
+export const readAnalyticsQueue = async () => {
+  const previewAnalyticsQueue = normalizeAnalyticsQueue(readPreviewJson(WEB_ANALYTICS_QUEUE_KEY));
+
+  if (!hasTauriRuntime()) {
+    return previewAnalyticsQueue;
+  }
+
+  const storedAnalyticsQueue = await readStoreValue(ANALYTICS_QUEUE_KEY, undefined);
+  if (storedAnalyticsQueue === undefined) {
+    return previewAnalyticsQueue;
+  }
+
+  return normalizeAnalyticsQueue(storedAnalyticsQueue);
+};
+
+export const writeAnalyticsQueue = async (analyticsQueue) => {
+  const normalized = normalizeAnalyticsQueue(analyticsQueue);
+  writePreviewJson(WEB_ANALYTICS_QUEUE_KEY, normalized);
+
+  if (!hasTauriRuntime()) {
+    return true;
+  }
+
+  try {
+    await writeStoreValue(ANALYTICS_QUEUE_KEY, normalized);
+    return true;
+  } catch (error) {
+    console.warn('Failed to persist analytics queue:', error);
+    return false;
   }
 };
 

@@ -20,6 +20,10 @@ It provides:
 - `GET /healthz` for health checks
 - `GET /translate` for non-sensitive runtime summary
 - `POST /translate` for translation
+- `POST /analytics/events` for desktop lifecycle event ingest
+- `GET /analytics/public/overview` for the public summary payload
+- `GET /analytics/public/daily?from=YYYY-MM-DD&to=YYYY-MM-DD` for daily metric rows
+- `GET /analytics/dashboard` for a built-in read-only dashboard page
 - `GET /admin/runtime-config` for current server-side config
 - `PUT /admin/runtime-config` for changing model/API routing without shipping a new client
 
@@ -30,6 +34,22 @@ It provides:
 whether a request was slow because of model execution or proxy/interface overhead,
 whether it came from model execution, in-memory hot cache, or a shared in-flight
 request, and which adaptive request budget was actually used.
+
+The analytics ingest path stores only lifecycle metadata. It does not upload
+translated text, clipboard content, phrases, or other user-generated text. The
+desktop client sends four events only:
+
+- `install_registered`
+- `app_launch`
+- `app_active_ping`
+- `update_applied`
+
+The server persists them into a local SQLite database and derives:
+
+- `DAU`: unique `installation_id` values with at least one `app_active_ping`
+- `launches`: total `app_launch` event count
+- `installs`: unique first-time `install_registered` values
+- `suspected_uninstalls`: installations with no active ping for 30 days
 
 ## Server-Side Config Model
 
@@ -117,6 +137,7 @@ At minimum set:
 - `ADMIN_TOKEN`
 - `BACKEND_PUBLIC_KEY`
 - `CADDY_DOMAIN`
+- `ANALYTICS_DB_PATH` if you do not want the default `/app/data/analytics.sqlite`
 - `MODEL_API_KEY`
 - `MODEL_PROVIDER`
 - `MODEL_API_URL`
@@ -158,6 +179,7 @@ docker compose up -d --build
 ```bash
 curl https://your-domain.example.com/healthz
 curl https://your-domain.example.com/translate
+curl https://your-domain.example.com/analytics/public/overview
 ```
 
 ## Update Runtime Config Without Redeploy
@@ -219,6 +241,68 @@ After the proxy is online, point release builds to it:
 3. Remove `SUPABASE_PROJECT_ID` from release defaults if you do not want fallback to Supabase
 4. Build and publish a new desktop release
 
+The desktop client now writes `installation_id`, analytics state, and an offline
+analytics queue into `store.json`. If the server is temporarily unreachable,
+lifecycle events stay queued locally and flush on the next startup or heartbeat.
+
+## Public Dashboard
+
+Open the built-in read-only page:
+
+```bash
+https://your-domain.example.com/analytics/dashboard
+```
+
+The page reads only aggregated public endpoints and does not expose raw event
+rows.
+
+## GitHub Actions Deployment
+
+This repository now includes a manual workflow:
+
+- `.github/workflows/deploy-tencent-light-server.yml`
+
+It is the Tencent Cloud path. The older
+`.github/workflows/deploy-translate-proxy.yml` workflow is still the Supabase
+legacy path and should be ignored for Tencent Light Server deployments.
+
+Configure these GitHub repository secrets:
+
+- `TENCENT_LIGHT_HOST`: public IP or DNS of the lightweight server
+- `TENCENT_LIGHT_USER`: SSH user, for example `ubuntu`
+- `TENCENT_LIGHT_SSH_KEY`: private SSH key used for deployment
+- `TENCENT_TRANSLATE_PROXY_ENV`: full multiline contents of `server/translate-proxy/.env`
+
+Optional GitHub repository variables:
+
+- `TENCENT_LIGHT_PORT`: defaults to `22`
+- `TENCENT_LIGHT_TARGET_DIR`: defaults to `/home/ubuntu/lingo-translate-proxy`
+- `TRANSLATE_PROXY_RUNTIME_CONFIG_JSON`: optional JSON payload to write into `data/runtime-config.json`
+
+What the workflow does:
+
+- packages `server/translate-proxy/`
+- uploads the bundle and `.env` to the server over SSH
+- writes the optional runtime config JSON
+- runs `docker compose up -d --build`
+- verifies `GET /healthz` and `GET /analytics/public/overview` from inside the container
+
+If you want to rely entirely on environment variables, leave
+`TRANSLATE_PROXY_RUNTIME_CONFIG_JSON` empty.
+
+## Current Production Shortcut
+
+If `translate.buffpp.com` has not been pointed to the server yet, you can keep
+using the already working root domain first:
+
+- public analytics overview: `https://buffpp.com/analytics/public/overview`
+- public dashboard: `https://buffpp.com/analytics/dashboard`
+- desktop release default backend: `LINGO_BACKEND_URL=https://buffpp.com`
+
+Once DNS for `translate.buffpp.com` points to the server, you can switch
+`CADDY_DOMAIN` and `LINGO_BACKEND_URL` to the subdomain with one small follow-up
+change.
+
 ## Local Verification
 
 Run the included smoke test:
@@ -226,4 +310,11 @@ Run the included smoke test:
 ```bash
 cd server/translate-proxy
 npm run proxy:smoke
+```
+
+Run the analytics smoke test after deploy or after local config changes:
+
+```bash
+cd server/translate-proxy
+npm run analytics:smoke
 ```

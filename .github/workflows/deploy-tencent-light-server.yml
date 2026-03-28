@@ -1,0 +1,143 @@
+name: Deploy Tencent Translate Proxy
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      TENCENT_LIGHT_HOST: ${{ secrets.TENCENT_LIGHT_HOST }}
+      TENCENT_LIGHT_USER: ${{ secrets.TENCENT_LIGHT_USER }}
+      TENCENT_LIGHT_SSH_KEY: ${{ secrets.TENCENT_LIGHT_SSH_KEY }}
+      TENCENT_TRANSLATE_PROXY_ENV: ${{ secrets.TENCENT_TRANSLATE_PROXY_ENV }}
+      TENCENT_LIGHT_PORT: ${{ vars.TENCENT_LIGHT_PORT }}
+      TENCENT_LIGHT_TARGET_DIR: ${{ vars.TENCENT_LIGHT_TARGET_DIR }}
+      TRANSLATE_PROXY_RUNTIME_CONFIG_JSON: ${{ vars.TRANSLATE_PROXY_RUNTIME_CONFIG_JSON }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Validate deployment settings
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          missing=0
+
+          if [ -z "${TENCENT_LIGHT_HOST:-}" ]; then
+            echo "TENCENT_LIGHT_HOST secret is required."
+            missing=1
+          fi
+
+          if [ -z "${TENCENT_LIGHT_USER:-}" ]; then
+            echo "TENCENT_LIGHT_USER secret is required."
+            missing=1
+          fi
+
+          if [ -z "${TENCENT_LIGHT_SSH_KEY:-}" ]; then
+            echo "TENCENT_LIGHT_SSH_KEY secret is required."
+            missing=1
+          fi
+
+          if [ -z "${TENCENT_TRANSLATE_PROXY_ENV:-}" ]; then
+            echo "TENCENT_TRANSLATE_PROXY_ENV secret is required."
+            missing=1
+          fi
+
+          if [ "$missing" -ne 0 ]; then
+            exit 1
+          fi
+
+          echo "DEPLOY_PORT=${TENCENT_LIGHT_PORT:-22}" >> "$GITHUB_ENV"
+          echo "DEPLOY_TARGET_DIR=${TENCENT_LIGHT_TARGET_DIR:-/home/ubuntu/lingo-translate-proxy}" >> "$GITHUB_ENV"
+
+      - name: Prepare deploy bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          tar \
+            --exclude='translate-proxy/node_modules' \
+            --exclude='translate-proxy/data' \
+            --exclude='translate-proxy/.env' \
+            -czf translate-proxy.tgz \
+            -C server \
+            translate-proxy
+
+          printf '%s\n' "$TENCENT_TRANSLATE_PROXY_ENV" > translate-proxy.env
+
+          if [ -n "${TRANSLATE_PROXY_RUNTIME_CONFIG_JSON:-}" ]; then
+            printf '%s\n' "$TRANSLATE_PROXY_RUNTIME_CONFIG_JSON" > runtime-config.json
+          fi
+
+      - name: Configure SSH
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$TENCENT_LIGHT_SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -p "$DEPLOY_PORT" "$TENCENT_LIGHT_HOST" >> ~/.ssh/known_hosts
+
+      - name: Upload deploy payload
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          scp -P "$DEPLOY_PORT" translate-proxy.tgz "${TENCENT_LIGHT_USER}@${TENCENT_LIGHT_HOST}:/tmp/lingo-translate-proxy.tgz"
+          scp -P "$DEPLOY_PORT" translate-proxy.env "${TENCENT_LIGHT_USER}@${TENCENT_LIGHT_HOST}:/tmp/lingo-translate-proxy.env"
+
+          if [ -f runtime-config.json ]; then
+            scp -P "$DEPLOY_PORT" runtime-config.json "${TENCENT_LIGHT_USER}@${TENCENT_LIGHT_HOST}:/tmp/lingo-runtime-config.json"
+          fi
+
+      - name: Deploy on Tencent light server
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          ssh -p "$DEPLOY_PORT" "${TENCENT_LIGHT_USER}@${TENCENT_LIGHT_HOST}" "DEPLOY_TARGET_DIR='$DEPLOY_TARGET_DIR' bash -s" <<'REMOTE'
+          set -euo pipefail
+
+          target_dir="${DEPLOY_TARGET_DIR:?DEPLOY_TARGET_DIR is required}"
+
+          case "$target_dir" in
+            /opt/*|/srv/*|/home/*) ;;
+            *)
+              echo "Refusing to deploy into unsafe target dir: $target_dir"
+              exit 1
+              ;;
+          esac
+
+          mkdir -p "$target_dir"
+          mkdir -p "$target_dir/data"
+
+          find "$target_dir" -mindepth 1 -maxdepth 1 ! -name data ! -name .env -exec rm -rf {} +
+          tar -xzf /tmp/lingo-translate-proxy.tgz -C "$target_dir" --strip-components=1
+          mv /tmp/lingo-translate-proxy.env "$target_dir/.env"
+
+          if [ -f /tmp/lingo-runtime-config.json ]; then
+            mv /tmp/lingo-runtime-config.json "$target_dir/data/runtime-config.json"
+          fi
+
+          rm -f /tmp/lingo-translate-proxy.tgz
+
+          cd "$target_dir"
+          if docker compose version >/dev/null 2>&1; then
+            compose() { docker compose "$@"; }
+          elif sudo -n docker compose version >/dev/null 2>&1; then
+            compose() { sudo -n docker compose "$@"; }
+          else
+            echo "docker compose is not available for ${USER}"
+            exit 1
+          fi
+
+          compose up -d --build
+          compose ps
+
+          compose exec -T translate-proxy node -e "fetch('http://127.0.0.1:8787/healthz').then(async (response) => { if (!response.ok) throw new Error('healthz failed: ' + response.status); console.log(await response.text()); })"
+          compose exec -T translate-proxy node -e "fetch('http://127.0.0.1:8787/analytics/public/overview').then(async (response) => { if (!response.ok) throw new Error('overview failed: ' + response.status); console.log(await response.text()); })"
+          REMOTE
