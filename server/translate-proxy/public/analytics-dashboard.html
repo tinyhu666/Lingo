@@ -445,10 +445,37 @@
       const readStoredLanguage = () => {
         try {
           const stored = window.localStorage.getItem(languageStorageKey);
-          return hasLanguage(stored) ? stored : defaultLanguage;
+          if (hasLanguage(stored)) {
+            return stored;
+          }
         } catch {
-          return defaultLanguage;
+          // Ignore storage access failures and fall back to browser preferences.
         }
+
+        try {
+          const browserLanguages = Array.isArray(window.navigator?.languages)
+            ? window.navigator.languages
+            : [window.navigator?.language].filter(Boolean);
+
+          for (const candidate of browserLanguages) {
+            const normalized = String(candidate || '').trim().toLowerCase();
+            if (!normalized) {
+              continue;
+            }
+
+            if (normalized.startsWith('zh')) {
+              return 'zh-CN';
+            }
+
+            if (normalized.startsWith('en')) {
+              return 'en';
+            }
+          }
+        } catch {
+          // Ignore browser language detection failures.
+        }
+
+        return defaultLanguage;
       };
 
       let currentLanguage = readStoredLanguage();
