@@ -106,8 +106,8 @@ function formatNotes(input) {
       }
 
       const bulletMatch = line.match(/^[-*]\s+(.+)$/);
-      if (bulletMatch && currentCategory) {
-        grouped.get(currentCategory).push(bulletMatch[1].trim());
+      if (bulletMatch) {
+        grouped.get(currentCategory ?? LABEL_FIXED).push(bulletMatch[1].trim());
       }
     }
   }

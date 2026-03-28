@@ -3,6 +3,21 @@ use reqwest::header::{ACCEPT, USER_AGENT};
 use serde::Serialize;
 use serde_json::Value;
 use tauri::Manager;
+
+#[cfg(target_os = "windows")]
+use raw_window_handle::{HasWindowHandle, RawWindowHandle};
+
+#[cfg(target_os = "windows")]
+use windows_sys::Win32::Foundation::{COLORREF, HWND};
+
+#[cfg(target_os = "windows")]
+use windows_sys::Win32::Graphics::Dwm::{
+    DwmSetWindowAttribute, DWMWA_BORDER_COLOR, DWMWA_COLOR_NONE,
+    DWMWA_WINDOW_CORNER_PREFERENCE, DWMWCP_DONOTROUND,
+};
+
+#[cfg(target_os = "windows")]
+use windows_sys::Win32::Graphics::Gdi::{CreateRoundRectRgn, SetWindowRgn};
 pub mod ai_translator;
 pub mod shell_helper;
 pub mod shortcut;
@@ -13,6 +28,65 @@ const RELEASE_LATEST_JSON_URL: &str =
     "https://lingo-1259551686.cos.ap-shanghai.myqcloud.com/releases/latest.json";
 const RELEASE_GITHUB_LATEST_JSON_URL: &str =
     "https://github.com/tinyhu666/Lingo/releases/latest/download/latest.json";
+
+#[cfg(target_os = "windows")]
+const WINDOW_CORNER_RADIUS: i32 = 30;
+
+#[cfg(target_os = "windows")]
+fn apply_windows_window_chrome(window: &tauri::WebviewWindow) {
+    let Ok(window_handle) = window.window_handle() else {
+        return;
+    };
+
+    let RawWindowHandle::Win32(raw) = window_handle.as_raw() else {
+        return;
+    };
+
+    let hwnd = raw.hwnd.get() as HWND;
+    let corner_preference = DWMWCP_DONOTROUND;
+    let border_color: COLORREF = DWMWA_COLOR_NONE;
+
+    unsafe {
+        let _ = DwmSetWindowAttribute(
+            hwnd,
+            DWMWA_WINDOW_CORNER_PREFERENCE as u32,
+            &corner_preference as *const _ as *const _,
+            std::mem::size_of_val(&corner_preference) as u32,
+        );
+        let _ = DwmSetWindowAttribute(
+            hwnd,
+            DWMWA_BORDER_COLOR as u32,
+            &border_color as *const _ as *const _,
+            std::mem::size_of_val(&border_color) as u32,
+        );
+    }
+
+    let Ok(size) = window.outer_size() else {
+        return;
+    };
+
+    let scale_factor = window.scale_factor().unwrap_or(1.0);
+    let radius = ((WINDOW_CORNER_RADIUS as f64) * scale_factor)
+        .round()
+        .max(1.0) as i32;
+
+    let region = unsafe {
+        CreateRoundRectRgn(
+            0,
+            0,
+            size.width as i32 + 1,
+            size.height as i32 + 1,
+            radius,
+            radius,
+        )
+    };
+
+    if !region.is_null() {
+        unsafe {
+            let _ = SetWindowRgn(hwnd, region, 1);
+        }
+    }
+}
 
 #[derive(Debug, Default, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -319,6 +393,17 @@ pub fn run() {
             // 设置 WebView 背景为全透明，消除圆角外的矩形残留
             if let Some(window) = app.get_webview_window("main") {
                 let _ = window.set_background_color(Some(tauri::window::Color(0, 0, 0, 0)));
+                #[cfg(target_os = "windows")]
+                {
+                    let _ = window.set_shadow(false);
+                    apply_windows_window_chrome(&window);
+
+                    let window_clone = window.clone();
+                    tauri::async_runtime::spawn(async move {
+                        tokio::time::sleep(std::time::Duration::from_millis(120)).await;
+                        apply_windows_window_chrome(&window_clone);
+                    });
+                }
             }
 
             Ok(())

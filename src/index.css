@@ -46,9 +46,16 @@
   body.platform-desktop,
   html.platform-desktop #root,
   body.platform-desktop #root {
-    border-radius: 0;
+    border-radius: var(--app-radius-outer);
     overflow: hidden;
     background: transparent !important;
+  }
+
+  html.platform-desktop body,
+  body.platform-desktop,
+  html.platform-desktop #root,
+  body.platform-desktop #root {
+    clip-path: inset(0 round var(--app-radius-outer));
   }
 
   body {
@@ -96,15 +103,23 @@
 
   .lingo-theme--desktop {
     position: relative;
-    border-radius: calc(var(--app-radius-outer) - 2px);
+    border-radius: var(--app-radius-outer);
+    clip-path: inset(0 round var(--app-radius-outer));
     overflow: hidden;
     isolation: isolate;
-    background: transparent;
+    background: linear-gradient(165deg, #d0dcf1 0%, #bccce8 44%, #afc1e1 100%);
     box-shadow: none;
   }
 
   .lingo-theme--desktop::before {
-    content: none;
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    border-radius: inherit;
+    background:
+      linear-gradient(165deg, #d0dcf1 0%, #bccce8 44%, #afc1e1 100%);
+    pointer-events: none;
   }
 
   .lingo-theme--desktop > * {
