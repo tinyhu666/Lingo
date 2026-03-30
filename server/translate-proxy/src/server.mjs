@@ -14,6 +14,7 @@ import {
   ingestAnalyticsEvents,
   queryAnalyticsDaily,
   queryAnalyticsOverview,
+  queryAnalyticsDistributions,
 } from './analytics-store.mjs';
 
 const corsHeaders = {
@@ -967,6 +968,13 @@ const routeAnalyticsPublicOverview = (res, traceId) => {
   });
 };
 
+const routeAnalyticsPublicDistributions = (res, traceId) => {
+  return jsonResponse(res, 200, {
+    ...queryAnalyticsDistributions(),
+    trace_id: traceId,
+  });
+};
+
 const routeAnalyticsPublicDaily = (url, res, traceId) => {
   const from = url.searchParams.get('from');
   const to = url.searchParams.get('to');
@@ -1011,6 +1019,11 @@ const server = createServer(async (req, res) => {
 
     if (url.pathname === '/analytics/public/daily') {
       routeAnalyticsPublicDaily(url, res, traceId);
+      return;
+    }
+
+    if (url.pathname === '/analytics/public/distributions') {
+      routeAnalyticsPublicDistributions(res, traceId);
       return;
     }
 

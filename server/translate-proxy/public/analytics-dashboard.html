@@ -3,748 +3,700 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Lingo 数据看板</title>
+    <title>Lingo Analytics</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
     <style>
       :root {
-        color-scheme: light;
-        --bg: #f4efe3;
-        --surface: rgba(255, 255, 255, 0.78);
-        --surface-strong: rgba(255, 255, 255, 0.9);
-        --text: #1f2937;
-        --muted: #6b7280;
-        --line: rgba(15, 23, 42, 0.1);
-        --accent: #db6a3c;
-        --accent-soft: rgba(219, 106, 60, 0.14);
+        --bg: #0f1117;
+        --surface: #1a1d27;
+        --surface-hover: #22252f;
+        --surface-border: rgba(255, 255, 255, 0.06);
+        --text: #e4e5e9;
+        --text-secondary: #8b8d97;
+        --text-muted: #5c5e66;
+        --accent: #6c5ce7;
+        --accent-soft: rgba(108, 92, 231, 0.15);
+        --green: #00b894;
+        --green-soft: rgba(0, 184, 148, 0.12);
+        --red: #ff6b6b;
+        --red-soft: rgba(255, 107, 107, 0.12);
+        --blue: #74b9ff;
+        --blue-soft: rgba(116, 185, 255, 0.12);
+        --orange: #fdcb6e;
+        --orange-soft: rgba(253, 203, 110, 0.12);
+        --cyan: #81ecec;
+        --pink: #fd79a8;
+        --radius: 12px;
+        --chart-colors: #6c5ce7, #00b894, #74b9ff, #fdcb6e, #fd79a8, #81ecec, #ff6b6b, #a29bfe, #55efc4, #ffeaa7;
       }
 
-      * {
-        box-sizing: border-box;
-      }
+      * { box-sizing: border-box; margin: 0; padding: 0; }
 
       body {
-        margin: 0;
-        font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+        background: var(--bg);
         color: var(--text);
-        background:
-          radial-gradient(circle at top left, rgba(219, 106, 60, 0.16), transparent 34%),
-          radial-gradient(circle at top right, rgba(26, 115, 232, 0.12), transparent 28%),
-          linear-gradient(180deg, #faf7f0 0%, var(--bg) 100%);
+        line-height: 1.5;
+        -webkit-font-smoothing: antialiased;
       }
 
-      main {
-        max-width: 1160px;
-        margin: 0 auto;
-        padding: 40px 20px 60px;
-      }
+      /* ── Layout ── */
+      .dashboard { max-width: 1280px; margin: 0 auto; padding: 24px 20px 48px; }
 
-      .hero {
-        display: flex;
-        justify-content: space-between;
-        gap: 20px;
-        align-items: end;
-        margin-bottom: 28px;
+      /* ── Header ── */
+      .header {
+        display: flex; justify-content: space-between; align-items: center;
+        flex-wrap: wrap; gap: 16px; margin-bottom: 28px;
       }
-
-      .hero h1 {
-        margin: 0 0 10px;
-        font-size: clamp(30px, 5vw, 48px);
+      .header-left { display: flex; align-items: center; gap: 12px; }
+      .header-logo {
+        width: 36px; height: 36px; border-radius: 10px;
+        background: linear-gradient(135deg, var(--accent), #a29bfe);
+        display: flex; align-items: center; justify-content: center;
+        font-weight: 700; font-size: 16px; color: #fff;
       }
+      .header h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.3px; }
+      .header-right { display: flex; align-items: center; gap: 12px; }
+      .header-meta { color: var(--text-muted); font-size: 12px; text-align: right; }
 
-      .hero p {
-        margin: 0;
-        color: var(--muted);
-        max-width: 720px;
-        line-height: 1.6;
-      }
-
-      .hero-actions {
-        display: flex;
-        flex-direction: column;
-        align-items: end;
-        gap: 12px;
-      }
-
-      .hero .meta {
-        color: var(--muted);
-        font-size: 14px;
-        text-align: right;
-      }
-
-      .language-switch {
-        display: inline-flex;
-        align-items: center;
-        gap: 10px;
-        padding: 10px 14px;
-        border: 1px solid var(--line);
-        border-radius: 999px;
-        background: var(--surface-strong);
-        color: var(--muted);
-        font-size: 14px;
-      }
-
-      .language-switch select {
-        border: none;
-        background: transparent;
-        color: var(--text);
-        font: inherit;
-      }
-
-      .cards {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
-        gap: 16px;
+      /* ── Controls ── */
+      .controls {
+        display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
         margin-bottom: 24px;
       }
+      .range-btn {
+        padding: 6px 14px; border-radius: 8px; border: 1px solid var(--surface-border);
+        background: var(--surface); color: var(--text-secondary); font-size: 13px;
+        cursor: pointer; transition: all 0.15s;
+      }
+      .range-btn:hover { background: var(--surface-hover); color: var(--text); }
+      .range-btn.active { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
+      .date-input {
+        padding: 6px 10px; border-radius: 8px; border: 1px solid var(--surface-border);
+        background: var(--surface); color: var(--text); font-size: 13px; font-family: inherit;
+      }
+      .date-input:focus { outline: none; border-color: var(--accent); }
+      .refresh-btn {
+        padding: 6px 16px; border-radius: 8px; border: none;
+        background: var(--accent); color: #fff; font-size: 13px; font-family: inherit;
+        cursor: pointer; transition: opacity 0.15s; display: flex; align-items: center; gap: 6px;
+      }
+      .refresh-btn:hover { opacity: 0.85; }
+      .refresh-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+      .refresh-btn svg { width: 14px; height: 14px; }
+      .lang-select {
+        padding: 6px 10px; border-radius: 8px; border: 1px solid var(--surface-border);
+        background: var(--surface); color: var(--text-secondary); font-size: 13px;
+        font-family: inherit; cursor: pointer; margin-left: auto;
+      }
 
-      .card,
+      /* ── Status ── */
+      .status-bar {
+        padding: 10px 14px; border-radius: 8px; margin-bottom: 16px;
+        font-size: 13px; display: none;
+      }
+      .status-bar.visible { display: flex; align-items: center; gap: 8px; }
+      .status-bar.loading { background: var(--blue-soft); color: var(--blue); }
+      .status-bar.error { background: var(--red-soft); color: var(--red); }
+
+      /* ── Metric Cards ── */
+      .metric-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 12px; margin-bottom: 24px;
+      }
+      .metric-card {
+        background: var(--surface); border: 1px solid var(--surface-border);
+        border-radius: var(--radius); padding: 16px 18px;
+        transition: border-color 0.15s;
+      }
+      .metric-card:hover { border-color: rgba(255,255,255,0.12); }
+      .metric-header { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+      .metric-icon {
+        width: 32px; height: 32px; border-radius: 8px;
+        display: flex; align-items: center; justify-content: center;
+        flex-shrink: 0;
+      }
+      .metric-icon svg { width: 16px; height: 16px; }
+      .metric-icon.purple { background: var(--accent-soft); color: var(--accent); }
+      .metric-icon.green { background: var(--green-soft); color: var(--green); }
+      .metric-icon.blue { background: var(--blue-soft); color: var(--blue); }
+      .metric-icon.orange { background: var(--orange-soft); color: var(--orange); }
+      .metric-icon.red { background: var(--red-soft); color: var(--red); }
+      .metric-label { font-size: 12px; color: var(--text-secondary); font-weight: 500; }
+      .metric-value { font-size: 28px; font-weight: 700; letter-spacing: -0.5px; line-height: 1.2; }
+      .metric-hint { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+
+      /* ── Chart Panels ── */
+      .chart-row {
+        display: grid; gap: 16px; margin-bottom: 16px;
+      }
+      .chart-row.two { grid-template-columns: 1fr 1fr; }
+      .chart-row.three { grid-template-columns: 1fr 1fr 1fr; }
+      .chart-row.full { grid-template-columns: 1fr; }
       .panel {
-        background: var(--surface);
-        border: 1px solid var(--line);
-        border-radius: 22px;
-        backdrop-filter: blur(18px);
-        box-shadow: 0 14px 40px rgba(15, 23, 42, 0.06);
+        background: var(--surface); border: 1px solid var(--surface-border);
+        border-radius: var(--radius); padding: 20px;
       }
+      .panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+      .panel-title { font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+      .panel-title svg { width: 16px; height: 16px; color: var(--text-secondary); }
+      .panel-subtitle { font-size: 12px; color: var(--text-muted); }
+      .chart-container { position: relative; width: 100%; }
+      .chart-container.line { height: 260px; }
+      .chart-container.doughnut { height: 220px; }
 
-      .card {
-        padding: 18px 18px 20px;
+      /* ── Table ── */
+      .table-wrap { overflow-x: auto; margin-top: 4px; }
+      table { width: 100%; border-collapse: collapse; }
+      th, td { padding: 10px 12px; text-align: left; font-size: 13px; white-space: nowrap; }
+      th { color: var(--text-muted); font-weight: 600; border-bottom: 1px solid var(--surface-border); font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+      td { border-bottom: 1px solid rgba(255,255,255,0.03); color: var(--text-secondary); }
+      tr:hover td { background: rgba(255,255,255,0.02); }
+      .spark-bar { display: inline-flex; align-items: center; gap: 8px; min-width: 140px; }
+      .spark-track { flex: 1; height: 6px; border-radius: 3px; background: rgba(255,255,255,0.06); overflow: hidden; }
+      .spark-fill { height: 100%; border-radius: 3px; background: linear-gradient(90deg, var(--accent), #a29bfe); }
+      .val-highlight { color: var(--text); font-weight: 600; }
+      .empty-state { text-align: center; color: var(--text-muted); padding: 40px; }
+
+      /* ── Distribution list (fallback for small charts) ── */
+      .dist-list { list-style: none; }
+      .dist-item { display: flex; align-items: center; gap: 10px; padding: 6px 0; font-size: 13px; }
+      .dist-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+      .dist-name { flex: 1; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; }
+      .dist-count { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
+
+      @media (max-width: 900px) {
+        .chart-row.two, .chart-row.three { grid-template-columns: 1fr; }
       }
-
-      .card .label {
-        color: var(--muted);
-        font-size: 13px;
-        margin-bottom: 10px;
-      }
-
-      .card .value {
-        font-size: 34px;
-        font-weight: 700;
-      }
-
-      .card .hint {
-        margin-top: 8px;
-        color: var(--muted);
-        font-size: 12px;
-      }
-
-      .panel {
-        padding: 22px;
-      }
-
-      .panel h2 {
-        margin: 0 0 6px;
-        font-size: 20px;
-      }
-
-      .panel p {
-        margin: 0 0 18px;
-        color: var(--muted);
-      }
-
-      .toolbar {
-        display: flex;
-        gap: 12px;
-        align-items: center;
-        flex-wrap: wrap;
-        margin-bottom: 16px;
-      }
-
-      .toolbar label {
-        color: var(--muted);
-        font-size: 14px;
-      }
-
-      .toolbar input {
-        border: 1px solid var(--line);
-        background: var(--surface-strong);
-        border-radius: 12px;
-        padding: 10px 12px;
-        font: inherit;
-      }
-
-      .toolbar button {
-        border: none;
-        background: var(--accent);
-        color: white;
-        border-radius: 999px;
-        padding: 10px 18px;
-        font: inherit;
-        cursor: pointer;
-      }
-
-      .toolbar button:disabled {
-        opacity: 0.65;
-        cursor: progress;
-      }
-
-      .toolbar input:disabled {
-        opacity: 0.72;
-      }
-
-      table {
-        width: 100%;
-        border-collapse: collapse;
-      }
-
-      th,
-      td {
-        padding: 12px 10px;
-        border-bottom: 1px solid var(--line);
-        text-align: left;
-        font-size: 14px;
-      }
-
-      th {
-        color: var(--muted);
-        font-weight: 600;
-      }
-
-      .bar {
-        display: inline-flex;
-        align-items: center;
-        min-width: 160px;
-        gap: 10px;
-      }
-
-      .bar-track {
-        flex: 1;
-        height: 8px;
-        border-radius: 999px;
-        background: rgba(15, 23, 42, 0.08);
-        overflow: hidden;
-      }
-
-      .bar-fill {
-        height: 100%;
-        border-radius: 999px;
-        background: linear-gradient(90deg, var(--accent) 0%, #f1a56e 100%);
-      }
-
-      .status {
-        margin-top: 14px;
-        padding: 12px 14px;
-        border-radius: 14px;
-        background: var(--accent-soft);
-        color: #7a3419;
-        display: none;
-      }
-
-      .status.is-visible {
-        display: block;
-      }
-
-      .empty-row td {
-        text-align: center;
-        color: var(--muted);
-      }
-
-      @media (max-width: 720px) {
-        .hero {
-          flex-direction: column;
-          align-items: start;
-        }
-
-        .hero-actions {
-          align-items: start;
-        }
-
-        .hero .meta {
-          text-align: left;
-        }
+      @media (max-width: 600px) {
+        .header { flex-direction: column; align-items: flex-start; }
+        .controls { flex-direction: column; align-items: stretch; }
+        .lang-select { margin-left: 0; }
+        .metric-grid { grid-template-columns: repeat(2, 1fr); }
       }
     </style>
   </head>
   <body>
-    <main>
-      <section class="hero">
-        <div>
-          <h1 id="page-title">Lingo 数据看板</h1>
-          <p id="hero-description">
-            仅展示公开生命周期指标。看板按 Asia/Shanghai 聚合，服务端仍以 UTC 存储原始事件时间戳。
-          </p>
+    <div class="dashboard">
+      <!-- Header -->
+      <header class="header">
+        <div class="header-left">
+          <div class="header-logo">L</div>
+          <h1 id="page-title">Lingo Analytics</h1>
         </div>
-        <div class="hero-actions">
-          <label class="language-switch">
-            <span id="language-label">语言</span>
-            <select id="language-select" aria-label="Language">
-              <option id="language-option-auto" value="auto">Match Browser</option>
-              <option value="zh-CN">简体中文</option>
-              <option value="en">English</option>
-            </select>
-          </label>
-          <div class="meta" id="generated-at">加载中...</div>
+        <div class="header-right">
+          <select class="lang-select" id="language-select" aria-label="Language">
+            <option id="lang-opt-auto" value="auto">Match Browser</option>
+            <option value="zh-CN">简体中文</option>
+            <option value="en">English</option>
+          </select>
+          <div class="header-meta" id="generated-at"></div>
         </div>
-      </section>
+      </header>
 
-      <section class="cards" id="summary-cards"></section>
+      <!-- Controls -->
+      <div class="controls">
+        <button class="range-btn active" data-range="7">7D</button>
+        <button class="range-btn" data-range="14">14D</button>
+        <button class="range-btn" data-range="30">30D</button>
+        <button class="range-btn" data-range="90">90D</button>
+        <input type="date" class="date-input" id="from-date" />
+        <span style="color:var(--text-muted);font-size:13px">–</span>
+        <input type="date" class="date-input" id="to-date" />
+        <button class="refresh-btn" id="refresh-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+          <span id="refresh-text">刷新</span>
+        </button>
+      </div>
 
-      <section class="panel">
-        <h2 id="daily-title">每日指标</h2>
-        <p id="daily-description">
-          默认展示最近 30 天。疑似卸载表示该安装实例已连续 30 天没有发送活跃 ping。
-        </p>
-        <div class="toolbar">
-          <label><span id="from-label">开始日期</span> <input type="date" id="from-date" /></label>
-          <label><span id="to-label">结束日期</span> <input type="date" id="to-date" /></label>
-          <button id="refresh-button" type="button">刷新</button>
+      <!-- Status -->
+      <div class="status-bar" id="status-bar" role="status">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <span id="status-text"></span>
+      </div>
+
+      <!-- Metric Cards -->
+      <section class="metric-grid" id="metric-grid"></section>
+
+      <!-- DAU Trend Chart -->
+      <div class="chart-row full">
+        <div class="panel">
+          <div class="panel-header">
+            <div>
+              <div class="panel-title">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                <span id="trend-title">活跃趋势</span>
+              </div>
+              <div class="panel-subtitle" id="trend-subtitle">DAU / 启动次数 / 新增安装</div>
+            </div>
+          </div>
+          <div class="chart-container line"><canvas id="trend-chart"></canvas></div>
         </div>
-        <div id="status" class="status" role="status"></div>
-        <div style="overflow-x:auto">
-          <table>
-            <thead>
-              <tr>
-                <th id="th-date">日期</th>
-                <th id="th-dau">日活</th>
-                <th id="th-launches">启动</th>
-                <th id="th-installs">安装</th>
-                <th id="th-suspected-uninstalls">疑似卸载</th>
-              </tr>
-            </thead>
-            <tbody id="daily-body"></tbody>
-          </table>
+      </div>
+
+      <!-- Distribution Charts -->
+      <div class="chart-row three" id="dist-row">
+        <div class="panel">
+          <div class="panel-header">
+            <div>
+              <div class="panel-title">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                <span id="platform-title">平台分布</span>
+              </div>
+            </div>
+          </div>
+          <div class="chart-container doughnut"><canvas id="platform-chart"></canvas></div>
+          <ul class="dist-list" id="platform-list"></ul>
         </div>
-      </section>
-    </main>
+        <div class="panel">
+          <div class="panel-header">
+            <div>
+              <div class="panel-title">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                <span id="version-title">版本分布</span>
+              </div>
+            </div>
+          </div>
+          <div class="chart-container doughnut"><canvas id="version-chart"></canvas></div>
+          <ul class="dist-list" id="version-list"></ul>
+        </div>
+        <div class="panel">
+          <div class="panel-header">
+            <div>
+              <div class="panel-title">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                <span id="locale-title">语言分布</span>
+              </div>
+            </div>
+          </div>
+          <div class="chart-container doughnut"><canvas id="locale-chart"></canvas></div>
+          <ul class="dist-list" id="locale-list"></ul>
+        </div>
+      </div>
+
+      <!-- Daily Table -->
+      <div class="chart-row full">
+        <div class="panel">
+          <div class="panel-header">
+            <div>
+              <div class="panel-title">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                <span id="daily-title">每日明细</span>
+              </div>
+              <div class="panel-subtitle" id="daily-subtitle">疑似卸载 = 连续 30 天无活跃 ping 的安装实例</div>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th id="th-date">日期</th>
+                  <th id="th-dau">DAU</th>
+                  <th id="th-launches">启动</th>
+                  <th id="th-installs">安装</th>
+                  <th id="th-uninstalls">疑似卸载</th>
+                </tr>
+              </thead>
+              <tbody id="daily-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <script>
-      const cardsNode = document.getElementById('summary-cards');
-      const dailyBodyNode = document.getElementById('daily-body');
-      const generatedAtNode = document.getElementById('generated-at');
-      const statusNode = document.getElementById('status');
-      const fromDateInput = document.getElementById('from-date');
-      const toDateInput = document.getElementById('to-date');
-      const refreshButton = document.getElementById('refresh-button');
-      const pageTitleNode = document.getElementById('page-title');
-      const heroDescriptionNode = document.getElementById('hero-description');
-      const languageLabelNode = document.getElementById('language-label');
-      const languageSelect = document.getElementById('language-select');
-      const languageOptionAutoNode = document.getElementById('language-option-auto');
-      const dailyTitleNode = document.getElementById('daily-title');
-      const dailyDescriptionNode = document.getElementById('daily-description');
-      const fromLabelNode = document.getElementById('from-label');
-      const toLabelNode = document.getElementById('to-label');
-      const thDateNode = document.getElementById('th-date');
-      const thDauNode = document.getElementById('th-dau');
-      const thLaunchesNode = document.getElementById('th-launches');
-      const thInstallsNode = document.getElementById('th-installs');
-      const thSuspectedUninstallsNode = document.getElementById('th-suspected-uninstalls');
-
-      const defaultLanguage = 'zh-CN';
-      const autoLanguage = 'auto';
-      const languageStorageKey = 'lingo.analytics.dashboard.language';
-      const hasLanguage = (value) => Object.prototype.hasOwnProperty.call(translations, value);
-
+    (() => {
+      /* ── i18n ── */
       const translations = {
         'zh-CN': {
           pageTitle: 'Lingo 数据看板',
-          heroDescription: '仅展示公开生命周期指标。看板按 Asia/Shanghai 聚合，服务端仍以 UTC 存储原始事件时间戳。',
-          languageLabel: '语言',
-          languageAriaLabel: '语言',
-          languageOptionAuto: '跟随浏览器',
-          languageOptionZh: '简体中文',
-          languageOptionEn: '英文',
-          generatedAtLoading: '加载中...',
-          generatedAtUpdated: '更新时间',
-          generatedAtTimezone: '时区',
-          noData: '暂无数据',
-          loadingStatus: '正在加载最新数据...',
+          langOptAuto: '跟随浏览器',
+          loading: '正在加载...',
           refreshing: '刷新中...',
-          requestFailed: '请求失败（HTTP {status}）',
-          networkError: '网络连接失败，请稍后重试。',
-          unexpectedError: '发生未知错误。',
-          unexpectedErrorWithDetail: '发生未知错误：{detail}',
-          dailyTitle: '每日指标',
-          dailyDescription: '默认展示最近 30 天。疑似卸载表示该安装实例已连续 30 天没有发送活跃 ping。',
-          fromLabel: '开始日期',
-          toLabel: '结束日期',
           refresh: '刷新',
-          date: '日期',
-          dau: '日活',
+          requestFailed: '请求失败（HTTP {status}）',
+          networkError: '网络连接失败，请稍后重试',
+          error: '发生错误：{detail}',
+          errorUnknown: '发生未知错误',
+          noData: '暂无数据',
+          updated: '更新于',
+          timezone: '时区',
+          trendTitle: '活跃趋势',
+          trendSubtitle: 'DAU / 启动次数 / 新增安装',
+          platformTitle: '平台分布',
+          versionTitle: '版本分布',
+          localeTitle: '语言分布',
+          dailyTitle: '每日明细',
+          dailySubtitle: '疑似卸载 = 连续 30 天无活跃 ping 的安装实例',
+          thDate: '日期',
+          thDau: 'DAU',
+          thLaunches: '启动',
+          thInstalls: '安装',
+          thUninstalls: '疑似卸载',
+          dauToday: '今日日活',
+          dauTodayHint: '今天至少活跃一次的唯一安装实例',
+          launchesToday: '今日启动',
+          launchesTodayHint: '今天桌面端启动总次数',
+          installsToday: '今日安装',
+          installsTodayHint: '今天首次上报的安装实例',
+          installsTotal: '累计安装',
+          installsTotalHint: '服务端观察到的累计安装总量',
+          active30d: '30 天活跃',
+          active30dHint: '近 30 天至少活跃一次的安装实例',
+          suspectedUninstalls: '疑似卸载',
+          suspectedUninstallsHint: '至少 30 天未活跃的安装实例',
+          dau: 'DAU',
           launches: '启动',
           installs: '安装',
-          suspectedUninstalls: '疑似卸载',
-          cardDauTodayLabel: '今日日活',
-          cardDauTodayHint: '今天至少有一次活跃 ping 的唯一安装实例数',
-          cardLaunchesTodayLabel: '今日启动',
-          cardLaunchesTodayHint: '今天记录到的桌面端启动总次数',
-          cardInstallsTodayLabel: '今日安装',
-          cardInstallsTodayHint: '今天首次上报的安装实例数',
-          cardSuspectedUninstallsLabel: '疑似卸载',
-          cardSuspectedUninstallsHint: '至少 30 天未活跃的安装实例数',
-          cardInstallationsTotalLabel: '累计安装',
-          cardInstallationsTotalHint: '服务端观察到的累计安装实例总数',
-          cardActive30dLabel: '近 30 天活跃',
-          cardActive30dHint: '近 30 天内至少活跃过一次的安装实例数',
         },
         en: {
           pageTitle: 'Lingo Analytics',
-          heroDescription: 'Public lifecycle metrics only. The dashboard groups by Asia/Shanghai while raw event timestamps stay stored in UTC on the server.',
-          languageLabel: 'Language',
-          languageAriaLabel: 'Language',
-          languageOptionAuto: 'Match Browser',
-          languageOptionZh: 'Simplified Chinese',
-          languageOptionEn: 'English',
-          generatedAtLoading: 'Loading...',
-          generatedAtUpdated: 'Updated',
-          generatedAtTimezone: 'Timezone',
-          noData: 'No data',
-          loadingStatus: 'Loading latest metrics...',
+          langOptAuto: 'Match Browser',
+          loading: 'Loading...',
           refreshing: 'Refreshing...',
-          requestFailed: 'Request failed (HTTP {status})',
-          networkError: 'Network request failed. Please try again later.',
-          unexpectedError: 'Unexpected error.',
-          unexpectedErrorWithDetail: 'Unexpected error: {detail}',
-          dailyTitle: 'Daily Metrics',
-          dailyDescription: 'Default range is the last 30 days. Suspected uninstall means the installation has not sent any active ping for 30 days.',
-          fromLabel: 'From',
-          toLabel: 'To',
           refresh: 'Refresh',
-          date: 'Date',
+          requestFailed: 'Request failed (HTTP {status})',
+          networkError: 'Network error. Please try again.',
+          error: 'Error: {detail}',
+          errorUnknown: 'Unexpected error',
+          noData: 'No data',
+          updated: 'Updated',
+          timezone: 'Timezone',
+          trendTitle: 'Activity Trend',
+          trendSubtitle: 'DAU / Launches / New Installs',
+          platformTitle: 'Platform',
+          versionTitle: 'Version',
+          localeTitle: 'Locale',
+          dailyTitle: 'Daily Breakdown',
+          dailySubtitle: 'Suspected uninstall = no active ping for 30 consecutive days',
+          thDate: 'Date',
+          thDau: 'DAU',
+          thLaunches: 'Launches',
+          thInstalls: 'Installs',
+          thUninstalls: 'Suspected Uninstalls',
+          dauToday: 'DAU Today',
+          dauTodayHint: 'Unique installs with at least one ping today',
+          launchesToday: 'Launches Today',
+          launchesTodayHint: 'Total desktop launches today',
+          installsToday: 'Installs Today',
+          installsTodayHint: 'First-time install reports today',
+          installsTotal: 'Total Installs',
+          installsTotalHint: 'Cumulative installations ever seen',
+          active30d: 'Active 30d',
+          active30dHint: 'Installs active at least once in 30 days',
+          suspectedUninstalls: 'Suspected Uninstalls',
+          suspectedUninstallsHint: 'Installs inactive for 30+ days',
           dau: 'DAU',
           launches: 'Launches',
           installs: 'Installs',
-          suspectedUninstalls: 'Suspected Uninstalls',
-          cardDauTodayLabel: 'DAU Today',
-          cardDauTodayHint: 'Unique installations with at least one active ping today',
-          cardLaunchesTodayLabel: 'Launches Today',
-          cardLaunchesTodayHint: 'Total desktop launches recorded today',
-          cardInstallsTodayLabel: 'Installs Today',
-          cardInstallsTodayHint: 'First-time install reports recorded today',
-          cardSuspectedUninstallsLabel: 'Suspected Uninstalls',
-          cardSuspectedUninstallsHint: 'Installations inactive for at least 30 days',
-          cardInstallationsTotalLabel: 'Installations Total',
-          cardInstallationsTotalHint: 'Cumulative installations ever seen by the server',
-          cardActive30dLabel: 'Active 30d',
-          cardActive30dHint: 'Installations active at least once in the last 30 days',
         },
       };
 
-      const metricCards = [
-        {
-          key: 'dau_today',
-          labelKey: 'cardDauTodayLabel',
-          hintKey: 'cardDauTodayHint',
-        },
-        {
-          key: 'launches_today',
-          labelKey: 'cardLaunchesTodayLabel',
-          hintKey: 'cardLaunchesTodayHint',
-        },
-        {
-          key: 'installs_today',
-          labelKey: 'cardInstallsTodayLabel',
-          hintKey: 'cardInstallsTodayHint',
-        },
-        {
-          key: 'suspected_uninstalls_current',
-          labelKey: 'cardSuspectedUninstallsLabel',
-          hintKey: 'cardSuspectedUninstallsHint',
-        },
-        {
-          key: 'installations_total',
-          labelKey: 'cardInstallationsTotalLabel',
-          hintKey: 'cardInstallationsTotalHint',
-        },
-        {
-          key: 'active_installations_30d',
-          labelKey: 'cardActive30dLabel',
-          hintKey: 'cardActive30dHint',
-        },
+      const defaultLang = 'zh-CN';
+      const storageKey = 'lingo.analytics.dashboard.language';
+      let langPref = 'auto';
+      let lang = defaultLang;
+
+      try { const s = localStorage.getItem(storageKey); if (s === 'auto' || translations[s]) langPref = s; } catch {}
+      const detectLang = () => {
+        try { for (const c of navigator.languages || [navigator.language]) { const n = (c||'').toLowerCase(); if (n.startsWith('zh')) return 'zh-CN'; if (n.startsWith('en')) return 'en'; }} catch {} return defaultLang;
+      };
+      const resolveLang = (v) => v === 'auto' ? detectLang() : (translations[v] ? v : defaultLang);
+      lang = resolveLang(langPref);
+
+      const t = (key, params) => {
+        let s = translations[lang]?.[key] || translations[defaultLang][key] || key;
+        if (params) Object.entries(params).forEach(([k,v]) => { s = s.replace(`{${k}}`, v); });
+        return s;
+      };
+      const fmtNum = (v) => Number(v||0).toLocaleString(lang === 'zh-CN' ? 'zh-CN' : 'en-US');
+
+      /* ── DOM ── */
+      const $ = (id) => document.getElementById(id);
+      const fromInput = $('from-date');
+      const toInput = $('to-date');
+      const refreshBtn = $('refresh-btn');
+      const refreshText = $('refresh-text');
+      const statusBar = $('status-bar');
+      const statusText = $('status-text');
+      const metricGrid = $('metric-grid');
+      const dailyBody = $('daily-body');
+      const langSelect = $('language-select');
+
+      /* ── Chart instances ── */
+      const chartColors = ['#6c5ce7','#00b894','#74b9ff','#fdcb6e','#fd79a8','#81ecec','#ff6b6b','#a29bfe','#55efc4','#ffeaa7'];
+      let trendChart = null, platformChart = null, versionChart = null, localeChart = null;
+
+      Chart.defaults.color = '#8b8d97';
+      Chart.defaults.borderColor = 'rgba(255,255,255,0.04)';
+      Chart.defaults.font.family = "-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif";
+      Chart.defaults.font.size = 12;
+
+      /* ── State ── */
+      let overview = null, daily = null, distributions = null;
+      let isLoading = false;
+      let activeRange = 7;
+
+      /* ── Metric card definitions ── */
+      const metricDefs = [
+        { key: 'dau_today', labelKey: 'dauToday', hintKey: 'dauTodayHint', icon: 'purple', svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>' },
+        { key: 'launches_today', labelKey: 'launchesToday', hintKey: 'launchesTodayHint', icon: 'green', svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>' },
+        { key: 'installs_today', labelKey: 'installsToday', hintKey: 'installsTodayHint', icon: 'blue', svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>' },
+        { key: 'installations_total', labelKey: 'installsTotal', hintKey: 'installsTotalHint', icon: 'orange', svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>' },
+        { key: 'active_installations_30d', labelKey: 'active30d', hintKey: 'active30dHint', icon: 'green', svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>' },
+        { key: 'suspected_uninstalls_current', labelKey: 'suspectedUninstalls', hintKey: 'suspectedUninstallsHint', icon: 'red', svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>' },
       ];
 
-      const detectBrowserLanguage = () => {
-        try {
-          const browserLanguages = Array.isArray(window.navigator?.languages)
-            ? window.navigator.languages
-            : [window.navigator?.language].filter(Boolean);
-
-          for (const candidate of browserLanguages) {
-            const normalized = String(candidate || '').trim().toLowerCase();
-            if (!normalized) {
-              continue;
-            }
-
-            if (normalized.startsWith('zh')) {
-              return 'zh-CN';
-            }
-
-            if (normalized.startsWith('en')) {
-              return 'en';
-            }
-          }
-        } catch {
-          // Ignore browser language detection failures.
-        }
-        return defaultLanguage;
+      /* ── Helpers ── */
+      const setStatus = (type, msg) => {
+        statusBar.className = 'status-bar' + (msg ? ` visible ${type}` : '');
+        statusText.textContent = msg || '';
       };
 
-      const resolveLanguagePreference = (value) => {
-        if (value === autoLanguage) {
-          return detectBrowserLanguage();
-        }
-
-        return hasLanguage(value) ? value : defaultLanguage;
+      const setLoading = (v) => {
+        isLoading = v;
+        refreshBtn.disabled = v;
+        refreshText.textContent = t(v ? 'refreshing' : 'refresh');
       };
 
-      const readStoredLanguagePreference = () => {
-        try {
-          const stored = window.localStorage.getItem(languageStorageKey);
-          if (stored === autoLanguage || hasLanguage(stored)) {
-            return stored;
-          }
-        } catch {
-          // Ignore storage access failures and fall back to auto mode.
-        }
-
-        return autoLanguage;
+      const fmtTimestamp = (v) => {
+        if (!v) return '';
+        const d = new Date(v);
+        if (isNaN(d.getTime())) return v;
+        return d.toLocaleString(lang === 'zh-CN' ? 'zh-CN' : 'en-US', { hour12: false, timeZone: 'Asia/Shanghai' });
       };
 
-      let currentLanguagePreference = readStoredLanguagePreference();
-      let currentLanguage = resolveLanguagePreference(currentLanguagePreference);
-      let currentOverview = null;
-      let currentDaily = null;
-      let currentStatusState = null;
-      let isLoading = false;
-
-      const t = (key, params = {}) => {
-        const template = translations[currentLanguage]?.[key] || translations[defaultLanguage][key] || key;
-        return String(template).replace(/\{(\w+)\}/g, (_, token) => String(params[token] ?? ''));
+      const getDayOffset = (days) => {
+        const d = new Date();
+        d.setDate(d.getDate() - (days - 1));
+        return d.toISOString().slice(0, 10);
       };
 
-      const saveLanguage = (value) => {
-        try {
-          window.localStorage.setItem(languageStorageKey, value);
-        } catch {
-          // Ignore browsers that block storage for public pages.
-        }
+      const today = () => new Date().toISOString().slice(0, 10);
+
+      /* ── Renderers ── */
+      const renderMetrics = (metrics) => {
+        metricGrid.innerHTML = metricDefs.map((d) => `
+          <div class="metric-card">
+            <div class="metric-header">
+              <div class="metric-icon ${d.icon}">${d.svg}</div>
+              <div class="metric-label">${t(d.labelKey)}</div>
+            </div>
+            <div class="metric-value">${fmtNum(metrics[d.key])}</div>
+            <div class="metric-hint">${t(d.hintKey)}</div>
+          </div>
+        `).join('');
       };
 
-      const formatNumber = (value) =>
-        Number(value || 0).toLocaleString(currentLanguage === 'zh-CN' ? 'zh-CN' : 'en-US');
+      const renderTrendChart = (days) => {
+        const labels = days.map((d) => d.date.slice(5));
+        const dauData = days.map((d) => d.dau);
+        const launchData = days.map((d) => d.launches);
+        const installData = days.map((d) => d.installs);
 
-      const setStatus = (state) => {
-        currentStatusState = state || null;
-        const message =
-          !currentStatusState
-            ? ''
-            : typeof currentStatusState === 'string'
-              ? currentStatusState
-              : t(currentStatusState.key, currentStatusState.params);
-
-        statusNode.textContent = message;
-        statusNode.classList.toggle('is-visible', Boolean(message));
-      };
-
-      const setLoadingState = (value) => {
-        isLoading = Boolean(value);
-        refreshButton.disabled = isLoading;
-        fromDateInput.disabled = isLoading;
-        toDateInput.disabled = isLoading;
-        refreshButton.textContent = t(isLoading ? 'refreshing' : 'refresh');
-      };
-
-      const formatTimestamp = (value) => {
-        if (!value) {
-          return t('noData');
-        }
-
-        const parsed = new Date(value);
-        if (Number.isNaN(parsed.getTime())) {
-          return value;
-        }
-
-        return parsed.toLocaleString(currentLanguage === 'zh-CN' ? 'zh-CN' : 'en-US', {
-          hour12: false,
-          timeZone: 'Asia/Shanghai',
+        if (trendChart) trendChart.destroy();
+        trendChart = new Chart($('trend-chart'), {
+          type: 'line',
+          data: {
+            labels,
+            datasets: [
+              { label: t('dau'), data: dauData, borderColor: '#6c5ce7', backgroundColor: 'rgba(108,92,231,0.08)', tension: 0.35, fill: true, pointRadius: days.length > 30 ? 0 : 3, pointHoverRadius: 5, borderWidth: 2 },
+              { label: t('launches'), data: launchData, borderColor: '#00b894', backgroundColor: 'transparent', tension: 0.35, pointRadius: days.length > 30 ? 0 : 3, pointHoverRadius: 5, borderWidth: 2 },
+              { label: t('installs'), data: installData, borderColor: '#74b9ff', backgroundColor: 'transparent', tension: 0.35, pointRadius: days.length > 30 ? 0 : 3, pointHoverRadius: 5, borderWidth: 2 },
+            ],
+          },
+          options: {
+            responsive: true, maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+              legend: { position: 'top', labels: { usePointStyle: true, pointStyle: 'circle', padding: 20 } },
+              tooltip: { backgroundColor: '#1a1d27', titleColor: '#e4e5e9', bodyColor: '#8b8d97', borderColor: 'rgba(255,255,255,0.1)', borderWidth: 1, padding: 12, cornerRadius: 8 },
+            },
+            scales: {
+              x: { grid: { display: false }, ticks: { maxRotation: 0, autoSkipPadding: 16 } },
+              y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { precision: 0 } },
+            },
+          },
         });
       };
 
-      const renderGeneratedAt = () => {
-        if (!currentOverview) {
-          generatedAtNode.textContent = t('generatedAtLoading');
-          return;
+      const createDoughnut = (canvasId, listId, items, titleLabel) => {
+        const names = items.map((i) => i.name);
+        const counts = items.map((i) => i.count);
+        const colors = items.map((_, i) => chartColors[i % chartColors.length]);
+
+        const canvas = $(canvasId);
+        const existing = Chart.getChart(canvas);
+        if (existing) existing.destroy();
+
+        if (!items.length) {
+          $(listId).innerHTML = `<li class="empty-state">${t('noData')}</li>`;
+          return null;
         }
 
-        generatedAtNode.textContent =
-          `${t('generatedAtUpdated')} ${formatTimestamp(currentOverview.generated_at)}` +
-          ` | ${t('generatedAtTimezone')} ${currentOverview.timezone || 'Asia/Shanghai'}`;
+        const chart = new Chart(canvas, {
+          type: 'doughnut',
+          data: {
+            labels: names,
+            datasets: [{ data: counts, backgroundColor: colors, borderWidth: 0, hoverBorderWidth: 2, hoverBorderColor: '#fff' }],
+          },
+          options: {
+            responsive: true, maintainAspectRatio: false, cutout: '65%',
+            plugins: {
+              legend: { display: false },
+              tooltip: { backgroundColor: '#1a1d27', titleColor: '#e4e5e9', bodyColor: '#8b8d97', borderColor: 'rgba(255,255,255,0.1)', borderWidth: 1, padding: 10, cornerRadius: 8 },
+            },
+          },
+        });
+
+        $(listId).innerHTML = items.slice(0, 6).map((item, i) => `
+          <li class="dist-item">
+            <span class="dist-dot" style="background:${colors[i]}"></span>
+            <span class="dist-name">${item.name}</span>
+            <span class="dist-count">${fmtNum(item.count)}</span>
+          </li>
+        `).join('');
+
+        return chart;
       };
 
-      const renderCards = (metrics) => {
-        cardsNode.innerHTML = metricCards
-          .map(
-            (item) => `
-              <article class="card">
-                <div class="label">${t(item.labelKey)}</div>
-                <div class="value">${formatNumber(metrics[item.key])}</div>
-                <div class="hint">${t(item.hintKey)}</div>
-              </article>
-            `,
-          )
-          .join('');
+      const renderDistributions = (dist) => {
+        platformChart = createDoughnut('platform-chart', 'platform-list', dist.platforms, t('platformTitle'));
+        versionChart = createDoughnut('version-chart', 'version-list', dist.versions, t('versionTitle'));
+        localeChart = createDoughnut('locale-chart', 'locale-list', dist.locales, t('localeTitle'));
       };
 
       const renderDaily = (days) => {
         if (!days.length) {
-          dailyBodyNode.innerHTML = `
-            <tr class="empty-row">
-              <td colspan="5">${t('noData')}</td>
-            </tr>
-          `;
+          dailyBody.innerHTML = `<tr><td colspan="5" class="empty-state">${t('noData')}</td></tr>`;
           return;
         }
-
-        const maxDau = Math.max(1, ...days.map((item) => Number(item.dau || 0)));
-        dailyBodyNode.innerHTML = days
-          .map(
-            (item) => `
-              <tr>
-                <td>${item.date}</td>
-                <td>
-                  <div class="bar">
-                    <div class="bar-track">
-                      <div class="bar-fill" style="width:${Math.round((Number(item.dau || 0) / maxDau) * 100)}%"></div>
-                    </div>
-                    <span>${formatNumber(item.dau)}</span>
-                  </div>
-                </td>
-                <td>${formatNumber(item.launches)}</td>
-                <td>${formatNumber(item.installs)}</td>
-                <td>${formatNumber(item.suspected_uninstalls)}</td>
-              </tr>
-            `,
-          )
-          .join('');
+        const maxDau = Math.max(1, ...days.map((d) => d.dau || 0));
+        dailyBody.innerHTML = days.map((d) => `
+          <tr>
+            <td class="val-highlight">${d.date}</td>
+            <td>
+              <div class="spark-bar">
+                <div class="spark-track"><div class="spark-fill" style="width:${Math.round(((d.dau||0)/maxDau)*100)}%"></div></div>
+                <span class="val-highlight">${fmtNum(d.dau)}</span>
+              </div>
+            </td>
+            <td>${fmtNum(d.launches)}</td>
+            <td>${fmtNum(d.installs)}</td>
+            <td>${fmtNum(d.suspected_uninstalls)}</td>
+          </tr>
+        `).join('');
       };
 
-      const applyTranslations = () => {
-        document.documentElement.lang = currentLanguage;
+      const renderHeader = () => {
+        if (!overview) return;
+        $('generated-at').textContent = `${t('updated')} ${fmtTimestamp(overview.generated_at)} | ${t('timezone')} ${overview.timezone || 'Asia/Shanghai'}`;
+      };
+
+      /* ── Apply translations ── */
+      const applyI18n = () => {
+        document.documentElement.lang = lang;
         document.title = t('pageTitle');
-        pageTitleNode.textContent = t('pageTitle');
-        heroDescriptionNode.textContent = t('heroDescription');
-        languageLabelNode.textContent = t('languageLabel');
-        languageSelect.setAttribute('aria-label', t('languageAriaLabel'));
-        languageOptionAutoNode.textContent = t('languageOptionAuto');
-        languageSelect.querySelector('option[value="zh-CN"]').textContent = t('languageOptionZh');
-        languageSelect.querySelector('option[value="en"]').textContent = t('languageOptionEn');
-        dailyTitleNode.textContent = t('dailyTitle');
-        dailyDescriptionNode.textContent = t('dailyDescription');
-        fromLabelNode.textContent = t('fromLabel');
-        toLabelNode.textContent = t('toLabel');
-        refreshButton.textContent = t('refresh');
-        thDateNode.textContent = t('date');
-        thDauNode.textContent = t('dau');
-        thLaunchesNode.textContent = t('launches');
-        thInstallsNode.textContent = t('installs');
-        thSuspectedUninstallsNode.textContent = t('suspectedUninstalls');
-        setLoadingState(isLoading);
-        setStatus(currentStatusState);
-        renderGeneratedAt();
-        renderCards(currentOverview?.metrics || {});
-        renderDaily(currentDaily?.days || []);
+        $('page-title').textContent = t('pageTitle');
+        $('lang-opt-auto').textContent = t('langOptAuto');
+        $('trend-title').textContent = t('trendTitle');
+        $('trend-subtitle').textContent = t('trendSubtitle');
+        $('platform-title').textContent = t('platformTitle');
+        $('version-title').textContent = t('versionTitle');
+        $('locale-title').textContent = t('localeTitle');
+        $('daily-title').textContent = t('dailyTitle');
+        $('daily-subtitle').textContent = t('dailySubtitle');
+        $('th-date').textContent = t('thDate');
+        $('th-dau').textContent = t('thDau');
+        $('th-launches').textContent = t('thLaunches');
+        $('th-installs').textContent = t('thInstalls');
+        $('th-uninstalls').textContent = t('thUninstalls');
+        refreshText.textContent = t(isLoading ? 'refreshing' : 'refresh');
+        renderHeader();
+        if (overview) renderMetrics(overview.metrics || {});
+        if (daily) { renderTrendChart(daily.days || []); renderDaily(daily.days || []); }
+        if (distributions) renderDistributions(distributions);
       };
 
-      const createHttpError = (status, detail) => {
-        const error = new Error(detail || `Request failed: ${status}`);
-        error.status = status;
-        error.detail = detail || '';
-        return error;
-      };
-
-      const toStatusState = (error) => {
-        if (error && typeof error.status === 'number') {
-          return { key: 'requestFailed', params: { status: error.status } };
-        }
-
-        const message = String(error?.message || '').trim();
-        if (/failed to fetch|fetch failed|networkerror|network request failed/i.test(message)) {
-          return { key: 'networkError' };
-        }
-
-        if (message) {
-          return { key: 'unexpectedErrorWithDetail', params: { detail: message } };
-        }
-
-        return { key: 'unexpectedError' };
-      };
+      /* ── Fetch ── */
       const fetchJson = async (url) => {
-        let response;
-
-        try {
-          response = await fetch(url, { cache: 'no-store' });
-        } catch (error) {
-          const wrapped = new Error(error?.message || 'fetch failed');
-          wrapped.code = 'NETWORK_ERROR';
-          throw wrapped;
-        }
-
-        const payload = await response.json().catch(() => ({}));
-        if (!response.ok) {
-          throw createHttpError(response.status, payload.message);
-        }
+        const res = await fetch(url, { cache: 'no-store' });
+        const payload = await res.json().catch(() => ({}));
+        if (!res.ok) { const e = new Error(payload.message || `HTTP ${res.status}`); e.status = res.status; throw e; }
         return payload;
       };
 
-      const loadData = async () => {
-        setLoadingState(true);
-        setStatus({ key: 'loadingStatus' });
-        const from = fromDateInput.value;
-        const to = toDateInput.value;
-        const query = new URLSearchParams();
-
-        if (from) {
-          query.set('from', from);
-        }
-
-        if (to) {
-          query.set('to', to);
-        }
-
-        const [overview, daily] = await Promise.all([
-          fetchJson('/analytics/public/overview'),
-          fetchJson(`/analytics/public/daily?${query.toString()}`),
-        ]);
-
-        currentOverview = overview;
-        currentDaily = daily;
-        renderGeneratedAt();
-        renderCards(overview.metrics || {});
-        renderDaily(daily.days || []);
-
-        if (!fromDateInput.value) {
-          fromDateInput.value = daily.from || '';
-        }
-
-        if (!toDateInput.value) {
-          toDateInput.value = daily.to || '';
-        }
-
-        setStatus(null);
-        setLoadingState(false);
+      const toErrorMsg = (err) => {
+        if (err?.status) return t('requestFailed', { status: err.status });
+        const m = String(err?.message || '');
+        if (/fetch|network/i.test(m)) return t('networkError');
+        return m ? t('error', { detail: m }) : t('errorUnknown');
       };
 
-      languageSelect.value = currentLanguagePreference;
-      applyTranslations();
+      const loadData = async () => {
+        setLoading(true);
+        setStatus('loading', t('loading'));
 
-      languageSelect.addEventListener('change', (event) => {
-        const nextLanguage = event.target.value;
-        currentLanguagePreference =
-          nextLanguage === autoLanguage || hasLanguage(nextLanguage) ? nextLanguage : autoLanguage;
-        currentLanguage = resolveLanguagePreference(currentLanguagePreference);
-        saveLanguage(currentLanguagePreference);
-        applyTranslations();
+        const from = fromInput.value;
+        const to = toInput.value;
+        const q = new URLSearchParams();
+        if (from) q.set('from', from);
+        if (to) q.set('to', to);
+
+        const [ov, dy, dist] = await Promise.all([
+          fetchJson('/analytics/public/overview'),
+          fetchJson(`/analytics/public/daily?${q}`),
+          fetchJson('/analytics/public/distributions'),
+        ]);
+
+        overview = ov;
+        daily = dy;
+        distributions = dist;
+
+        renderHeader();
+        renderMetrics(ov.metrics || {});
+        renderTrendChart(dy.days || []);
+        renderDaily(dy.days || []);
+        renderDistributions(dist);
+
+        if (!fromInput.value) fromInput.value = dy.from || '';
+        if (!toInput.value) toInput.value = dy.to || '';
+
+        setStatus(null, null);
+        setLoading(false);
+      };
+
+      /* ── Event listeners ── */
+      langSelect.value = langPref;
+      langSelect.addEventListener('change', (e) => {
+        langPref = e.target.value;
+        lang = resolveLang(langPref);
+        try { localStorage.setItem(storageKey, langPref); } catch {}
+        applyI18n();
       });
 
-      refreshButton.addEventListener('click', () => {
-        void loadData().catch((error) => {
-          setStatus(toStatusState(error));
-          setLoadingState(false);
+      document.querySelectorAll('.range-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.range-btn').forEach((b) => b.classList.remove('active'));
+          btn.classList.add('active');
+          activeRange = Number(btn.dataset.range);
+          fromInput.value = getDayOffset(activeRange);
+          toInput.value = today();
+          loadData().catch((e) => { setStatus('error', toErrorMsg(e)); setLoading(false); });
         });
       });
 
-      void loadData().catch((error) => {
-        setStatus(toStatusState(error));
-        setLoadingState(false);
+      refreshBtn.addEventListener('click', () => {
+        loadData().catch((e) => { setStatus('error', toErrorMsg(e)); setLoading(false); });
       });
+
+      /* ── Init ── */
+      fromInput.value = getDayOffset(7);
+      toInput.value = today();
+      applyI18n();
+      loadData().catch((e) => { setStatus('error', toErrorMsg(e)); setLoading(false); });
+    })();
     </script>
   </body>
 </html>

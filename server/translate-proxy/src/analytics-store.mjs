@@ -267,6 +267,46 @@ const activeInstallationsStatement = db.prepare(`
     AND last_active_ping_at >= ?
 `);
 
+const platformDistributionStatement = db.prepare(`
+  SELECT
+    COALESCE(latest_platform, 'unknown') AS platform,
+    COUNT(*) AS count
+  FROM analytics_installations
+  GROUP BY platform
+  ORDER BY count DESC
+`);
+
+const versionDistributionStatement = db.prepare(`
+  SELECT
+    COALESCE(latest_app_version, 'unknown') AS version,
+    COUNT(*) AS count
+  FROM analytics_installations
+  GROUP BY version
+  ORDER BY count DESC
+  LIMIT 15
+`);
+
+const localeDistributionStatement = db.prepare(`
+  SELECT
+    COALESCE(latest_ui_locale, 'unknown') AS locale,
+    COUNT(*) AS count
+  FROM analytics_installations
+  GROUP BY locale
+  ORDER BY count DESC
+  LIMIT 15
+`);
+
+const newInstallsTrendStatement = db.prepare(`
+  SELECT
+    analytics_day,
+    COUNT(DISTINCT installation_id) AS installs
+  FROM analytics_events
+  WHERE event_name = 'install_registered'
+    AND analytics_day BETWEEN ? AND ?
+  GROUP BY analytics_day
+  ORDER BY analytics_day
+`);
+
 const normalizeAnalyticsEvent = (value) => {
   if (!value || typeof value !== 'object') {
     return null;
@@ -441,4 +481,23 @@ export const queryAnalyticsOverview = () => {
       suspected_uninstalls_current: suspectedCurrent,
     },
   };
+};
+
+export const queryAnalyticsDistributions = () => {
+  const platforms = platformDistributionStatement.all().map((row) => ({
+    name: row.platform,
+    count: Number(row.count),
+  }));
+
+  const versions = versionDistributionStatement.all().map((row) => ({
+    name: row.version,
+    count: Number(row.count),
+  }));
+
+  const locales = localeDistributionStatement.all().map((row) => ({
+    name: row.locale,
+    count: Number(row.count),
+  }));
+
+  return { platforms, versions, locales };
 };
