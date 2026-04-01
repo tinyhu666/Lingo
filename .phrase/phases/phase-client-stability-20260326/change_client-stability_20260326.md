@@ -1,5 +1,20 @@
 # Client Stability Changes
 
+change204 日期:2026-04-01 | 文件:.phrase/phases/phase-client-stability-20260326/plan_client-stability_20260326.md | 操作:Modify | 影响:阶段计划与风险约束 | 说明:新增 README 去口语化表达的里程碑、优先级与官网措辞约束 | 关联:task033
+change205 日期:2026-04-01 | 文件:.phrase/phases/phase-client-stability-20260326/task_client-stability_20260326.md | 操作:Modify | 影响:任务清单 | 说明:新增并完成 task033，要求移除 README 中“嘴替 / in-game voice”类表达 | 关联:task033
+change206 日期:2026-04-01 | 文件:README.md | 操作:Modify | 影响:GitHub 中文首页定位段落 | 说明:移除“嘴替”类比，改为官网式的游戏内团队沟通翻译工作流表达 | 关联:task033
+change207 日期:2026-04-01 | 文件:README.en.md | 操作:Modify | 影响:GitHub 英文首页定位段落 | 说明:移除 in-game voice 类比，改为更贴近官网的 translation workflow 表述 | 关联:task033
+change208 日期:2026-04-01 | 文件:README.ru.md | 操作:Modify | 影响:GitHub 俄文首页定位段落 | 说明:移除 “ваш голос в игре” 类比，改为更专业的 игрового чата workflow 表述 | 关联:task033
+change209 日期:2026-04-01 | 文件:.phrase/docs/CHANGE.md | 操作:Modify | 影响:全局变更索引 | 说明:将 README 去口语化表达的修订补入全局索引摘要 | 关联:task033
+
+change197 日期:2026-04-01 | 文件:.phrase/phases/phase-client-stability-20260326/plan_client-stability_20260326.md | 操作:Modify | 影响:阶段计划与范围 | 说明:新增 README 对齐官网定位的里程碑、范围、优先级与文案边界约束 | 关联:task032
+change198 日期:2026-04-01 | 文件:.phrase/phases/phase-client-stability-20260326/task_client-stability_20260326.md | 操作:Modify | 影响:任务清单 | 说明:新增并完成 task032，记录 GitHub README 需与官网定位和下载入口保持一致 | 关联:task032
+change199 日期:2026-04-01 | 文件:README.md | 操作:Modify | 影响:GitHub 中文首页介绍 | 说明:将中文 README 改写为官网一致的 AI 游戏内聊天翻译定位，补充官网与最新版下载入口、核心卖点和三步流程 | 关联:task032
+change200 日期:2026-04-01 | 文件:README.en.md | 操作:Modify | 影响:GitHub 英文首页介绍 | 说明:将英文 README 改写为与官网一致的 in-game chat translation 与 hotkey-first workflow 叙事，并补充下载入口 | 关联:task032
+change201 日期:2026-04-01 | 文件:README.ru.md | 操作:Modify | 影响:GitHub 俄文首页介绍 | 说明:同步俄文 README 的产品定位、核心卖点与下载入口，保持多语言首页叙事一致 | 关联:task032
+change202 日期:2026-04-01 | 文件:.phrase/phases/phase-client-stability-20260326/change_client-stability_20260326.md | 操作:Modify | 影响:阶段变更记录 | 说明:登记 task032 的 phase 内文档与 README 变更，形成可追溯闭环 | 关联:task032
+change203 日期:2026-04-01 | 文件:.phrase/docs/CHANGE.md | 操作:Modify | 影响:全局变更索引 | 说明:将 README 官网对齐改动补入全局 CHANGE 索引摘要 | 关联:task032
+
 change187 日期:2026-03-27 | 文件:.phrase/phases/phase-client-stability-20260326/spec_client-stability_20260326.md | 操作:Modify | 影响:阶段需求说明 | 说明:补充 0.5.0 回归与正式发版验收目标，明确完整测试与版本同步要求 | 关联:task030
 change188 日期:2026-03-27 | 文件:.phrase/phases/phase-client-stability-20260326/plan_client-stability_20260326.md | 操作:Modify | 影响:阶段计划 | 说明:新增 0.5.0 回归与发版里程碑、优先级和本地打包与 Actions 分工风险说明 | 关联:task030
 change189 日期:2026-03-27 | 文件:.phrase/phases/phase-client-stability-20260326/task_client-stability_20260326.md | 操作:Modify | 影响:任务清单 | 说明:新增并完成 task030 与 task031，记录 0.5.0 回归、版本同步、提交与发版闭环 | 关联:task031

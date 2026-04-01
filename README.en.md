@@ -1,31 +1,36 @@
-# Lingo - Your In-Game Voice
+# Lingo | AI In-Game Chat Translation
 
 [简体中文](./README.md) | English | [Русский](./README.ru.md)
 
-Lingo is an AI-powered in-game chat translation client, but it works more like your in-game voice.
+[Official site](https://lingo.ink) | [Latest release](https://github.com/tinyhu666/Lingo/releases/latest) | Windows / macOS | MIT
 
-You focus on what you want to say. Lingo helps you say it faster, more clearly, and in a language your teammates can understand, then drops it right back into the chat box. With a single global hotkey, it handles the whole flow from copy to translation to paste-back.
+Lingo is an AI-powered in-game chat translation client for Windows and macOS, built for low-friction team communication.
 
-- Turn what you want to say into something your teammates can understand
-- Supports global hotkeys: auto-copy -> translate -> auto-paste
-- Includes phrase shortcuts and multilingual translation capabilities
-- Translation is provided by a centralized backend; no client-side model API login or parameter setup needed
-- Supports Windows / macOS
-- Client UI language supports Simplified Chinese, English, and Russian
+It is not a general-purpose translator. It is a hotkey-first translation workflow built for in-game team communication: press a shortcut, let Lingo copy the current chat line, send it to server-side AI for translation or polishing, and write the result straight back into the input box. You stay in the match. Lingo reduces the switching and interruption around every message.
 
-## Why Lingo feels like your in-game voice
+## Why it fits real matches
 
-- No alt-tabbing to a separate translator
-- No repeated manual copy, paste, and sentence cleanup
-- No scrambling to phrase things in another language mid-match
-- Your message lands in the chat box faster, without breaking momentum
+- `Low interruption`: hotkey-first flow from copy to translation to fill-back
+- `Send-ready output`: optimized for short in-game chat while preserving ability, item, and shot-call terminology
+- `Game-aware context`: supports Dota 2, League of Legends, World of Warcraft, Overwatch, and other game scenes
+- `Server-side AI`: model routing is managed on backend, so the client needs no API login or manual model setup
+- `Desktop-friendly`: built for Windows and macOS, with in-app updates and multilingual UI
 
-## Workflow
+## Core capabilities
+
+- Global translation hotkey, default: macOS `⌘+T`, Windows `Alt+T`
+- Auto-copy -> translate / rewrite -> auto fill-back into the current input
+- `Normal / Pro / Toxic` output styles for different tones and match tempo
+- Phrase shortcuts for high-frequency lines
+- Multilingual translation, with client UI in Simplified Chinese, English, and Russian
+
+## How it works
 
 1. Select or type text in the game chat box.
-2. Press the translation hotkey (default: macOS `⌘+T`, Windows `Alt+T`).
-3. Lingo reads the clipboard, translates the text, and pastes it back into the current input box.
-4. For repeated lines, you can also send saved phrase shortcuts directly.
+2. Press the translation hotkey and Lingo asks backend translation to turn it into something your teammates can understand.
+3. The translated line is written back into the current input box so you can send without leaving the game.
+
+For repeated lines, you can also send saved phrase shortcuts directly.
 
 ## Requirements
 
@@ -51,6 +56,7 @@ npm run tauri build
 
 ## Contact
 
+- Website: https://lingo.ink
 - Discord: https://discord.gg/cWB49jCfdP
 - Email: huruiw@outlook.com
 

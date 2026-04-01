@@ -32,6 +32,8 @@
 28. 基于线上真实耗时结果重调 fast lane 模型档位，并用批量诊断脚本评估当前双模型方案是否可行。
 29. 对前端 UI、Rust/Tauri、translate-proxy、线上 buffpp.com 与本地打包链路执行一次完整回归，形成 0.5.0 发版前结论。
 30. 将当前稳定版本统一同步到 0.5.0，提交、推送、打 tag，并跟进正式 release 产物。
+31. 对齐 `lingo.ink` 官网定位，重写 GitHub README 首页介绍与下载入口，避免仓库首页继续停留在旧版口语化描述。
+32. 清理 README 中“嘴替 / in-game voice”这类不够专业的表达，进一步贴近官网当前的产品语言。
 29. 对当前客户端、翻译代理和本地打包链路执行一次完整回归，确认 0.5.0 的 UI 与功能表现稳定。
 30. 将全部已验证改动同步到 0.5.0 版本元数据、更新日志、提交记录与正式 release tag。
 29. 将本阶段修复收口到 `0.5.0`，完成 UI/功能回归、本地打包验证、提交与正式发版。
@@ -65,6 +67,9 @@
 - `package-lock.json`
 - `.github/workflows/release.yml`
 - `CHANGELOG.md`
+- `README.md`
+- `README.en.md`
+- `README.ru.md`
 
 ## Priorities
 
@@ -99,6 +104,8 @@
 - P0: 若 0.5.0 发版前缺少完整回归，UI 与翻译链路中的跨层改动容易带着回归一起进入正式包
 - P1: 0.5.0 版本入口若漏改 package/Cargo/Tauri/CHANGELOG 其中之一，会导致安装包、Release Notes 与应用内版本不一致
 - P0: 若不尽快把已完成修复打包发版，线上与本地代码会继续分叉，回归成本只会越来越高
+- P2: GitHub README 如果继续停留在旧定位，会让首次访问者无法快速理解官网当前强调的产品价值与下载入口
+- P2: README 若继续保留“嘴替 / in-game voice”这类表达，会与官网当前更专业的产品定位产生落差
 
 ## Risks & Dependencies
 
@@ -135,3 +142,5 @@
 - 当前工作树里同时包含代码、文档和发布元数据修改，提交前必须明确忽略未接入 release 的本地图标生成物与 `.claude/` 目录，避免把无关产物带进 0.5.0。
 - 本地 macOS ARM 打包可以验证版本同步、签名与 updater 产物链路，但 Windows 安装包与最终 GitHub Release 资产仍需依赖 tag 推送后的 Actions 工作流收尾。
 - 发版前的 UI 回归需要覆盖首页、翻译风格、常用语、关于等关键页面；但桌面外壳和 OS 级热键链路仍只能做有限手工验证，必须在结论里说明边界。
+- README 改写必须对齐官网已公开定位与当前客户端真实能力，不能为了营销表达而写入官网未承诺或仓库尚未稳定提供的功能。
+- README 的措辞调整应优先复用官网已公开的 `AI in-game chat translation`、`hotkey-first workflow`、`low-friction team communication` 等语言，避免重新引入口语化类比。
