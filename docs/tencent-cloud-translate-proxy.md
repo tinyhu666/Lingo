@@ -18,6 +18,7 @@ The deployable service lives in:
 It provides:
 
 - `GET /healthz` for health checks
+- `GET /public/site-config` for public About/contact config
 - `GET /translate` for non-sensitive runtime summary
 - `POST /translate` for translation
 - `POST /analytics/events` for desktop lifecycle event ingest
@@ -107,6 +108,9 @@ Suggested split:
   - `max_tokens`
   - `temperature`
   - `fast_lane` (optional)
+  - `public_site.contact.discord_url`
+  - `public_site.contact.email`
+  - `public_site.contact.qq_group`
 
 ## Deploy On Tencent Cloud Lightweight Server
 
@@ -129,6 +133,11 @@ cd server/translate-proxy
 cp .env.example .env
 cp runtime-config.example.json data/runtime-config.json
 ```
+
+The same `data/runtime-config.json` now also stores the public About/contact
+payload used by the desktop client and website, so future Discord / QQ / email
+updates can stay on the existing Tencent Cloud proxy without forcing a client
+repackage.
 
 4. Edit `.env`.
 
@@ -178,6 +187,7 @@ docker compose up -d --build
 
 ```bash
 curl https://your-domain.example.com/healthz
+curl https://your-domain.example.com/public/site-config
 curl https://your-domain.example.com/translate
 curl https://your-domain.example.com/analytics/public/overview
 ```
@@ -199,6 +209,13 @@ curl -X PUT "https://your-domain.example.com/admin/runtime-config" \
     "timeout_ms": 12000,
     "max_tokens": 96,
     "temperature": 0.2,
+    "public_site": {
+      "contact": {
+        "discord_url": "https://discord.gg/cWB49jCfdP",
+        "email": "huruiw@outlook.com",
+        "qq_group": "1095706752"
+      }
+    },
     "fast_lane": {
       "enabled": true,
       "provider": "openai-compatible",
@@ -216,6 +233,20 @@ curl -X PUT "https://your-domain.example.com/admin/runtime-config" \
 
 The server writes the result into `data/runtime-config.json`, so the settings
 survive container restarts.
+
+`GET /public/site-config` returns only the public subset:
+
+```json
+{
+  "contact": {
+    "discord_url": "https://discord.gg/cWB49jCfdP",
+    "email": "huruiw@outlook.com",
+    "qq_group": "1095706752"
+  },
+  "config_source": "file",
+  "updated_at": "2026-04-01T12:34:56.000Z"
+}
+```
 
 This repository's current latency-first recommendation is the same payload:
 `DeepSeek-V3.2` stays as the primary model, and `Qwen/Qwen3-14B`
@@ -240,6 +271,11 @@ After the proxy is online, point release builds to it:
 2. Set GitHub secret or variable `LINGO_BACKEND_ANON_KEY` to the same value as `BACKEND_PUBLIC_KEY`
 3. Remove `SUPABASE_PROJECT_ID` from release defaults if you do not want fallback to Supabase
 4. Build and publish a new desktop release
+
+If the website is not deployed on the same origin as the Tencent Cloud proxy,
+set `VITE_PUBLIC_BACKEND_URL=https://your-domain.example.com` when building the
+site so the browser About page can fetch `GET /public/site-config` from the
+existing proxy.
 
 The desktop client now writes `installation_id`, analytics state, and an offline
 analytics queue into `store.json`. If the server is temporarily unreachable,

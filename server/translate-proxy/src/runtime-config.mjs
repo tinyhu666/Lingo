@@ -16,6 +16,9 @@ const DEFAULT_FAST_LANE_MAX_TOKENS = 48;
 const DEFAULT_FAST_LANE_TEMPERATURE = 0.1;
 const DEFAULT_FAST_LANE_MAX_TEXT_LENGTH = 72;
 const DEFAULT_FAST_LANE_ALLOWED_PROMPT_VARIANTS = ['translate', 'rewrite'];
+const DEFAULT_CONTACT_DISCORD_URL = 'https://discord.gg/cWB49jCfdP';
+const DEFAULT_CONTACT_EMAIL = 'huruiw@outlook.com';
+const DEFAULT_CONTACT_QQ_GROUP = '1095706752';
 
 let runtimeConfigCache = null;
 
@@ -77,6 +80,11 @@ const clampNumber = (value, fallback, min, max) => {
   return Math.min(max, Math.max(min, parsed));
 };
 
+const normalizeString = (value) => String(value || '').trim();
+
+const withDefaultWhenMissing = (value, fallback) =>
+  value === undefined || value === null ? fallback : normalizeString(value);
+
 const normalizePromptVariants = (value) => {
   const candidates = Array.isArray(value)
     ? value
@@ -128,6 +136,24 @@ const sanitizeFastLaneConfig = (candidate, baseConfig) => {
   };
 };
 
+const sanitizePublicContactConfig = (candidate) => {
+  const record = isRecord(candidate) ? candidate : {};
+
+  return {
+    discord_url: withDefaultWhenMissing(record.discord_url, DEFAULT_CONTACT_DISCORD_URL),
+    email: withDefaultWhenMissing(record.email, DEFAULT_CONTACT_EMAIL),
+    qq_group: withDefaultWhenMissing(record.qq_group, DEFAULT_CONTACT_QQ_GROUP),
+  };
+};
+
+const sanitizePublicSiteConfig = (candidate) => {
+  const record = isRecord(candidate) ? candidate : {};
+
+  return {
+    contact: sanitizePublicContactConfig(record.contact),
+  };
+};
+
 export const sanitizeRuntimeConfig = (candidate, source = 'environment', updatedAt = null) => {
   const record = isRecord(candidate) ? candidate : {};
   const provider = toProvider(record.provider);
@@ -156,6 +182,7 @@ export const sanitizeRuntimeConfig = (candidate, source = 'environment', updated
     max_tokens,
     temperature,
     fast_lane: sanitizeFastLaneConfig(record.fast_lane, baseConfig),
+    public_site: sanitizePublicSiteConfig(record.public_site),
     source,
     updated_at: updatedAt,
   };
@@ -219,6 +246,7 @@ export const createSiliconFlowLatencyFirstRuntimeConfig = () => ({
     max_text_length: DEFAULT_FAST_LANE_MAX_TEXT_LENGTH,
     allowed_prompt_variants: [...DEFAULT_FAST_LANE_ALLOWED_PROMPT_VARIANTS],
   },
+  public_site: sanitizePublicSiteConfig(),
 });
 
 const setRuntimeConfigCache = (configPath, config) => {
@@ -287,6 +315,13 @@ const toPersistedRuntimeConfig = (config) => ({
     max_text_length: Number(config.fast_lane?.max_text_length || DEFAULT_FAST_LANE_MAX_TEXT_LENGTH),
     allowed_prompt_variants: normalizePromptVariants(config.fast_lane?.allowed_prompt_variants),
   },
+  public_site: {
+    contact: {
+      discord_url: normalizeString(config.public_site?.contact?.discord_url),
+      email: normalizeString(config.public_site?.contact?.email),
+      qq_group: normalizeString(config.public_site?.contact?.qq_group),
+    },
+  },
 });
 
 export const persistRuntimeConfig = async (env, config) => {
@@ -319,6 +354,16 @@ export const summarizeRuntimeConfig = (config) => ({
     api_url: config.fast_lane?.api_url || config.api_url,
     max_text_length: config.fast_lane?.max_text_length || DEFAULT_FAST_LANE_MAX_TEXT_LENGTH,
     allowed_prompt_variants: normalizePromptVariants(config.fast_lane?.allowed_prompt_variants),
+  },
+  config_source: config.source,
+  updated_at: config.updated_at,
+});
+
+export const summarizePublicSiteConfig = (config) => ({
+  contact: {
+    discord_url: config.public_site?.contact?.discord_url || DEFAULT_CONTACT_DISCORD_URL,
+    email: config.public_site?.contact?.email || DEFAULT_CONTACT_EMAIL,
+    qq_group: config.public_site?.contact?.qq_group || DEFAULT_CONTACT_QQ_GROUP,
   },
   config_source: config.source,
   updated_at: config.updated_at,

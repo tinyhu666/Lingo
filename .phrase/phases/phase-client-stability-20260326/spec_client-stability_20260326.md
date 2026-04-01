@@ -36,11 +36,13 @@
 - 当前这一轮稳定性与翻译性能修复需要统一打包为 `0.5.0`，确保版本号、更新日志、本地安装包与 GitHub Release 一致。
 - 在进入下一个正式版本前，需要对 UI、翻译链路、桌面构建与发版产物做一次完整回归，并把通过结果收口到 `0.5.0`。
 - 在收口这一阶段修复时，需要能把 UI、客户端、代理与线上配置一起回归并打成 `0.5.0` 正式版本，避免稳定性修复长期停留在未发布状态。
+- 客户端与官网 About 页的联系方式需要改为从现有腾讯云翻译代理的公开运行时配置读取，避免每次改联系方式都重新打包客户端。
 
 ## Non-goals
 
 - 不重做整套视觉风格。
 - 不引入需要额外后端配置的新能力。
+- 不单独新增一套联系方式后台，继续复用现有腾讯云 `translate-proxy` 的运行时配置与管理入口。
 
 ## User Flows
 
@@ -72,6 +74,7 @@
 - 发布者完成所有验证后，可以直接把版本同步到 `0.5.0`、产出本地 macOS 安装包，并通过 tag 触发正式 GitHub Release。
 - 发布者准备 `0.5.0` 时，会先完成前端、proxy、Rust、浏览器预览与本地打包回归，再同步版本号、更新日志并推送正式 tag。
 - 发布者同步版本到 `0.5.0` 后，可以一次完成浏览器 UI 回归、客户端回归、本地打包验证和正式 tag 推送。
+- 用户或官网访客打开 About 页时，客户端会优先从现有腾讯云翻译代理读取最新地址、Discord、QQ 群与邮箱；如果代理暂时不可达，则回退到内置兜底联系方式而不影响页面可用。
 
 ## Edge Cases
 
@@ -103,6 +106,8 @@
 - 浏览器预览环境和 Tauri 桌面环境共享大部分前端，但窗口控制、透明外轮廓和 updater 等桌面能力仍需通过构建或桌面命令补验。
 - 本地浏览器预览可以覆盖大部分 UI 布局回归，但不能替代真实桌面端热键链路和 GitHub Actions 产出的 Windows 安装包验证，因此回归结论需要明确哪些环节是本机实跑、哪些仍依赖发版流水线。
 - 本地只能直接打出 macOS 安装包，Windows 安装包与 updater 元数据仍依赖 GitHub Actions；因此发布结论需要明确区分“本地已验证产物”和“CI 将产出的跨平台产物”。
+- 官网浏览器环境与 Tauri 桌面环境解析后端地址的方式不同，但两者都必须能命中同一台腾讯云代理；若浏览器端不是同域部署，则需要通过 `VITE_PUBLIC_BACKEND_URL` 显式指定代理地址。
+- 腾讯云代理公开联系方式配置接口异常时，About 页不能因为取不到远端配置而空白或报错，必须回退到随包兜底值继续可用。
 
 ## Acceptance Criteria
 
@@ -137,3 +142,6 @@
 - `0.5.0` 的版本号需要同步到 `package.json`、`package-lock.json`、`src-tauri/Cargo.toml`、`src-tauri/Cargo.lock`、`src-tauri/tauri.conf.json` 与 `CHANGELOG.md`，并通过本地打包与 GitHub Release 一起验证。
 - `package.json`、`package-lock.json`、`src-tauri/Cargo.toml`、`src-tauri/Cargo.lock`、`src-tauri/tauri.conf.json` 与 `CHANGELOG.md` 需统一同步到 `0.5.0`，并在本地回归通过后推送 `v0.5.0` tag 触发正式 release。
 - `package.json`、`package-lock.json`、`src-tauri/Cargo.toml`、`src-tauri/Cargo.lock`、`src-tauri/tauri.conf.json` 与 `CHANGELOG.md` 需要同步到 `0.5.0`，并在回归通过后推送 `v0.5.0` 触发正式 release。
+- 腾讯云翻译代理需要新增 `GET /public/site-config` 公开接口，并从 `data/runtime-config.json` 暴露 Discord、QQ 群和邮箱等公开联系方式摘要。
+- About 页需要在桌面端通过现有 `get_public_backend_config` 解析代理地址，在官网浏览器端通过同域或 `VITE_PUBLIC_BACKEND_URL` 解析代理地址，并使用远端联系方式替换当前硬编码值。
+- `npm run proxy:smoke` 与 `npm run build` 需要继续通过，且 smoke 需覆盖公开联系方式配置的默认值与更新后回读结果。

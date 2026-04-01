@@ -1,11 +1,13 @@
+import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { openUrl } from '@tauri-apps/plugin-opener';
 import { ChatBubbleMessage, CircleInfo, Dock, GamingPad, Globe } from '../icons';
 import { useUpdater } from '../components/UpdateProvider';
 import { APP_VERSION_LABEL, RELEASE_PAGE_URL } from '../constants/version';
 import { hasTauriRuntime } from '../services/tauriRuntime';
+import { DEFAULT_PUBLIC_SITE_CONFIG, loadPublicSiteConfig } from '../services/publicSiteConfig';
 import { useI18n } from '../i18n/I18nProvider';
-import { showError } from '../utils/toast';
+import { showError, showSuccess } from '../utils/toast';
 import { toErrorMessage } from '../utils/error';
 
 const stripLeadingMarkdownHeading = (value) => {
@@ -31,8 +33,6 @@ const stripLeadingMarkdownHeading = (value) => {
 };
 
 const normalizeReleaseNotes = (value) => stripLeadingMarkdownHeading(value).replace(/\n{3,}/g, '\n\n').trim();
-const DISCORD_URL = 'https://discord.gg/cWB49jCfdP';
-const EMAIL_ADDRESS = 'huruiw@outlook.com';
 
 const openContactLink = async (url, t) => {
   try {
@@ -53,8 +53,30 @@ const openContactLink = async (url, t) => {
   }
 };
 
+const copyContactValue = async (value, t) => {
+  try {
+    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(value);
+      showSuccess(t('about.project.contactQqCopied'));
+      return;
+    }
+
+    if (hasTauriRuntime()) {
+      const { writeText } = await import('@tauri-apps/plugin-clipboard-manager');
+      await writeText(value);
+      showSuccess(t('about.project.contactQqCopied'));
+      return;
+    }
+
+    throw new Error('Clipboard is not available in this environment.');
+  } catch (error) {
+    showError(t('developerNote.openLinkFailed', { error: toErrorMessage(error) }));
+  }
+};
+
 export default function About() {
   const { locale, t } = useI18n();
+  const [publicSiteConfig, setPublicSiteConfig] = useState(DEFAULT_PUBLIC_SITE_CONFIG);
   const {
     currentVersion,
     latestVersion,
@@ -71,6 +93,20 @@ export default function About() {
     installUpdate,
     supportsUpdater,
   } = useUpdater();
+
+  useEffect(() => {
+    let disposed = false;
+
+    void loadPublicSiteConfig().then((config) => {
+      if (!disposed) {
+        setPublicSiteConfig(config);
+      }
+    });
+
+    return () => {
+      disposed = true;
+    };
+  }, []);
 
   const formatTime = (timestamp) => {
     if (!timestamp) {
@@ -121,20 +157,30 @@ export default function About() {
   const actionDisabled = !supportsUpdater || checking || downloading;
   const releaseNotesBody = normalizeReleaseNotes(releaseBody);
   const shouldShowReleaseNotes = hasUpdate && Boolean(releaseNotesBody);
-  const contactItems = [
-    {
-      key: 'discord',
-      label: t('about.project.contactDiscord'),
-      value: 'discord.gg/cWB49jCfdP',
-      href: DISCORD_URL,
-    },
-    {
-      key: 'email',
-      label: t('about.project.contactEmail'),
-      value: EMAIL_ADDRESS,
-      href: `mailto:${EMAIL_ADDRESS}`,
-    },
-  ];
+  const contactItems = useMemo(() => {
+    const contact = publicSiteConfig?.contact || DEFAULT_PUBLIC_SITE_CONFIG.contact;
+
+    return [
+      {
+        key: 'discord',
+        label: t('about.project.contactDiscord'),
+        value: contact.discordUrl.replace(/^https?:\/\//, ''),
+        action: () => openContactLink(contact.discordUrl, t),
+      },
+      {
+        key: 'qq-group',
+        label: t('about.project.contactQqGroup'),
+        value: contact.qqGroup,
+        action: () => copyContactValue(contact.qqGroup, t),
+      },
+      {
+        key: 'email',
+        label: t('about.project.contactEmail'),
+        value: contact.email,
+        action: () => openContactLink(`mailto:${contact.email}`, t),
+      },
+    ];
+  }, [publicSiteConfig, t]);
 
   return (
     <div className='flex h-full flex-col gap-6'>
@@ -250,7 +296,7 @@ export default function About() {
                 key={item.key}
                 type='button'
                 onClick={() => {
-                  void openContactLink(item.href, t);
+                  void item.action();
                 }}
                 className='min-w-[220px] flex-1 rounded-2xl border border-[rgba(196,210,233,0.96)] bg-[rgba(255,255,255,0.94)] px-4 py-3 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition-all duration-150 hover:-translate-y-[1px] hover:border-[rgba(157,181,229,0.98)] hover:bg-[rgba(252,254,255,0.98)]'>
                 <div className='text-[11px] font-extrabold uppercase tracking-[0.12em] text-[#7a89a1]'>{item.label}</div>

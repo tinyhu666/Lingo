@@ -8,6 +8,7 @@ import {
   loadRuntimeConfig,
   persistRuntimeConfig,
   resolveApiKey,
+  summarizePublicSiteConfig,
   summarizeRuntimeConfig,
 } from './runtime-config.mjs';
 import {
@@ -711,6 +712,7 @@ const routeAdminRuntimeConfig = async (req, res, traceId) => {
     const config = await loadRuntimeConfig(process.env);
     return jsonResponse(res, 200, {
       ...summarizeRuntimeConfig(config),
+      public_site: summarizePublicSiteConfig(config),
       api_key_env_name: config.api_key_env_name,
       timeout_ms: config.timeout_ms,
       max_tokens: config.max_tokens,
@@ -733,10 +735,23 @@ const routeAdminRuntimeConfig = async (req, res, traceId) => {
   return jsonResponse(res, 200, {
     message: 'Runtime config updated',
     ...summarizeRuntimeConfig(nextConfig),
+    public_site: summarizePublicSiteConfig(nextConfig),
     api_key_env_name: nextConfig.api_key_env_name,
     timeout_ms: nextConfig.timeout_ms,
     max_tokens: nextConfig.max_tokens,
     temperature: nextConfig.temperature,
+    trace_id: traceId,
+  });
+};
+
+const routePublicSiteConfig = async (req, res, traceId) => {
+  if (req.method !== 'GET') {
+    return jsonResponse(res, 405, { message: 'Method not allowed', trace_id: traceId });
+  }
+
+  const config = await loadRuntimeConfig(process.env);
+  return jsonResponse(res, 200, {
+    ...summarizePublicSiteConfig(config),
     trace_id: traceId,
   });
 };
@@ -1004,6 +1019,11 @@ const server = createServer(async (req, res) => {
 
     if (url.pathname === '/translate') {
       await routeTranslate(req, res, traceId);
+      return;
+    }
+
+    if (url.pathname === '/public/site-config') {
+      await routePublicSiteConfig(req, res, traceId);
       return;
     }
 

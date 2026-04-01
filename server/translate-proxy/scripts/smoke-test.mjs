@@ -131,6 +131,13 @@ const updateRuntimeConfig = async (payload) => {
   return json;
 };
 
+const fetchPublicSiteConfig = async () => {
+  const response = await fetch(`${baseUrl}/public/site-config`);
+  const json = await response.json();
+  expect(response.ok, `GET /public/site-config should succeed: ${json.message || response.status}`);
+  return json;
+};
+
 const translate = async (payloadOverrides = {}) => {
   const response = await fetch(`${baseUrl}/translate`, {
     method: 'POST',
@@ -164,6 +171,16 @@ try {
   expect(summaryResponse.ok, 'GET /translate should succeed');
   expect(summary.provider === 'openai-compatible', 'default provider should be openai-compatible');
 
+  const defaultPublicSiteConfig = await fetchPublicSiteConfig();
+  expect(
+    defaultPublicSiteConfig.contact?.discord_url === 'https://discord.gg/cWB49jCfdP',
+    'default public Discord contact should be exposed',
+  );
+  expect(
+    defaultPublicSiteConfig.contact?.qq_group === '1095706752',
+    'default public QQ group should be exposed',
+  );
+
   const fastOnlyConfig = await updateRuntimeConfig({
     enabled: true,
     provider: 'openai-compatible',
@@ -171,6 +188,13 @@ try {
     model_name: 'deepseek-ai/DeepSeek-V3.2',
     api_key_env_name: 'MISSING_PRIMARY_MODEL_KEY',
     temperature: 0.2,
+    public_site: {
+      contact: {
+        discord_url: 'https://discord.gg/lingo-updated',
+        email: 'support@lingo.ink',
+        qq_group: '123456789',
+      },
+    },
     fast_lane: {
       enabled: true,
       provider: 'openai-compatible',
@@ -188,6 +212,24 @@ try {
   expect(
     fastOnlyConfig.fast_lane?.model === 'Qwen/Qwen3-14B',
     'fast lane model should be returned',
+  );
+  expect(
+    fastOnlyConfig.public_site?.contact?.discord_url === 'https://discord.gg/lingo-updated',
+    'admin runtime config should include public site contact summary',
+  );
+
+  const updatedPublicSiteConfig = await fetchPublicSiteConfig();
+  expect(
+    updatedPublicSiteConfig.contact?.discord_url === 'https://discord.gg/lingo-updated',
+    'public site config should reflect updated Discord contact',
+  );
+  expect(
+    updatedPublicSiteConfig.contact?.email === 'support@lingo.ink',
+    'public site config should reflect updated email contact',
+  );
+  expect(
+    updatedPublicSiteConfig.contact?.qq_group === '123456789',
+    'public site config should reflect updated QQ group contact',
   );
 
   const fastOnlyResult = await translate({

@@ -18,5 +18,12 @@
     "temperature": 0.1,
     "max_text_length": 72,
     "allowed_prompt_variants": ["translate", "rewrite"]
+  },
+  "public_site": {
+    "contact": {
+      "discord_url": "https://discord.gg/cWB49jCfdP",
+      "email": "huruiw@outlook.com",
+      "qq_group": "1095706752"
+    }
   }
 }

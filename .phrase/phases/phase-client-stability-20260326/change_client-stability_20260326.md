@@ -1,5 +1,23 @@
 # Client Stability Changes
 
+change215 日期:2026-04-01 | 文件:.phrase/phases/phase-client-stability-20260326/spec_client-stability_20260326.md | 操作:Modify | 影响:阶段需求说明 | 说明:补充 About 联系方式改为复用现有腾讯云代理公开运行时配置的目标、边界与验收标准 | 关联:task035
+change216 日期:2026-04-01 | 文件:.phrase/phases/phase-client-stability-20260326/plan_client-stability_20260326.md | 操作:Modify | 影响:阶段计划与风险约束 | 说明:新增服务端下发联系方式里程碑、范围、优先级与腾讯云部署约束 | 关联:task035
+change217 日期:2026-04-01 | 文件:.phrase/phases/phase-client-stability-20260326/task_client-stability_20260326.md | 操作:Modify | 影响:任务清单 | 说明:新增并完成 task035，记录 About 联系方式切换到服务端公开配置 | 关联:task035
+change218 日期:2026-04-01 | 文件:server/translate-proxy/src/runtime-config.mjs | 操作:Modify | 影响:代理运行时配置模型 | 说明:为现有腾讯云代理增加 public_site.contact 公开联系方式配置与摘要导出能力 | 关联:task035
+change219 日期:2026-04-01 | 文件:server/translate-proxy/src/server.mjs | 操作:Modify | 影响:代理公开接口 | 说明:新增 GET /public/site-config 并在 admin runtime-config 响应中回显公开联系方式配置 | 关联:task035
+change220 日期:2026-04-01 | 文件:server/translate-proxy/runtime-config.example.json | 操作:Modify | 影响:代理示例配置 | 说明:在示例 runtime-config 中补充 Discord、QQ 群和邮箱的 public_site.contact 配置 | 关联:task035
+change221 日期:2026-04-01 | 文件:server/translate-proxy/scripts/smoke-test.mjs | 操作:Modify | 影响:代理自动化验证 | 说明:新增公开联系方式配置接口的默认值与更新回读 smoke 覆盖 | 关联:task035
+change222 日期:2026-04-01 | 文件:src/services/publicSiteConfig.js | 操作:Add | 影响:前端运行时配置加载 | 说明:新增 About 联系方式的运行时配置服务，统一解析桌面端腾讯云代理地址、浏览器同域回退与默认值兜底 | 关联:task035
+change223 日期:2026-04-01 | 文件:src/pages/About.jsx | 操作:Modify | 影响:About 页联系方式数据源 | 说明:将联系方式卡片改为运行时拉取服务端配置，并为桌面端复制群号补上 Tauri 剪贴板回退 | 关联:task035
+change224 日期:2026-04-01 | 文件:docs/tencent-cloud-translate-proxy.md | 操作:Modify | 影响:腾讯云代理部署文档 | 说明:补充 public_site.contact、GET /public/site-config、现有腾讯云部署更新方式与官网跨域配置说明 | 关联:task035
+change225 日期:2026-04-01 | 文件:.phrase/docs/CHANGE.md | 操作:Modify | 影响:全局变更索引 | 说明:将服务端化联系方式改动补入全局 CHANGE 索引摘要 | 关联:task035
+
+change210 日期:2026-04-01 | 文件:.phrase/phases/phase-client-stability-20260326/plan_client-stability_20260326.md | 操作:Modify | 影响:阶段计划与风险约束 | 说明:新增 QQ 群联系方式入口的里程碑、优先级与无邀请链接时的交互约束 | 关联:task034
+change211 日期:2026-04-01 | 文件:.phrase/phases/phase-client-stability-20260326/task_client-stability_20260326.md | 操作:Modify | 影响:任务清单 | 说明:新增并完成 task034，记录客户端与官网联系方式区增加 QQ 群入口 | 关联:task034
+change212 日期:2026-04-01 | 文件:src/i18n/messages.js | 操作:Modify | 影响:About 页联系方式多语言文案 | 说明:新增 QQ 群标签与复制成功提示，覆盖中英俄三套 About 文案 | 关联:task034
+change213 日期:2026-04-01 | 文件:src/pages/About.jsx | 操作:Modify | 影响:About 页联系方式交互 | 说明:新增 QQ 群联系方式卡片，点击复制群号 1095706752，保留 Discord 与邮箱原有行为 | 关联:task034
+change214 日期:2026-04-01 | 文件:.phrase/docs/CHANGE.md | 操作:Modify | 影响:全局变更索引 | 说明:将 QQ 群联系方式入口改动补入全局 CHANGE 索引摘要 | 关联:task034
+
 change204 日期:2026-04-01 | 文件:.phrase/phases/phase-client-stability-20260326/plan_client-stability_20260326.md | 操作:Modify | 影响:阶段计划与风险约束 | 说明:新增 README 去口语化表达的里程碑、优先级与官网措辞约束 | 关联:task033
 change205 日期:2026-04-01 | 文件:.phrase/phases/phase-client-stability-20260326/task_client-stability_20260326.md | 操作:Modify | 影响:任务清单 | 说明:新增并完成 task033，要求移除 README 中“嘴替 / in-game voice”类表达 | 关联:task033
 change206 日期:2026-04-01 | 文件:README.md | 操作:Modify | 影响:GitHub 中文首页定位段落 | 说明:移除“嘴替”类比，改为官网式的游戏内团队沟通翻译工作流表达 | 关联:task033
