@@ -50,7 +50,17 @@ jobs:
           fi
 
           echo "DEPLOY_PORT=${TENCENT_LIGHT_PORT:-22}" >> "$GITHUB_ENV"
-          echo "DEPLOY_TARGET_DIR=${TENCENT_LIGHT_TARGET_DIR:-/home/ubuntu/lingo-translate-proxy}" >> "$GITHUB_ENV"
+          deploy_target_dir="${TENCENT_LIGHT_TARGET_DIR:-/home/ubuntu/lingo-translate-proxy}"
+          echo "DEPLOY_TARGET_DIR=$deploy_target_dir" >> "$GITHUB_ENV"
+          echo "DEPLOY_WEBSITE_DIR=${deploy_target_dir}/public-sites/lingoweb" >> "$GITHUB_ENV"
+
+          caddy_domain="$(printf '%s\n' "$TENCENT_TRANSLATE_PROXY_ENV" | sed -n 's/^CADDY_DOMAIN=//p' | head -n 1)"
+          caddy_primary_domain="${caddy_domain%%,*}"
+          caddy_primary_domain="${caddy_primary_domain%% *}"
+
+          if [ -n "$caddy_primary_domain" ]; then
+            echo "CADDY_PRIMARY_DOMAIN=$caddy_primary_domain" >> "$GITHUB_ENV"
+          fi
 
       - name: Prepare deploy bundle
         shell: bash
@@ -99,10 +109,11 @@ jobs:
         run: |
           set -euo pipefail
 
-          ssh -p "$DEPLOY_PORT" "${TENCENT_LIGHT_USER}@${TENCENT_LIGHT_HOST}" "DEPLOY_TARGET_DIR='$DEPLOY_TARGET_DIR' bash -s" <<'REMOTE'
+          ssh -p "$DEPLOY_PORT" "${TENCENT_LIGHT_USER}@${TENCENT_LIGHT_HOST}" "DEPLOY_TARGET_DIR='$DEPLOY_TARGET_DIR' CADDY_PRIMARY_DOMAIN='${CADDY_PRIMARY_DOMAIN:-}' bash -s" <<'REMOTE'
           set -euo pipefail
 
           target_dir="${DEPLOY_TARGET_DIR:?DEPLOY_TARGET_DIR is required}"
+          caddy_primary_domain="${CADDY_PRIMARY_DOMAIN:-}"
 
           case "$target_dir" in
             /opt/*|/srv/*|/home/*) ;;
@@ -114,8 +125,9 @@ jobs:
 
           mkdir -p "$target_dir"
           mkdir -p "$target_dir/data"
+          mkdir -p "$target_dir/public-sites/lingoweb"
 
-          find "$target_dir" -mindepth 1 -maxdepth 1 ! -name data ! -name .env -exec rm -rf {} +
+          find "$target_dir" -mindepth 1 -maxdepth 1 ! -name data ! -name .env ! -name public-sites -exec rm -rf {} +
           tar -xzf /tmp/lingo-translate-proxy.tgz -C "$target_dir" --strip-components=1
           mv /tmp/lingo-translate-proxy.env "$target_dir/.env"
 
@@ -140,4 +152,11 @@ jobs:
 
           compose exec -T translate-proxy node -e "fetch('http://127.0.0.1:8787/healthz').then(async (response) => { if (!response.ok) throw new Error('healthz failed: ' + response.status); console.log(await response.text()); })"
           compose exec -T translate-proxy node -e "fetch('http://127.0.0.1:8787/analytics/public/overview').then(async (response) => { if (!response.ok) throw new Error('overview failed: ' + response.status); console.log(await response.text()); })"
+
+          if [ -n "$caddy_primary_domain" ]; then
+            curl -fsS -H "Host: $caddy_primary_domain" http://127.0.0.1/translate >/dev/null
+            if [ -f "$target_dir/public-sites/lingoweb/index.html" ]; then
+              curl -fsS -H "Host: $caddy_primary_domain" http://127.0.0.1/ | grep -qi "<!doctype html"
+            fi
+          fi
           REMOTE

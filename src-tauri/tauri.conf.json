@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Lingo",
-  "version": "0.6.4",
+  "version": "0.6.5",
   "identifier": "io.github.tinyhu666.lingo",
   "build": {
     "beforeDevCommand": "npm run dev:desktop",
@@ -81,8 +81,8 @@
     "updater": {
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEY4QTY4MTNDQzEwNkEwNEUKUldST29BYkJQSUdtK0V1MXpvZ3BzWWI2Wk84SktEUXl2Y2lrWHhFL29iU1d5eXZrVzNxK3kwWUIK",
       "endpoints": [
-        "https://github.com/tinyhu666/Lingo/releases/latest/download/latest.json",
-        "https://lingo-1259551686.cos.ap-shanghai.myqcloud.com/releases/latest.json"
+        "https://lingo-1259551686.cos.ap-shanghai.myqcloud.com/releases/latest.json",
+        "https://github.com/tinyhu666/Lingo/releases/latest/download/latest.json"
       ],
       "windows": {
         "installMode": "passive"

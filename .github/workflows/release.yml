@@ -6,7 +6,7 @@ on:
       release_tag:
         description: Existing release tag to mirror to Tencent COS
         required: true
-        default: v0.6.4
+        default: v0.6.5
   push:
     tags:
       - 'v*'
@@ -374,7 +374,7 @@ jobs:
       group: cos-mirror-${{ github.ref_name }}
       cancel-in-progress: true
     permissions:
-      contents: read
+      contents: write
     env:
       RELEASE_REPO: tinyhu666/Lingo
       RELEASE_TAG: ${{ github.ref_name }}
@@ -408,6 +408,11 @@ jobs:
           RELEASE_TAG: ${{ github.ref_name }}
         run: node ./scripts/upload-cos-release.mjs
 
+      - name: Rewrite GitHub latest.json To Tencent COS URLs
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "$RELEASE_TAG" .mirror-cos/releases/latest.json --clobber
+
   mirror_existing_release:
     name: Mirror Existing Release To Tencent COS
     if: github.event_name == 'workflow_dispatch'
@@ -417,7 +422,7 @@ jobs:
       group: cos-mirror-${{ inputs.release_tag }}
       cancel-in-progress: true
     permissions:
-      contents: read
+      contents: write
     env:
       RELEASE_REPO: tinyhu666/Lingo
       RELEASE_TAG: ${{ inputs.release_tag }}
@@ -449,3 +454,8 @@ jobs:
           TENCENT_SECRET_KEY: ${{ secrets.TENCENT_SECRET_KEY }}
           TENCENT_COS_SESSION_TOKEN: ${{ secrets.TENCENT_COS_SESSION_TOKEN }}
         run: node ./scripts/upload-cos-release.mjs
+
+      - name: Rewrite GitHub latest.json To Tencent COS URLs
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "$RELEASE_TAG" .mirror-cos/releases/latest.json --clobber

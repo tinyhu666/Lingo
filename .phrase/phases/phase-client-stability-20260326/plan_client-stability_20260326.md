@@ -37,6 +37,9 @@
 33. 为客户端和官网的联系方式区补充 QQ 群入口，并提供可直接复制群号的交互。
 34. 将 About 联系方式切换为复用现有腾讯云翻译代理的服务端公开配置，避免每次改联系方式都重新打包客户端或官网前端。
 35. 将联系方式服务端化能力与腾讯云现网配置一起打包成新的桌面端补丁版本，完成版本同步、本地打包验证与正式 release。
+36. 将桌面端 updater、前端更新提示与 release manifest 统一切换为腾讯云镜像优先，并兼容旧版本客户端仍从 GitHub `latest.json` 进入的情况。
+37. 复用现有腾讯云轻量服务器的 Caddy 同时托管官网静态站点与 translate-proxy API，建立国内可直连的官网入口。
+38. 将国内优先更新链路与腾讯云官网托管能力收口到 0.6.5，完成版本同步、部署验证与正式 release。
 29. 对当前客户端、翻译代理和本地打包链路执行一次完整回归，确认 0.5.0 的 UI 与功能表现稳定。
 30. 将全部已验证改动同步到 0.5.0 版本元数据、更新日志、提交记录与正式 release tag。
 29. 将本阶段修复收口到 `0.5.0`，完成 UI/功能回归、本地打包验证、提交与正式发版。
@@ -56,6 +59,8 @@
 - `src/constants/gameScenes.js`
 - `src/services/settingsStore.js`
 - `src/services/publicSiteConfig.js`
+- `src/constants/version.js`
+- `src/components/UpdateProvider.jsx`
 - `src-tauri/Cargo.toml`
 - `src-tauri/src/lib.rs`
 - `src-tauri/src/shortcut.rs`
@@ -66,15 +71,23 @@
 - `server/translate-proxy/src/**`
 - `server/translate-proxy/scripts/**`
 - `server/translate-proxy/runtime-config.example.json`
+- `server/translate-proxy/Caddyfile`
+- `server/translate-proxy/docker-compose.yml`
+- `server/translate-proxy/.env.example`
 - `docs/tencent-cloud-translate-proxy.md`
 - `server/translate-proxy/scripts/print-siliconflow-config.mjs`
 - `package.json`
 - `package-lock.json`
 - `.github/workflows/release.yml`
+- `.github/workflows/deploy-tencent-light-server.yml`
+- `.github/workflows/deploy-tencent-website.yml`
 - `CHANGELOG.md`
 - `README.md`
 - `README.en.md`
 - `README.ru.md`
+- `../lingoweb/src/lib/constants.ts`
+- `../lingoweb/src/lib/release.ts`
+- `../lingoweb/.github/workflows/deploy.yml`
 
 ## Priorities
 
@@ -114,6 +127,10 @@
 - P2: 客户端与官网若继续只保留 Discord/邮箱，会缺少面向中文用户更直接的官方群入口
 - P1: 联系方式若继续硬编码在客户端中，后续每次改 Discord/QQ/邮箱都要重新打包桌面端，运维成本过高
 - P0: 如果服务端配置已经上线但桌面端未跟着发版，用户侧仍然看不到运行时拉取能力，这次改动就只完成了一半
+- P0: 客户端更新若继续先请求 GitHub 并下载 GitHub 资产，国内用户会持续遇到检查更新和下载安装过慢
+- P0: 已安装旧版本客户端若仍拿到 GitHub 资产地址，仅发布新客户端无法解决现存用户更新慢的问题
+- P0: 官网若继续主要托管在 GitHub Pages，国内首屏与下载入口都会持续偏慢
+- P1: 腾讯云轻量服务器若不能同时稳定托管静态站点与 API，后续官网和代理部署会互相覆盖
 
 ## Risks & Dependencies
 
@@ -157,3 +174,7 @@
 - README 的措辞调整应优先复用官网已公开的 `AI in-game chat translation`、`hotkey-first workflow`、`low-friction team communication` 等语言，避免重新引入口语化类比。
 - QQ 群目前只给出了群号，没有邀请链接，因此官网与客户端都应优先提供“展示并复制群号”的稳定交互，而不是伪造不可用的跳转 URL。
 - 版本号当前在 `package.json` / `package-lock.json` / `Cargo.toml` / `Cargo.lock` / `tauri.conf.json` 之间本就存在不同步痕迹，发版前必须一次性对齐，否则应用内版本、安装包名和 GitHub Release 会继续漂移。
+- 旧客户端的 updater 首选入口已经写死在既有发布包里，因此必须同时改新客户端代码和 GitHub release `latest.json` 资产，才能让存量用户真正受益。
+- 腾讯云轻量服务器当前部署脚本会清理目标目录，新增官网静态目录后必须显式保留，否则 proxy 发布会把官网文件一起删掉。
+- Caddy 新增静态站点托管后，需要先精确保留 `/translate`、`/analytics*`、`/public/site-config`、`/admin*` 等 API 路由，再做 SPA 回退到 `index.html`，否则现网接口会被静态页覆盖。
+- 如果 `lingo.ink` 的 DNS 暂时未迁移到腾讯云，部署完成后仍要保留 `https://buffpp.com/` 作为国内可立即使用的官网入口，并把客户端手动更新入口指向这个国内地址。

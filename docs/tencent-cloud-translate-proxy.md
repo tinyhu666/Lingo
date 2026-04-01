@@ -1,7 +1,8 @@
 # Tencent Cloud Translate Proxy
 
-This document describes how to move Lingo's translation model and upstream API
-configuration to your own Tencent Cloud Lightweight Application Server.
+This document describes how to run Lingo's translation proxy, public About
+config, and marketing website on your own Tencent Cloud Lightweight Application
+Server.
 
 ## What This Replaces
 
@@ -17,6 +18,7 @@ The deployable service lives in:
 
 It provides:
 
+- `GET /` for the static marketing website when `public-sites/lingoweb/` has been deployed
 - `GET /healthz` for health checks
 - `GET /public/site-config` for public About/contact config
 - `GET /translate` for non-sensitive runtime summary
@@ -51,6 +53,11 @@ The server persists them into a local SQLite database and derives:
 - `launches`: total `app_launch` event count
 - `installs`: unique first-time `install_registered` values
 - `suspected_uninstalls`: installations with no active ping for 30 days
+
+The same Caddy container can now serve two things at once:
+
+- static website files from `public-sites/lingoweb/`
+- runtime API routes such as `/translate`, `/analytics/*`, `/admin/*`, and `/public/site-config`
 
 ## Server-Side Config Model
 
@@ -139,6 +146,12 @@ payload used by the desktop client and website, so future Discord / QQ / email
 updates can stay on the existing Tencent Cloud proxy without forcing a client
 repackage.
 
+If you also want the Tencent server to serve the website directly, create:
+
+```bash
+mkdir -p public-sites/lingoweb
+```
+
 4. Edit `.env`.
 
 At minimum set:
@@ -155,6 +168,20 @@ At minimum set:
 `server/translate-proxy/Caddyfile` now reads `{$CADDY_DOMAIN}` from the
 container environment, so you can safely sync repository updates to the server
 without overwriting your real public domain back to `translate.example.com`.
+It can accept multiple domains, for example:
+
+```bash
+CADDY_DOMAIN=buffpp.com,lingo.ink
+```
+
+When `public-sites/lingoweb/index.html` exists, Caddy serves the marketing site
+from `/` and keeps these API paths reverse-proxied to `translate-proxy`:
+
+- `/healthz`
+- `/translate`
+- `/analytics*`
+- `/admin*`
+- `/public/site-config`
 
 If you want to print the repository's recommended SiliconFlow payload instead of
 copying the example file by hand, run:
@@ -169,28 +196,44 @@ To print a ready-to-run `curl` for your deployed proxy:
 npm run proxy:print-siliconflow-config -- --format=curl --url=https://your-domain.example.com
 ```
 
-5. Edit `Caddyfile`.
-
-Replace `translate.example.com` with your real domain.
-
-6. Start the service.
+5. Start the service.
 
 ```bash
 docker compose up -d --build
 ```
 
-7. Open firewall ports `80` and `443` in Tencent Cloud.
+6. Open firewall ports `80` and `443` in Tencent Cloud.
 
-8. Point your domain DNS to the lightweight server public IP.
+7. Point your domain DNS to the lightweight server public IP.
 
-9. Verify.
+8. Verify.
 
 ```bash
+curl https://your-domain.example.com/
 curl https://your-domain.example.com/healthz
 curl https://your-domain.example.com/public/site-config
 curl https://your-domain.example.com/translate
 curl https://your-domain.example.com/analytics/public/overview
 ```
+
+If `lingo.ink` DNS is still elsewhere, you can still ship the Tencent-hosted
+site immediately on `buffpp.com` and point the desktop client's manual-update
+entry there first. After that, moving `lingo.ink` only requires a DNS change.
+
+## GitHub Actions Deployment
+
+The repository now contains two Tencent Cloud deployment workflows:
+
+- `Deploy Tencent Translate Proxy`: syncs `server/translate-proxy/`, keeps
+  `data/`, `.env`, and `public-sites/` intact, then rebuilds Docker services.
+- `Deploy Tencent Website`: checks out `tinyhu666/lingoweb`, builds `dist/`,
+  and uploads it into `public-sites/lingoweb/` on the same server.
+
+Recommended order when updating both API and site:
+
+1. Run `Deploy Tencent Translate Proxy`
+2. Run `Deploy Tencent Website`
+3. Verify `https://buffpp.com/` and `https://buffpp.com/translate`
 
 ## Update Runtime Config Without Redeploy
 

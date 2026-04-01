@@ -1,5 +1,14 @@
 {$CADDY_DOMAIN:translate.example.com} {
-  encode gzip
+  encode zstd gzip
 
-  reverse_proxy translate-proxy:8787
+  @api path /healthz /translate /analytics* /admin* /public/site-config
+  handle @api {
+    reverse_proxy translate-proxy:8787
+  }
+
+  handle {
+    root * /srv/lingoweb
+    try_files {path} {path}/ /index.html
+    file_server
+  }
 }

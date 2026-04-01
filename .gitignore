@@ -39,3 +39,6 @@ assets/previews/
 output/
 .mirror-cos/
 server/translate-proxy/data/runtime-config.json
+server/translate-proxy/data/*.sqlite
+server/translate-proxy/data/*.sqlite-shm
+server/translate-proxy/data/*.sqlite-wal

@@ -8,10 +8,12 @@ import {
   RELEASE_GITHUB_LATEST_JSON_URL,
   RELEASE_LATEST_JSON_URL,
   RELEASE_PAGE_URL,
+  RELEASE_WEBSITE_MANIFEST_URL,
 } from '../constants/version';
 import { useI18n } from '../i18n/I18nProvider';
 
 const UpdateContext = createContext(null);
+const REMOTE_MANIFEST_TIMEOUT_MS = 4000;
 
 const DEFAULT_STATE = {
   checking: false,
@@ -185,47 +187,42 @@ const formatUpdaterError = (error, { currentVersion, latestRelease, t } = {}) =>
   return t('update.missingManifest');
 };
 
-const fetchLatestReleaseFromReleaseManifest = async (t) => {
-  const response = await fetch(RELEASE_GITHUB_LATEST_JSON_URL, {
-    headers: {
-      Accept: 'application/json',
-    },
-    cache: 'no-store',
-  });
+const mapReleaseMetadataPayload = (payload) => ({
+  version: normalizeVersion(payload?.version || payload?.tag_name),
+  publishedAt:
+    payload?.pub_date || payload?.published_at || payload?.publishedAt || payload?.created_at || payload?.createdAt || null,
+  body: payload?.notes || payload?.body || null,
+});
 
-  if (!response.ok) {
-    throw new Error(t('update.releaseApiFailed', { status: response.status }));
+const fetchReleaseJsonWithTimeout = async (url) => {
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), REMOTE_MANIFEST_TIMEOUT_MS);
+
+  try {
+    const response = await fetch(url, {
+      headers: {
+        Accept: 'application/json',
+      },
+      cache: 'no-store',
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      throw new Error(`Request failed: ${response.status}`);
+    }
+
+    return response.json();
+  } catch (error) {
+    if (error?.name === 'AbortError') {
+      throw new Error(`Request timed out: ${url}`);
+    }
+    throw error;
+  } finally {
+    window.clearTimeout(timeoutId);
   }
-
-  const payload = await response.json();
-
-  return {
-    version: normalizeVersion(payload.version),
-    publishedAt: payload.pub_date || payload.published_at || payload.created_at || null,
-    body: payload.notes || null,
-  };
 };
 
-const fetchLatestReleaseFromManifest = async (t) => {
-  const response = await fetch(RELEASE_LATEST_JSON_URL, {
-    headers: {
-      Accept: 'application/json',
-    },
-    cache: 'no-store',
-  });
-
-  if (!response.ok) {
-    throw new Error(t('update.manifestFailed', { status: response.status }));
-  }
-
-  const payload = await response.json();
-
-  return {
-    version: normalizeVersion(payload.version),
-    publishedAt: payload.pub_date || payload.published_at || payload.created_at || null,
-    body: payload.notes || null,
-  };
-};
+const fetchLatestReleaseFromUrl = async (url) => mapReleaseMetadataPayload(await fetchReleaseJsonWithTimeout(url));
 
 const fetchLatestReleaseMetadata = async (t) => {
   if (hasTauriRuntime()) {
@@ -255,19 +252,18 @@ const fetchLatestReleaseMetadata = async (t) => {
     }
   }
 
-  const [manifestResult, releaseManifestResult] = await Promise.allSettled([
-    fetchLatestReleaseFromManifest(t),
-    fetchLatestReleaseFromReleaseManifest(t),
-  ]);
-
-  const manifest = manifestResult.status === 'fulfilled' ? manifestResult.value : null;
-  const releaseManifest = releaseManifestResult.status === 'fulfilled' ? releaseManifestResult.value : null;
-
-  if (!manifest && !releaseManifest) {
-    throw new Error(t('update.metadataFailed'));
+  try {
+    return await Promise.any([
+      fetchLatestReleaseFromUrl(RELEASE_WEBSITE_MANIFEST_URL),
+      fetchLatestReleaseFromUrl(RELEASE_LATEST_JSON_URL),
+    ]);
+  } catch {
+    try {
+      return await fetchLatestReleaseFromUrl(RELEASE_GITHUB_LATEST_JSON_URL);
+    } catch {
+      throw new Error(t('update.metadataFailed'));
+    }
   }
-
-  return mergeReleaseMetadata(manifest, releaseManifest);
 };
 
 export function UpdateProvider({ children }) {

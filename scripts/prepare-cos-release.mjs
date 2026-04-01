@@ -34,7 +34,9 @@ if (!releaseVersion) {
 }
 
 const releaseApiUrl = `https://api.github.com/repos/${RELEASE_REPO}/releases/tags/${encodeURIComponent(RELEASE_TAG)}`;
-const releasePageUrl = `https://github.com/${RELEASE_REPO}/releases/latest`;
+const releasePageUrl =
+  String(process.env.WEBSITE_RELEASE_PAGE_URL || 'https://buffpp.com/#download').trim() ||
+  `https://github.com/${RELEASE_REPO}/releases/latest`;
 const stableDownloads = {
   macos: `${COS_PUBLIC_BASE_URL}/releases/Lingo_latest_aarch64.dmg`,
   windows: `${COS_PUBLIC_BASE_URL}/releases/Lingo_latest_x64-setup.exe`,

@@ -1,0 +1,133 @@
+name: Deploy Tencent Website
+
+on:
+  workflow_dispatch:
+    inputs:
+      website_ref:
+        description: lingoweb branch, tag, or commit to deploy
+        required: true
+        default: main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      TENCENT_LIGHT_HOST: ${{ secrets.TENCENT_LIGHT_HOST }}
+      TENCENT_LIGHT_USER: ${{ secrets.TENCENT_LIGHT_USER }}
+      TENCENT_LIGHT_SSH_KEY: ${{ secrets.TENCENT_LIGHT_SSH_KEY }}
+      TENCENT_TRANSLATE_PROXY_ENV: ${{ secrets.TENCENT_TRANSLATE_PROXY_ENV }}
+      TENCENT_LIGHT_PORT: ${{ vars.TENCENT_LIGHT_PORT }}
+      TENCENT_LIGHT_TARGET_DIR: ${{ vars.TENCENT_LIGHT_TARGET_DIR }}
+    steps:
+      - name: Checkout website repository
+        uses: actions/checkout@v5
+        with:
+          repository: tinyhu666/lingoweb
+          ref: ${{ inputs.website_ref }}
+          path: website-src
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 'lts/*'
+          cache: npm
+          cache-dependency-path: website-src/package-lock.json
+
+      - name: Validate deployment settings
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          missing=0
+
+          if [ -z "${TENCENT_LIGHT_HOST:-}" ]; then
+            echo "TENCENT_LIGHT_HOST secret is required."
+            missing=1
+          fi
+
+          if [ -z "${TENCENT_LIGHT_USER:-}" ]; then
+            echo "TENCENT_LIGHT_USER secret is required."
+            missing=1
+          fi
+
+          if [ -z "${TENCENT_LIGHT_SSH_KEY:-}" ]; then
+            echo "TENCENT_LIGHT_SSH_KEY secret is required."
+            missing=1
+          fi
+
+          if [ "$missing" -ne 0 ]; then
+            exit 1
+          fi
+
+          deploy_target_dir="${TENCENT_LIGHT_TARGET_DIR:-/home/ubuntu/lingo-translate-proxy}"
+          echo "DEPLOY_PORT=${TENCENT_LIGHT_PORT:-22}" >> "$GITHUB_ENV"
+          echo "DEPLOY_TARGET_DIR=$deploy_target_dir" >> "$GITHUB_ENV"
+          echo "DEPLOY_WEBSITE_DIR=${deploy_target_dir}/public-sites/lingoweb" >> "$GITHUB_ENV"
+
+          caddy_domain="$(printf '%s\n' "$TENCENT_TRANSLATE_PROXY_ENV" | sed -n 's/^CADDY_DOMAIN=//p' | head -n 1)"
+          caddy_primary_domain="${caddy_domain%%,*}"
+          caddy_primary_domain="${caddy_primary_domain%% *}"
+
+          if [ -n "$caddy_primary_domain" ]; then
+            echo "CADDY_PRIMARY_DOMAIN=$caddy_primary_domain" >> "$GITHUB_ENV"
+          fi
+
+      - name: Install website dependencies
+        working-directory: website-src
+        run: npm ci
+
+      - name: Build website
+        working-directory: website-src
+        run: npm run build
+
+      - name: Prepare website bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          tar -czf lingoweb-dist.tgz -C website-src/dist .
+
+      - name: Configure SSH
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$TENCENT_LIGHT_SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -p "$DEPLOY_PORT" "$TENCENT_LIGHT_HOST" >> ~/.ssh/known_hosts
+
+      - name: Upload website bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          scp -P "$DEPLOY_PORT" lingoweb-dist.tgz "${TENCENT_LIGHT_USER}@${TENCENT_LIGHT_HOST}:/tmp/lingoweb-dist.tgz"
+
+      - name: Deploy website on Tencent light server
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          ssh -p "$DEPLOY_PORT" "${TENCENT_LIGHT_USER}@${TENCENT_LIGHT_HOST}" "DEPLOY_WEBSITE_DIR='$DEPLOY_WEBSITE_DIR' CADDY_PRIMARY_DOMAIN='${CADDY_PRIMARY_DOMAIN:-}' bash -s" <<'REMOTE'
+          set -euo pipefail
+
+          website_dir="${DEPLOY_WEBSITE_DIR:?DEPLOY_WEBSITE_DIR is required}"
+          caddy_primary_domain="${CADDY_PRIMARY_DOMAIN:-}"
+
+          case "$website_dir" in
+            /opt/*|/srv/*|/home/*) ;;
+            *)
+              echo "Refusing to deploy website into unsafe target dir: $website_dir"
+              exit 1
+              ;;
+          esac
+
+          mkdir -p "$website_dir"
+          find "$website_dir" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+          tar -xzf /tmp/lingoweb-dist.tgz -C "$website_dir"
+          rm -f /tmp/lingoweb-dist.tgz
+
+          if [ -n "$caddy_primary_domain" ]; then
+            curl -fsS -H "Host: $caddy_primary_domain" http://127.0.0.1/ | grep -qi "<!doctype html"
+          fi
+          REMOTE

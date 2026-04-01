@@ -26,8 +26,11 @@ pub mod tray;
 
 const RELEASE_LATEST_JSON_URL: &str =
     "https://lingo-1259551686.cos.ap-shanghai.myqcloud.com/releases/latest.json";
+const RELEASE_WEBSITE_LATEST_JSON_URL: &str =
+    "https://lingo-1259551686.cos.ap-shanghai.myqcloud.com/releases/latest-web.json";
 const RELEASE_GITHUB_LATEST_JSON_URL: &str =
     "https://github.com/tinyhu666/Lingo/releases/latest/download/latest.json";
+const RELEASE_FETCH_TIMEOUT_MS: u64 = 4_000;
 
 #[cfg(target_os = "windows")]
 const WINDOW_CORNER_RADIUS: i32 = 30;
@@ -195,7 +198,10 @@ fn extract_from_release_manifest(payload: &Value) -> ReleaseMetadata {
 }
 
 async fn fetch_release_json(url: &str) -> Result<Value, String> {
-    let client = reqwest::Client::new();
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_millis(RELEASE_FETCH_TIMEOUT_MS))
+        .build()
+        .map_err(|error| format!("failed to build release metadata client: {}", error))?;
     let response = client
         .get(url)
         .header(USER_AGENT, "Lingo-Desktop")
@@ -280,22 +286,31 @@ async fn update_phrases(
 
 #[tauri::command]
 async fn get_latest_release_metadata() -> Result<ReleaseMetadata, String> {
+    let website_manifest_task = tauri::async_runtime::spawn(async {
+        fetch_release_json(RELEASE_WEBSITE_LATEST_JSON_URL).await
+    });
     let manifest_task =
         tauri::async_runtime::spawn(async { fetch_release_json(RELEASE_LATEST_JSON_URL).await });
-    let release_manifest_task = tauri::async_runtime::spawn(async {
-        fetch_release_json(RELEASE_GITHUB_LATEST_JSON_URL).await
-    });
+    let website_release_manifest = website_manifest_task
+        .await
+        .ok()
+        .and_then(|result| result.ok())
+        .map(|payload| extract_from_release_manifest(&payload));
 
     let manifest = manifest_task
         .await
         .ok()
         .and_then(|result| result.ok())
         .map(|payload| extract_from_manifest(&payload));
-    let release_manifest = release_manifest_task
-        .await
-        .ok()
-        .and_then(|result| result.ok())
-        .map(|payload| extract_from_release_manifest(&payload));
+    let github_release_manifest = if website_release_manifest.is_none() && manifest.is_none() {
+        fetch_release_json(RELEASE_GITHUB_LATEST_JSON_URL)
+            .await
+            .ok()
+            .map(|payload| extract_from_release_manifest(&payload))
+    } else {
+        None
+    };
+    let release_manifest = website_release_manifest.or(github_release_manifest);
 
     if manifest.is_none() && release_manifest.is_none() {
         return Err("failed to load release metadata".to_string());

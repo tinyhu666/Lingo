@@ -38,12 +38,17 @@
 - 在收口这一阶段修复时，需要能把 UI、客户端、代理与线上配置一起回归并打成 `0.5.0` 正式版本，避免稳定性修复长期停留在未发布状态。
 - 客户端与官网 About 页的联系方式需要改为从现有腾讯云翻译代理的公开运行时配置读取，避免每次改联系方式都重新打包客户端。
 - 联系方式服务端化与腾讯云现网更新完成后，需要再补一个新的补丁版本，把桌面端 About 运行时读取能力正式发到用户手里。
+- 国内用户的客户端检查更新、手动下载与 release 元数据读取需要优先命中腾讯云镜像，而不是继续把 GitHub 作为首选链路。
+- 即使是已经安装在用户电脑上的旧版本客户端，也应通过 GitHub `latest.json` 拿到指向腾讯云 COS 的下载地址，避免大安装包继续跨境分发。
+- 官网静态站点需要复用现有腾讯云轻量服务器和 Caddy 直接对外提供，而不是继续主要依赖 GitHub Pages，降低国内首屏与下载入口延迟。
+- 新的国内优先更新链路与腾讯云官网托管能力需要一起打包成新的补丁版本，对外完成发布与现网部署。
 
 ## Non-goals
 
 - 不重做整套视觉风格。
 - 不引入需要额外后端配置的新能力。
 - 不单独新增一套联系方式后台，继续复用现有腾讯云 `translate-proxy` 的运行时配置与管理入口。
+- 不额外新购第二台站点服务器，继续复用现有腾讯云轻量服务器、Caddy 与 COS。
 
 ## User Flows
 
@@ -77,6 +82,10 @@
 - 发布者同步版本到 `0.5.0` 后，可以一次完成浏览器 UI 回归、客户端回归、本地打包验证和正式 tag 推送。
 - 用户或官网访客打开 About 页时，客户端会优先从现有腾讯云翻译代理读取最新地址、Discord、QQ 群与邮箱；如果代理暂时不可达，则回退到内置兜底联系方式而不影响页面可用。
 - 发布者准备新的补丁版本时，可以一次完成版本号同步、更新日志、本地安装包验证与正式 tag 推送，让现网服务端配置与桌面端读取逻辑一起出货。
+- 国内用户触发桌面端检查更新时，客户端会先命中腾讯云 `latest-web.json` / `latest.json` 或 GitHub 中已改写为 COS 地址的 `latest.json`，只在腾讯云不可用时才回退 GitHub。
+- 国内用户点击客户端里的手动更新入口或官网下载按钮时，会优先落到腾讯云提供的下载页或 COS 安装包，而不是先跳 GitHub Release。
+- 官网访客访问站点时，Caddy 会直接从腾讯云轻量服务器返回静态资源；`/translate`、`/public/site-config` 与 analytics 接口继续走现有代理服务。
+- 官网下载区读取最新版本时，会先读取腾讯云的 `latest-web.json`，只有镜像异常时才回退 GitHub Release API。
 
 ## Edge Cases
 
@@ -111,6 +120,10 @@
 - 官网浏览器环境与 Tauri 桌面环境解析后端地址的方式不同，但两者都必须能命中同一台腾讯云代理；若浏览器端不是同域部署，则需要通过 `VITE_PUBLIC_BACKEND_URL` 显式指定代理地址。
 - 腾讯云代理公开联系方式配置接口异常时，About 页不能因为取不到远端配置而空白或报错，必须回退到随包兜底值继续可用。
 - 新补丁版本必须使用新的语义化版本号与 tag，不能覆盖当前已存在的 `v0.6.3` Release。
+- 旧版本客户端已经把 GitHub `latest.json` 固化成首选入口，因此仅修改新客户端代码还不够；还必须把 GitHub Release 中的 `latest.json` 资产改写为指向 COS 的安装包地址。
+- 腾讯云轻量服务器的部署脚本目前会清空目标目录中的大部分内容，因此新增官网静态站点目录后必须显式保留，避免每次部署 proxy 时把站点一起删掉。
+- 官网与代理共用同一个 Caddy 实例时，静态站点路由不能吞掉 `/translate`、`/admin/*`、`/public/site-config` 等现有 API 路径，否则会造成线上功能回归。
+- 若 `lingo.ink` DNS 暂时还未切到腾讯云服务器，也至少要先把腾讯云站点本体和 `buffpp.com` 国内入口部署完成，后续只剩 DNS 切换这一步。
 
 ## Acceptance Criteria
 
@@ -149,3 +162,8 @@
 - About 页需要在桌面端通过现有 `get_public_backend_config` 解析代理地址，在官网浏览器端通过同域或 `VITE_PUBLIC_BACKEND_URL` 解析代理地址，并使用远端联系方式替换当前硬编码值。
 - `npm run proxy:smoke` 与 `npm run build` 需要继续通过，且 smoke 需覆盖公开联系方式配置的默认值与更新后回读结果。
 - `package.json`、`package-lock.json`、`src-tauri/Cargo.toml`、`src-tauri/Cargo.lock`、`src-tauri/tauri.conf.json` 与 `CHANGELOG.md` 需要同步到新的补丁版本，并通过本地构建验证后推送新的 release tag。
+- `src-tauri/tauri.conf.json`、Rust updater 元数据回退逻辑与前端 `UpdateProvider` 需要统一改成腾讯云镜像优先，GitHub 仅作为兜底。
+- GitHub Release 工作流在镜像到 COS 后，需要自动把 release 里的 `latest.json` 资产覆盖成 COS 下载地址版本，确保旧客户端也能从 GitHub 清单跳转到腾讯云安装包。
+- 腾讯云轻量服务器上的 Caddy 需要同时托管官网静态站点和现有 `translate-proxy` API，且 `https://buffpp.com/` 可直接返回站点首页。
+- 官网仓库构建后的静态文件需要能通过新的腾讯云部署工作流同步到服务器，并在发布后通过 `curl https://buffpp.com/` 与 `curl https://buffpp.com/translate` 同时验证站点和 API。
+- `../lingoweb` 需要优先读取腾讯云 `latest-web.json`，并通过本地构建验证后再部署到腾讯云。
