@@ -1,5 +1,17 @@
 # Client Stability Changes
 
+change226 日期:2026-04-01 | 文件:.phrase/phases/phase-client-stability-20260326/spec_client-stability_20260326.md | 操作:Modify | 影响:阶段需求说明 | 说明:补充联系方式服务端化完成后需打包新的补丁版本、版本唯一性与验收标准 | 关联:task036
+change227 日期:2026-04-01 | 文件:.phrase/phases/phase-client-stability-20260326/plan_client-stability_20260326.md | 操作:Modify | 影响:阶段计划与发版风险 | 说明:新增 0.6.4 补丁发版里程碑、优先级与版本元数据一致性约束 | 关联:task036
+change228 日期:2026-04-01 | 文件:.phrase/phases/phase-client-stability-20260326/task_client-stability_20260326.md | 操作:Modify | 影响:任务清单 | 说明:新增并完成 task036，记录联系方式服务端化能力的 0.6.4 正式发版闭环 | 关联:task036
+change229 日期:2026-04-01 | 文件:package.json | 操作:Modify | 影响:前端版本元数据 | 说明:将客户端版本号同步到 0.6.4，准备新的正式补丁版本 | 关联:task036
+change230 日期:2026-04-01 | 文件:package-lock.json | 操作:Modify | 影响:npm 锁文件版本元数据 | 说明:同步 lockfile 顶层版本到 0.6.4，保持包元数据与安装包版本一致 | 关联:task036
+change231 日期:2026-04-01 | 文件:src-tauri/Cargo.toml | 操作:Modify | 影响:Tauri Rust 包版本 | 说明:将桌面端 Cargo 包版本同步到 0.6.4 | 关联:task036
+change232 日期:2026-04-01 | 文件:src-tauri/Cargo.lock | 操作:Modify | 影响:Rust 锁文件顶层包版本 | 说明:将锁文件中的 Lingo 包版本同步到 0.6.4 | 关联:task036
+change233 日期:2026-04-01 | 文件:src-tauri/tauri.conf.json | 操作:Modify | 影响:Tauri 打包版本元数据 | 说明:将桌面应用版本号同步到 0.6.4，确保安装包命名与应用内版本一致 | 关联:task036
+change234 日期:2026-04-01 | 文件:CHANGELOG.md | 操作:Modify | 影响:0.6.4 更新日志 | 说明:新增 0.6.4 用户可见发布说明，收口 QQ 群入口与联系方式服务端同步能力 | 关联:task036
+change235 日期:2026-04-01 | 文件:.github/workflows/release.yml | 操作:Modify | 影响:Release workflow 默认输入 | 说明:将手动镜像补跑入口的默认 release_tag 更新到 v0.6.4，避免后续误补旧版本 | 关联:task036
+change236 日期:2026-04-01 | 文件:.phrase/docs/CHANGE.md | 操作:Modify | 影响:全局变更索引 | 说明:将 0.6.4 发版收尾改动补入全局 CHANGE 索引摘要 | 关联:task036
+
 change215 日期:2026-04-01 | 文件:.phrase/phases/phase-client-stability-20260326/spec_client-stability_20260326.md | 操作:Modify | 影响:阶段需求说明 | 说明:补充 About 联系方式改为复用现有腾讯云代理公开运行时配置的目标、边界与验收标准 | 关联:task035
 change216 日期:2026-04-01 | 文件:.phrase/phases/phase-client-stability-20260326/plan_client-stability_20260326.md | 操作:Modify | 影响:阶段计划与风险约束 | 说明:新增服务端下发联系方式里程碑、范围、优先级与腾讯云部署约束 | 关联:task035
 change217 日期:2026-04-01 | 文件:.phrase/phases/phase-client-stability-20260326/task_client-stability_20260326.md | 操作:Modify | 影响:任务清单 | 说明:新增并完成 task035，记录 About 联系方式切换到服务端公开配置 | 关联:task035
