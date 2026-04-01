@@ -126,8 +126,8 @@ jobs:
           find "$website_dir" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
           tar -xzf /tmp/lingoweb-dist.tgz -C "$website_dir"
           rm -f /tmp/lingoweb-dist.tgz
-
-          if [ -n "$caddy_primary_domain" ]; then
-            curl -fsS -H "Host: $caddy_primary_domain" http://127.0.0.1/ | grep -qi "<!doctype html"
-          fi
           REMOTE
+
+          if [ -n "${CADDY_PRIMARY_DOMAIN:-}" ]; then
+            curl -fsSL --max-time 20 "https://${CADDY_PRIMARY_DOMAIN}/" | grep -qi "<!doctype html"
+          fi
