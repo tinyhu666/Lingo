@@ -1,5 +1,8 @@
 # Client Stability Changes
 
+change265 日期:2026-04-01 | 文件:../lingoweb/src/lib/release.ts | 操作:Modify | 影响:官网版本信息兜底策略 | 说明:当腾讯云 latest-web.json 仍停留在旧版本时，官网直接回退到内置的当前正式版腾讯云直链，避免下载区继续展示旧版本 | 关联:task038
+change266 日期:2026-04-01 | 文件:.phrase/docs/CHANGE.md | 操作:Modify | 影响:全局变更索引 | 说明:将官网忽略滞后 latest-web.json 的兜底修复补入全局 CHANGE 索引摘要 | 关联:task038
+
 change237 日期:2026-04-01 | 文件:.phrase/phases/phase-client-stability-20260326/spec_client-stability_20260326.md | 操作:Modify | 影响:阶段需求说明 | 说明:补充国内用户优先使用腾讯云更新镜像、腾讯云直出官网与 0.6.5 发版验收标准 | 关联:task037
 change238 日期:2026-04-01 | 文件:.phrase/phases/phase-client-stability-20260326/plan_client-stability_20260326.md | 操作:Modify | 影响:阶段计划与发布依赖 | 说明:新增腾讯云优先更新链路、官网直出与 0.6.5 发版收尾里程碑 | 关联:task037
 change239 日期:2026-04-01 | 文件:.phrase/phases/phase-client-stability-20260326/task_client-stability_20260326.md | 操作:Modify | 影响:任务清单 | 说明:将 task037 标记完成，记录客户端国内优先更新链路闭环 | 关联:task037
