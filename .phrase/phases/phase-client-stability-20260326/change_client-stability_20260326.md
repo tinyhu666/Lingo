@@ -1,5 +1,34 @@
 # Client Stability Changes
 
+change237 日期:2026-04-01 | 文件:.phrase/phases/phase-client-stability-20260326/spec_client-stability_20260326.md | 操作:Modify | 影响:阶段需求说明 | 说明:补充国内用户优先使用腾讯云更新镜像、腾讯云直出官网与 0.6.5 发版验收标准 | 关联:task037
+change238 日期:2026-04-01 | 文件:.phrase/phases/phase-client-stability-20260326/plan_client-stability_20260326.md | 操作:Modify | 影响:阶段计划与发布依赖 | 说明:新增腾讯云优先更新链路、官网直出与 0.6.5 发版收尾里程碑 | 关联:task037
+change239 日期:2026-04-01 | 文件:.phrase/phases/phase-client-stability-20260326/task_client-stability_20260326.md | 操作:Modify | 影响:任务清单 | 说明:将 task037 标记完成，记录客户端国内优先更新链路闭环 | 关联:task037
+change240 日期:2026-04-01 | 文件:src/constants/version.js | 操作:Modify | 影响:前端版本元数据与手动更新入口 | 说明:将 release 页面与网站 latest manifest 默认指向腾讯云官网下载页和 latest-web.json | 关联:task037
+change241 日期:2026-04-01 | 文件:src/components/UpdateProvider.jsx | 操作:Modify | 影响:前端更新检查回退链路 | 说明:新增带超时的 manifest 拉取并优先读取腾讯云 latest-web.json/latest.json，GitHub 仅作兜底 | 关联:task037
+change242 日期:2026-04-01 | 文件:src-tauri/src/lib.rs | 操作:Modify | 影响:Tauri 更新元数据拉取 | 说明:桌面端检查更新时优先请求腾讯云网站 manifest 与 updater manifest，并为远程拉取补充超时预算 | 关联:task037
+change243 日期:2026-04-01 | 文件:src-tauri/tauri.conf.json | 操作:Modify | 影响:Tauri updater 端点与应用版本 | 说明:将 updater 端点顺序调整为腾讯云 COS 优先，并同步桌面应用版本到 0.6.5 | 关联:task037
+change244 日期:2026-04-01 | 文件:scripts/prepare-cos-release.mjs | 操作:Modify | 影响:COS 发布元数据生成 | 说明:生成 latest-web.json 时默认回写腾讯云官网下载页地址，避免手动更新入口继续落到 GitHub | 关联:task037
+change245 日期:2026-04-01 | 文件:.github/workflows/release.yml | 操作:Modify | 影响:Release workflow 镜像补写 | 说明:为 COS 镜像 job 增加 GitHub release latest.json 回写步骤与 contents:write 权限，让旧客户端也优先拿到腾讯云下载地址 | 关联:task037
+change246 日期:2026-04-01 | 文件:.phrase/phases/phase-client-stability-20260326/task_client-stability_20260326.md | 操作:Modify | 影响:任务清单 | 说明:将 task038 标记完成，记录官网切换到腾讯云直出静态站点的验收闭环 | 关联:task038
+change247 日期:2026-04-01 | 文件:server/translate-proxy/Caddyfile | 操作:Modify | 影响:腾讯云反向代理与静态站点分流 | 说明:让 Caddy 在保留 /translate、/admin、/public/site-config 等 API 路由的同时直出 /srv/lingoweb 静态资源并开启压缩 | 关联:task038
+change248 日期:2026-04-01 | 文件:server/translate-proxy/docker-compose.yml | 操作:Modify | 影响:腾讯云容器挂载 | 说明:为 Caddy 增加 public-sites/lingoweb 静态目录挂载，允许官网构建结果随代理一同服务 | 关联:task038
+change249 日期:2026-04-01 | 文件:server/translate-proxy/.env.example | 操作:Modify | 影响:多域名示例配置 | 说明:将 CADDY_DOMAIN 示例扩展为 buffpp.com 与 lingo.ink，便于后续域名切换到腾讯云 | 关联:task038
+change250 日期:2026-04-01 | 文件:server/translate-proxy/public-sites/lingoweb/.gitkeep | 操作:Add | 影响:腾讯云官网静态目录 | 说明:为官网静态构建产物目录保留受控占位，避免首次部署缺失目标目录 | 关联:task038
+change251 日期:2026-04-01 | 文件:.github/workflows/deploy-tencent-light-server.yml | 操作:Modify | 影响:腾讯云轻量服务器部署 | 说明:部署代理时保留 public-sites 目录并补充官网首页公开地址验收，避免更新代理时误删官网静态资源 | 关联:task038
+change252 日期:2026-04-01 | 文件:.github/workflows/deploy-tencent-website.yml | 操作:Add | 影响:腾讯云官网部署流水线 | 说明:新增从 lingoweb 仓库构建并上传官网 dist 到腾讯云静态目录的独立工作流 | 关联:task038
+change253 日期:2026-04-01 | 文件:docs/tencent-cloud-translate-proxy.md | 操作:Modify | 影响:腾讯云部署文档 | 说明:补充官网静态目录、双域名 Caddy 配置与 deploy-tencent-website 工作流说明 | 关联:task038
+change254 日期:2026-04-01 | 文件:../lingoweb/src/lib/release.ts | 操作:Modify | 影响:官网版本信息拉取 | 说明:官网版本提示优先请求腾讯云 latest-web.json，并为远程读取增加超时控制 | 关联:task038
+change255 日期:2026-04-01 | 文件:../lingoweb/src/lib/constants.ts | 操作:Modify | 影响:官网默认版本元数据 | 说明:将官网回退版本元数据同步到 0.6.5，保证国内镜像更新文案与正式版一致 | 关联:task038
+change256 日期:2026-04-01 | 文件:.gitignore | 操作:Modify | 影响:腾讯云代理运行时数据忽略规则 | 说明:忽略 translate-proxy data 目录下的 sqlite 落盘文件，避免部署和 smoke 过程中产生的运行时数据污染版本库 | 关联:task038
+change257 日期:2026-04-01 | 文件:.phrase/phases/phase-client-stability-20260326/task_client-stability_20260326.md | 操作:Modify | 影响:任务清单 | 说明:将 task039 标记完成，记录 0.6.5 正式发版闭环 | 关联:task039
+change258 日期:2026-04-01 | 文件:CHANGELOG.md | 操作:Modify | 影响:0.6.5 更新日志 | 说明:新增 0.6.5 用户可见发布说明，覆盖国内优先更新与腾讯云官网直出能力 | 关联:task039
+change259 日期:2026-04-01 | 文件:package.json | 操作:Modify | 影响:前端版本元数据 | 说明:将客户端版本号同步到 0.6.5，准备新的正式补丁版本 | 关联:task039
+change260 日期:2026-04-01 | 文件:package-lock.json | 操作:Modify | 影响:npm 锁文件版本元数据 | 说明:同步 lockfile 顶层版本到 0.6.5，保持包元数据与安装包版本一致 | 关联:task039
+change261 日期:2026-04-01 | 文件:src-tauri/Cargo.toml | 操作:Modify | 影响:Tauri Rust 包版本 | 说明:将桌面端 Cargo 包版本同步到 0.6.5 | 关联:task039
+change262 日期:2026-04-01 | 文件:src-tauri/Cargo.lock | 操作:Modify | 影响:Rust 锁文件顶层包版本 | 说明:将锁文件中的 Lingo 包版本同步到 0.6.5 | 关联:task039
+change263 日期:2026-04-01 | 文件:src-tauri/tauri.conf.json | 操作:Modify | 影响:Tauri 打包版本元数据 | 说明:将桌面应用版本号同步到 0.6.5，确保安装包命名与应用内版本一致 | 关联:task039
+change264 日期:2026-04-01 | 文件:.phrase/docs/CHANGE.md | 操作:Modify | 影响:全局变更索引 | 说明:将腾讯云优先更新、官网直出与 0.6.5 发版收尾改动补入全局 CHANGE 索引摘要 | 关联:task039
+
 change226 日期:2026-04-01 | 文件:.phrase/phases/phase-client-stability-20260326/spec_client-stability_20260326.md | 操作:Modify | 影响:阶段需求说明 | 说明:补充联系方式服务端化完成后需打包新的补丁版本、版本唯一性与验收标准 | 关联:task036
 change227 日期:2026-04-01 | 文件:.phrase/phases/phase-client-stability-20260326/plan_client-stability_20260326.md | 操作:Modify | 影响:阶段计划与发版风险 | 说明:新增 0.6.4 补丁发版里程碑、优先级与版本元数据一致性约束 | 关联:task036
 change228 日期:2026-04-01 | 文件:.phrase/phases/phase-client-stability-20260326/task_client-stability_20260326.md | 操作:Modify | 影响:任务清单 | 说明:新增并完成 task036，记录联系方式服务端化能力的 0.6.4 正式发版闭环 | 关联:task036
