@@ -37,6 +37,22 @@ const TRANSLATION_USAGES = {
   outboundWrite: 'outbound_write',
   inboundRead: 'inbound_read',
 };
+const DEFAULT_VISION_IMAGE_MIME_TYPE = 'image/png';
+const DOTA2_INBOUND_GLOSSARY_RULES = Object.freeze([
+  [/^ty[!.? ]*$/iu, '谢谢'],
+  [/^thx[!.? ]*$/iu, '谢谢'],
+  [/^es[!.? ]*$/iu, 'ES'],
+  [/^sf[!.? ]*$/iu, 'SF'],
+  [/^gg[!.? ]*$/iu, 'gg'],
+  [/^wtf[!.? ]*$/iu, 'wtf'],
+  [/^omni[!.? ]*$/iu, '全能'],
+  [/^ward[!.? ]*$/iu, '插眼'],
+  [/^smoke[!.? ]*$/iu, '开雾'],
+  [/^commend[!.? ]*$/iu, '点赞'],
+  [/^swap commend[!.? ]*$/iu, '互赞'],
+  [/^let tri\?[!? ]*$/iu, '三人路？'],
+  [/^tri\?[!? ]*$/iu, '三人路？'],
+]);
 const LANGUAGE_LABELS = {
   zh: 'Chinese',
   en: 'English',
@@ -339,6 +355,16 @@ const normalizeTranslationUsage = (value) => {
     : TRANSLATION_USAGES.outboundWrite;
 };
 
+const normalizeVisionImageMimeType = (value) => {
+  const normalized = String(value || DEFAULT_VISION_IMAGE_MIME_TYPE).trim().toLowerCase();
+  if (normalized === 'image/jpg') {
+    return 'image/jpeg';
+  }
+  return ['image/png', 'image/jpeg', 'image/webp'].includes(normalized)
+    ? normalized
+    : DEFAULT_VISION_IMAGE_MIME_TYPE;
+};
+
 const normalizeGameScene = (value) => {
   const normalized = String(value || DEFAULT_GAME_SCENE).trim().toLowerCase();
   if (GAME_SCENE_PROFILES[normalized]) {
@@ -366,6 +392,28 @@ const getTranslationContext = (payload) => {
     styleProfile: STYLE_PROFILES[translationMode],
     gameSceneProfile: GAME_SCENE_PROFILES[gameScene],
   };
+};
+
+const matchInboundGlossaryTranslation = (payload, text) => {
+  if (normalizeTranslationUsage(payload?.usage) !== TRANSLATION_USAGES.inboundRead) {
+    return null;
+  }
+  if (normalizeGameScene(payload?.game_scene) !== 'dota2') {
+    return null;
+  }
+
+  const normalizedText = String(text || '').trim();
+  if (!normalizedText) {
+    return null;
+  }
+
+  for (const [pattern, translated] of DOTA2_INBOUND_GLOSSARY_RULES) {
+    if (pattern.test(normalizedText)) {
+      return translated;
+    }
+  }
+
+  return null;
 };
 
 const buildSystemPrompt = (payload) => {
@@ -757,7 +805,7 @@ const requestModel = async ({
   }
 };
 
-const requestVisionModel = async ({ config, apiKey, prompt, imageBase64 }) => {
+const requestVisionModel = async ({ config, apiKey, prompt, imageBase64, imageMimeType }) => {
   const startedAt = Date.now();
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(new Error('MODEL_TIMEOUT')), config.timeout_ms);
@@ -788,7 +836,7 @@ const requestVisionModel = async ({ config, apiKey, prompt, imageBase64 }) => {
                   type: 'image',
                   source: {
                     type: 'base64',
-                    media_type: 'image/png',
+                    media_type: imageMimeType,
                     data: imageBase64,
                   },
                 },
@@ -842,7 +890,7 @@ const requestVisionModel = async ({ config, apiKey, prompt, imageBase64 }) => {
               {
                 type: 'image_url',
                 image_url: {
-                  url: `data:image/png;base64,${imageBase64}`,
+                  url: `data:${imageMimeType};base64,${imageBase64}`,
                   detail: 'high',
                 },
               },
@@ -1124,6 +1172,7 @@ const routeVisionChatLines = async (req, res, traceId) => {
   if (!imageBase64) {
     return jsonResponse(res, 400, { message: 'image_base64 is required', trace_id: traceId });
   }
+  const imageMimeType = normalizeVisionImageMimeType(payload?.image_mime_type);
 
   const apiKey = resolveApiKey(process.env, config.vision_lane);
   if (!apiKey) {
@@ -1139,6 +1188,7 @@ const routeVisionChatLines = async (req, res, traceId) => {
     apiKey,
     prompt: buildVisionPrompt(config, payload),
     imageBase64,
+    imageMimeType,
   });
   const parsed = parseJsonFromModelText(result.content);
   const parsedLines = Array.isArray(parsed?.lines)
@@ -1190,6 +1240,28 @@ const routeTranslate = async (req, res, traceId) => {
   const text = String(payload?.text || '').trim();
   if (!text) {
     return jsonResponse(res, 400, { message: 'text is required', trace_id: traceId });
+  }
+
+  const glossaryTranslation = matchInboundGlossaryTranslation(payload, text);
+  if (glossaryTranslation) {
+    const latencyMs = Date.now() - startedAt;
+    return jsonResponse(res, 200, {
+      translated_text: glossaryTranslation,
+      model: 'inbound-dota2-glossary',
+      provider: 'local-rule',
+      config_source: config.source,
+      latency_ms: latencyMs,
+      model_latency_ms: 0,
+      proxy_overhead_ms: latencyMs,
+      attempt_count: 0,
+      response_source: 'glossary',
+      model_route: 'glossary',
+      prompt_variant: 'inbound_read',
+      style_profile: normalizeTranslationMode(payload?.translation_mode),
+      effective_max_tokens: 0,
+      effective_temperature: 0,
+      trace_id: traceId,
+    });
   }
 
   const primaryTuning = resolveRequestTuning({ config, payload, text });
