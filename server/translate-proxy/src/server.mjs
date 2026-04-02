@@ -27,7 +27,8 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'GET, POST, PUT, OPTIONS',
 };
 
-const MAX_BODY_BYTES = 128 * 1024;
+const MAX_JSON_BODY_BYTES = 128 * 1024;
+const MAX_VISION_BODY_BYTES = 4 * 1024 * 1024;
 const TRANSLATION_CACHE_TTL_MS = 15_000;
 const TRANSLATION_CACHE_MAX_ENTRIES = 256;
 const FAST_LANE_CIRCUIT_BREAK_MS = 60_000;
@@ -484,13 +485,17 @@ const canUseFastLane = ({ config, payload, text, promptVariant }) => {
   return getFastLaneCircuitExpiresAt(fastLane) === 0;
 };
 
-const readJsonBody = async (req) => {
+const readJsonBody = async (req, options = {}) => {
+  const maxBytes =
+    Number.isFinite(Number(options?.maxBytes)) && Number(options.maxBytes) > 0
+      ? Number(options.maxBytes)
+      : MAX_JSON_BODY_BYTES;
   const chunks = [];
   let totalBytes = 0;
 
   for await (const chunk of req) {
     totalBytes += chunk.length;
-    if (totalBytes > MAX_BODY_BYTES) {
+    if (totalBytes > maxBytes) {
       const error = new Error('Request body too large');
       error.status = 413;
       throw error;
@@ -1072,7 +1077,7 @@ const routeVisionChatLines = async (req, res, traceId) => {
     });
   }
 
-  const payload = await readJsonBody(req);
+  const payload = await readJsonBody(req, { maxBytes: MAX_VISION_BODY_BYTES });
   const imageBase64 = String(payload?.image_base64 || '').trim();
   if (!imageBase64) {
     return jsonResponse(res, 400, { message: 'image_base64 is required', trace_id: traceId });
