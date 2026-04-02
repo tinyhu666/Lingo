@@ -21,8 +21,10 @@ It provides:
 - `GET /` for the static marketing website when `public-sites/lingoweb/` has been deployed
 - `GET /healthz` for health checks
 - `GET /public/site-config` for public About/contact config
+- `GET /public/client-config` for non-sensitive teammate-translation runtime config
 - `GET /translate` for non-sensitive runtime summary
 - `POST /translate` for translation
+- `POST /vision/chat-lines` for structured teammate-chat OCR / vision extraction
 - `POST /analytics/events` for desktop lifecycle event ingest
 - `GET /analytics/public/overview` for the public summary payload
 - `GET /analytics/public/daily?from=YYYY-MM-DD&to=YYYY-MM-DD` for daily metric rows
@@ -57,7 +59,7 @@ The server persists them into a local SQLite database and derives:
 The same Caddy container can now serve two things at once:
 
 - static website files from `public-sites/lingoweb/`
-- runtime API routes such as `/translate`, `/analytics/*`, `/admin/*`, and `/public/site-config`
+- runtime API routes such as `/translate`, `/vision/*`, `/analytics/*`, `/admin/*`, `/public/site-config`, and `/public/client-config`
 
 ## Server-Side Config Model
 
@@ -179,9 +181,11 @@ from `/` and keeps these API paths reverse-proxied to `translate-proxy`:
 
 - `/healthz`
 - `/translate`
+- `/vision*`
 - `/analytics*`
 - `/admin*`
 - `/public/site-config`
+- `/public/client-config`
 
 If you want to print the repository's recommended SiliconFlow payload instead of
 copying the example file by hand, run:
@@ -212,9 +216,21 @@ docker compose up -d --build
 curl https://your-domain.example.com/
 curl https://your-domain.example.com/healthz
 curl https://your-domain.example.com/public/site-config
+curl https://your-domain.example.com/public/client-config
 curl https://your-domain.example.com/translate
 curl https://your-domain.example.com/analytics/public/overview
 ```
+
+If teammate-chat OCR is part of the deployment, also verify that the vision
+route is actually reverse-proxied instead of falling through to the static site:
+
+```bash
+curl -X OPTIONS https://your-domain.example.com/vision/chat-lines -i
+```
+
+Any backend-style response such as `204`, `400`, `401`, or `503` is acceptable
+for this check. A static-site HTML response means Caddy is still missing the
+`/vision*` route.
 
 If `lingo.ink` DNS is still elsewhere, you can still ship the Tencent-hosted
 site immediately on `buffpp.com` and point the desktop client's manual-update

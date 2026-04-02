@@ -1,0 +1,278 @@
+{
+  "metadata": {
+    "source": "codex-thread-2026-04-02",
+    "game_scene": "dota2",
+    "target_language": "zh",
+    "description": "Golden samples for Dota 2 incoming teammate chat OCR and inbound_read translation. Built from the 8 screenshots attached in the April 2, 2026 Codex thread."
+  },
+  "items": [
+    {
+      "id": "dota2-thread-2026-04-02-01",
+      "suggested_filename": "01-pakulor-remake.png",
+      "notes": "Contains one dice/system-like row and one symbol-only spam row. Symbol-only row is intentionally omitted from exact-match scoring.",
+      "expected_lines": [
+        {
+          "speaker": "PAKULOR",
+          "channel": "",
+          "text": "Zzzzz",
+          "expected_translation_zh": "Zzzzz"
+        },
+        {
+          "speaker": "Try Me If you Are Pro!!!",
+          "channel": "",
+          "text": "remake",
+          "expected_translation_zh": "重开"
+        },
+        {
+          "speaker": "havaiiiiiiiiiiiiiiiiii",
+          "channel": "",
+          "text": "掷骰子（1-100）：070",
+          "is_system": true
+        },
+        {
+          "speaker": "PAKULOR",
+          "channel": "",
+          "text": "rm then recon? then dk gap?",
+          "expected_translation_zh": "重开然后重连？然后 dk gap？",
+          "expected_translation_zh_alternatives": [
+            "重开然后重连？然后 dk 差距？"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "dota2-thread-2026-04-02-02",
+      "suggested_filename": "02-omni-ty.png",
+      "notes": "Short tactical lines with [队友] channel prefix.",
+      "expected_lines": [
+        {
+          "speaker": "Try Me If you Are Pro!!!",
+          "channel": "队友",
+          "text": "omni",
+          "expected_translation_zh": "全能"
+        },
+        {
+          "speaker": "CommEnd",
+          "channel": "队友",
+          "text": "ty",
+          "expected_translation_zh": "谢了",
+          "expected_translation_zh_alternatives": [
+            "谢谢"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "dota2-thread-2026-04-02-03",
+      "suggested_filename": "03-putang-ina-report-medusa.png",
+      "notes": "Mixed English and Tagalog with profanity. Yellow circle annotation should be ignored by OCR.",
+      "expected_lines": [
+        {
+          "speaker": "Not AditDayol",
+          "channel": "",
+          "text": "i don't even know what my team said",
+          "expected_translation_zh": "我甚至都不知道我队友在说啥",
+          "expected_translation_zh_alternatives": [
+            "我甚至都不知道我队友说了什么"
+          ]
+        },
+        {
+          "speaker": "BloodLine",
+          "channel": "",
+          "text": "what they siad?",
+          "expected_translation_zh": "他们说啥了？",
+          "expected_translation_zh_alternatives": [
+            "他们说了啥？"
+          ]
+        },
+        {
+          "speaker": "Not AditDayol",
+          "channel": "",
+          "text": "just putang ina",
+          "expected_translation_zh": "就一句 putang ina",
+          "expected_translation_zh_alternatives": [
+            "就一句 putang ina 而已"
+          ]
+        },
+        {
+          "speaker": "Baby Papart <3",
+          "channel": "",
+          "text": "help me report MEDUSA",
+          "expected_translation_zh": "帮我举报 MEDUSA"
+        }
+      ]
+    },
+    {
+      "id": "dota2-thread-2026-04-02-04",
+      "suggested_filename": "04-mga-bobo-mid.png",
+      "notes": "Contains mixed-language insult and truncated hero mention.",
+      "expected_lines": [
+        {
+          "speaker": "Not AditDayol",
+          "channel": "",
+          "text": "yeah",
+          "expected_translation_zh": "嗯",
+          "expected_translation_zh_alternatives": [
+            "是"
+          ]
+        },
+        {
+          "speaker": "BloodLine",
+          "channel": "",
+          "text": "haha",
+          "expected_translation_zh": "哈哈"
+        },
+        {
+          "speaker": "Not AditDayol",
+          "channel": "",
+          "text": "mga bobo mid",
+          "expected_translation_zh": "中路一群傻逼",
+          "expected_translation_zh_alternatives": [
+            "中路一群蠢货"
+          ]
+        },
+        {
+          "speaker": "Baby Papart <3",
+          "channel": "",
+          "text": "REPORT MEDU",
+          "expected_translation_zh": "举报 MEDU"
+        }
+      ]
+    },
+    {
+      "id": "dota2-thread-2026-04-02-05",
+      "suggested_filename": "05-swap-commend-just-end.png",
+      "notes": "Short end-of-match terms that should use Dota-specific language.",
+      "expected_lines": [
+        {
+          "speaker": "Paracetamol JOMBIE",
+          "channel": "",
+          "text": "swap commend",
+          "expected_translation_zh": "互赞一下",
+          "expected_translation_zh_alternatives": [
+            "互点 commend",
+            "互相点赞一下"
+          ]
+        },
+        {
+          "speaker": "Not AditDayol",
+          "channel": "",
+          "text": "just end",
+          "expected_translation_zh": "直接结束吧",
+          "expected_translation_zh_alternatives": [
+            "直接结束"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "dota2-thread-2026-04-02-06",
+      "suggested_filename": "06-buhat-na-buhat-sf.png",
+      "notes": "Contains mixed language plus SF hero shorthand.",
+      "expected_lines": [
+        {
+          "speaker": "unio",
+          "channel": "队友",
+          "text": "natagalan mag farm",
+          "expected_translation_zh": "刷太久了",
+          "expected_translation_zh_alternatives": [
+            "farm 太久了"
+          ]
+        },
+        {
+          "speaker": "unio",
+          "channel": "队友",
+          "text": "haha",
+          "expected_translation_zh": "哈哈"
+        },
+        {
+          "speaker": "kusssh",
+          "channel": "",
+          "text": "BUHAT NA BUHAT SF",
+          "expected_translation_zh": "SF 纯纯带飞",
+          "expected_translation_zh_alternatives": [
+            "SF 带飞了",
+            "SF 纯在带飞"
+          ]
+        },
+        {
+          "speaker": "unio",
+          "channel": "队友",
+          "text": "sorry",
+          "expected_translation_zh": "抱歉",
+          "expected_translation_zh_alternatives": [
+            "对不起"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "dota2-thread-2026-04-02-07",
+      "suggested_filename": "07-smoke-kayo-sa-bot.png",
+      "notes": "Single short tactical line. smoke should stay as Dota smoke terminology.",
+      "expected_lines": [
+        {
+          "speaker": "unio",
+          "channel": "队友",
+          "text": "smoke kayo sa bot",
+          "expected_translation_zh": "你们下路开雾",
+          "expected_translation_zh_alternatives": [
+            "你们去下路开雾"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "dota2-thread-2026-04-02-08",
+      "suggested_filename": "08-let-tri-ward-invoker-spammer.png",
+      "notes": "Top row is truncated in the screenshot and intentionally excluded from scoring.",
+      "expected_lines": [
+        {
+          "speaker": "kisSeXkiss",
+          "channel": "队友",
+          "text": "let tri?",
+          "expected_translation_zh": "要不要三人路？",
+          "expected_translation_zh_alternatives": [
+            "要不要打三人路？"
+          ]
+        },
+        {
+          "speaker": "kisSeXkiss",
+          "channel": "队友",
+          "text": "es",
+          "expected_translation_zh": "ES"
+        },
+        {
+          "speaker": "kisSeXkiss",
+          "channel": "队友",
+          "text": "ward",
+          "expected_translation_zh": "插眼"
+        },
+        {
+          "speaker": "kisSeXkiss",
+          "channel": "队友",
+          "text": "ward",
+          "expected_translation_zh": "插眼"
+        },
+        {
+          "speaker": "from cancer to hero",
+          "channel": "",
+          "text": "invoker spammer wtf",
+          "expected_translation_zh": "卡尔绝活哥，wtf",
+          "expected_translation_zh_alternatives": [
+            "卡尔绝活哥，什么鬼"
+          ]
+        },
+        {
+          "speaker": "from cancer to hero",
+          "channel": "",
+          "text": "eta gege",
+          "expected_translation_zh": "这把 gg",
+          "expected_translation_zh_alternatives": [
+            "这把 GG 了"
+          ]
+        }
+      ]
+    }
+  ]
+}

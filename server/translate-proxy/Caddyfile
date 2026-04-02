@@ -1,7 +1,7 @@
 {$CADDY_DOMAIN:translate.example.com} {
   encode zstd gzip
 
-  @api path /healthz /translate /analytics* /admin* /public/site-config
+  @api path /healthz /translate /analytics* /admin* /public/site-config /public/client-config /vision*
   handle @api {
     reverse_proxy translate-proxy:8787
   }

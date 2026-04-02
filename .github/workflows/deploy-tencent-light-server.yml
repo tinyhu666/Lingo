@@ -151,10 +151,22 @@ jobs:
           compose ps
 
           compose exec -T translate-proxy node -e "fetch('http://127.0.0.1:8787/healthz').then(async (response) => { if (!response.ok) throw new Error('healthz failed: ' + response.status); console.log(await response.text()); })"
+          compose exec -T translate-proxy node -e "fetch('http://127.0.0.1:8787/public/client-config').then(async (response) => { if (!response.ok) throw new Error('public/client-config failed: ' + response.status); console.log(await response.text()); })"
           compose exec -T translate-proxy node -e "fetch('http://127.0.0.1:8787/analytics/public/overview').then(async (response) => { if (!response.ok) throw new Error('overview failed: ' + response.status); console.log(await response.text()); })"
+          compose exec -T translate-proxy node -e "const token = process.env.BACKEND_PUBLIC_KEY || ''; const payload = { image_base64: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+kvS0AAAAASUVORK5CYII=', game_scene: 'dota2', ui_locale: 'zh-CN' }; fetch('http://127.0.0.1:8787/vision/chat-lines', { method: 'POST', headers: { 'Content-Type': 'application/json', ...(token ? { apikey: token, Authorization: 'Bearer ' + token } : {}) }, body: JSON.stringify(payload) }).then(async (response) => { if ([200, 400, 401, 403, 422, 503].includes(response.status)) { console.log('vision status=' + response.status); console.log(await response.text()); return; } throw new Error('vision/chat-lines unexpected status: ' + response.status + ' body=' + await response.text()); })"
 
           if [ -n "$caddy_primary_domain" ]; then
             curl -fsS -H "Host: $caddy_primary_domain" http://127.0.0.1/translate >/dev/null
+            curl -fsS -H "Host: $caddy_primary_domain" http://127.0.0.1/public/client-config >/dev/null
+            vision_status="$(curl -s -o /tmp/lingo-vision-check.txt -w '%{http_code}' -X OPTIONS -H "Host: $caddy_primary_domain" http://127.0.0.1/vision/chat-lines)"
+            case "$vision_status" in
+              200|204|400|401|403|405|422|503) ;;
+              *)
+                echo "unexpected Caddy vision status: $vision_status"
+                cat /tmp/lingo-vision-check.txt
+                exit 1
+                ;;
+            esac
             if [ -f "$target_dir/public-sites/lingoweb/index.html" ]; then
               curl -fsS -H "Host: $caddy_primary_domain" http://127.0.0.1/ | grep -qi "<!doctype html"
             fi
