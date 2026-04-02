@@ -55,6 +55,11 @@ jobs:
             missing=1
           fi
 
+          if [ -z "${TENCENT_TRANSLATE_PROXY_ENV:-}" ]; then
+            echo "TENCENT_TRANSLATE_PROXY_ENV secret is required."
+            missing=1
+          fi
+
           if [ "$missing" -ne 0 ]; then
             exit 1
           fi
@@ -65,11 +70,10 @@ jobs:
           echo "DEPLOY_WEBSITE_DIR=${deploy_target_dir}/public-sites/lingoweb" >> "$GITHUB_ENV"
 
           caddy_domain="$(printf '%s\n' "$TENCENT_TRANSLATE_PROXY_ENV" | sed -n 's/^CADDY_DOMAIN=//p' | head -n 1)"
-          caddy_primary_domain="${caddy_domain%%,*}"
-          caddy_primary_domain="${caddy_primary_domain%% *}"
+          caddy_domains="$(printf '%s\n' "$caddy_domain" | tr ',[:space:]' '\n' | sed '/^$/d' | paste -sd, -)"
 
-          if [ -n "$caddy_primary_domain" ]; then
-            echo "CADDY_PRIMARY_DOMAIN=$caddy_primary_domain" >> "$GITHUB_ENV"
+          if [ -n "$caddy_domains" ]; then
+            echo "CADDY_DOMAINS=$caddy_domains" >> "$GITHUB_ENV"
           fi
 
       - name: Install website dependencies
@@ -108,11 +112,11 @@ jobs:
         run: |
           set -euo pipefail
 
-          ssh -p "$DEPLOY_PORT" "${TENCENT_LIGHT_USER}@${TENCENT_LIGHT_HOST}" "DEPLOY_WEBSITE_DIR='$DEPLOY_WEBSITE_DIR' CADDY_PRIMARY_DOMAIN='${CADDY_PRIMARY_DOMAIN:-}' bash -s" <<'REMOTE'
+          ssh -p "$DEPLOY_PORT" "${TENCENT_LIGHT_USER}@${TENCENT_LIGHT_HOST}" "DEPLOY_WEBSITE_DIR='$DEPLOY_WEBSITE_DIR' CADDY_DOMAINS='${CADDY_DOMAINS:-}' bash -s" <<'REMOTE'
           set -euo pipefail
 
           website_dir="${DEPLOY_WEBSITE_DIR:?DEPLOY_WEBSITE_DIR is required}"
-          caddy_primary_domain="${CADDY_PRIMARY_DOMAIN:-}"
+          caddy_domains="${CADDY_DOMAINS:-}"
 
           case "$website_dir" in
             /opt/*|/srv/*|/home/*) ;;
@@ -126,8 +130,12 @@ jobs:
           find "$website_dir" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
           tar -xzf /tmp/lingoweb-dist.tgz -C "$website_dir"
           rm -f /tmp/lingoweb-dist.tgz
-          REMOTE
 
-          if [ -n "${CADDY_PRIMARY_DOMAIN:-}" ]; then
-            curl -fsSL --max-time 20 "https://${CADDY_PRIMARY_DOMAIN}/" | grep -qi "<!doctype html"
+          if [ -n "$caddy_domains" ]; then
+            IFS=',' read -r -a caddy_domain_list <<< "$caddy_domains"
+            for domain in "${caddy_domain_list[@]}"; do
+              [ -n "$domain" ] || continue
+              curl -fsS -H "Host: $domain" http://127.0.0.1/ | grep -qi "<!doctype html"
+            done
           fi
+          REMOTE

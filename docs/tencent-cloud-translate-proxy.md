@@ -171,8 +171,13 @@ without overwriting your real public domain back to `translate.example.com`.
 It can accept multiple domains, for example:
 
 ```bash
-CADDY_DOMAIN=buffpp.com,lingo.ink
+CADDY_DOMAIN=buffpp.com,lingo.ink,www.lingo.ink
 ```
+
+If `lingo.ink` is moving away from GitHub Pages to this Tencent-hosted Caddy
+instance, also remove `public/CNAME` from the `lingoweb` repository so the code
+path no longer keeps declaring a Pages custom domain during the migration
+window.
 
 When `public-sites/lingoweb/index.html` exists, Caddy serves the marketing site
 from `/` and keeps these API paths reverse-proxied to `translate-proxy`:
@@ -214,6 +219,9 @@ curl https://your-domain.example.com/healthz
 curl https://your-domain.example.com/public/site-config
 curl https://your-domain.example.com/translate
 curl https://your-domain.example.com/analytics/public/overview
+curl -H 'Host: buffpp.com' http://127.0.0.1/
+curl -H 'Host: lingo.ink' http://127.0.0.1/translate
+curl -H 'Host: www.lingo.ink' http://127.0.0.1/
 ```
 
 If `lingo.ink` DNS is still elsewhere, you can still ship the Tencent-hosted
@@ -233,7 +241,8 @@ Recommended order when updating both API and site:
 
 1. Run `Deploy Tencent Translate Proxy`
 2. Run `Deploy Tencent Website`
-3. Verify `https://buffpp.com/` and `https://buffpp.com/translate`
+3. Verify `https://buffpp.com/` and `https://buffpp.com/translate`, then run
+   per-domain host-header checks on the server for every entry in `CADDY_DOMAIN`
 
 ## Update Runtime Config Without Redeploy
 

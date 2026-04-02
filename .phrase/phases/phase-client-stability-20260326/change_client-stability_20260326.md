@@ -1,5 +1,16 @@
 # Client Stability Changes
 
+change267 日期:2026-04-02 | 文件:.phrase/phases/phase-client-stability-20260326/spec_client-stability_20260326.md | 操作:Modify | 影响:阶段需求说明 | 说明:补充 lingo.ink 迁移时需移除 GitHub Pages 自定义域名残留并按全部 CADDY_DOMAIN 校验的目标、边界与验收标准 | 关联:task040
+change268 日期:2026-04-02 | 文件:.phrase/phases/phase-client-stability-20260326/plan_client-stability_20260326.md | 操作:Modify | 影响:阶段计划与风险约束 | 说明:新增域名迁移代码侧收尾里程碑、范围、优先级以及 GoDaddy/secret 仍属外部依赖的风险说明 | 关联:task040
+change269 日期:2026-04-02 | 文件:.phrase/phases/phase-client-stability-20260326/task_client-stability_20260326.md | 操作:Modify | 影响:任务清单 | 说明:新增并完成 task040，记录清理 GitHub Pages 残留与多域名部署验收的闭环 | 关联:task040
+change270 日期:2026-04-02 | 文件:server/translate-proxy/.env.example | 操作:Modify | 影响:Caddy 多域名示例配置 | 说明:将示例域名扩展为 buffpp.com、lingo.ink 与 www.lingo.ink，便于域名切换时一次声明完整站点入口 | 关联:task040
+change271 日期:2026-04-02 | 文件:.github/workflows/deploy-tencent-light-server.yml | 操作:Modify | 影响:腾讯云 translate-proxy 部署验收 | 说明:从 secret 解析全部 CADDY_DOMAIN 并在服务器本机按 Host 头逐个校验 /translate 与首页路由，避免只验证首个域名 | 关联:task040
+change272 日期:2026-04-02 | 文件:.github/workflows/deploy-tencent-website.yml | 操作:Modify | 影响:腾讯云官网部署验收 | 说明:改为在服务器本机按全部 CADDY_DOMAIN 逐个验证静态首页，避免受外部 DNS 与证书切换状态误导 | 关联:task040
+change273 日期:2026-04-02 | 文件:docs/tencent-cloud-translate-proxy.md | 操作:Modify | 影响:腾讯云部署文档 | 说明:补充 www.lingo.ink 示例配置、去除 lingoweb public/CNAME 的迁移提示与多域名 Host 头验收步骤 | 关联:task040
+change274 日期:2026-04-02 | 文件:../lingoweb/README.md | 操作:Modify | 影响:官网仓库部署说明 | 说明:明确腾讯云为主生产入口、GitHub Pages 仅作辅助发布路径，并提示清理 GitHub Pages 自定义域名设置 | 关联:task040
+change275 日期:2026-04-02 | 文件:../lingoweb/public/CNAME | 操作:Delete | 影响:官网仓库 GitHub Pages 自定义域名声明 | 说明:移除受控 CNAME 文件，避免仓库代码继续声明 lingo.ink 属于 GitHub Pages 自定义域名 | 关联:task040
+change276 日期:2026-04-02 | 文件:.phrase/docs/CHANGE.md | 操作:Modify | 影响:全局变更索引 | 说明:将域名迁移代码侧收尾改动补入全局 CHANGE 摘要，明确这次仅清理代码残留而非替代 GoDaddy 权威 DNS 切换 | 关联:task040
+
 change265 日期:2026-04-01 | 文件:../lingoweb/src/lib/release.ts | 操作:Modify | 影响:官网版本信息兜底策略 | 说明:当腾讯云 latest-web.json 仍停留在旧版本时，官网直接回退到内置的当前正式版腾讯云直链，避免下载区继续展示旧版本 | 关联:task038
 change266 日期:2026-04-01 | 文件:.phrase/docs/CHANGE.md | 操作:Modify | 影响:全局变更索引 | 说明:将官网忽略滞后 latest-web.json 的兜底修复补入全局 CHANGE 索引摘要 | 关联:task038
 

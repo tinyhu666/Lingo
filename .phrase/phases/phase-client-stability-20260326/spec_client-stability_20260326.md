@@ -42,6 +42,7 @@
 - 即使是已经安装在用户电脑上的旧版本客户端，也应通过 GitHub `latest.json` 拿到指向腾讯云 COS 的下载地址，避免大安装包继续跨境分发。
 - 官网静态站点需要复用现有腾讯云轻量服务器和 Caddy 直接对外提供，而不是继续主要依赖 GitHub Pages，降低国内首屏与下载入口延迟。
 - 新的国内优先更新链路与腾讯云官网托管能力需要一起打包成新的补丁版本，对外完成发布与现网部署。
+- 当 `lingo.ink` 迁移到腾讯云时，代码仓库不应继续保留 GitHub Pages 自定义域名残留，同时腾讯云部署验收需要覆盖 `CADDY_DOMAIN` 中的全部域名，避免只验证首个域名造成迁移期误判。
 
 ## Non-goals
 
@@ -86,6 +87,7 @@
 - 国内用户点击客户端里的手动更新入口或官网下载按钮时，会优先落到腾讯云提供的下载页或 COS 安装包，而不是先跳 GitHub Release。
 - 官网访客访问站点时，Caddy 会直接从腾讯云轻量服务器返回静态资源；`/translate`、`/public/site-config` 与 analytics 接口继续走现有代理服务。
 - 官网下载区读取最新版本时，会先读取腾讯云的 `latest-web.json`，只有镜像异常时才回退 GitHub Release API。
+- 运维准备切换 `lingo.ink` 到腾讯云时，仓库内不再通过 `public/CNAME` 声明 GitHub Pages 自定义域名，腾讯云部署工作流会按配置逐个校验 `buffpp.com`、`lingo.ink`、`www.lingo.ink` 等全部域名路由。
 
 ## Edge Cases
 
@@ -124,6 +126,8 @@
 - 腾讯云轻量服务器的部署脚本目前会清空目标目录中的大部分内容，因此新增官网静态站点目录后必须显式保留，避免每次部署 proxy 时把站点一起删掉。
 - 官网与代理共用同一个 Caddy 实例时，静态站点路由不能吞掉 `/translate`、`/admin/*`、`/public/site-config` 等现有 API 路径，否则会造成线上功能回归。
 - 若 `lingo.ink` DNS 暂时还未切到腾讯云服务器，也至少要先把腾讯云站点本体和 `buffpp.com` 国内入口部署完成，后续只剩 DNS 切换这一步。
+- 即使仓库已经移除 GitHub Pages 的 `public/CNAME`，真正的根域名解析和 GitHub Pages 自定义域名设置仍可能留在外部控制台里，因此验收需要明确区分“代码侧残留已清掉”和“权威 DNS 已切换完成”。
+- `CADDY_DOMAIN` 可能同时包含多个域名；如果部署验收只检查第一个域名，其余域名即使路由或证书缺失也不会及时暴露。
 
 ## Acceptance Criteria
 
@@ -167,3 +171,5 @@
 - 腾讯云轻量服务器上的 Caddy 需要同时托管官网静态站点和现有 `translate-proxy` API，且 `https://buffpp.com/` 可直接返回站点首页。
 - 官网仓库构建后的静态文件需要能通过新的腾讯云部署工作流同步到服务器，并在发布后通过 `curl https://buffpp.com/` 与 `curl https://buffpp.com/translate` 同时验证站点和 API。
 - `../lingoweb` 需要优先读取腾讯云 `latest-web.json`，并通过本地构建验证后再部署到腾讯云。
+- 官网仓库不再提交 GitHub Pages 自定义域名用的 `public/CNAME`，并在 README 中明确腾讯云才是主生产入口，GitHub Pages 仅保留为辅助发布通道。
+- 腾讯云 translate-proxy 示例配置需显式包含 `www.lingo.ink`，部署工作流在服务器本机通过 `Host` 头逐个验证 `CADDY_DOMAIN` 中的所有域名路由；相关 workflow YAML 解析与 `../lingoweb` 本地构建需继续通过。

@@ -40,6 +40,7 @@
 36. 将桌面端 updater、前端更新提示与 release manifest 统一切换为腾讯云镜像优先，并兼容旧版本客户端仍从 GitHub `latest.json` 进入的情况。
 37. 复用现有腾讯云轻量服务器的 Caddy 同时托管官网静态站点与 translate-proxy API，建立国内可直连的官网入口。
 38. 将国内优先更新链路与腾讯云官网托管能力收口到 0.6.5，完成版本同步、部署验证与正式 release。
+39. 清理 `lingo.ink` 迁移中的 GitHub Pages 自定义域名残留，并把腾讯云部署验收扩展为按全部 `CADDY_DOMAIN` 逐个校验，减少 DNS 切换期的排障盲区。
 29. 对当前客户端、翻译代理和本地打包链路执行一次完整回归，确认 0.5.0 的 UI 与功能表现稳定。
 30. 将全部已验证改动同步到 0.5.0 版本元数据、更新日志、提交记录与正式 release tag。
 29. 将本阶段修复收口到 `0.5.0`，完成 UI/功能回归、本地打包验证、提交与正式发版。
@@ -88,6 +89,8 @@
 - `../lingoweb/src/lib/constants.ts`
 - `../lingoweb/src/lib/release.ts`
 - `../lingoweb/.github/workflows/deploy.yml`
+- `../lingoweb/README.md`
+- `../lingoweb/public/CNAME`
 
 ## Priorities
 
@@ -131,6 +134,8 @@
 - P0: 已安装旧版本客户端若仍拿到 GitHub 资产地址，仅发布新客户端无法解决现存用户更新慢的问题
 - P0: 官网若继续主要托管在 GitHub Pages，国内首屏与下载入口都会持续偏慢
 - P1: 腾讯云轻量服务器若不能同时稳定托管静态站点与 API，后续官网和代理部署会互相覆盖
+- P1: 官网仓库若继续保留 `public/CNAME` 这类 GitHub Pages 自定义域名残留，会在 `lingo.ink` 迁移期间持续制造“到底谁在声明主域名”的排障噪音
+- P1: 腾讯云部署工作流若始终只验首个 `CADDY_DOMAIN`，即使 `www.lingo.ink` 或后续新域名路由失效，也会在 CI 中被静默漏掉
 
 ## Risks & Dependencies
 
@@ -178,3 +183,5 @@
 - 腾讯云轻量服务器当前部署脚本会清理目标目录，新增官网静态目录后必须显式保留，否则 proxy 发布会把官网文件一起删掉。
 - Caddy 新增静态站点托管后，需要先精确保留 `/translate`、`/analytics*`、`/public/site-config`、`/admin*` 等 API 路由，再做 SPA 回退到 `index.html`，否则现网接口会被静态页覆盖。
 - 如果 `lingo.ink` 的 DNS 暂时未迁移到腾讯云，部署完成后仍要保留 `https://buffpp.com/` 作为国内可立即使用的官网入口，并把客户端手动更新入口指向这个国内地址。
+- 即使代码仓库移除了 `public/CNAME`，真正的根域名 A 记录与 GitHub Pages 自定义域名设置仍由域名注册商和 GitHub 仓库设置决定，因此这次收尾只能减少干扰，不能代替 GoDaddy 发布权威 DNS。
+- GitHub Actions 无法读取现有 `TENCENT_TRANSLATE_PROXY_ENV` secret 的明文内容，因此仓库改动可以先把示例配置和验收逻辑补齐，但现网是否已把 `www.lingo.ink` 加入 `CADDY_DOMAIN` 仍需额外更新 secret 或直接登录服务器确认。
