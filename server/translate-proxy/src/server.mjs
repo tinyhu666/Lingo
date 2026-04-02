@@ -56,7 +56,7 @@ const GAME_SCENE_PROFILES = {
     id: 'dota2',
     label: 'Dota 2',
     promptInstruction:
-      'Prefer Dota 2 terms such as hero, lane, rune, buyback, Roshan, BKB, smoke, and high ground when they fit naturally.',
+      'Prefer Dota 2 terms such as hero, lane, rune, Roshan, BKB, smoke, ward, commend, tri-lane, high ground, and buyback when they fit naturally. Keep common Dota shorthand like SF, ES, Axe, Omni, Invoker, Medusa, ty, gg, and wtf when that is clearer than guessing. If a short token is ambiguous, preserve it or translate minimally instead of inventing a more specific meaning.',
   },
   lol: {
     id: 'lol',

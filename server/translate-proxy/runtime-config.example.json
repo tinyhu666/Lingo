@@ -23,9 +23,9 @@
     "enabled": true,
     "provider": "openai-compatible",
     "api_url": "https://api.siliconflow.cn/v1/chat/completions",
-    "model_name": "deepseek-ai/DeepSeek-OCR",
+    "model_name": "Qwen/Qwen3-VL-8B-Instruct",
     "api_key_env_name": "MODEL_API_KEY",
-    "timeout_ms": 10000
+    "timeout_ms": 30000
   },
   "incoming_chat": {
     "enabled": true,

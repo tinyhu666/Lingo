@@ -64,6 +64,12 @@ Current preset contents:
 - `PaddlePaddle/PaddleOCR-VL`
 - `Qwen/Qwen3-VL-8B-Instruct`
 
+Current Dota2 recommendation after the 2026-04-02 smoke run:
+
+- Start with `Qwen/Qwen3-VL-8B-Instruct`
+- Use `vision_lane.timeout_ms >= 30000` for multi-line chat crops
+- Keep `DeepSeek-OCR` in the comparison set, but do not use it as the default until it stops returning empty rows or timing out on the Dota2 samples
+
 You can still override the list explicitly with:
 
 ```bash
