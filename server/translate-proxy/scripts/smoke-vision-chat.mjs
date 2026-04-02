@@ -43,6 +43,17 @@ const uiLocale = String(getArgValue('--ui-locale', 'zh-CN')).trim() || 'zh-CN';
 const targetLanguage = String(getArgValue('--target-language', 'zh')).trim() || 'zh';
 const shouldTranslate = parseBoolean(getArgValue('--translate', 'true'), true);
 
+const detectImageMimeType = (imagePath) => {
+  const extension = path.extname(imagePath).toLowerCase();
+  if (extension === '.jpg' || extension === '.jpeg') {
+    return 'image/jpeg';
+  }
+  if (extension === '.webp') {
+    return 'image/webp';
+  }
+  return 'image/png';
+};
+
 if (!imageArg && imageArgs.length === 0 && !imageDirArg) {
   console.error(
     'Usage: npm run proxy:vision-smoke -- --image=./sample.png [--image=./sample2.png] [--dir=./samples] [--game-scene=dota2] [--translate=true] [--target-language=zh]',
@@ -124,11 +135,13 @@ try {
   for (const imagePath of imagePaths) {
     const image = await readFile(imagePath);
     const imageBase64 = image.toString('base64');
+    const imageMimeType = detectImageMimeType(imagePath);
 
     console.log(`[vision-smoke] image=${imagePath}`);
 
     const visionResult = await requestJson('/vision/chat-lines', {
       image_base64: imageBase64,
+      image_mime_type: imageMimeType,
       game_scene: gameScene,
       ui_locale: uiLocale,
     });

@@ -5,7 +5,9 @@
     "windows"
   ],
   "windows": [
-    "main"
+    "main",
+    "incoming-chat-overlay",
+    "incoming-chat-selection"
   ],
   "permissions": [
     "global-shortcut:allow-is-registered",

@@ -25,6 +25,17 @@ const unique = (items) => [...new Set(items.filter(Boolean))];
 
 const resolveMaybePath = (value) => path.resolve(process.cwd(), String(value || '').trim());
 
+const detectImageMimeType = (imagePath) => {
+  const extension = path.extname(String(imagePath || '')).toLowerCase();
+  if (extension === '.jpg' || extension === '.jpeg') {
+    return 'image/jpeg';
+  }
+  if (extension === '.webp') {
+    return 'image/webp';
+  }
+  return 'image/png';
+};
+
 const MODEL_PRESETS = Object.freeze({
   'siliconflow-default': [
     'deepseek-ai/DeepSeek-OCR',
@@ -404,6 +415,7 @@ const translateLine = async (text) =>
 const runImageEvaluation = async (imagePath, expectedItem = null) => {
   const image = await readFile(imagePath);
   const imageBase64 = image.toString('base64');
+  const imageMimeType = detectImageMimeType(imagePath);
   const visionRun = await measure(() =>
     requestJson({
       pathname: '/vision/chat-lines',
@@ -411,6 +423,7 @@ const runImageEvaluation = async (imagePath, expectedItem = null) => {
       token: publicKey,
       payload: {
         image_base64: imageBase64,
+        image_mime_type: imageMimeType,
         game_scene: gameScene,
         ui_locale: uiLocale,
       },

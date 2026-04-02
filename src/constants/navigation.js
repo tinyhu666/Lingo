@@ -4,6 +4,7 @@ import {
   BookOpen,
   ChatBubbleMessage,
   CircleInfo,
+  Settings02,
 } from '../icons';
 
 export const NAV_ITEMS = [
@@ -26,6 +27,11 @@ export const NAV_ITEMS = [
     id: 'phrases',
     labelKey: 'sidebar.nav.phrases',
     icon: ChatBubbleMessage,
+  },
+  {
+    id: 'settings',
+    labelKey: 'sidebar.nav.settings',
+    icon: Settings02,
   },
   {
     id: 'about',

@@ -8,12 +8,16 @@ const TranslatePage = lazy(() => import('./pages/Translate'));
 const TutorialPage = lazy(() => import('./pages/Tutorial'));
 const AboutPage = lazy(() => import('./pages/About'));
 const PhrasesPage = lazy(() => import('./pages/Phrases'));
+const SettingsPage = lazy(() => import('./pages/Settings'));
+const IncomingOverlayPage = lazy(() => import('./pages/IncomingOverlay'));
+const IncomingSelectionPage = lazy(() => import('./pages/IncomingSelection'));
 
 const pages = {
   home: Home,
   translate: TranslatePage,
   tutorial: TutorialPage,
   phrases: PhrasesPage,
+  settings: SettingsPage,
   about: AboutPage,
 };
 
@@ -33,6 +37,12 @@ function App() {
   const desktopPlatform = useMemo(() => getDesktopPlatform(), []);
   const windowsClient = desktopPlatform === 'windows';
   const desktopClient = Boolean(desktopPlatform);
+  const windowMode = useMemo(() => {
+    if (typeof window === 'undefined') {
+      return '';
+    }
+    return new URLSearchParams(window.location.search).get('mode') || '';
+  }, []);
 
   useEffect(() => {
     if (typeof document === 'undefined') {
@@ -70,11 +80,21 @@ function App() {
   return (
     <div
       className={`lingo-theme h-full text-zinc-900 ${desktopClient ? 'lingo-theme--desktop' : ''} ${windowsClient ? 'lingo-theme--windows' : ''}`}>
-      <Layout activeItem={activeItem} setActiveItem={setActiveItem}>
-        <Suspense fallback={<PageFallback />}>
-          <CurrentPage />
+      {windowMode === 'incoming-overlay' ? (
+        <Suspense fallback={null}>
+          <IncomingOverlayPage />
         </Suspense>
-      </Layout>
+      ) : windowMode === 'incoming-selection' ? (
+        <Suspense fallback={null}>
+          <IncomingSelectionPage />
+        </Suspense>
+      ) : (
+        <Layout activeItem={activeItem} setActiveItem={setActiveItem}>
+          <Suspense fallback={<PageFallback />}>
+            <CurrentPage />
+          </Suspense>
+        </Layout>
+      )}
     </div>
   );
 }

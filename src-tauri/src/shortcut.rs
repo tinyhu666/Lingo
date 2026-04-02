@@ -158,6 +158,42 @@ fn create_phrase_handler(
     }
 }
 
+fn create_incoming_chat_handler(
+    app: AppHandle,
+) -> impl Fn(&AppHandle, &Shortcut, ShortcutEvent) + Send + Sync + 'static {
+    let app = Arc::new(app);
+    move |_app, _shortcut, event| {
+        if event.state() == ShortcutState::Pressed {
+            let app_clone = Arc::clone(&app);
+            tauri::async_runtime::spawn(async move {
+                match get_settings(app_clone.as_ref()) {
+                    Ok(settings)
+                        if settings.app_enabled
+                            && settings.incoming_chat_enabled
+                            && settings.incoming_chat_mode == "manual" =>
+                    {
+                        if let Err(error) =
+                            crate::incoming_chat::begin_manual_translate_selection(app_clone.as_ref())
+                        {
+                            let _ = app_clone.emit(
+                                "translation_failed",
+                                format!("队友发言框选失败: {}", error),
+                            );
+                        }
+                    }
+                    Ok(_) => {}
+                    Err(error) => {
+                        let _ = app_clone.emit(
+                            "translation_failed",
+                            format!("读取队友翻译设置失败: {}", error),
+                        );
+                    }
+                }
+            });
+        }
+    }
+}
+
 fn register_phrase_shortcuts(app: &AppHandle, phrases: &[Phrase]) -> Result<(), String> {
     for phrase in phrases {
         register_shortcut(
@@ -184,6 +220,13 @@ fn rebind_all_shortcuts(
         &settings.trans_hotkey.modifiers,
         &settings.trans_hotkey.key,
         create_trans_handler(app.clone()),
+    )?;
+
+    register_shortcut(
+        app,
+        &settings.incoming_chat_hotkey.modifiers,
+        &settings.incoming_chat_hotkey.key,
+        create_incoming_chat_handler(app.clone()),
     )?;
 
     register_phrase_shortcuts(app, &settings.phrases)?;
@@ -219,6 +262,14 @@ pub fn update_translator_shortcut(app: &AppHandle, keys: Vec<String>) -> Result<
 
     let settings = get_settings(app).map_err(|e| e.to_string())?;
     let trans_sig = shortcut_signature(&modifiers, &key);
+    let incoming_sig = shortcut_signature(
+        &normalize_modifiers(&settings.incoming_chat_hotkey.modifiers),
+        &settings.incoming_chat_hotkey.key,
+    );
+
+    if incoming_sig == trans_sig {
+        return Err("该快捷键已被队友翻译框选占用，请更换组合".to_string());
+    }
 
     for phrase in &settings.phrases {
         let sig = shortcut_signature(
@@ -245,6 +296,62 @@ pub fn update_translator_shortcut(app: &AppHandle, keys: Vec<String>) -> Result<
     rebind_all_shortcuts(app, &new_settings)
 }
 
+pub fn update_incoming_chat_shortcut(app: &AppHandle, keys: Vec<String>) -> Result<(), String> {
+    let raw_modifiers = keys
+        .iter()
+        .filter(|k| is_modifier_key(k))
+        .cloned()
+        .collect::<Vec<_>>();
+    let modifiers = normalize_modifiers(&raw_modifiers);
+    let key = keys
+        .iter()
+        .rev()
+        .find(|k| !is_modifier_key(k))
+        .cloned()
+        .unwrap_or_default();
+
+    if modifiers.is_empty() || key.is_empty() {
+        return Err("快捷键必须包含至少一个修饰键和一个主键".to_string());
+    }
+
+    Code::from_str(&key).map_err(|_| "快捷键主键无效，请重试".to_string())?;
+
+    let settings = get_settings(app).map_err(|e| e.to_string())?;
+    let incoming_sig = shortcut_signature(&modifiers, &key);
+    let trans_sig = shortcut_signature(
+        &normalize_modifiers(&settings.trans_hotkey.modifiers),
+        &settings.trans_hotkey.key,
+    );
+
+    if incoming_sig == trans_sig {
+        return Err("该快捷键已被翻译回填占用，请更换组合".to_string());
+    }
+
+    for phrase in &settings.phrases {
+        let sig = shortcut_signature(
+            &normalize_modifiers(&phrase.hotkey.modifiers),
+            &phrase.hotkey.key,
+        );
+        if sig == incoming_sig {
+            return Err("该快捷键已被常用语占用，请更换组合".to_string());
+        }
+    }
+
+    let new_hotkey = HotkeyConfig {
+        shortcut: build_shortcut_text(&modifiers, &key),
+        modifiers,
+        key,
+    };
+
+    update_settings_field(app, |settings| {
+        settings.incoming_chat_hotkey = new_hotkey;
+    })
+    .map_err(|e| e.to_string())?;
+
+    let new_settings = get_settings(app).map_err(|e| e.to_string())?;
+    rebind_all_shortcuts(app, &new_settings)
+}
+
 pub fn update_phrases(app: &AppHandle, phrases: Vec<Phrase>) -> Result<Vec<Phrase>, String> {
     if phrases.is_empty() {
         return Err("请至少保留一条常用语".to_string());
@@ -257,6 +364,10 @@ pub fn update_phrases(app: &AppHandle, phrases: Vec<Phrase>) -> Result<Vec<Phras
     let trans_sig = shortcut_signature(
         &normalize_modifiers(&settings.trans_hotkey.modifiers),
         &settings.trans_hotkey.key,
+    );
+    let incoming_sig = shortcut_signature(
+        &normalize_modifiers(&settings.incoming_chat_hotkey.modifiers),
+        &settings.incoming_chat_hotkey.key,
     );
 
     let mut seen_hotkeys = HashSet::new();
@@ -282,6 +393,9 @@ pub fn update_phrases(app: &AppHandle, phrases: Vec<Phrase>) -> Result<Vec<Phras
         let sig = shortcut_signature(&modifiers, &key);
         if sig == trans_sig {
             return Err(format!("第 {} 条常用语与翻译快捷键冲突", idx + 1));
+        }
+        if sig == incoming_sig {
+            return Err(format!("第 {} 条常用语与队友翻译快捷键冲突", idx + 1));
         }
         if !seen_hotkeys.insert(sig) {
             return Err(format!("第 {} 条常用语与其他常用语快捷键重复", idx + 1));

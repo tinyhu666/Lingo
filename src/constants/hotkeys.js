@@ -27,6 +27,7 @@ export const formatMainKeyLabel = (keyCode = '') => {
 };
 
 export const defaultTranslatorHotkeyLabel = () => (detectMac() ? '⌘+T' : 'Alt+T');
+export const defaultIncomingChatHotkeyLabel = () => (detectMac() ? '⌘+Y' : 'Alt+Y');
 
 export const defaultPhraseModifier = () => (detectMac() ? 'Meta' : 'Alt');
 

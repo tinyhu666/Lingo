@@ -54,6 +54,10 @@ impl Default for HotkeyConfig {
     }
 }
 
+fn default_incoming_hotkey() -> HotkeyConfig {
+    HotkeyConfig::new_platform_specific("KeyY")
+}
+
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 #[serde(default)]
 pub struct AppSettings {
@@ -65,6 +69,12 @@ pub struct AppSettings {
     pub game_scene: String,
     pub translation_mode: String,
     pub daily_mode: bool,
+    pub incoming_chat_enabled: bool,
+    pub incoming_chat_mode: String,
+    pub incoming_chat_target_language: String,
+    pub incoming_chat_overlay_enabled: bool,
+    pub incoming_chat_roi_override: Option<crate::incoming_chat::RoiRect>,
+    pub incoming_chat_hotkey: HotkeyConfig,
     pub phrases: Vec<Phrase>,
 }
 
@@ -78,6 +88,12 @@ impl Default for AppSettings {
             game_scene: DEFAULT_GAME_SCENE.to_string(),
             translation_mode: "auto".to_string(),
             daily_mode: false,
+            incoming_chat_enabled: false,
+            incoming_chat_mode: "auto".to_string(),
+            incoming_chat_target_language: "zh".to_string(),
+            incoming_chat_overlay_enabled: true,
+            incoming_chat_roi_override: None,
+            incoming_chat_hotkey: default_incoming_hotkey(),
             phrases: default_phrases(),
         }
     }
@@ -152,10 +168,22 @@ fn normalize_settings(settings: &mut AppSettings) {
         settings.translation_to = "en".to_string();
     }
 
+    if settings.incoming_chat_target_language.is_empty() {
+        settings.incoming_chat_target_language = settings.translation_from.clone();
+    }
+
     settings.game_scene = normalize_game_scene(&settings.game_scene);
 
     if settings.translation_mode.is_empty() {
         settings.translation_mode = "auto".to_string();
+    }
+
+    if !matches!(settings.incoming_chat_mode.as_str(), "auto" | "manual") {
+        settings.incoming_chat_mode = "auto".to_string();
+    }
+
+    if settings.incoming_chat_hotkey.key.is_empty() {
+        settings.incoming_chat_hotkey = default_incoming_hotkey();
     }
 
     if settings.phrases.is_empty() {

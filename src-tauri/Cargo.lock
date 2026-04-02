@@ -7,6 +7,8 @@ name = "Lingo"
 version = "0.6.5"
 dependencies = [
  "anyhow",
+ "base64 0.22.1",
+ "image",
  "raw-window-handle",
  "reqwest",
  "serde",
@@ -2016,6 +2018,8 @@ dependencies = [
  "num-traits",
  "png 0.18.1",
  "tiff",
+ "zune-core",
+ "zune-jpeg",
 ]
 
 [[package]]
