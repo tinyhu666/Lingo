@@ -172,6 +172,26 @@ const parseJsonFromModelText = (value) => {
   }
 };
 
+const parsePlainVisionLines = (value) => {
+  const normalized = stripJsonCodeFence(value);
+  if (!normalized) {
+    return [];
+  }
+
+  return normalized
+    .split(/\r?\n+/u)
+    .map((line) => String(line || '').trim())
+    .filter(Boolean)
+    .filter(
+      (line) =>
+        !/^[{\[]/u.test(line) &&
+        !/^lines?\s*[:=]/iu.test(line) &&
+        !/^json\s*[:=]/iu.test(line) &&
+        !/^output\s*[:=]/iu.test(line) &&
+        !/^here(?:'s| is)/iu.test(line),
+    );
+};
+
 const extractErrorMessage = (payload) => {
   if (typeof payload?.message === 'string' && payload.message.trim()) {
     return payload.message.trim();
@@ -812,19 +832,23 @@ const requestVisionModel = async ({ config, apiKey, prompt, imageBase64 }) => {
         model: config.model_name,
         temperature: 0,
         max_tokens: 700,
+        response_format: {
+          type: 'json_object',
+        },
         messages: [
           {
             role: 'user',
             content: [
               {
-                type: 'text',
-                text: prompt,
-              },
-              {
                 type: 'image_url',
                 image_url: {
                   url: `data:image/png;base64,${imageBase64}`,
+                  detail: 'high',
                 },
+              },
+              {
+                type: 'text',
+                text: prompt,
               },
             ],
           },
@@ -972,12 +996,30 @@ const getIncomingChatGameConfig = (config, gameScene) => {
   );
 };
 
+const isDeepSeekOcrModel = (config) =>
+  /deepseek-ocr/i.test(String(config?.vision_lane?.model_name || ''));
+
 const buildVisionPrompt = (config, payload = {}) => {
   const gameScene = normalizeGameScene(payload?.game_scene);
   const gameSceneProfile = GAME_SCENE_PROFILES[gameScene] || GAME_SCENE_PROFILES[DEFAULT_GAME_SCENE];
   const incomingChatGameConfig = getIncomingChatGameConfig(config, gameScene);
   const visionPromptVersion =
     incomingChatGameConfig?.vision_prompt_version || `${gameSceneProfile.id}-chat-v1`;
+
+  if (isDeepSeekOcrModel(config)) {
+    return [
+      '<image>',
+      '<|grounding|>OCR this image.',
+      `Game:${gameSceneProfile.label}. Prompt profile:${visionPromptVersion}. ${gameSceneProfile.promptInstruction}`,
+      'Read only the visible in-game chat rows.',
+      'Ignore the input box, HUD, map, buttons, portraits, and screenshot annotations.',
+      'For each visible chat row, extract channel, speaker, and message text.',
+      'Keep slang, profanity, abbreviations, repeated letters, symbols, and multilingual text exactly when readable.',
+      'Do not translate.',
+      'Return strict JSON only with shape {"lines":[{"speaker":"","channel":"","text":"","is_system":false,"confidence":0.0,"order":0}]}.',
+      'If no readable chat rows are visible, return {"lines":[]}.',
+    ].join('\n');
+  }
 
   return [
     `You are reading a ${gameSceneProfile.label} in-game chat panel screenshot.`,
@@ -1099,9 +1141,16 @@ const routeVisionChatLines = async (req, res, traceId) => {
     imageBase64,
   });
   const parsed = parseJsonFromModelText(result.content);
-  const lines = Array.isArray(parsed?.lines)
+  const parsedLines = Array.isArray(parsed?.lines)
     ? parsed.lines.map((item, index) => normalizeVisionLine(item, index)).filter(Boolean)
     : [];
+  const fallbackLines =
+    parsedLines.length > 0
+      ? []
+      : parsePlainVisionLines(result.content)
+          .map((text, index) => normalizeVisionLine({ text }, index))
+          .filter(Boolean);
+  const lines = parsedLines.length > 0 ? parsedLines : fallbackLines;
 
   return jsonResponse(res, 200, {
     lines,
