@@ -55,6 +55,10 @@ impl Default for HotkeyConfig {
 }
 
 fn default_incoming_hotkey() -> HotkeyConfig {
+    HotkeyConfig::new_platform_specific("KeyE")
+}
+
+fn legacy_default_incoming_hotkey() -> HotkeyConfig {
     HotkeyConfig::new_platform_specific("KeyY")
 }
 
@@ -184,6 +188,14 @@ fn normalize_settings(settings: &mut AppSettings) {
 
     if settings.incoming_chat_hotkey.key.is_empty() {
         settings.incoming_chat_hotkey = default_incoming_hotkey();
+    } else {
+        let legacy_hotkey = legacy_default_incoming_hotkey();
+        if settings.incoming_chat_hotkey.key == legacy_hotkey.key
+            && settings.incoming_chat_hotkey.modifiers == legacy_hotkey.modifiers
+            && settings.incoming_chat_hotkey.shortcut == legacy_hotkey.shortcut
+        {
+            settings.incoming_chat_hotkey = default_incoming_hotkey();
+        }
     }
 
     if settings.phrases.is_empty() {

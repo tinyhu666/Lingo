@@ -58,6 +58,17 @@
     clip-path: inset(0 round var(--app-radius-outer));
   }
 
+  html.window-utility,
+  html.window-utility body,
+  body.window-utility,
+  html.window-utility #root,
+  body.window-utility #root {
+    border-radius: 0;
+    clip-path: none;
+    overflow: hidden;
+    background: transparent !important;
+  }
+
   body {
     margin: 0;
     font-family: var(--font-body);

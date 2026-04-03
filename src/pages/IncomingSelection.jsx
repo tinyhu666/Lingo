@@ -10,16 +10,6 @@ const clampRect = (start, current) => ({
   height: Math.abs(current.y - start.y),
 });
 
-const toPhysicalSelection = (rect) => {
-  const dpr = window.devicePixelRatio || 1;
-  return {
-    x: Math.round((window.screenX + rect.left) * dpr),
-    y: Math.round((window.screenY + rect.top) * dpr),
-    width: Math.round(rect.width * dpr),
-    height: Math.round(rect.height * dpr),
-  };
-};
-
 export default function IncomingSelection() {
   const [dragStart, setDragStart] = useState(null);
   const [dragCurrent, setDragCurrent] = useState(null);
@@ -96,7 +86,12 @@ export default function IncomingSelection() {
 
     setSubmitting(true);
     try {
-      await invokeCommand('submit_incoming_chat_selection', toPhysicalSelection(finalRect));
+      await invokeCommand('submit_incoming_chat_selection', {
+        x: Math.round(finalRect.left),
+        y: Math.round(finalRect.top),
+        width: Math.round(finalRect.width),
+        height: Math.round(finalRect.height),
+      });
     } catch (error) {
       console.error('Failed to submit incoming selection', error);
       setErrorMessage(

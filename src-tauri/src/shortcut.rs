@@ -167,18 +167,32 @@ fn create_incoming_chat_handler(
             let app_clone = Arc::clone(&app);
             tauri::async_runtime::spawn(async move {
                 match get_settings(app_clone.as_ref()) {
-                    Ok(settings)
-                        if settings.app_enabled
-                            && settings.incoming_chat_enabled
-                            && settings.incoming_chat_mode == "manual" =>
-                    {
+                    Ok(settings) if settings.app_enabled && settings.incoming_chat_enabled => {
                         if let Err(error) =
-                            crate::incoming_chat::begin_manual_translate_selection(app_clone.as_ref())
+                            crate::incoming_chat::start_incoming_chat_translate_flow(
+                                app_clone.as_ref(),
+                            )
+                            .await
                         {
-                            let _ = app_clone.emit(
-                                "translation_failed",
-                                format!("队友发言框选失败: {}", error),
-                            );
+                            let fallback_message = error.to_string();
+                            if fallback_message.contains("Active game window is unavailable") {
+                                if let Err(selection_error) =
+                                    crate::incoming_chat::begin_manual_translate_selection(
+                                        app_clone.as_ref(),
+                                    )
+                                {
+                                    let _ = app_clone.emit(
+                                        "translation_failed",
+                                        format!(
+                                            "Failed to open incoming selection: {}",
+                                            selection_error
+                                        ),
+                                    );
+                                }
+                                return;
+                            }
+                            let _ = app_clone
+                                .emit("translation_failed", format!("队友发言框选失败: {}", error));
                         }
                     }
                     Ok(_) => {}

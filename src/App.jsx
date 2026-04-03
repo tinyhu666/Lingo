@@ -43,6 +43,8 @@ function App() {
     }
     return new URLSearchParams(window.location.search).get('mode') || '';
   }, []);
+  const utilityWindow =
+    windowMode === 'incoming-overlay' || windowMode === 'incoming-selection';
 
   useEffect(() => {
     if (typeof document === 'undefined') {
@@ -67,6 +69,11 @@ function App() {
       body.classList.add('platform-macos');
     }
 
+    if (utilityWindow) {
+      html.classList.add('window-utility');
+      body.classList.add('window-utility');
+    }
+
     return () => {
       html.classList.remove('platform-desktop');
       body.classList.remove('platform-desktop');
@@ -74,12 +81,14 @@ function App() {
       body.classList.remove('platform-windows');
       html.classList.remove('platform-macos');
       body.classList.remove('platform-macos');
+      html.classList.remove('window-utility');
+      body.classList.remove('window-utility');
     };
-  }, [desktopClient, desktopPlatform]);
+  }, [desktopClient, desktopPlatform, utilityWindow]);
 
   return (
     <div
-      className={`lingo-theme h-full text-zinc-900 ${desktopClient ? 'lingo-theme--desktop' : ''} ${windowsClient ? 'lingo-theme--windows' : ''}`}>
+      className={`lingo-theme h-full text-zinc-900 ${desktopClient && !utilityWindow ? 'lingo-theme--desktop' : ''} ${windowsClient && !utilityWindow ? 'lingo-theme--windows' : ''}`}>
       {windowMode === 'incoming-overlay' ? (
         <Suspense fallback={null}>
           <IncomingOverlayPage />

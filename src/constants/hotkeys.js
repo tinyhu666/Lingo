@@ -13,7 +13,7 @@ export const formatModifierLabel = (key) => {
   const labelMap = {
     Control: isMac ? '⌃' : 'Ctrl',
     Alt: isMac ? '⌥' : 'Alt',
-    Shift: '⇧',
+    Shift: isMac ? '⇧' : 'Shift',
     Meta: isMac ? '⌘' : 'Win',
   };
   return labelMap[value] || value;
@@ -27,11 +27,11 @@ export const formatMainKeyLabel = (keyCode = '') => {
 };
 
 export const defaultTranslatorHotkeyLabel = () => (detectMac() ? '⌘+T' : 'Alt+T');
-export const defaultIncomingChatHotkeyLabel = () => (detectMac() ? '⌘+Y' : 'Alt+Y');
+export const defaultIncomingChatHotkeyLabel = () => (detectMac() ? '⌘+E' : 'Alt+E');
 
 export const defaultPhraseModifier = () => (detectMac() ? 'Meta' : 'Alt');
 
-export const defaultPhraseModifierLabel = () => (detectMac() ? '⌘' : 'Alt');
+export const defaultPhraseModifierLabel = () => (detectMac() ? '⌥' : 'Alt');
 
 export const buildHotkeyFromKeyCodes = (keyCodes) => {
   const modifiers = [...new Set(keyCodes.filter(isModifierKeyCode).map(normalizeModifier))].sort();

@@ -504,16 +504,14 @@ export default function Settings() {
           </div>
         </div>
 
-        {incomingMode === 'manual' ? (
-          <div className='mt-4'>
-            <IncomingHotkeyRecorder
-              settings={settings}
-              updateSettings={updateSettings}
-              syncSettings={syncSettings}
-              copy={copy}
-            />
-          </div>
-        ) : null}
+        <div className='mt-4'>
+          <IncomingHotkeyRecorder
+            settings={settings}
+            updateSettings={updateSettings}
+            syncSettings={syncSettings}
+            copy={copy}
+          />
+        </div>
 
         <div className='mt-6 flex flex-wrap gap-3'>
           <button
