@@ -41,6 +41,10 @@
 37. 复用现有腾讯云轻量服务器的 Caddy 同时托管官网静态站点与 translate-proxy API，建立国内可直连的官网入口。
 38. 将国内优先更新链路与腾讯云官网托管能力收口到 0.6.5，完成版本同步、部署验证与正式 release。
 39. 清理 `lingo.ink` 迁移中的 GitHub Pages 自定义域名残留，并把腾讯云部署验收扩展为按全部 `CADDY_DOMAIN` 逐个校验，减少 DNS 切换期的排障盲区。
+40. 将现有五个主页面统一重构为更克制的桌面工具风工作台，补齐首页上下文条、主页面层级和多语言文案收敛。
+41. 将第一轮视觉收敛继续沉淀为共享页头、共享面板、状态芯片与键帽组件，避免五个主页面继续各写各的页面结构和状态样式。
+42. 将标题栏、侧边栏、语言下拉菜单与 toast 反馈也收敛到统一壳层语言，补齐页面外壳与内容区之间的最后一层视觉一致性。
+43. 将 task041-task043 的桌面端 UI 收口打包为 `0.6.6`，完成版本同步、更新日志、本地打包验证与正式 release。
 29. 对当前客户端、翻译代理和本地打包链路执行一次完整回归，确认 0.5.0 的 UI 与功能表现稳定。
 30. 将全部已验证改动同步到 0.5.0 版本元数据、更新日志、提交记录与正式 release tag。
 29. 将本阶段修复收口到 `0.5.0`，完成 UI/功能回归、本地打包验证、提交与正式发版。
@@ -49,6 +53,12 @@
 
 - `src/App.jsx`
 - `src/components/Layout.jsx`
+- `src/components/Sidebar.jsx`
+- `src/components/DropdownMenu.jsx`
+- `src/components/PageHeader.jsx`
+- `src/components/PanelCard.jsx`
+- `src/components/StatusChip.jsx`
+- `src/components/KeycapGroup.jsx`
 - `src/utils/toast.js`
 - `src/index.css`
 - `src/components/StoreProvider.jsx`
@@ -86,6 +96,9 @@
 - `README.md`
 - `README.en.md`
 - `README.ru.md`
+- `src/pages/Phrases.jsx`
+- `src/pages/Tutorial.jsx`
+- `src/pages/About.jsx`
 - `../lingoweb/src/lib/constants.ts`
 - `../lingoweb/src/lib/release.ts`
 - `../lingoweb/.github/workflows/deploy.yml`
@@ -106,6 +119,7 @@
 - P0: Windows 客户端双层窗口圆角
 - P1: Tauri 开发态自动拉起本地代理
 - P1: 客户端翻译链路自动化测试兜底
+- P0: 0.6.6 版本元数据、更新日志与正式发版链路一致
 - P1: shell_helper 纯逻辑测试兜底
 - P1: 0.4.0 发版元数据同步与本地安装包产出
 - P1: 设置变更后立即生效与相关 UI 稳定性
@@ -136,6 +150,9 @@
 - P1: 腾讯云轻量服务器若不能同时稳定托管静态站点与 API，后续官网和代理部署会互相覆盖
 - P1: 官网仓库若继续保留 `public/CNAME` 这类 GitHub Pages 自定义域名残留，会在 `lingo.ink` 迁移期间持续制造“到底谁在声明主域名”的排障噪音
 - P1: 腾讯云部署工作流若始终只验首个 `CADDY_DOMAIN`，即使 `www.lingo.ink` 或后续新域名路由失效，也会在 CI 中被静默漏掉
+- P1: 如果五个主页面的壳层、面板和交互密度不统一，桌面客户端会继续保留“混合风格”体验，削弱这次 redesign 的价值
+- P1: 如果共享页头、面板、状态芯片和键帽展示不真正抽成可复用组件，后续页面微调仍会重新回到散装样式回归。
+- P1: 如果标题栏、侧边栏和菜单层仍停留在旧结构里，用户在切页时会继续感到“内容区已更新，但外壳还没跟上”的割裂。
 
 ## Risks & Dependencies
 
@@ -185,3 +202,6 @@
 - 如果 `lingo.ink` 的 DNS 暂时未迁移到腾讯云，部署完成后仍要保留 `https://buffpp.com/` 作为国内可立即使用的官网入口，并把客户端手动更新入口指向这个国内地址。
 - 即使代码仓库移除了 `public/CNAME`，真正的根域名 A 记录与 GitHub Pages 自定义域名设置仍由域名注册商和 GitHub 仓库设置决定，因此这次收尾只能减少干扰，不能代替 GoDaddy 发布权威 DNS。
 - GitHub Actions 无法读取现有 `TENCENT_TRANSLATE_PROXY_ENV` secret 的明文内容，因此仓库改动可以先把示例配置和验收逻辑补齐，但现网是否已把 `www.lingo.ink` 加入 `CADDY_DOMAIN` 仍需额外更新 secret 或直接登录服务器确认。
+- 当前前端仍是单页应用内状态切换而非独立路由，视觉回归时需要特别确认导航切换后的页面层级和滚动容器没有因为 shared shell 改动被意外破坏。
+- 首页、常用语和关于页当前已经带有第一轮 UI 改造；第二轮组件化如果只抽样式不抽结构，很容易变成“类名换皮”而没有真正降低后续维护成本。
+- toast 当前仍使用内联 style；如果不把窗口级反馈也一起收口到 CSS 和壳层语言，后续主题微调仍然会遗漏这一层系统反馈。

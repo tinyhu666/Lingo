@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useStore } from '../components/StoreProvider';
+import PageHeader from '../components/PageHeader';
+import PanelCard from '../components/PanelCard';
+import StatusChip from '../components/StatusChip';
+import KeycapGroup from '../components/KeycapGroup';
 import { defaultPhraseModifier, defaultPhraseModifierLabel } from '../constants/hotkeys';
 import { invokeCommand, hasTauriRuntime } from '../services/tauriRuntime';
 import { showError, showSuccess } from '../utils/toast';
@@ -199,35 +203,34 @@ export default function Phrases() {
   };
 
   return (
-    <div className='flex min-h-full flex-col gap-6'>
-      <motion.section className='dota-card tool-rise p-6' initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-        <div className='desktop-tight-header desktop-tight-header--start flex flex-col items-start gap-4 lg:flex-row lg:items-start lg:justify-between'>
-          <div className='min-w-0'>
-            <div className='flex flex-wrap items-center gap-3'>
-              <h2 className='tool-page-title mt-0'>{t('phrases.title')}</h2>
-              <span className='tool-pill min-w-[76px] justify-center'>{rows.length}/{MAX_PHRASE_COUNT}</span>
-            </div>
-            <p className='tool-body mt-3'>{t('phrases.summary')}</p>
-          </div>
-          <div className='desktop-tight-actions flex w-full flex-wrap items-center gap-2 lg:w-auto lg:shrink-0 lg:justify-end'>
-            <button type='button' onClick={addRow} className='desktop-tight-button tool-btn min-w-[120px] flex-1 whitespace-nowrap px-4 sm:flex-none'>
-              {t('phrases.add')}
-            </button>
-            <button
-              type='button'
-              onClick={saveRows}
-              disabled={saving}
-              className={`desktop-tight-button tool-btn-primary min-w-[104px] flex-1 whitespace-nowrap px-4 sm:flex-none ${saving ? 'opacity-70 cursor-not-allowed' : ''}`}>
-              {saving ? t('phrases.saving') : t('phrases.save')}
-            </button>
-          </div>
-        </div>
-      </motion.section>
+    <div className='phrases-page flex min-h-full flex-col gap-6'>
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+        <PageHeader
+          title={t('phrases.title')}
+          description={t('phrases.summary')}
+          actions={
+            <>
+              <StatusChip label={`${rows.length}/${MAX_PHRASE_COUNT}`} tone='neutral' />
+              <button type='button' onClick={addRow} className='desktop-tight-button tool-btn min-w-[120px] whitespace-nowrap px-4'>
+                {t('phrases.add')}
+              </button>
+              <button
+                type='button'
+                onClick={saveRows}
+                disabled={saving}
+                className={`desktop-tight-button tool-btn-primary min-w-[104px] whitespace-nowrap px-4 ${saving ? 'opacity-70 cursor-not-allowed' : ''}`}>
+                {saving ? t('phrases.saving') : t('phrases.save')}
+              </button>
+            </>
+          }
+        />
+      </motion.div>
 
-      <motion.section className='dota-card tool-rise flex-1 p-4' initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.06 }}>
-        <div className='h-full overflow-x-auto overflow-y-auto rounded-[20px] border border-[rgba(219,228,239,0.9)] bg-[rgba(255,255,255,0.62)]'>
-          <table className='min-w-full border-separate border-spacing-0'>
-            <thead className='sticky top-0 z-10 bg-[rgba(248,251,255,0.96)] backdrop-blur-xl'>
+      <motion.div className='flex-1' initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.06 }}>
+        <PanelCard className='phrases-panel tool-rise flex-1'>
+        <div className='phrases-table-shell'>
+          <table className='phrases-table min-w-full border-separate border-spacing-0'>
+            <thead className='phrases-table__head sticky top-0 z-10'>
               <tr>
                 <th className='px-5 py-4 text-left tool-caption w-[64px]'>{t('phrases.table.index')}</th>
                 <th className='px-4 py-4 text-left tool-caption'>{t('phrases.table.content')}</th>
@@ -238,7 +241,7 @@ export default function Phrases() {
 
             <tbody>
               {rows.map((row) => (
-                <tr key={row.id} className='border-t border-[rgba(226,233,243,0.8)] hover:bg-[rgba(248,251,255,0.9)]'>
+                <tr key={row.id} className='phrases-table__row border-t border-[rgba(226,233,243,0.8)]'>
                   <td className='px-5 py-4 text-sm font-semibold text-zinc-500 align-top'>{row.id}</td>
 
                   <td className='px-4 py-4'>
@@ -252,8 +255,8 @@ export default function Phrases() {
                   </td>
 
                   <td className='px-4 py-4'>
-                    <div className='flex items-center gap-2'>
-                      <span className='tool-chip'>{MODIFIER_LABEL}</span>
+                    <div className='phrases-hotkey-editor'>
+                      <KeycapGroup keys={[MODIFIER_LABEL]} size='sm' />
                       <select
                         value={row.keyCode}
                         onChange={(event) => patchRow(row.id, { keyCode: event.target.value })}
@@ -280,7 +283,8 @@ export default function Phrases() {
             </tbody>
           </table>
         </div>
-      </motion.section>
+        </PanelCard>
+      </motion.div>
     </div>
   );
 }

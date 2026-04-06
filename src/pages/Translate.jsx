@@ -2,6 +2,9 @@ import { motion } from 'framer-motion';
 import { useEffect, useMemo, useState } from 'react';
 import { GamingPad, FaceOldFace, Whistle, Sparkles } from '../icons';
 import { useStore } from '../components/StoreProvider';
+import PageHeader from '../components/PageHeader';
+import PanelCard from '../components/PanelCard';
+import StatusChip from '../components/StatusChip';
 import { showError } from '../utils/toast';
 import { toErrorMessage } from '../utils/error';
 import { useI18n } from '../i18n/I18nProvider';
@@ -51,22 +54,22 @@ export default function Translate() {
   };
 
   return (
-    <div className='flex min-h-full flex-col gap-6'>
-      <motion.section
-        className='dota-card tool-rise p-6'
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}>
-        <div className='desktop-tight-header flex flex-col items-start gap-4 lg:flex-row lg:items-center lg:justify-between'>
-          <div className='min-w-0'>
-            <h2 className='tool-page-title mt-0'>{t('translate.title')}</h2>
-            <p className='tool-body mt-3'>{t('translate.summary')}</p>
-          </div>
-          <div className='desktop-tight-summary-card tool-subcard w-full min-w-0 px-4 py-3 sm:w-auto sm:min-w-[132px] sm:shrink-0'>
-            <div className='tool-caption'>{t('translate.currentEnabled')}</div>
-            <div className='tool-card-title mt-2'>{currentLabel}</div>
-          </div>
-        </div>
-      </motion.section>
+    <div className='translate-page flex min-h-full flex-col gap-6'>
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+        <PanelCard className='tool-rise'>
+          <PageHeader
+            title={t('translate.title')}
+            description={t('translate.summary')}
+            actions={
+              <StatusChip
+                label={`${t('translate.currentEnabled')} · ${currentLabel}`}
+                tone='info'
+                className='translate-page__status-chip'
+              />
+            }
+          />
+        </PanelCard>
+      </motion.div>
 
       <div className='translate-mode-grid'>
         {MODE_OPTIONS.map((mode, idx) => {
@@ -77,9 +80,7 @@ export default function Translate() {
               key={mode.id}
               type='button'
               onClick={() => handleModeChange(mode.id)}
-              className={`dota-card tool-rise mode-card min-h-[260px] min-w-0 p-6 text-left ${
-                isActive ? 'border-[rgba(129,163,255,0.92)] shadow-[0_22px_42px_rgba(76,111,255,0.16),inset_0_1px_0_rgba(255,255,255,0.96)]' : ''
-              }`}
+              className={`panel-card panel-card--interactive tool-rise mode-card min-h-[260px] min-w-0 text-left ${isActive ? 'mode-card--active' : ''}`}
               initial={{ opacity: 0, y: 18 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.05 * (idx + 1) }}>
@@ -87,9 +88,11 @@ export default function Translate() {
                 <div className={`workspace-header__icon mode-card__icon-shell h-11 w-11 min-w-[44px] ${isActive ? 'mode-card__icon-shell--active' : ''}`}>
                   <Icon className='h-5 w-5 stroke-current' />
                 </div>
-                <span className={`tool-pill shrink-0 ${isActive ? 'workspace-pill--success' : ''}`}>
-                  {isActive ? t('translate.styleEnabled') : t('translate.stylePending')}
-                </span>
+                <StatusChip
+                  label={isActive ? t('translate.styleEnabled') : t('translate.stylePending')}
+                  tone={isActive ? 'success' : 'neutral'}
+                  className={`mode-card__state shrink-0 ${isActive ? 'mode-card__state--active' : ''}`}
+                />
               </div>
 
               <div className='mt-5'>
@@ -98,7 +101,7 @@ export default function Translate() {
               </div>
 
               <p className='tool-body mode-card__desc mt-5'>{t(`translate.mode.${mode.id}.desc`)}</p>
-              <div className='tool-subcard mt-6 p-4'>
+              <div className='tool-subcard mode-card__hint mt-6 p-4'>
                 <div className='flex items-center gap-2'>
                   <Sparkles className='h-4 w-4 stroke-zinc-500' />
                   <span className='tool-caption'>{t('common.hint')}</span>

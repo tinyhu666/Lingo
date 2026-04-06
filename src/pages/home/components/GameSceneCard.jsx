@@ -2,6 +2,7 @@ import { motion } from 'framer-motion';
 import { useMemo, useRef, useState } from 'react';
 import { ChevronRight, GamingPad } from '../../../icons';
 import { useStore } from '../../../components/StoreProvider';
+import PanelCard from '../../../components/PanelCard';
 import DropdownMenu from '../../../components/DropdownMenu';
 import {
   DEFAULT_GAME_SCENE,
@@ -120,18 +121,14 @@ export default function GameSceneCard() {
   };
 
   return (
-    <motion.section
-      className='home-stat-card dota-card tool-rise relative'
+    <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}>
-      <div className='home-stat-card__header'>
-        <span className='home-stat-card__icon-shell'>
-          <GamingPad className='home-stat-card__header-icon' />
-        </span>
-        <h3 className='home-stat-card__title'>{t('home.gameScene.title')}</h3>
-      </div>
-
-      <div className='home-stat-card__body'>
+      <PanelCard
+        className='home-stat-card tool-rise relative'
+        icon={<GamingPad className='home-stat-card__header-icon' />}
+        title={t('home.gameScene.title')}
+        bodyClassName='home-stat-card__body'>
         <div className='home-top-copy home-stat-card__copy'>
           <p className='tool-body'>{t('home.gameScene.desc1')}</p>
           <p className='tool-body'>{t('home.gameScene.desc2')}</p>
@@ -162,7 +159,7 @@ export default function GameSceneCard() {
             </div>
           </div>
         </div>
-      </div>
-    </motion.section>
+      </PanelCard>
+    </motion.div>
   );
 }

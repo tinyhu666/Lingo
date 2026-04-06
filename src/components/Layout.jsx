@@ -175,16 +175,10 @@ function LayoutShell({ children, activeItem, setActiveItem }) {
       </header>
 
       <Toaster
+        gutter={12}
+        containerClassName='lingo-toast-stack'
         toastOptions={{
-          className: 'text-sm',
-          style: {
-            borderRadius: '14px',
-            background: 'rgba(255,255,255,0.94)',
-            color: '#1f2937',
-            border: '1px solid rgba(212,220,232,0.88)',
-            boxShadow: '0 18px 40px rgba(15, 23, 42, 0.14)',
-            backdropFilter: 'blur(18px)',
-          },
+          className: 'lingo-toast',
         }}
       />
 

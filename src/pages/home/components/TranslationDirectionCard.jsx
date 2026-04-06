@@ -3,6 +3,7 @@ import { useMemo, useRef, useState } from 'react';
 import { CN, DE, ES, FR, JP, KR, RU, SG, US } from 'country-flag-icons/react/3x2';
 import { Translate, ArrowRight, ChevronRight } from '../../../icons';
 import { useStore } from '../../../components/StoreProvider';
+import PanelCard from '../../../components/PanelCard';
 import DropdownMenu from '../../../components/DropdownMenu';
 import { LANGUAGE_OPTIONS, getLanguageMeta, getLanguageLabel } from '../../../constants/languages';
 import { showError } from '../../../utils/toast';
@@ -121,18 +122,14 @@ export default function TranslationDirectionCard() {
   };
 
   return (
-    <motion.section
-      className='home-stat-card dota-card tool-rise relative'
+    <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}>
-      <div className='home-stat-card__header'>
-        <span className='home-stat-card__icon-shell'>
-          <Translate className='home-stat-card__header-icon' />
-        </span>
-        <h3 className='home-stat-card__title'>{t('home.translationLanguage.title')}</h3>
-      </div>
-
-      <div className='home-stat-card__body'>
+      <PanelCard
+        className='home-stat-card tool-rise relative'
+        icon={<Translate className='home-stat-card__header-icon' />}
+        title={t('home.translationLanguage.title')}
+        bodyClassName='home-stat-card__body'>
         <div className='home-top-copy home-stat-card__copy'>
           <p className='tool-body'>{t('home.translationLanguage.desc1')}</p>
           <p className='tool-body'>{t('home.translationLanguage.desc2')}</p>
@@ -190,7 +187,7 @@ export default function TranslationDirectionCard() {
             </div>
           </div>
         </div>
-      </div>
-    </motion.section>
+      </PanelCard>
+    </motion.div>
   );
 }

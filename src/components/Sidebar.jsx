@@ -4,6 +4,7 @@ import { NAV_ITEMS } from '../constants/navigation';
 import { APP_VERSION_LABEL } from '../constants/version';
 import { useUpdater } from './UpdateProvider';
 import { useI18n } from '../i18n/I18nProvider';
+import StatusChip from './StatusChip';
 
 export default function Sidebar({ activeItem, setActiveItem }) {
   const { hasUpdate } = useUpdater();
@@ -37,7 +38,7 @@ export default function Sidebar({ activeItem, setActiveItem }) {
                 <span className='sidebar-nav__text'>{t(item.labelKey)}</span>
 
                 {item.id === 'about' && hasUpdate ? (
-                  <span className='sidebar-nav__badge'>{t('sidebar.updateAvailable')}</span>
+                  <StatusChip label={t('sidebar.updateAvailable')} tone='warning' className='sidebar-nav__badge' />
                 ) : null}
               </button>
             );
