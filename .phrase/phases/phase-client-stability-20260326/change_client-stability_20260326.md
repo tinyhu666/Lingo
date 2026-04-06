@@ -1,16 +1,16 @@
 # Client Stability Changes
 
-change317 日期:2026-04-07 | 文件:.phrase/phases/phase-client-stability-20260326/spec_client-stability_20260326.md | 操作:Modify | 影响:阶段需求说明 | 说明:补充 task041-task043 的桌面端 UI 收口需统一打包为 0.6.7 补丁版本的目标 | 关联:task044
-change318 日期:2026-04-07 | 文件:.phrase/phases/phase-client-stability-20260326/plan_client-stability_20260326.md | 操作:Modify | 影响:阶段计划与优先级 | 说明:新增 0.6.7 发版里程碑，并将版本元数据与正式发版链路一致性提升为 P0 | 关联:task044
-change319 日期:2026-04-07 | 文件:.phrase/phases/phase-client-stability-20260326/task_client-stability_20260326.md | 操作:Modify | 影响:任务清单 | 说明:新增并完成 task044，记录 0.6.7 的版本同步、本地验证与正式发版闭环 | 关联:task044
-change320 日期:2026-04-07 | 文件:CHANGELOG.md | 操作:Modify | 影响:0.6.7 更新日志 | 说明:新增 0.6.7 用户可见发布说明，收口首页上下文条、共享组件与壳层一致性改动 | 关联:task044
-change321 日期:2026-04-07 | 文件:package.json | 操作:Modify | 影响:前端版本元数据 | 说明:将客户端版本号同步到 0.6.7，准备新的正式补丁版本 | 关联:task044
-change322 日期:2026-04-07 | 文件:package-lock.json | 操作:Modify | 影响:npm 锁文件版本元数据 | 说明:同步 lockfile 顶层版本到 0.6.7，保持包元数据与安装包版本一致 | 关联:task044
-change323 日期:2026-04-07 | 文件:src-tauri/Cargo.toml | 操作:Modify | 影响:Tauri Rust 包版本 | 说明:将桌面端 Cargo 包版本同步到 0.6.7 | 关联:task044
-change324 日期:2026-04-07 | 文件:src-tauri/Cargo.lock | 操作:Modify | 影响:Rust 锁文件顶层包版本 | 说明:将锁文件中的 Lingo 包版本同步到 0.6.7 | 关联:task044
-change325 日期:2026-04-07 | 文件:src-tauri/tauri.conf.json | 操作:Modify | 影响:Tauri 打包版本元数据 | 说明:将桌面应用版本号同步到 0.6.7，确保安装包命名与应用内版本一致 | 关联:task044
-change326 日期:2026-04-07 | 文件:.github/workflows/release.yml | 操作:Modify | 影响:Release workflow 默认输入 | 说明:将手动镜像补跑入口的默认 release_tag 更新到 v0.6.7，避免后续误补旧版本 | 关联:task044
-change327 日期:2026-04-07 | 文件:.phrase/docs/CHANGE.md | 操作:Modify | 影响:全局变更索引 | 说明:将桌面端 UI 收口与 0.6.7 发版收尾补入全局 CHANGE 摘要 | 关联:task044
+change317 日期:2026-04-07 | 文件:.phrase/phases/phase-client-stability-20260326/spec_client-stability_20260326.md | 操作:Modify | 影响:阶段需求说明 | 说明:补充 task041-task043 的桌面端 UI 收口需统一打包为 0.6.8 补丁版本的目标 | 关联:task044
+change318 日期:2026-04-07 | 文件:.phrase/phases/phase-client-stability-20260326/plan_client-stability_20260326.md | 操作:Modify | 影响:阶段计划与优先级 | 说明:新增 0.6.8 发版里程碑，并将版本元数据与正式发版链路一致性提升为 P0 | 关联:task044
+change319 日期:2026-04-07 | 文件:.phrase/phases/phase-client-stability-20260326/task_client-stability_20260326.md | 操作:Modify | 影响:任务清单 | 说明:新增并完成 task044，记录 0.6.8 的版本同步、本地验证与正式发版闭环 | 关联:task044
+change320 日期:2026-04-07 | 文件:CHANGELOG.md | 操作:Modify | 影响:0.6.8 更新日志 | 说明:新增 0.6.8 用户可见发布说明，收口首页上下文条、共享组件与壳层一致性改动 | 关联:task044
+change321 日期:2026-04-07 | 文件:package.json | 操作:Modify | 影响:前端版本元数据 | 说明:将客户端版本号同步到 0.6.8，准备新的正式补丁版本 | 关联:task044
+change322 日期:2026-04-07 | 文件:package-lock.json | 操作:Modify | 影响:npm 锁文件版本元数据 | 说明:同步 lockfile 顶层版本到 0.6.8，保持包元数据与安装包版本一致 | 关联:task044
+change323 日期:2026-04-07 | 文件:src-tauri/Cargo.toml | 操作:Modify | 影响:Tauri Rust 包版本 | 说明:将桌面端 Cargo 包版本同步到 0.6.8 | 关联:task044
+change324 日期:2026-04-07 | 文件:src-tauri/Cargo.lock | 操作:Modify | 影响:Rust 锁文件顶层包版本 | 说明:将锁文件中的 Lingo 包版本同步到 0.6.8 | 关联:task044
+change325 日期:2026-04-07 | 文件:src-tauri/tauri.conf.json | 操作:Modify | 影响:Tauri 打包版本元数据 | 说明:将桌面应用版本号同步到 0.6.8，确保安装包命名与应用内版本一致 | 关联:task044
+change326 日期:2026-04-07 | 文件:.github/workflows/release.yml | 操作:Modify | 影响:Release workflow 默认输入 | 说明:将手动镜像补跑入口的默认 release_tag 更新到 v0.6.8，避免后续误补旧版本 | 关联:task044
+change327 日期:2026-04-07 | 文件:.phrase/docs/CHANGE.md | 操作:Modify | 影响:全局变更索引 | 说明:将桌面端 UI 收口与 0.6.8 发版收尾补入全局 CHANGE 摘要 | 关联:task044
 
 change308 日期:2026-04-07 | 文件:.phrase/phases/phase-client-stability-20260326/spec_client-stability_20260326.md | 操作:Modify | 影响:阶段需求说明 | 说明:补充标题栏、侧边栏、下拉菜单与 toast 也需完成壳层级统一收敛的目标与验收标准 | 关联:task043
 change309 日期:2026-04-07 | 文件:.phrase/phases/phase-client-stability-20260326/plan_client-stability_20260326.md | 操作:Modify | 影响:阶段计划与风险约束 | 说明:新增壳层级统一收口里程碑，并补充外壳与内容区风格脱节和 toast 仍停留内联实现的风险说明 | 关联:task043
