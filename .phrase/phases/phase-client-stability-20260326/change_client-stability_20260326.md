@@ -1,5 +1,8 @@
 # Client Stability Changes
 
+change338 日期:2026-04-07 | 文件:.phrase/phases/phase-client-stability-20260326/task_client-stability_20260326.md | 操作:Modify | 影响:task017 实际验收记录 | 说明:补充 v0.4.0 历史镜像安全补跑的真实 workflow run 结果与 latest manifest 未漂移的验证闭环 | 关联:task017
+change339 日期:2026-04-07 | 文件:.phrase/docs/CHANGE.md | 操作:Modify | 影响:全局变更索引 | 说明:将历史镜像安全补跑的真实验收结果补入全局 CHANGE 摘要范围 | 关联:task017
+
 change332 日期:2026-04-07 | 文件:.phrase/phases/phase-client-stability-20260326/spec_client-stability_20260326.md | 操作:Modify | 影响:阶段需求说明 | 说明:补充历史版本 COS 补镜像默认不得覆盖当前 latest manifest 与稳定下载别名的目标、流程和边界 | 关联:task017
 change333 日期:2026-04-07 | 文件:.phrase/phases/phase-client-stability-20260326/plan_client-stability_20260326.md | 操作:Modify | 影响:阶段计划与风险约束 | 说明:新增历史补镜像安全收口里程碑，并把旧 tag 回退当前 latest 入口的风险提升到 P0 | 关联:task017
 change334 日期:2026-04-07 | 文件:.phrase/phases/phase-client-stability-20260326/task_client-stability_20260326.md | 操作:Modify | 影响:任务清单 | 说明:将遗留 task017 收口为历史镜像已满足且手工补跑默认只刷新版本目录的闭环任务 | 关联:task017
