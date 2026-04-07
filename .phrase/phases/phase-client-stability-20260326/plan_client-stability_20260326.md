@@ -46,6 +46,7 @@
 42. 将标题栏、侧边栏、语言下拉菜单与 toast 反馈也收敛到统一壳层语言，补齐页面外壳与内容区之间的最后一层视觉一致性。
 43. 将 task041-task043 的桌面端 UI 收口打包为 `0.6.8`，完成版本同步、更新日志、本地打包验证与正式 release。
 44. 在 `0.6.8` 正式发布后补一轮公网 smoke，确认 GitHub/COS 清单、官网下载入口与代理公开摘要都已切到最新版本。
+45. 收口历史版本 COS 补镜像流程，默认只刷新版本目录，避免手工补跑旧 tag 时覆盖当前 `latest` manifest 与稳定下载别名。
 29. 对当前客户端、翻译代理和本地打包链路执行一次完整回归，确认 0.5.0 的 UI 与功能表现稳定。
 30. 将全部已验证改动同步到 0.5.0 版本元数据、更新日志、提交记录与正式 release tag。
 29. 将本阶段修复收口到 `0.5.0`，完成 UI/功能回归、本地打包验证、提交与正式发版。
@@ -122,6 +123,7 @@
 - P1: 客户端翻译链路自动化测试兜底
 - P0: 0.6.8 版本元数据、更新日志与正式发版链路一致
 - P0: 0.6.8 发版后的 GitHub/COS manifest 与公网下载入口必须完成外部验收
+- P0: 历史版本 COS 补镜像不能覆盖当前 `latest.json`、`latest-web.json` 与稳定下载别名
 - P1: shell_helper 纯逻辑测试兜底
 - P1: 0.4.0 发版元数据同步与本地安装包产出
 - P1: 设置变更后立即生效与相关 UI 稳定性
@@ -178,6 +180,7 @@
 - 本地 macOS 打包需要沿用仓库内 updater key 的既有归一化格式，否则会在 updater 签名阶段失败。
 - 本地打包只能验证 macOS ARM 产物；Windows 安装包与 `latest.json` 仍依赖 tag 推送触发的 GitHub Actions 发版链。
 - GitHub Hosted Runner 到腾讯 COS 的链路可能明显慢于 GitHub Release 资产分发，需要更激进地使用分片上传和更宽松的 job 超时来兜底。
+- `mirror_existing_release` 如果在旧 tag 上继续无保护地重写稳定 manifest 和 `Lingo_latest*` 别名，会把当前最新补丁版本的更新入口回退到历史版本，因此历史补镜像必须默认只刷新 `releases/v<version>/`。
 - Windows 边缘问题不能只看最外层壳体，贴边主面板的圆角、阴影和描边也会在透明窗口里被误读成第二层外轮廓。
 - 慢请求占位文案由 Rust 直接写入输入框，因此前端切换 UI 语言后必须把同一状态同步到 Tauri store，不能只停留在浏览器 localStorage。
 - `v0.4.0` 已经存在于 GitHub Release，补丁发布必须使用新的语义化版本和 tag；本机只能验证 macOS 打包，Windows 安装包需要等待 GitHub Actions 发版流程完成。
