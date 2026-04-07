@@ -1,5 +1,10 @@
 # Client Stability Changes
 
+change328 日期:2026-04-07 | 文件:.phrase/phases/phase-client-stability-20260326/spec_client-stability_20260326.md | 操作:Modify | 影响:阶段需求说明 | 说明:补充 0.6.8 正式发布后仍需完成 GitHub/COS 清单与官网下载入口的公网验收 | 关联:task045
+change329 日期:2026-04-07 | 文件:.phrase/phases/phase-client-stability-20260326/plan_client-stability_20260326.md | 操作:Modify | 影响:阶段计划与优先级 | 说明:新增 0.6.8 发版后公网 smoke 里程碑，并将外部 manifest 与下载入口验收提升为 P0 | 关联:task045
+change330 日期:2026-04-07 | 文件:.phrase/phases/phase-client-stability-20260326/task_client-stability_20260326.md | 操作:Modify | 影响:任务清单 | 说明:新增并完成 task045，记录 GitHub/COS latest manifest、官网下载入口与代理摘要的发版后验收闭环 | 关联:task045
+change331 日期:2026-04-07 | 文件:.phrase/docs/CHANGE.md | 操作:Modify | 影响:全局变更索引 | 说明:将 0.6.8 的发版后公网 smoke 验收补入全局 CHANGE 摘要 | 关联:task045
+
 change317 日期:2026-04-07 | 文件:.phrase/phases/phase-client-stability-20260326/spec_client-stability_20260326.md | 操作:Modify | 影响:阶段需求说明 | 说明:补充 task041-task043 的桌面端 UI 收口需统一打包为 0.6.8 补丁版本的目标 | 关联:task044
 change318 日期:2026-04-07 | 文件:.phrase/phases/phase-client-stability-20260326/plan_client-stability_20260326.md | 操作:Modify | 影响:阶段计划与优先级 | 说明:新增 0.6.8 发版里程碑，并将版本元数据与正式发版链路一致性提升为 P0 | 关联:task044
 change319 日期:2026-04-07 | 文件:.phrase/phases/phase-client-stability-20260326/task_client-stability_20260326.md | 操作:Modify | 影响:任务清单 | 说明:新增并完成 task044，记录 0.6.8 的版本同步、本地验证与正式发版闭环 | 关联:task044
