@@ -54,25 +54,126 @@ jobs:
             exit 1
           fi
 
+      - name: Restore paused project if needed
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          project_api="https://api.supabase.com/v1/projects/${PROJECT_ID}"
+          state_file="$(mktemp)"
+
+          fetch_project_state() {
+            local http_code
+            http_code="$(curl --silent --show-error \
+              --output "$state_file" \
+              --write-out '%{http_code}' \
+              -H "Authorization: Bearer ${SUPABASE_ACCESS_TOKEN}" \
+              -H "Content-Type: application/json" \
+              "$project_api")"
+
+            if [ "$http_code" -lt 200 ] || [ "$http_code" -ge 300 ]; then
+              echo "Failed to inspect Supabase project state (HTTP $http_code)."
+              cat "$state_file"
+              return 1
+            fi
+          }
+
+          extract_status() {
+            python3 -c 'import json, sys; print((json.load(open(sys.argv[1], "r", encoding="utf-8")).get("status") or "").strip())' "$state_file"
+          }
+
+          fetch_project_state
+          current_status="$(extract_status)"
+          current_status_upper="$(printf '%s' "$current_status" | tr '[:lower:]' '[:upper:]')"
+          echo "Current Supabase project status: ${current_status:-<unknown>}"
+
+          restore_requested=0
+          if [[ "$current_status_upper" == *PAUSED* || "$current_status_upper" == *INACTIVE* ]]; then
+            restore_requested=1
+            restore_file="$(mktemp)"
+            restore_code="$(curl --silent --show-error \
+              --output "$restore_file" \
+              --write-out '%{http_code}' \
+              -X POST \
+              -H "Authorization: Bearer ${SUPABASE_ACCESS_TOKEN}" \
+              -H "Content-Type: application/json" \
+              "${project_api}/restore")"
+
+            if [ "$restore_code" -lt 200 ] || [ "$restore_code" -ge 300 ]; then
+              echo "Failed to request Supabase project restore (HTTP $restore_code)."
+              cat "$restore_file"
+              exit 1
+            fi
+
+            echo "Restore requested for paused Supabase project ${PROJECT_ID}."
+          else
+            echo "Supabase project is already active enough for deployment; restore skipped."
+          fi
+
+          if [ "$restore_requested" -eq 0 ]; then
+            exit 0
+          fi
+
+          for attempt in $(seq 1 30); do
+            sleep 20
+            fetch_project_state
+            current_status="$(extract_status)"
+            current_status_upper="$(printf '%s' "$current_status" | tr '[:lower:]' '[:upper:]')"
+            echo "Restore wait attempt ${attempt}/30: status=${current_status:-<unknown>}"
+
+            if [[ "$current_status_upper" == *ACTIVE* || "$current_status_upper" == *HEALTHY* ]]; then
+              echo "Supabase project is active again."
+              exit 0
+            fi
+          done
+
+          echo "Supabase project did not become active within the expected time window."
+          cat "$state_file"
+          exit 1
+
       - name: Push model secrets
         shell: bash
         run: |
           set -euo pipefail
-          supabase secrets set \
-            MODEL_PROVIDER="$MODEL_PROVIDER" \
-            MODEL_API_URL="$MODEL_API_URL" \
-            MODEL_NAME="$MODEL_NAME" \
-            MODEL_API_KEY_SECRET_NAME="$MODEL_API_KEY_SECRET_NAME" \
-            MODEL_API_KEY="$MODEL_API_KEY" \
-            RUNTIME_CONFIG_SUPABASE_URL="$RUNTIME_CONFIG_SUPABASE_URL" \
-            RUNTIME_CONFIG_SERVICE_ROLE_KEY="$SUPABASE_SERVICE_ROLE_KEY" \
-            --project-ref "$PROJECT_ID"
+          for attempt in $(seq 1 10); do
+            if supabase secrets set \
+              MODEL_PROVIDER="$MODEL_PROVIDER" \
+              MODEL_API_URL="$MODEL_API_URL" \
+              MODEL_NAME="$MODEL_NAME" \
+              MODEL_API_KEY_SECRET_NAME="$MODEL_API_KEY_SECRET_NAME" \
+              MODEL_API_KEY="$MODEL_API_KEY" \
+              RUNTIME_CONFIG_SUPABASE_URL="$RUNTIME_CONFIG_SUPABASE_URL" \
+              RUNTIME_CONFIG_SERVICE_ROLE_KEY="$SUPABASE_SERVICE_ROLE_KEY" \
+              --project-ref "$PROJECT_ID"; then
+              exit 0
+            fi
+
+            if [ "$attempt" -eq 10 ]; then
+              echo "Failed to push Supabase secrets after ${attempt} attempts."
+              exit 1
+            fi
+
+            echo "Supabase secrets update not ready yet; retrying in 20 seconds..."
+            sleep 20
+          done
 
       - name: Deploy translate function
         shell: bash
         run: |
           set -euo pipefail
-          supabase functions deploy translate --project-ref "$PROJECT_ID"
+          for attempt in $(seq 1 10); do
+            if supabase functions deploy translate --project-ref "$PROJECT_ID"; then
+              exit 0
+            fi
+
+            if [ "$attempt" -eq 10 ]; then
+              echo "Failed to deploy translate function after ${attempt} attempts."
+              exit 1
+            fi
+
+            echo "Supabase function deployment not ready yet; retrying in 20 seconds..."
+            sleep 20
+          done
 
       - name: Upsert translation runtime config
         if: env.TRANSLATION_RUNTIME_CONFIG_JSON != ''
@@ -82,10 +183,22 @@ jobs:
 
           payload="$(python3 -c 'import json, os; value = json.loads(os.environ["TRANSLATION_RUNTIME_CONFIG_JSON"]); print(json.dumps({"key": "translation_proxy", "value": value}, ensure_ascii=False))')"
 
-          curl --fail-with-body \
-            -X POST "${RUNTIME_CONFIG_SUPABASE_URL}/rest/v1/app_runtime_config?on_conflict=key" \
-            -H "Content-Type: application/json" \
-            -H "apikey: ${SUPABASE_SERVICE_ROLE_KEY}" \
-            -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}" \
-            -H "Prefer: resolution=merge-duplicates,return=representation" \
-            -d "$payload"
+          for attempt in $(seq 1 10); do
+            if curl --fail-with-body \
+              -X POST "${RUNTIME_CONFIG_SUPABASE_URL}/rest/v1/app_runtime_config?on_conflict=key" \
+              -H "Content-Type: application/json" \
+              -H "apikey: ${SUPABASE_SERVICE_ROLE_KEY}" \
+              -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}" \
+              -H "Prefer: resolution=merge-duplicates,return=representation" \
+              -d "$payload"; then
+              exit 0
+            fi
+
+            if [ "$attempt" -eq 10 ]; then
+              echo "Failed to upsert translation runtime config after ${attempt} attempts."
+              exit 1
+            fi
+
+            echo "Supabase runtime config endpoint not ready yet; retrying in 20 seconds..."
+            sleep 20
+          done
