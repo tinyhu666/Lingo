@@ -71,7 +71,7 @@ export default function Settings() {
             </div>
             <div className='tool-subcard min-w-0 p-4'>
               <div className='tool-caption'>{t('settings.defaultLanguage')}</div>
-              <div className='tool-card-title mt-2 text-zinc-900'>
+              <div className='tool-card-title mt-2 text-zinc-100'>
                 {getLanguageMeta(from, locale).label} → {getLanguageMeta(to, locale).label}
               </div>
               <p className='tool-body mt-2'>{t('settings.defaultLanguageHint')}</p>
@@ -88,11 +88,11 @@ export default function Settings() {
           <div className='grid grid-cols-1 gap-4 md:grid-cols-2'>
             <div className='tool-subcard min-w-0 p-4'>
               <div className='tool-caption'>{t('settings.strategy.scene')}</div>
-              <div className='tool-card-title mt-2 text-zinc-900'>{scene}</div>
+              <div className='tool-card-title mt-2 text-zinc-100'>{scene}</div>
             </div>
             <div className='tool-subcard min-w-0 p-4'>
               <div className='tool-caption'>{t('settings.strategy.tone')}</div>
-              <div className='tool-card-title mt-2 text-zinc-900'>{modeLabel}</div>
+              <div className='tool-card-title mt-2 text-zinc-100'>{modeLabel}</div>
             </div>
           </div>
 

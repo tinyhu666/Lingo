@@ -47,6 +47,57 @@ fn shared_http_client() -> &'static Client {
     })
 }
 
+fn detect_text_script(text: &str) -> &'static str {
+    let has_kana = text
+        .chars()
+        .any(|c| matches!(c, '\u{3040}'..='\u{30FF}'));
+    let has_hangul = text
+        .chars()
+        .any(|c| matches!(c, '\u{AC00}'..='\u{D7AF}'));
+    let has_cjk = text
+        .chars()
+        .any(|c| matches!(c, '\u{4E00}'..='\u{9FFF}' | '\u{3400}'..='\u{4DBF}'));
+    let has_cyrillic = text
+        .chars()
+        .any(|c| matches!(c, '\u{0400}'..='\u{04FF}'));
+
+    if has_kana {
+        return "kana";
+    }
+    if has_hangul {
+        return "hangul";
+    }
+    if has_cjk {
+        return "cjk";
+    }
+    if has_cyrillic {
+        return "cyrillic";
+    }
+    "latin"
+}
+
+fn language_matches_script(lang: &str, script: &str) -> bool {
+    match script {
+        "cjk" => lang == "zh",
+        "cyrillic" => lang == "ru",
+        "kana" => matches!(lang, "ja" | "jp"),
+        "hangul" => matches!(lang, "ko" | "kr"),
+        "latin" => matches!(lang, "en" | "en-SEA" | "fr" | "de" | "es"),
+        _ => false,
+    }
+}
+
+/// When the input text is written in the target language, swap direction
+/// so the user gets a translation back into their own language.
+fn resolve_translation_direction<'a>(text: &str, from: &'a str, to: &'a str) -> (&'a str, &'a str) {
+    let script = detect_text_script(text);
+    if language_matches_script(to, script) && !language_matches_script(from, script) {
+        (to, from)
+    } else {
+        (from, to)
+    }
+}
+
 fn cleanup_text(text: &str) -> String {
     let trimmed = text.trim();
     if let Some(end_pos) = trimmed.find("</think>") {
@@ -363,10 +414,20 @@ pub async fn translate_with_gpt(original: &str, settings: &AppSettings) -> Resul
         backend.source, endpoint
     );
 
+    let (effective_from, effective_to) = resolve_translation_direction(
+        text,
+        &settings.translation_from,
+        &settings.translation_to,
+    );
+    println!(
+        "[translate] direction from={} to={} (configured from={} to={})",
+        effective_from, effective_to, settings.translation_from, settings.translation_to
+    );
+
     let body = json!({
         "text": text,
-        "translation_from": settings.translation_from,
-        "translation_to": settings.translation_to,
+        "translation_from": effective_from,
+        "translation_to": effective_to,
         "translation_mode": settings.translation_mode,
         "game_scene": settings.game_scene,
         "daily_mode": settings.daily_mode,
@@ -691,5 +752,83 @@ mod tests {
             message.contains("本地翻译代理不可达"),
             "unexpected local proxy error message: {message}"
         );
+    }
+
+    #[test]
+    fn detect_text_script_identifies_chinese() {
+        assert_eq!(detect_text_script("推塔了"), "cjk");
+        assert_eq!(detect_text_script("gank 下路"), "cjk");
+        assert_eq!(detect_text_script("5人push高地"), "cjk");
+    }
+
+    #[test]
+    fn detect_text_script_identifies_english() {
+        assert_eq!(detect_text_script("push mid tower"), "latin");
+        assert_eq!(detect_text_script("gg wp"), "latin");
+        assert_eq!(detect_text_script("go rosh now"), "latin");
+    }
+
+    #[test]
+    fn detect_text_script_identifies_russian() {
+        assert_eq!(detect_text_script("иди мид"), "cyrillic");
+        assert_eq!(detect_text_script("push мид"), "cyrillic");
+    }
+
+    #[test]
+    fn detect_text_script_identifies_japanese() {
+        assert_eq!(detect_text_script("タワーを押せ"), "kana");
+    }
+
+    #[test]
+    fn detect_text_script_identifies_korean() {
+        assert_eq!(detect_text_script("미드 가자"), "hangul");
+    }
+
+    #[test]
+    fn resolve_direction_keeps_normal_when_text_matches_source() {
+        // User writes Chinese, direction is zh→en → keep as-is
+        let (from, to) = resolve_translation_direction("推塔了快来", "zh", "en");
+        assert_eq!(from, "zh");
+        assert_eq!(to, "en");
+    }
+
+    #[test]
+    fn resolve_direction_swaps_when_text_matches_target() {
+        // Teammate writes English, direction is zh→en → swap to en→zh
+        let (from, to) = resolve_translation_direction("push mid tower", "zh", "en");
+        assert_eq!(from, "en");
+        assert_eq!(to, "zh");
+    }
+
+    #[test]
+    fn resolve_direction_swaps_sea_english_teammate_message() {
+        // SEA English should behave like other Latin-script targets
+        let (from, to) = resolve_translation_direction("hold high ground", "zh", "en-SEA");
+        assert_eq!(from, "en-SEA");
+        assert_eq!(to, "zh");
+    }
+
+    #[test]
+    fn resolve_direction_swaps_russian_teammate_message() {
+        // Teammate writes Russian, direction is zh→ru → swap to ru→zh
+        let (from, to) = resolve_translation_direction("иди мид", "zh", "ru");
+        assert_eq!(from, "ru");
+        assert_eq!(to, "zh");
+    }
+
+    #[test]
+    fn resolve_direction_keeps_mixed_chinese_english_as_chinese() {
+        // Mixed text with Chinese characters should be detected as Chinese
+        let (from, to) = resolve_translation_direction("gank 下路", "zh", "en");
+        assert_eq!(from, "zh");
+        assert_eq!(to, "en");
+    }
+
+    #[test]
+    fn resolve_direction_handles_same_script_languages() {
+        // Both from and to are Latin-script (e.g., en→fr), text is Latin → no swap
+        let (from, to) = resolve_translation_direction("push the tower", "en", "fr");
+        assert_eq!(from, "en");
+        assert_eq!(to, "fr");
     }
 }

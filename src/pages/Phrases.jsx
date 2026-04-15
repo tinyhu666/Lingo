@@ -241,8 +241,8 @@ export default function Phrases() {
 
             <tbody>
               {rows.map((row) => (
-                <tr key={row.id} className='phrases-table__row border-t border-[rgba(226,233,243,0.8)]'>
-                  <td className='px-5 py-4 text-sm font-semibold text-zinc-500 align-top'>{row.id}</td>
+                <tr key={row.id} className='phrases-table__row'>
+                  <td className='px-5 py-4 text-sm font-semibold text-zinc-400 align-top'>{row.id}</td>
 
                   <td className='px-4 py-4'>
                     <input

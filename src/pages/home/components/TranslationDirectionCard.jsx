@@ -38,7 +38,7 @@ function LanguageChip({ value, onClick, expanded, direction, uiLocale }) {
       aria-expanded={expanded}
       className={`home-language-chip w-full min-w-0 ${expanded ? 'home-language-chip--active' : ''}`}>
       <span className='home-language-chip__meta'>
-        <span className='w-5 h-5 rounded-full overflow-hidden flex items-center justify-center bg-gray-100 shrink-0'>
+        <span className='w-5 h-5 rounded-full overflow-hidden flex items-center justify-center bg-zinc-800 shrink-0'>
           {FlagIcon ? <FlagIcon className='w-7 h-7 scale-[1.8]' /> : null}
         </span>
         <span className='tool-control-text home-language-chip__label whitespace-nowrap'>{meta.label}</span>
@@ -113,7 +113,7 @@ export default function TranslationDirectionCard() {
 
     return (
       <div className='flex items-center gap-2 min-w-0'>
-        <span className='w-4 h-4 rounded-full overflow-hidden flex items-center justify-center bg-gray-100 shrink-0'>
+        <span className='w-4 h-4 rounded-full overflow-hidden flex items-center justify-center bg-zinc-800 shrink-0'>
           {FlagIcon ? <FlagIcon className='w-6 h-6 scale-[1.8]' /> : null}
         </span>
         <span className='truncate'>{label}</span>
@@ -138,7 +138,7 @@ export default function TranslationDirectionCard() {
         <div className='home-top-actions'>
           <div className='tool-control-slot home-top-control-slot'>
             <div className='home-top-control-shell'>
-              <div className='grid h-full w-full grid-cols-[minmax(0,1fr)_26px_minmax(0,1fr)] items-center gap-1 text-zinc-900'>
+              <div className='grid h-full w-full grid-cols-[minmax(0,1fr)_26px_minmax(0,1fr)] items-center gap-1 text-zinc-100'>
                 <div className='relative min-w-0' ref={fromTriggerRef}>
                   <LanguageChip
                     value={from}
@@ -160,7 +160,7 @@ export default function TranslationDirectionCard() {
                 </div>
 
                 <div className='h-11 w-[26px] flex items-center justify-center'>
-                  <ArrowRight className='w-6 h-6 shrink-0 text-zinc-700' />
+                  <ArrowRight className='w-6 h-6 shrink-0 text-zinc-300' />
                 </div>
 
                 <div className='relative min-w-0' ref={toTriggerRef}>

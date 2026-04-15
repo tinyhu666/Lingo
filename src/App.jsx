@@ -69,7 +69,7 @@ function App() {
 
   return (
     <div
-      className={`lingo-theme h-full text-zinc-900 ${desktopClient ? 'lingo-theme--desktop' : ''} ${windowsClient ? 'lingo-theme--windows' : ''}`}>
+      className={`lingo-theme h-full text-zinc-100 ${desktopClient ? 'lingo-theme--desktop' : ''} ${windowsClient ? 'lingo-theme--windows' : ''}`}>
       <Layout activeItem={activeItem} setActiveItem={setActiveItem}>
         <Suspense fallback={<PageFallback />}>
           <CurrentPage />

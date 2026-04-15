@@ -19,6 +19,8 @@
     "opener:allow-open-url",
     "opener:allow-default-urls",
     "updater:default",
+    "core:event:allow-listen",
+    "core:event:allow-unlisten",
     "core:window:allow-minimize",
     "core:window:allow-close",
     "core:window:allow-start-dragging",

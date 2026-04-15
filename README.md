@@ -48,6 +48,15 @@ Lingo 是一款面向 Windows 和 macOS 的 AI 游戏内聊天翻译客户端，
 - Visual Studio C++ Build Tools（Desktop development with C++）
 - WebView2 Runtime
 
+## 本地开发
+
+```bash
+npm ci
+npm run tauri dev
+```
+
+根目录 `npm ci` 会同时安装桌面端和 `server/translate-proxy` 的依赖，不需要再单独进入代理目录执行第二次安装。
+
 ## 打包发布
 
 ```bash

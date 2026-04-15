@@ -72,25 +72,25 @@ export default function Tutorial() {
 
             <div className='tutorial-demo-stack'>
               <div className='tool-subcard tutorial-demo-block p-4'>
-                <div className='flex items-center gap-2 text-zinc-800'>
+                <div className='flex items-center gap-2 text-zinc-200'>
                   <KeyboardAlt className='h-4 w-4 stroke-zinc-500' />
                   <span className='tool-caption'>{t('tutorial.demo.sourceLabel')}</span>
                 </div>
-                <div className='mt-3 text-[17px] font-semibold leading-7 text-zinc-900'>{t('tutorial.demo.sourceText')}</div>
+                <div className='mt-3 text-[17px] font-semibold leading-7 text-zinc-100'>{t('tutorial.demo.sourceText')}</div>
               </div>
 
               <div className='tutorial-demo-connector flex items-center gap-3 px-1'>
-                <div className='h-px flex-1 bg-[rgba(214,224,236,0.86)]' />
+                <div className='h-px flex-1 bg-[rgba(255,255,255,0.06)]' />
                 <StatusChip label={t('tutorial.demo.resultBadge')} tone='success' />
-                <div className='h-px flex-1 bg-[rgba(214,224,236,0.86)]' />
+                <div className='h-px flex-1 bg-[rgba(255,255,255,0.06)]' />
               </div>
 
               <div className='tool-subcard tutorial-demo-block tutorial-demo-block--accent p-4'>
-                <div className='flex items-center gap-2 text-zinc-800'>
+                <div className='flex items-center gap-2 text-zinc-200'>
                   <Sparkles className='h-4 w-4 stroke-zinc-500' />
                   <span className='tool-caption'>{t('tutorial.demo.resultLabel')}</span>
                 </div>
-                <div className='mt-3 text-[17px] font-semibold leading-7 text-zinc-900'>{t('tutorial.demo.resultText')}</div>
+                <div className='mt-3 text-[17px] font-semibold leading-7 text-zinc-100'>{t('tutorial.demo.resultText')}</div>
               </div>
             </div>
           </PanelCard>

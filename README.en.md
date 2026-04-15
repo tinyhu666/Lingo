@@ -48,6 +48,15 @@ For repeated lines, you can also send saved phrase shortcuts directly.
 - Visual Studio C++ Build Tools (Desktop development with C++)
 - WebView2 Runtime
 
+## Local development
+
+```bash
+npm ci
+npm run tauri dev
+```
+
+The root `npm ci` now installs both the desktop app dependencies and the `server/translate-proxy` workspace, so you do not need a second install inside the proxy directory.
+
 ## Build and Release
 
 ```bash

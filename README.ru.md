@@ -48,6 +48,15 @@ Lingo — это AI-клиент перевода игрового чата дл
 - Visual Studio C++ Build Tools (Desktop development with C++)
 - WebView2 Runtime
 
+## Локальная разработка
+
+```bash
+npm ci
+npm run tauri dev
+```
+
+`npm ci` в корне теперь устанавливает зависимости и десктопного приложения, и workspace `server/translate-proxy`, поэтому второй отдельный install внутри каталога прокси больше не нужен.
+
 ## Сборка и релиз
 
 ```bash

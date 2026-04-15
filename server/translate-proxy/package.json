@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "node src/server.mjs",
     "smoke": "node scripts/smoke-test.mjs",
-    "analytics:smoke": "node scripts/analytics-smoke-test.mjs"
+    "analytics:smoke": "node scripts/analytics-smoke-test.mjs",
+    "diagnose": "node scripts/diagnose-latency.mjs",
+    "print-siliconflow-config": "node scripts/print-siliconflow-config.mjs"
   },
   "dependencies": {
     "better-sqlite3": "^12.8.0"

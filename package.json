@@ -1,19 +1,22 @@
 {
   "name": "lingo",
   "private": true,
-  "version": "0.6.8",
+  "version": "0.6.9",
   "type": "module",
+  "workspaces": [
+    "server/translate-proxy"
+  ],
   "scripts": {
     "dev": "vite",
     "dev:desktop": "node scripts/dev-desktop.mjs",
     "build": "vite build",
     "preview": "vite preview",
     "tauri": "tauri",
-    "proxy:dev": "node server/translate-proxy/src/server.mjs",
-    "proxy:smoke": "node server/translate-proxy/scripts/smoke-test.mjs",
-    "proxy:analytics-smoke": "node server/translate-proxy/scripts/analytics-smoke-test.mjs",
-    "proxy:diagnose": "node server/translate-proxy/scripts/diagnose-latency.mjs",
-    "proxy:print-siliconflow-config": "node server/translate-proxy/scripts/print-siliconflow-config.mjs",
+    "proxy:dev": "npm --workspace server/translate-proxy run dev",
+    "proxy:smoke": "npm --workspace server/translate-proxy run smoke",
+    "proxy:analytics-smoke": "npm --workspace server/translate-proxy run analytics:smoke",
+    "proxy:diagnose": "npm --workspace server/translate-proxy run diagnose --",
+    "proxy:print-siliconflow-config": "npm --workspace server/translate-proxy run print-siliconflow-config --",
     "brand:assets": "node scripts/generate-brand-assets.mjs",
     "release:sync-notes": "node scripts/sync-github-release-notes.mjs",
     "clean": "node -e \"const fs = require('fs'); fs.rmSync('src-tauri/target', { recursive: true, force: true }); fs.rmSync('dist', { recursive: true, force: true });\"",
