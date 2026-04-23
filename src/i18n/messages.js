@@ -157,6 +157,10 @@ export const messages = {
       save: '保存',
       saving: '保存中...',
       contentPlaceholder: '输入常用语内容',
+      empty: {
+        title: '还没有常用语',
+        summary: '你可以先保持空白，也可以新增一条高频短句，分配快捷键后再保存。',
+      },
       table: {
         index: '#',
         content: '常用语内容',
@@ -175,7 +179,9 @@ export const messages = {
       },
       toasts: {
         saved: '常用语已保存并更新快捷键',
+        cleared: '常用语已清空',
         previewSaved: '预览模式：常用语已保存到本地',
+        previewCleared: '预览模式：常用语已从本地清空',
       },
     },
     settings: {
@@ -240,6 +246,13 @@ export const messages = {
         contactQqGroup: 'QQ群',
         contactEmail: '邮箱',
         contactQqCopied: 'QQ群号已复制',
+        contactCopyFailed: '复制失败: {{error}}',
+        contactCopyManual: '当前环境无法自动复制，请手动复制群号：{{value}}',
+        contactActionOpen: '打开',
+        contactActionCopy: '复制',
+        contactDiscordHint: '点击加入社区频道，查看版本动态与使用反馈。',
+        contactQqHint: '复制群号后可直接在 QQ 中搜索并加入。',
+        contactEmailHint: '适合反馈问题、合作沟通或发送较长建议。',
         introTitle: '项目简介',
         introBody: 'Powered by 萌新。当前版本聚焦桌面端游戏内聊天翻译工作流，支持快捷键触发、自动回填与应用内更新。',
         featureTitle: '核心特点',
@@ -425,6 +438,10 @@ export const messages = {
       save: 'Save',
       saving: 'Saving...',
       contentPlaceholder: 'Enter phrase content',
+      empty: {
+        title: 'No phrases yet',
+        summary: 'You can keep this list empty, or add a high-frequency line and save it once the hotkey looks right.',
+      },
       table: {
         index: '#',
         content: 'Phrase',
@@ -443,7 +460,9 @@ export const messages = {
       },
       toasts: {
         saved: 'Phrases saved and shortcuts updated.',
+        cleared: 'All phrases cleared.',
         previewSaved: 'Preview mode: phrases saved locally.',
+        previewCleared: 'Preview mode: phrases cleared locally.',
       },
     },
     settings: {
@@ -508,6 +527,13 @@ export const messages = {
         contactQqGroup: 'QQ Group',
         contactEmail: 'Email',
         contactQqCopied: 'QQ group number copied.',
+        contactCopyFailed: 'Failed to copy: {{error}}',
+        contactCopyManual: 'Clipboard is unavailable here. Copy the QQ group manually: {{value}}',
+        contactActionOpen: 'Open',
+        contactActionCopy: 'Copy',
+        contactDiscordHint: 'Open the community channel for release updates and product feedback.',
+        contactQqHint: 'Copy the group number, then search and join it from QQ.',
+        contactEmailHint: 'Best for bug reports, partnerships, or longer notes.',
         introTitle: 'Overview',
         introBody: 'Powered by Mengxin. The current release focuses on a desktop in-game chat translation workflow: hotkeys, auto fill-back, and in-app updates.',
         featureTitle: 'Core Features',
@@ -693,6 +719,10 @@ export const messages = {
       save: 'Сохранить',
       saving: 'Сохранение...',
       contentPlaceholder: 'Введите текст фразы',
+      empty: {
+        title: 'Фраз пока нет',
+        summary: 'Список можно оставить пустым, либо добавить часто используемую реплику и сохранить ее вместе с хоткеем.',
+      },
       table: {
         index: '#',
         content: 'Фраза',
@@ -711,7 +741,9 @@ export const messages = {
       },
       toasts: {
         saved: 'Фразы сохранены, хоткеи обновлены.',
+        cleared: 'Все фразы очищены.',
         previewSaved: 'Режим предпросмотра: фразы сохранены локально.',
+        previewCleared: 'Режим предпросмотра: локальные фразы очищены.',
       },
     },
     settings: {
@@ -776,6 +808,13 @@ export const messages = {
         contactQqGroup: 'Группа QQ',
         contactEmail: 'Почта',
         contactQqCopied: 'Номер группы QQ скопирован.',
+        contactCopyFailed: 'Не удалось скопировать: {{error}}',
+        contactCopyManual: 'Буфер обмена недоступен. Скопируйте номер группы QQ вручную: {{value}}',
+        contactActionOpen: 'Открыть',
+        contactActionCopy: 'Скопировать',
+        contactDiscordHint: 'Откройте сообщество, чтобы следить за релизами и оставлять отзывы.',
+        contactQqHint: 'Скопируйте номер группы и найдите ее в QQ.',
+        contactEmailHint: 'Подходит для баг-репортов, партнерских вопросов и длинных сообщений.',
         introTitle: 'Кратко',
         introBody: 'Powered by Mengxin. Текущий релиз сфокусирован на desktop-сценарии перевода игрового чата: хоткеи, автоподстановка и обновления внутри приложения.',
         featureTitle: 'Ключевые возможности',

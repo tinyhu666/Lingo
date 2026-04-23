@@ -65,7 +65,7 @@ export default function Phrases() {
   useEffect(() => {
     const source = settings?.phrases || [];
     if (source.length === 0) {
-      setRows([createRow(1)]);
+      setRows([]);
       return;
     }
 
@@ -119,11 +119,6 @@ export default function Phrases() {
   };
 
   const removeRow = (id) => {
-    if (rows.length <= 1) {
-      showError(t('phrases.errors.minOne'));
-      return;
-    }
-
     setRows((prev) =>
       prev
         .filter((row) => row.id !== id)
@@ -190,10 +185,10 @@ export default function Phrases() {
       if (hasTauriRuntime()) {
         const latest = await invokeCommand('update_phrases', { phrases: payload });
         await syncSettings(latest);
-        showSuccess(t('phrases.toasts.saved'));
+        showSuccess(t(payload.length === 0 ? 'phrases.toasts.cleared' : 'phrases.toasts.saved'));
       } else {
         await updateSettings({ phrases: payload });
-        showSuccess(t('phrases.toasts.previewSaved'));
+        showSuccess(t(payload.length === 0 ? 'phrases.toasts.previewCleared' : 'phrases.toasts.previewSaved'));
       }
     } catch (error) {
       showError(t('phrases.errors.saveFailed', { error: toErrorMessage(error) }));
@@ -228,61 +223,71 @@ export default function Phrases() {
 
       <motion.div className='flex-1' initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.06 }}>
         <PanelCard className='phrases-panel tool-rise flex-1'>
-        <div className='phrases-table-shell'>
-          <table className='phrases-table min-w-full border-separate border-spacing-0'>
-            <thead className='phrases-table__head sticky top-0 z-10'>
-              <tr>
-                <th className='px-5 py-4 text-left tool-caption w-[64px]'>{t('phrases.table.index')}</th>
-                <th className='px-4 py-4 text-left tool-caption'>{t('phrases.table.content')}</th>
-                <th className='px-4 py-4 text-left tool-caption w-[210px]'>{t('phrases.table.hotkey')}</th>
-                <th className='px-5 py-4 text-left tool-caption w-[92px]'>{t('phrases.table.action')}</th>
-              </tr>
-            </thead>
+          {rows.length === 0 ? (
+            <div className='flex min-h-[280px] flex-col items-center justify-center rounded-[28px] border border-dashed border-[rgba(201,214,234,0.96)] bg-[rgba(249,252,255,0.9)] px-6 py-10 text-center'>
+              <div className='tool-card-title'>{t('phrases.empty.title')}</div>
+              <p className='tool-body mt-3 max-w-[420px]'>{t('phrases.empty.summary')}</p>
+              <button type='button' onClick={addRow} className='tool-btn mt-5 px-4'>
+                {t('phrases.add')}
+              </button>
+            </div>
+          ) : (
+            <div className='phrases-table-shell'>
+              <table className='phrases-table min-w-full border-separate border-spacing-0'>
+                <thead className='phrases-table__head sticky top-0 z-10'>
+                  <tr>
+                    <th className='px-5 py-4 text-left tool-caption w-[64px]'>{t('phrases.table.index')}</th>
+                    <th className='px-4 py-4 text-left tool-caption'>{t('phrases.table.content')}</th>
+                    <th className='px-4 py-4 text-left tool-caption w-[210px]'>{t('phrases.table.hotkey')}</th>
+                    <th className='px-5 py-4 text-left tool-caption w-[92px]'>{t('phrases.table.action')}</th>
+                  </tr>
+                </thead>
 
-            <tbody>
-              {rows.map((row) => (
-                <tr key={row.id} className='phrases-table__row border-t border-[rgba(226,233,243,0.8)]'>
-                  <td className='px-5 py-4 text-sm font-semibold text-zinc-500 align-top'>{row.id}</td>
+                <tbody>
+                  {rows.map((row) => (
+                    <tr key={row.id} className='phrases-table__row border-t border-[rgba(226,233,243,0.8)]'>
+                      <td className='px-5 py-4 align-top text-sm font-semibold text-zinc-500'>{row.id}</td>
 
-                  <td className='px-4 py-4'>
-                    <input
-                      value={row.phrase}
-                      onChange={(event) => patchRow(row.id, { phrase: event.target.value })}
-                      className='tool-input'
-                      placeholder={t('phrases.contentPlaceholder')}
-                      maxLength={MAX_PHRASE_LENGTH}
-                    />
-                  </td>
+                      <td className='px-4 py-4'>
+                        <input
+                          value={row.phrase}
+                          onChange={(event) => patchRow(row.id, { phrase: event.target.value })}
+                          className='tool-input'
+                          placeholder={t('phrases.contentPlaceholder')}
+                          maxLength={MAX_PHRASE_LENGTH}
+                        />
+                      </td>
 
-                  <td className='px-4 py-4'>
-                    <div className='phrases-hotkey-editor'>
-                      <KeycapGroup keys={[MODIFIER_LABEL]} size='sm' />
-                      <select
-                        value={row.keyCode}
-                        onChange={(event) => patchRow(row.id, { keyCode: event.target.value })}
-                        className='tool-input'>
-                        {KEY_OPTIONS.map((option) => (
-                          <option key={option.code} value={option.code}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </td>
+                      <td className='px-4 py-4'>
+                        <div className='phrases-hotkey-editor'>
+                          <KeycapGroup keys={[MODIFIER_LABEL]} size='sm' />
+                          <select
+                            value={row.keyCode}
+                            onChange={(event) => patchRow(row.id, { keyCode: event.target.value })}
+                            className='tool-input'>
+                            {KEY_OPTIONS.map((option) => (
+                              <option key={option.code} value={option.code}>
+                                {option.label}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </td>
 
-                  <td className='px-5 py-4 align-top'>
-                    <button
-                      type='button'
-                      onClick={() => removeRow(row.id)}
-                      className='tool-btn tool-btn-danger min-w-[72px] px-3 text-sm'>
-                      {t('common.remove')}
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                      <td className='px-5 py-4 align-top'>
+                        <button
+                          type='button'
+                          onClick={() => removeRow(row.id)}
+                          className='tool-btn tool-btn-danger min-w-[72px] px-3 text-sm'>
+                          {t('common.remove')}
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </PanelCard>
       </motion.div>
     </div>

@@ -10,7 +10,7 @@ import { APP_VERSION_LABEL, RELEASE_PAGE_URL } from '../constants/version';
 import { hasTauriRuntime } from '../services/tauriRuntime';
 import { DEFAULT_PUBLIC_SITE_CONFIG, loadPublicSiteConfig } from '../services/publicSiteConfig';
 import { useI18n } from '../i18n/I18nProvider';
-import { showError, showSuccess } from '../utils/toast';
+import { showError, showInfo, showSuccess } from '../utils/toast';
 import { toErrorMessage } from '../utils/error';
 
 const stripLeadingMarkdownHeading = (value) => {
@@ -56,24 +56,66 @@ const openContactLink = async (url, t) => {
   }
 };
 
+const copyTextFallback = (value) => {
+  if (typeof document === 'undefined') {
+    return false;
+  }
+
+  const textarea = document.createElement('textarea');
+  textarea.value = value;
+  textarea.setAttribute('readonly', '');
+  textarea.style.position = 'fixed';
+  textarea.style.opacity = '0';
+  textarea.style.pointerEvents = 'none';
+  textarea.style.left = '-9999px';
+  textarea.style.top = '0';
+
+  document.body.appendChild(textarea);
+  textarea.focus();
+  textarea.select();
+  textarea.setSelectionRange(0, textarea.value.length);
+
+  let copied = false;
+  try {
+    copied = Boolean(document.execCommand?.('copy'));
+  } finally {
+    textarea.remove();
+  }
+
+  return copied;
+};
+
 const copyContactValue = async (value, t) => {
   try {
-    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
-      await navigator.clipboard.writeText(value);
-      showSuccess(t('about.project.contactQqCopied'));
-      return;
-    }
-
     if (hasTauriRuntime()) {
-      const { writeText } = await import('@tauri-apps/plugin-clipboard-manager');
-      await writeText(value);
+      try {
+        const { writeText } = await import('@tauri-apps/plugin-clipboard-manager');
+        await writeText(value);
+        showSuccess(t('about.project.contactQqCopied'));
+        return;
+      } catch {
+        // Fall through to browser clipboard helpers.
+      }
+    }
+
+    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+      try {
+        await navigator.clipboard.writeText(value);
+        showSuccess(t('about.project.contactQqCopied'));
+        return;
+      } catch {
+        // Some preview/browser contexts deny clipboard permission even when the API exists.
+      }
+    }
+
+    if (copyTextFallback(value)) {
       showSuccess(t('about.project.contactQqCopied'));
       return;
     }
 
-    throw new Error('Clipboard is not available in this environment.');
+    showInfo(t('about.project.contactCopyManual', { value }));
   } catch (error) {
-    showError(t('developerNote.openLinkFailed', { error: toErrorMessage(error) }));
+    showError(t('about.project.contactCopyFailed', { error: toErrorMessage(error) }));
   }
 };
 
@@ -180,18 +222,24 @@ export default function About() {
         key: 'discord',
         label: t('about.project.contactDiscord'),
         value: contact.discordUrl.replace(/^https?:\/\//, ''),
+        hint: t('about.project.contactDiscordHint'),
+        actionLabel: t('about.project.contactActionOpen'),
         action: () => openContactLink(contact.discordUrl, t),
       },
       {
         key: 'qq-group',
         label: t('about.project.contactQqGroup'),
         value: contact.qqGroup,
+        hint: t('about.project.contactQqHint'),
+        actionLabel: t('about.project.contactActionCopy'),
         action: () => copyContactValue(contact.qqGroup, t),
       },
       {
         key: 'email',
         label: t('about.project.contactEmail'),
         value: contact.email,
+        hint: t('about.project.contactEmailHint'),
+        actionLabel: t('about.project.contactActionOpen'),
         action: () => openContactLink(`mailto:${contact.email}`, t),
       },
     ];
@@ -309,6 +357,10 @@ export default function About() {
                   className='about-contact-card min-w-[220px] flex-1 rounded-2xl border border-[rgba(196,210,233,0.96)] bg-[rgba(255,255,255,0.94)] px-4 py-3 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition-all duration-150 hover:-translate-y-[1px] hover:border-[rgba(157,181,229,0.98)] hover:bg-[rgba(252,254,255,0.98)]'>
                   <div className='text-[11px] font-extrabold uppercase tracking-[0.12em] text-[#7a89a1]'>{item.label}</div>
                   <div className='mt-1 text-[14px] font-semibold text-[#2d3d59]'>{item.value}</div>
+                  <div className='mt-3 flex items-center justify-between gap-3'>
+                    <div className='text-[12px] leading-5 text-[#6f8099]'>{item.hint}</div>
+                    <StatusChip label={item.actionLabel} tone='neutral' className='shrink-0' />
+                  </div>
                 </button>
               ))}
             </div>
