@@ -16,58 +16,6 @@ const DEFAULT_FAST_LANE_MAX_TOKENS = 48;
 const DEFAULT_FAST_LANE_TEMPERATURE = 0.1;
 const DEFAULT_FAST_LANE_MAX_TEXT_LENGTH = 72;
 const DEFAULT_FAST_LANE_ALLOWED_PROMPT_VARIANTS = ['translate', 'rewrite'];
-const DEFAULT_VISION_MODEL_NAME = '';
-const DEFAULT_VISION_TIMEOUT_MS = 8_000;
-const DEFAULT_INCOMING_CHAT_CAPTURE_INTERVAL_MS = 250;
-const DEFAULT_INCOMING_CHAT_STABLE_DEBOUNCE_MS = 360;
-const DEFAULT_INCOMING_CHAT_FRAME_DIFF_THRESHOLD = 0.012;
-const DEFAULT_INCOMING_CHAT_DEDUPE_WINDOW_MS = 8_000;
-const DEFAULT_INCOMING_CHAT_OVERLAY_DURATION_MS = 6_000;
-const DEFAULT_INCOMING_CHAT_DEFAULT_MODE = 'auto';
-const DEFAULT_GENERIC_CHAT_ROI = Object.freeze({
-  x: 0.04,
-  y: 0.64,
-  width: 0.34,
-  height: 0.18,
-});
-const DEFAULT_DOTA2_CHAT_ROI = Object.freeze({
-  x: 0.294,
-  y: 0.612,
-  width: 0.422,
-  height: 0.168,
-});
-const DEFAULT_INCOMING_CHAT_GAME_PROFILES = Object.freeze({
-  dota2: {
-    default_roi: DEFAULT_DOTA2_CHAT_ROI,
-    auto_detect_enabled: true,
-    vision_prompt_version: 'dota2-chat-v1',
-    window_title_keywords: ['dota 2'],
-  },
-  lol: {
-    default_roi: DEFAULT_GENERIC_CHAT_ROI,
-    auto_detect_enabled: false,
-    vision_prompt_version: 'lol-chat-v1',
-    window_title_keywords: ['league of legends'],
-  },
-  wow: {
-    default_roi: DEFAULT_GENERIC_CHAT_ROI,
-    auto_detect_enabled: false,
-    vision_prompt_version: 'wow-chat-v1',
-    window_title_keywords: ['world of warcraft', 'wow'],
-  },
-  overwatch: {
-    default_roi: DEFAULT_GENERIC_CHAT_ROI,
-    auto_detect_enabled: false,
-    vision_prompt_version: 'overwatch-chat-v1',
-    window_title_keywords: ['overwatch'],
-  },
-  other: {
-    default_roi: DEFAULT_GENERIC_CHAT_ROI,
-    auto_detect_enabled: false,
-    vision_prompt_version: 'generic-chat-v1',
-    window_title_keywords: [],
-  },
-});
 const DEFAULT_CONTACT_DISCORD_URL = 'https://discord.gg/cWB49jCfdP';
 const DEFAULT_CONTACT_EMAIL = 'huruiw@outlook.com';
 const DEFAULT_CONTACT_QQ_GROUP = '1095706752';
@@ -151,103 +99,6 @@ const normalizePromptVariants = (value) => {
   return normalized.length > 0 ? normalized : [...DEFAULT_FAST_LANE_ALLOWED_PROMPT_VARIANTS];
 };
 
-const normalizeIncomingChatMode = (value) =>
-  String(value || DEFAULT_INCOMING_CHAT_DEFAULT_MODE).trim().toLowerCase() === 'manual'
-    ? 'manual'
-    : 'auto';
-
-const sanitizeStringList = (value, fallback = []) => {
-  const source = Array.isArray(value) ? value : fallback;
-  const normalized = [...new Set(
-    source
-      .map((item) => String(item || '').trim().toLowerCase())
-      .filter(Boolean),
-  )];
-  return normalized;
-};
-
-const clampUnitInterval = (value, fallback) => {
-  const parsed = Number(value);
-  if (!Number.isFinite(parsed)) {
-    return fallback;
-  }
-  return Math.min(1, Math.max(0, parsed));
-};
-
-const sanitizeRoi = (candidate, fallback) => {
-  const source = isRecord(candidate) ? candidate : {};
-  return {
-    x: clampUnitInterval(source.x, fallback.x),
-    y: clampUnitInterval(source.y, fallback.y),
-    width: clampUnitInterval(source.width, fallback.width),
-    height: clampUnitInterval(source.height, fallback.height),
-  };
-};
-
-const sanitizeIncomingChatGameProfile = (candidate, fallback) => {
-  const record = isRecord(candidate) ? candidate : {};
-  return {
-    default_roi: sanitizeRoi(record.default_roi, fallback.default_roi),
-    auto_detect_enabled:
-      record.auto_detect_enabled === undefined
-        ? fallback.auto_detect_enabled !== false
-        : record.auto_detect_enabled !== false,
-    vision_prompt_version:
-      normalizeString(record.vision_prompt_version) || fallback.vision_prompt_version,
-    window_title_keywords: sanitizeStringList(
-      record.window_title_keywords,
-      fallback.window_title_keywords,
-    ),
-  };
-};
-
-const sanitizeIncomingChatConfig = (candidate) => {
-  const record = isRecord(candidate) ? candidate : {};
-  const games = isRecord(record.games) ? record.games : {};
-  const sanitizedGames = Object.fromEntries(
-    Object.entries(DEFAULT_INCOMING_CHAT_GAME_PROFILES).map(([scene, fallback]) => [
-      scene,
-      sanitizeIncomingChatGameProfile(games[scene], fallback),
-    ]),
-  );
-
-  return {
-    enabled: record.enabled !== false,
-    default_mode: normalizeIncomingChatMode(record.default_mode),
-    capture_interval_ms: clampNumber(
-      record.capture_interval_ms,
-      DEFAULT_INCOMING_CHAT_CAPTURE_INTERVAL_MS,
-      120,
-      3_000,
-    ),
-    stable_debounce_ms: clampNumber(
-      record.stable_debounce_ms,
-      DEFAULT_INCOMING_CHAT_STABLE_DEBOUNCE_MS,
-      120,
-      5_000,
-    ),
-    frame_diff_threshold: clampNumber(
-      record.frame_diff_threshold,
-      DEFAULT_INCOMING_CHAT_FRAME_DIFF_THRESHOLD,
-      0.001,
-      1,
-    ),
-    dedupe_window_ms: clampNumber(
-      record.dedupe_window_ms,
-      DEFAULT_INCOMING_CHAT_DEDUPE_WINDOW_MS,
-      1_000,
-      60_000,
-    ),
-    overlay_duration_ms: clampNumber(
-      record.overlay_duration_ms,
-      DEFAULT_INCOMING_CHAT_OVERLAY_DURATION_MS,
-      1_000,
-      60_000,
-    ),
-    games: sanitizedGames,
-  };
-};
-
 const defaultRuntimeConfigPath = () =>
   path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'runtime-config.json');
 
@@ -303,28 +154,6 @@ const sanitizePublicSiteConfig = (candidate) => {
   };
 };
 
-const sanitizeVisionLaneConfig = (candidate, baseConfig) => {
-  const record = isRecord(candidate) ? candidate : {};
-  const provider = toProvider(record.provider || baseConfig.provider);
-  const modelName = String(record.model_name || DEFAULT_VISION_MODEL_NAME).trim();
-
-  return {
-    enabled: record.enabled === true && Boolean(modelName),
-    provider,
-    api_url: normalizeApiUrlByProvider(record.api_url || baseConfig.api_url, provider),
-    model_name: modelName,
-    api_key_env_name:
-      String(record.api_key_env_name || baseConfig.api_key_env_name || DEFAULT_API_KEY_ENV_NAME).trim() ||
-      DEFAULT_API_KEY_ENV_NAME,
-    timeout_ms: clampNumber(
-      record.timeout_ms,
-      Math.min(baseConfig.timeout_ms || DEFAULT_TIMEOUT_MS, DEFAULT_VISION_TIMEOUT_MS),
-      1_000,
-      120_000,
-    ),
-  };
-};
-
 export const sanitizeRuntimeConfig = (candidate, source = 'environment', updatedAt = null) => {
   const record = isRecord(candidate) ? candidate : {};
   const provider = toProvider(record.provider);
@@ -353,8 +182,6 @@ export const sanitizeRuntimeConfig = (candidate, source = 'environment', updated
     max_tokens,
     temperature,
     fast_lane: sanitizeFastLaneConfig(record.fast_lane, baseConfig),
-    vision_lane: sanitizeVisionLaneConfig(record.vision_lane, baseConfig),
-    incoming_chat: sanitizeIncomingChatConfig(record.incoming_chat),
     public_site: sanitizePublicSiteConfig(record.public_site),
     source,
     updated_at: updatedAt,
@@ -393,43 +220,6 @@ export const environmentRuntimeConfig = (env) => {
           ? env.FAST_MODEL_ALLOWED_PROMPT_VARIANTS.split(',')
           : DEFAULT_FAST_LANE_ALLOWED_PROMPT_VARIANTS,
       },
-      vision_lane: {
-        enabled: env.VISION_MODEL_ENABLED === 'true',
-        provider: env.VISION_MODEL_PROVIDER || env.MODEL_PROVIDER || 'openai-compatible',
-        api_url: env.VISION_MODEL_API_URL || env.MODEL_API_URL || defaultApiUrl('openai-compatible'),
-        model_name: env.VISION_MODEL_NAME || DEFAULT_VISION_MODEL_NAME,
-        api_key_env_name:
-          env.VISION_MODEL_API_KEY_ENV_NAME ||
-          env.MODEL_API_KEY_ENV_NAME ||
-          DEFAULT_API_KEY_ENV_NAME,
-        timeout_ms: env.VISION_MODEL_TIMEOUT_MS || DEFAULT_VISION_TIMEOUT_MS,
-      },
-      incoming_chat: {
-        enabled: env.INCOMING_CHAT_ENABLED !== 'false',
-        default_mode: env.INCOMING_CHAT_DEFAULT_MODE || DEFAULT_INCOMING_CHAT_DEFAULT_MODE,
-        capture_interval_ms:
-          env.INCOMING_CHAT_CAPTURE_INTERVAL_MS || DEFAULT_INCOMING_CHAT_CAPTURE_INTERVAL_MS,
-        stable_debounce_ms:
-          env.INCOMING_CHAT_STABLE_DEBOUNCE_MS || DEFAULT_INCOMING_CHAT_STABLE_DEBOUNCE_MS,
-        frame_diff_threshold:
-          env.INCOMING_CHAT_FRAME_DIFF_THRESHOLD || DEFAULT_INCOMING_CHAT_FRAME_DIFF_THRESHOLD,
-        dedupe_window_ms:
-          env.INCOMING_CHAT_DEDUPE_WINDOW_MS || DEFAULT_INCOMING_CHAT_DEDUPE_WINDOW_MS,
-        overlay_duration_ms:
-          env.INCOMING_CHAT_OVERLAY_DURATION_MS || DEFAULT_INCOMING_CHAT_OVERLAY_DURATION_MS,
-        games: {
-          dota2: {
-            default_roi: {
-              x: env.DOTA2_CHAT_ROI_X || DEFAULT_DOTA2_CHAT_ROI.x,
-              y: env.DOTA2_CHAT_ROI_Y || DEFAULT_DOTA2_CHAT_ROI.y,
-              width: env.DOTA2_CHAT_ROI_WIDTH || DEFAULT_DOTA2_CHAT_ROI.width,
-              height: env.DOTA2_CHAT_ROI_HEIGHT || DEFAULT_DOTA2_CHAT_ROI.height,
-            },
-            auto_detect_enabled: env.DOTA2_CHAT_AUTO_DETECT_ENABLED !== 'false',
-            vision_prompt_version: env.DOTA2_CHAT_VISION_PROMPT_VERSION || 'dota2-chat-v1',
-          },
-        },
-      },
     },
     'environment',
   );
@@ -456,15 +246,6 @@ export const createSiliconFlowLatencyFirstRuntimeConfig = () => ({
     max_text_length: DEFAULT_FAST_LANE_MAX_TEXT_LENGTH,
     allowed_prompt_variants: [...DEFAULT_FAST_LANE_ALLOWED_PROMPT_VARIANTS],
   },
-  vision_lane: {
-    enabled: false,
-    provider: 'openai-compatible',
-    api_url: defaultApiUrl('openai-compatible'),
-    model_name: DEFAULT_VISION_MODEL_NAME,
-    api_key_env_name: DEFAULT_API_KEY_ENV_NAME,
-    timeout_ms: DEFAULT_VISION_TIMEOUT_MS,
-  },
-  incoming_chat: sanitizeIncomingChatConfig(),
   public_site: sanitizePublicSiteConfig(),
 });
 
@@ -534,17 +315,6 @@ const toPersistedRuntimeConfig = (config) => ({
     max_text_length: Number(config.fast_lane?.max_text_length || DEFAULT_FAST_LANE_MAX_TEXT_LENGTH),
     allowed_prompt_variants: normalizePromptVariants(config.fast_lane?.allowed_prompt_variants),
   },
-  vision_lane: {
-    enabled: config.vision_lane?.enabled === true,
-    provider: toProvider(config.vision_lane?.provider || config.provider),
-    api_url: String(config.vision_lane?.api_url || config.api_url || ''),
-    model_name: String(config.vision_lane?.model_name || ''),
-    api_key_env_name: String(
-      config.vision_lane?.api_key_env_name || config.api_key_env_name || DEFAULT_API_KEY_ENV_NAME,
-    ),
-    timeout_ms: Number(config.vision_lane?.timeout_ms || DEFAULT_VISION_TIMEOUT_MS),
-  },
-  incoming_chat: sanitizeIncomingChatConfig(config.incoming_chat),
   public_site: {
     contact: {
       discord_url: normalizeString(config.public_site?.contact?.discord_url),
@@ -582,24 +352,9 @@ export const summarizeRuntimeConfig = (config) => ({
     provider: config.fast_lane?.provider || config.provider,
     model: config.fast_lane?.model_name || null,
     api_url: config.fast_lane?.api_url || config.api_url,
-    api_key_env_name:
-      config.fast_lane?.api_key_env_name || config.api_key_env_name || DEFAULT_API_KEY_ENV_NAME,
-    timeout_ms: config.fast_lane?.timeout_ms || DEFAULT_FAST_LANE_TIMEOUT_MS,
-    max_tokens: config.fast_lane?.max_tokens || DEFAULT_FAST_LANE_MAX_TOKENS,
-    temperature: config.fast_lane?.temperature || DEFAULT_FAST_LANE_TEMPERATURE,
     max_text_length: config.fast_lane?.max_text_length || DEFAULT_FAST_LANE_MAX_TEXT_LENGTH,
     allowed_prompt_variants: normalizePromptVariants(config.fast_lane?.allowed_prompt_variants),
   },
-  vision_lane: {
-    enabled: config.vision_lane?.enabled === true,
-    provider: config.vision_lane?.provider || config.provider,
-    model: config.vision_lane?.model_name || null,
-    api_url: config.vision_lane?.api_url || config.api_url,
-    api_key_env_name:
-      config.vision_lane?.api_key_env_name || config.api_key_env_name || DEFAULT_API_KEY_ENV_NAME,
-    timeout_ms: config.vision_lane?.timeout_ms || DEFAULT_VISION_TIMEOUT_MS,
-  },
-  incoming_chat: sanitizeIncomingChatConfig(config.incoming_chat),
   config_source: config.source,
   updated_at: config.updated_at,
 });
@@ -609,17 +364,6 @@ export const summarizePublicSiteConfig = (config) => ({
     discord_url: config.public_site?.contact?.discord_url || DEFAULT_CONTACT_DISCORD_URL,
     email: config.public_site?.contact?.email || DEFAULT_CONTACT_EMAIL,
     qq_group: config.public_site?.contact?.qq_group || DEFAULT_CONTACT_QQ_GROUP,
-  },
-  config_source: config.source,
-  updated_at: config.updated_at,
-});
-
-export const summarizePublicClientConfig = (config) => ({
-  incoming_chat: sanitizeIncomingChatConfig(config.incoming_chat),
-  vision_lane: {
-    enabled: config.vision_lane?.enabled === true,
-    provider: config.vision_lane?.provider || config.provider,
-    model: config.vision_lane?.model_name || null,
   },
   config_source: config.source,
   updated_at: config.updated_at,

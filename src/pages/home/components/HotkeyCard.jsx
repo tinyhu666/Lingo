@@ -2,6 +2,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { KeyboardAlt, Spinner } from '../../../icons';
 import { useStore } from '../../../components/StoreProvider';
+import PanelCard from '../../../components/PanelCard';
+import KeycapGroup from '../../../components/KeycapGroup';
 import {
   buildHotkeyFromKeyCodes,
   defaultTranslatorHotkeyLabel,
@@ -156,35 +158,39 @@ export default function HotkeyCard() {
     }
 
     if (recording) {
-      return formatPreview(capturedCodes);
+      return formatPreview(capturedCodes).split(' + ');
     }
 
-    return settings?.trans_hotkey?.shortcut || defaultTranslatorHotkeyLabel();
-  }, [recording, capturedCodes, settings?.trans_hotkey?.shortcut]);
+    const storedHotkey = settings?.trans_hotkey;
+    if (storedHotkey?.key) {
+      const labels = [
+        ...(storedHotkey.modifiers || []).map((modifier) => formatModifierLabel(normalizeModifier(modifier))),
+        formatMainKeyLabel(storedHotkey.key),
+      ].filter(Boolean);
+
+      if (labels.length > 0) {
+        return labels;
+      }
+    }
+
+    return defaultTranslatorHotkeyLabel().split(' + ');
+  }, [recording, capturedCodes, settings?.trans_hotkey]);
 
   return (
-    <motion.button
-      type='button'
-      onClick={beginRecording}
-      className='home-stat-card home-control-card dota-card tool-rise transition-all duration-200'
+    <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.2 }}>
-      <div className='home-stat-card__header'>
-        <div className='home-stat-card__header-main'>
-          <span className='home-stat-card__icon-shell'>
-            <KeyboardAlt className='home-stat-card__header-icon' />
-          </span>
-          <h3 className='home-stat-card__title'>{t('home.hotkey.title')}</h3>
-        </div>
-        <span className='home-control-card__value home-control-card__value--key'>
-          {typeof hotkeyDisplay === 'string' ? hotkeyDisplay : defaultTranslatorHotkeyLabel()}
-        </span>
-      </div>
-
-      <div className='home-stat-card__body'>
-        <div className='home-top-copy home-stat-card__copy home-stat-card__copy--compact'>
-          <p className='tool-body home-stat-card__summary'>
+      <PanelCard
+        as='button'
+        type='button'
+        onClick={beginRecording}
+        className='home-stat-card home-stat-card--button tool-rise transition-all duration-200'
+        icon={<KeyboardAlt className='home-stat-card__header-icon' />}
+        title={t('home.hotkey.title')}
+        bodyClassName='home-stat-card__body'>
+        <div className='home-top-copy home-stat-card__copy home-stat-card__copy--single'>
+          <p className='tool-body'>
             {recording
               ? t('home.hotkey.recordingHint')
               : t('home.hotkey.defaultHint', { shortcut: defaultTranslatorHotkeyLabel() })}
@@ -195,10 +201,8 @@ export default function HotkeyCard() {
           <div className='tool-control-slot home-top-control-slot'>
             <div className='home-top-control-shell'>
               <div className='home-top-control-frame flex items-center justify-center'>
-                {typeof hotkeyDisplay === 'string' ? (
-                  <span className='tool-control-text text-xl leading-none whitespace-nowrap overflow-hidden text-ellipsis'>
-                    {hotkeyDisplay}
-                  </span>
+                {Array.isArray(hotkeyDisplay) ? (
+                  <KeycapGroup keys={hotkeyDisplay} className='justify-center' />
                 ) : (
                   hotkeyDisplay
                 )}
@@ -206,7 +210,7 @@ export default function HotkeyCard() {
             </div>
           </div>
         </div>
-      </div>
-    </motion.button>
+      </PanelCard>
+    </motion.div>
   );
 }

@@ -114,8 +114,8 @@ export default function DropdownMenu({
     ? 'fixed inset-0 z-[1200]'
     : 'fixed inset-0 z-20';
   const menuClass = shouldUsePortal
-    ? 'fixed z-[1300] min-w-[196px] max-w-[calc(100vw-16px)] max-h-[260px] overflow-y-auto rounded-2xl border border-[rgba(205,216,230,0.94)] bg-[rgba(255,255,255,0.96)] p-2 shadow-[0_24px_48px_rgba(37,57,88,0.16)] backdrop-blur-xl'
-    : `absolute z-30 min-w-[196px] max-h-[260px] overflow-y-auto rounded-2xl border border-[rgba(205,216,230,0.94)] bg-[rgba(255,255,255,0.96)] p-2 shadow-[0_24px_48px_rgba(37,57,88,0.16)] backdrop-blur-xl ${placementClass} ${anchorPosition}`;
+    ? 'shell-menu fixed z-[1300]'
+    : `shell-menu absolute z-30 ${placementClass} ${anchorPosition}`;
 
   const menuBody = (
     <>
@@ -133,10 +133,10 @@ export default function DropdownMenu({
               key={value}
               type='button'
               className={twMerge(
-                'flex w-full items-center rounded-xl px-3.5 py-2.5 text-left text-sm font-semibold transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(76,111,255,0.45)]',
+                'shell-menu__option',
                 isActive
-                  ? 'bg-[linear-gradient(180deg,rgba(236,243,255,0.96)_0%,rgba(227,237,255,0.98)_100%)] text-zinc-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]'
-                  : 'text-zinc-600 hover:bg-[rgba(244,248,253,0.96)] hover:text-zinc-900',
+                  ? 'shell-menu__option--active'
+                  : 'shell-menu__option--idle',
               )}
               onClick={() => onSelect(value)}>
               {renderOption ? renderOption(value, label) : label}

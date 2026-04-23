@@ -1,7 +1,7 @@
 {
   "name": "lingo",
   "private": true,
-  "version": "0.6.7",
+  "version": "0.6.9",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -11,8 +11,6 @@
     "tauri": "tauri",
     "proxy:dev": "node server/translate-proxy/src/server.mjs",
     "proxy:smoke": "node server/translate-proxy/scripts/smoke-test.mjs",
-    "proxy:vision-smoke": "node server/translate-proxy/scripts/smoke-vision-chat.mjs",
-    "proxy:vision-compare": "node server/translate-proxy/scripts/compare-vision-models.mjs",
     "proxy:analytics-smoke": "node server/translate-proxy/scripts/analytics-smoke-test.mjs",
     "proxy:diagnose": "node server/translate-proxy/scripts/diagnose-latency.mjs",
     "proxy:print-siliconflow-config": "node server/translate-proxy/scripts/print-siliconflow-config.mjs",

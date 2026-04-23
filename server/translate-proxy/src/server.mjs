@@ -8,7 +8,6 @@ import {
   loadRuntimeConfig,
   persistRuntimeConfig,
   resolveApiKey,
-  summarizePublicClientConfig,
   summarizePublicSiteConfig,
   summarizeRuntimeConfig,
 } from './runtime-config.mjs';
@@ -27,32 +26,10 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'GET, POST, PUT, OPTIONS',
 };
 
-const MAX_JSON_BODY_BYTES = 128 * 1024;
-const MAX_VISION_BODY_BYTES = 4 * 1024 * 1024;
+const MAX_BODY_BYTES = 128 * 1024;
 const TRANSLATION_CACHE_TTL_MS = 15_000;
 const TRANSLATION_CACHE_MAX_ENTRIES = 256;
 const FAST_LANE_CIRCUIT_BREAK_MS = 60_000;
-const INBOUND_READ_TEMPERATURE_CAP = 0.02;
-const TRANSLATION_USAGES = {
-  outboundWrite: 'outbound_write',
-  inboundRead: 'inbound_read',
-};
-const DEFAULT_VISION_IMAGE_MIME_TYPE = 'image/png';
-const DOTA2_INBOUND_GLOSSARY_RULES = Object.freeze([
-  [/^ty[!.? ]*$/iu, '谢谢'],
-  [/^thx[!.? ]*$/iu, '谢谢'],
-  [/^es[!.? ]*$/iu, 'ES'],
-  [/^sf[!.? ]*$/iu, 'SF'],
-  [/^gg[!.? ]*$/iu, 'gg'],
-  [/^wtf[!.? ]*$/iu, 'wtf'],
-  [/^omni[!.? ]*$/iu, '全能'],
-  [/^ward[!.? ]*$/iu, '插眼'],
-  [/^smoke[!.? ]*$/iu, '开雾'],
-  [/^commend[!.? ]*$/iu, '点赞'],
-  [/^swap commend[!.? ]*$/iu, '互赞'],
-  [/^let tri\?[!? ]*$/iu, '三人路？'],
-  [/^tri\?[!? ]*$/iu, '三人路？'],
-]);
 const LANGUAGE_LABELS = {
   zh: 'Chinese',
   en: 'English',
@@ -72,7 +49,7 @@ const GAME_SCENE_PROFILES = {
     id: 'dota2',
     label: 'Dota 2',
     promptInstruction:
-      'Prefer Dota 2 terms such as hero, lane, rune, Roshan, BKB, smoke, ward, commend, tri-lane, high ground, and buyback when they fit naturally. Keep common Dota shorthand like SF, ES, Axe, Omni, Invoker, Medusa, ty, gg, and wtf when that is clearer than guessing. If a short token is ambiguous, preserve it or translate minimally instead of inventing a more specific meaning.',
+      'Prefer Dota 2 terms such as hero, lane, rune, buyback, Roshan, BKB, smoke, and high ground when they fit naturally.',
   },
   lol: {
     id: 'lol',
@@ -165,47 +142,6 @@ const summarizeText = (value) => {
     return '<empty>';
   }
   return compact.length > 180 ? `${compact.slice(0, 180)}...` : compact;
-};
-
-const stripJsonCodeFence = (value) =>
-  String(value || '')
-    .trim()
-    .replace(/^```json\s*/i, '')
-    .replace(/^```\s*/i, '')
-    .replace(/\s*```$/i, '')
-    .trim();
-
-const parseJsonFromModelText = (value) => {
-  const normalized = stripJsonCodeFence(value);
-  if (!normalized) {
-    return null;
-  }
-
-  try {
-    return JSON.parse(normalized);
-  } catch {
-    return null;
-  }
-};
-
-const parsePlainVisionLines = (value) => {
-  const normalized = stripJsonCodeFence(value);
-  if (!normalized) {
-    return [];
-  }
-
-  return normalized
-    .split(/\r?\n+/u)
-    .map((line) => String(line || '').trim())
-    .filter(Boolean)
-    .filter(
-      (line) =>
-        !/^[{\[]/u.test(line) &&
-        !/^lines?\s*[:=]/iu.test(line) &&
-        !/^json\s*[:=]/iu.test(line) &&
-        !/^output\s*[:=]/iu.test(line) &&
-        !/^here(?:'s| is)/iu.test(line),
-    );
 };
 
 const extractErrorMessage = (payload) => {
@@ -307,7 +243,6 @@ const buildTranslationCacheKey = ({ routeConfig, routeName, tuning, payload, tex
     translation_from: String(payload?.translation_from || 'auto').trim() || 'auto',
     translation_to: String(payload?.translation_to || 'en').trim() || 'en',
     translation_mode: normalizeTranslationMode(payload?.translation_mode),
-    usage: normalizeTranslationUsage(payload?.usage),
     game_scene: normalizeGameScene(payload?.game_scene),
     daily_mode: Boolean(payload?.daily_mode),
     text,
@@ -348,23 +283,6 @@ const normalizeTranslationMode = (value) => {
   return STYLE_PROFILES[normalized]?.id || DEFAULT_TRANSLATION_MODE;
 };
 
-const normalizeTranslationUsage = (value) => {
-  const normalized = String(value || TRANSLATION_USAGES.outboundWrite).trim().toLowerCase();
-  return normalized === TRANSLATION_USAGES.inboundRead
-    ? TRANSLATION_USAGES.inboundRead
-    : TRANSLATION_USAGES.outboundWrite;
-};
-
-const normalizeVisionImageMimeType = (value) => {
-  const normalized = String(value || DEFAULT_VISION_IMAGE_MIME_TYPE).trim().toLowerCase();
-  if (normalized === 'image/jpg') {
-    return 'image/jpeg';
-  }
-  return ['image/png', 'image/jpeg', 'image/webp'].includes(normalized)
-    ? normalized
-    : DEFAULT_VISION_IMAGE_MIME_TYPE;
-};
-
 const normalizeGameScene = (value) => {
   const normalized = String(value || DEFAULT_GAME_SCENE).trim().toLowerCase();
   if (GAME_SCENE_PROFILES[normalized]) {
@@ -381,39 +299,15 @@ const getTranslationContext = (payload) => {
   const translationTo = String(payload?.translation_to || 'en').trim() || 'en';
   const translationMode = normalizeTranslationMode(payload?.translation_mode);
   const gameScene = normalizeGameScene(payload?.game_scene);
-  const usage = normalizeTranslationUsage(payload?.usage);
   return {
     translationFrom,
     translationTo,
     translationMode,
     gameScene,
-    usage,
     isRewrite: translationFrom === translationTo,
     styleProfile: STYLE_PROFILES[translationMode],
     gameSceneProfile: GAME_SCENE_PROFILES[gameScene],
   };
-};
-
-const matchInboundGlossaryTranslation = (payload, text) => {
-  if (normalizeTranslationUsage(payload?.usage) !== TRANSLATION_USAGES.inboundRead) {
-    return null;
-  }
-  if (normalizeGameScene(payload?.game_scene) !== 'dota2') {
-    return null;
-  }
-
-  const normalizedText = String(text || '').trim();
-  if (!normalizedText) {
-    return null;
-  }
-
-  for (const [pattern, translated] of DOTA2_INBOUND_GLOSSARY_RULES) {
-    if (pattern.test(normalizedText)) {
-      return translated;
-    }
-  }
-
-  return null;
 };
 
 const buildSystemPrompt = (payload) => {
@@ -421,7 +315,6 @@ const buildSystemPrompt = (payload) => {
     translationFrom,
     translationTo,
     translationMode,
-    usage,
     isRewrite,
     styleProfile,
     gameSceneProfile,
@@ -435,21 +328,6 @@ const buildSystemPrompt = (payload) => {
   const dailyInstruction = dailyMode
     ? 'Daily mode:on. Keep it conversational and send-ready.'
     : 'Daily mode:off. Keep it concise and paced for in-game chat.';
-
-  if (usage === TRANSLATION_USAGES.inboundRead) {
-    return [
-      `Translate visible in-game chat from ${sourceLabel} to ${targetLabel} for reading comprehension.`,
-      `Game:${gameSceneProfile.label}. ${gameSceneProfile.promptInstruction}`,
-      'Keep the translation faithful to the original wording and intent.',
-      'Mirror the original tone, directness, emotional intensity, and sentence length as closely as possible.',
-      'Keep slang, shorthand, abbreviations, and rough in-game phrasing when understandable. Do not polish or embellish.',
-      'Do not intensify, soften, summarize, expand, or make the line more tactical than the source.',
-      'Preserve punctuation, commands, fragments, and repeated words when they carry tone.',
-      'Preserve common game terms, item names, hero names, and shorthand whenever helpful.',
-      'Do not rewrite the line into something the user should send. Do not add explanation, notes, or quotation marks.',
-      'Output one concise readable line only.',
-    ].join(' ');
-  }
 
   if (isRewrite) {
     return [
@@ -471,7 +349,7 @@ const buildSystemPrompt = (payload) => {
 };
 
 const resolveRequestTuning = ({ config, payload, text }) => {
-  const { isRewrite, styleProfile, usage } = getTranslationContext(payload);
+  const { isRewrite, styleProfile } = getTranslationContext(payload);
   const textLength = Array.from(String(text || '').trim()).length;
   const configuredMaxTokens = Number(config.max_tokens) || 96;
   let budgetCap = configuredMaxTokens;
@@ -488,37 +366,25 @@ const resolveRequestTuning = ({ config, payload, text }) => {
     budgetCap = isRewrite ? 72 : 88;
   }
 
-  const styleTokenAdjustment =
-    usage === TRANSLATION_USAGES.inboundRead
-      ? 0
-      : isRewrite
-        ? styleProfile.rewriteTokenAdjustment
-        : styleProfile.translateTokenAdjustment;
-  const minimumBudget =
-    usage === TRANSLATION_USAGES.inboundRead ? 16 : isRewrite ? 20 : 24;
+  const styleTokenAdjustment = isRewrite
+    ? styleProfile.rewriteTokenAdjustment
+    : styleProfile.translateTokenAdjustment;
+  const minimumBudget = isRewrite ? 20 : 24;
   const effectiveMaxTokens = Math.min(
     configuredMaxTokens,
     Math.max(minimumBudget, budgetCap + styleTokenAdjustment),
   );
 
   const configuredTemperature = Number(config.temperature);
-  const temperatureCap =
-    usage === TRANSLATION_USAGES.inboundRead
-      ? INBOUND_READ_TEMPERATURE_CAP
-      : isRewrite
-        ? styleProfile.rewriteTemperatureCap
-        : styleProfile.translateTemperatureCap;
+  const temperatureCap = isRewrite
+    ? styleProfile.rewriteTemperatureCap
+    : styleProfile.translateTemperatureCap;
   const effectiveTemperature = Number.isFinite(configuredTemperature)
     ? Math.min(configuredTemperature, temperatureCap)
     : temperatureCap;
 
   return {
-    promptVariant:
-      usage === TRANSLATION_USAGES.inboundRead
-        ? 'inbound_read'
-        : isRewrite
-          ? 'rewrite'
-          : 'translate',
+    promptVariant: isRewrite ? 'rewrite' : 'translate',
     systemPrompt: buildSystemPrompt(payload),
     effectiveMaxTokens,
     effectiveTemperature,
@@ -527,10 +393,6 @@ const resolveRequestTuning = ({ config, payload, text }) => {
 };
 
 const canUseFastLane = ({ config, payload, text, promptVariant }) => {
-  if (normalizeTranslationUsage(payload?.usage) === TRANSLATION_USAGES.inboundRead) {
-    return false;
-  }
-
   const fastLane = config.fast_lane;
   if (!fastLane?.enabled || !fastLane.model_name) {
     return false;
@@ -553,17 +415,13 @@ const canUseFastLane = ({ config, payload, text, promptVariant }) => {
   return getFastLaneCircuitExpiresAt(fastLane) === 0;
 };
 
-const readJsonBody = async (req, options = {}) => {
-  const maxBytes =
-    Number.isFinite(Number(options?.maxBytes)) && Number(options.maxBytes) > 0
-      ? Number(options.maxBytes)
-      : MAX_JSON_BODY_BYTES;
+const readJsonBody = async (req) => {
   const chunks = [];
   let totalBytes = 0;
 
   for await (const chunk of req) {
     totalBytes += chunk.length;
-    if (totalBytes > maxBytes) {
+    if (totalBytes > MAX_BODY_BYTES) {
       const error = new Error('Request body too large');
       error.status = 413;
       throw error;
@@ -805,131 +663,6 @@ const requestModel = async ({
   }
 };
 
-const requestVisionModel = async ({ config, apiKey, prompt, imageBase64, imageMimeType }) => {
-  const startedAt = Date.now();
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(new Error('MODEL_TIMEOUT')), config.timeout_ms);
-
-  try {
-    if (config.provider === 'anthropic') {
-      const response = await fetch(config.api_url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01',
-        },
-        signal: controller.signal,
-        body: JSON.stringify({
-          model: config.model_name,
-          max_tokens: 700,
-          temperature: 0,
-          messages: [
-            {
-              role: 'user',
-              content: [
-                {
-                  type: 'text',
-                  text: prompt,
-                },
-                {
-                  type: 'image',
-                  source: {
-                    type: 'base64',
-                    media_type: imageMimeType,
-                    data: imageBase64,
-                  },
-                },
-              ],
-            },
-          ],
-        }),
-      });
-
-      const { json: body, raw } = await readJsonResponse(response);
-      if (!response.ok) {
-        const error = new Error(
-          extractErrorMessage(body) ||
-            `Vision request failed (HTTP ${response.status}): ${summarizeText(raw)}`,
-        );
-        error.status = response.status;
-        throw error;
-      }
-
-      const content = extractAnthropicContent(body);
-      if (!content) {
-        const error = new Error('Empty vision model response');
-        error.status = 502;
-        throw error;
-      }
-
-      return {
-        content,
-        modelLatencyMs: Date.now() - startedAt,
-      };
-    }
-
-    const response = await fetch(config.api_url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`,
-      },
-      signal: controller.signal,
-      body: JSON.stringify({
-        model: config.model_name,
-        temperature: 0,
-        max_tokens: 700,
-        response_format: {
-          type: 'json_object',
-        },
-        messages: [
-          {
-            role: 'user',
-            content: [
-              {
-                type: 'image_url',
-                image_url: {
-                  url: `data:${imageMimeType};base64,${imageBase64}`,
-                  detail: 'high',
-                },
-              },
-              {
-                type: 'text',
-                text: prompt,
-              },
-            ],
-          },
-        ],
-      }),
-    });
-
-    const { json: body, raw } = await readJsonResponse(response);
-    if (!response.ok) {
-      const error = new Error(
-        extractErrorMessage(body) ||
-          `Vision request failed (HTTP ${response.status}): ${summarizeText(raw)}`,
-      );
-      error.status = response.status;
-      throw error;
-    }
-
-    const content = extractOpenAIContent(body);
-    if (!content) {
-      const error = new Error('Empty vision model response');
-      error.status = 502;
-      throw error;
-    }
-
-    return {
-      content,
-      modelLatencyMs: Date.now() - startedAt,
-    };
-  } finally {
-    clearTimeout(timer);
-  }
-};
-
 const requestTranslatedText = async ({ cacheKey, load }) => {
   const cachedValue = getCachedTranslation(cacheKey);
   if (cachedValue) {
@@ -1023,195 +756,6 @@ const routePublicSiteConfig = async (req, res, traceId) => {
   });
 };
 
-const routePublicClientConfig = async (req, res, traceId) => {
-  if (req.method !== 'GET') {
-    return jsonResponse(res, 405, { message: 'Method not allowed', trace_id: traceId });
-  }
-
-  const config = await loadRuntimeConfig(process.env);
-  return jsonResponse(res, 200, {
-    ...summarizePublicClientConfig(config),
-    trace_id: traceId,
-  });
-};
-
-const getIncomingChatGameConfig = (config, gameScene) => {
-  const normalizedGameScene = normalizeGameScene(gameScene);
-  return (
-    config?.incoming_chat?.games?.[normalizedGameScene] ||
-    config?.incoming_chat?.games?.[DEFAULT_GAME_SCENE] ||
-    null
-  );
-};
-
-const isDeepSeekOcrModel = (config) =>
-  /deepseek-ocr/i.test(String(config?.vision_lane?.model_name || ''));
-
-const buildVisionPrompt = (config, payload = {}) => {
-  const gameScene = normalizeGameScene(payload?.game_scene);
-  const gameSceneProfile = GAME_SCENE_PROFILES[gameScene] || GAME_SCENE_PROFILES[DEFAULT_GAME_SCENE];
-  const incomingChatGameConfig = getIncomingChatGameConfig(config, gameScene);
-  const visionPromptVersion =
-    incomingChatGameConfig?.vision_prompt_version || `${gameSceneProfile.id}-chat-v1`;
-
-  if (isDeepSeekOcrModel(config)) {
-    return [
-      '<image>',
-      '<|grounding|>OCR this image.',
-      `Game:${gameSceneProfile.label}. Prompt profile:${visionPromptVersion}. ${gameSceneProfile.promptInstruction}`,
-      'Read only the visible in-game chat rows.',
-      'Ignore the input box, HUD, map, buttons, portraits, and screenshot annotations.',
-      'For each visible chat row, extract channel, speaker, and message text.',
-      'Keep slang, profanity, abbreviations, repeated letters, symbols, and multilingual text exactly when readable.',
-      'Do not translate.',
-      'Return strict JSON only with shape {"lines":[{"speaker":"","channel":"","text":"","is_system":false,"confidence":0.0,"order":0}]}.',
-      'If no readable chat rows are visible, return {"lines":[]}.',
-    ].join('\n');
-  }
-
-  return [
-    `You are reading a ${gameSceneProfile.label} in-game chat panel screenshot.`,
-    `Prompt profile:${visionPromptVersion}. ${gameSceneProfile.promptInstruction}`,
-    'Extract only the visible chat message rows from the message list area.',
-    'Chat rows may contain a left portrait/icon, an optional channel tag such as [队友], a colored speaker name, then the message text.',
-    'Ignore the user input box, map, HUD, kill feed, tooltips, buttons, portraits, and non-chat UI text.',
-    'Ignore hand-drawn circles, arrows, highlights, annotations, or screenshot markup added on top of the game.',
-    'If a channel tag such as [队友] is visible, put only the tag meaning in channel, keep the player name in speaker, and keep only the spoken message in text.',
-    'If a visible row has the form "speaker: message", split it into speaker and text instead of keeping the whole line in text.',
-    'Preserve multilingual chat exactly, including slang, profanity, misspellings, ASCII symbols, repeated words, and mixed Chinese/English/Tagalog text. Do not sanitize.',
-    'Do not normalize spelling, punctuation, spacing, or tone.',
-    'If two visible rows are identical, keep both rows if both are present in the screenshot.',
-    'Preserve hero, champion, class, item, map-object, and shorthand terms exactly when they are readable.',
-    'Return strict JSON with shape {"lines":[{"speaker":"","channel":"","text":"","is_system":false,"confidence":0.0,"order":0}]}.',
-    'Keep rows ordered from top to bottom.',
-    'If speaker or channel cannot be read, use an empty string.',
-    'If a row is clearly a system line, set is_system true.',
-    'Do not translate the text. Do not add markdown fences or explanation.',
-  ].join(' ');
-};
-
-const trimChatValue = (value) => String(value || '').trim();
-
-const parseVisionFallbackLine = ({ speaker, channel, text }) => {
-  let nextSpeaker = trimChatValue(speaker);
-  let nextChannel = trimChatValue(channel);
-  let nextText = trimChatValue(text);
-
-  const bracketedSpeaker = nextSpeaker.match(/^\[([^\]]+)\]\s*(.+)$/u);
-  if (bracketedSpeaker) {
-    if (!nextChannel) {
-      nextChannel = bracketedSpeaker[1].trim();
-    }
-    nextSpeaker = bracketedSpeaker[2].trim();
-  }
-
-  const bracketedText = nextText.match(/^\[([^\]]+)\]\s*([^:：]{1,80})\s*[:：]\s*(.+)$/u);
-  if (!nextSpeaker && bracketedText) {
-    if (!nextChannel) {
-      nextChannel = bracketedText[1].trim();
-    }
-    nextSpeaker = bracketedText[2].trim();
-    nextText = bracketedText[3].trim();
-  }
-
-  const speakerText = nextText.match(/^([^:：]{1,80})\s*[:：]\s*(.+)$/u);
-  if (!nextSpeaker && speakerText) {
-    nextSpeaker = speakerText[1].trim();
-    nextText = speakerText[2].trim();
-  }
-
-  return {
-    speaker: nextSpeaker.replace(/\s+$/u, ''),
-    channel: nextChannel.replace(/\s+$/u, ''),
-    text: nextText,
-  };
-};
-
-const normalizeVisionLine = (item, index) => {
-  const record = item && typeof item === 'object' ? item : {};
-  const parsed = parseVisionFallbackLine({
-    speaker: record.speaker,
-    channel: record.channel,
-    text: record.text,
-  });
-  const text = parsed.text;
-  if (!text) {
-    return null;
-  }
-
-  return {
-    speaker: parsed.speaker,
-    channel: parsed.channel,
-    text,
-    is_system: record.is_system === true,
-    confidence: Number.isFinite(Number(record.confidence))
-      ? Math.min(1, Math.max(0, Number(record.confidence)))
-      : 0,
-    order: Number.isFinite(Number(record.order)) ? Number(record.order) : index,
-  };
-};
-
-const routeVisionChatLines = async (req, res, traceId) => {
-  const config = await loadRuntimeConfig(process.env);
-
-  if (req.method !== 'POST') {
-    return jsonResponse(res, 405, { message: 'Method not allowed', trace_id: traceId });
-  }
-
-  validateClientKey(req);
-
-  if (config.vision_lane?.enabled !== true || !config.vision_lane?.model_name) {
-    return jsonResponse(res, 503, {
-      message: 'Vision lane is disabled',
-      trace_id: traceId,
-    });
-  }
-
-  const payload = await readJsonBody(req, { maxBytes: MAX_VISION_BODY_BYTES });
-  const imageBase64 = String(payload?.image_base64 || '').trim();
-  if (!imageBase64) {
-    return jsonResponse(res, 400, { message: 'image_base64 is required', trace_id: traceId });
-  }
-  const imageMimeType = normalizeVisionImageMimeType(payload?.image_mime_type);
-
-  const apiKey = resolveApiKey(process.env, config.vision_lane);
-  if (!apiKey) {
-    return jsonResponse(res, 500, {
-      message: `Missing API key env: ${config.vision_lane.api_key_env_name}`,
-      trace_id: traceId,
-    });
-  }
-
-  const startedAt = Date.now();
-  const result = await requestVisionModel({
-    config: config.vision_lane,
-    apiKey,
-    prompt: buildVisionPrompt(config, payload),
-    imageBase64,
-    imageMimeType,
-  });
-  const parsed = parseJsonFromModelText(result.content);
-  const parsedLines = Array.isArray(parsed?.lines)
-    ? parsed.lines.map((item, index) => normalizeVisionLine(item, index)).filter(Boolean)
-    : [];
-  const fallbackLines =
-    parsedLines.length > 0
-      ? []
-      : parsePlainVisionLines(result.content)
-          .map((text, index) => normalizeVisionLine({ text }, index))
-          .filter(Boolean);
-  const lines = parsedLines.length > 0 ? parsedLines : fallbackLines;
-
-  return jsonResponse(res, 200, {
-    lines,
-    provider: config.vision_lane.provider,
-    model: config.vision_lane.model_name,
-    latency_ms: Date.now() - startedAt,
-    model_latency_ms: result.modelLatencyMs,
-    trace_id: traceId,
-  });
-};
-
 const routeTranslate = async (req, res, traceId) => {
   const startedAt = Date.now();
   const config = await loadRuntimeConfig(process.env);
@@ -1240,28 +784,6 @@ const routeTranslate = async (req, res, traceId) => {
   const text = String(payload?.text || '').trim();
   if (!text) {
     return jsonResponse(res, 400, { message: 'text is required', trace_id: traceId });
-  }
-
-  const glossaryTranslation = matchInboundGlossaryTranslation(payload, text);
-  if (glossaryTranslation) {
-    const latencyMs = Date.now() - startedAt;
-    return jsonResponse(res, 200, {
-      translated_text: glossaryTranslation,
-      model: 'inbound-dota2-glossary',
-      provider: 'local-rule',
-      config_source: config.source,
-      latency_ms: latencyMs,
-      model_latency_ms: 0,
-      proxy_overhead_ms: latencyMs,
-      attempt_count: 0,
-      response_source: 'glossary',
-      model_route: 'glossary',
-      prompt_variant: 'inbound_read',
-      style_profile: normalizeTranslationMode(payload?.translation_mode),
-      effective_max_tokens: 0,
-      effective_temperature: 0,
-      trace_id: traceId,
-    });
   }
 
   const primaryTuning = resolveRequestTuning({ config, payload, text });
@@ -1502,16 +1024,6 @@ const server = createServer(async (req, res) => {
 
     if (url.pathname === '/public/site-config') {
       await routePublicSiteConfig(req, res, traceId);
-      return;
-    }
-
-    if (url.pathname === '/public/client-config') {
-      await routePublicClientConfig(req, res, traceId);
-      return;
-    }
-
-    if (url.pathname === '/vision/chat-lines') {
-      await routeVisionChatLines(req, res, traceId);
       return;
     }
 

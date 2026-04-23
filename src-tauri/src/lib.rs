@@ -19,7 +19,6 @@ use windows_sys::Win32::Graphics::Dwm::{
 #[cfg(target_os = "windows")]
 use windows_sys::Win32::Graphics::Gdi::{CreateRoundRectRgn, SetWindowRgn};
 pub mod ai_translator;
-pub mod incoming_chat;
 pub mod shell_helper;
 pub mod shortcut;
 pub mod store;
@@ -251,15 +250,6 @@ async fn update_translator_shortcut(
 }
 
 #[tauri::command]
-async fn update_incoming_chat_shortcut(
-    app_handle: tauri::AppHandle,
-    keys: Vec<String>,
-) -> Result<store::AppSettings, String> {
-    shortcut::update_incoming_chat_shortcut(&app_handle, keys)?;
-    store::get_settings(&app_handle).map_err(|e| e.to_string())
-}
-
-#[tauri::command]
 async fn get_settings(app_handle: tauri::AppHandle) -> Result<store::AppSettings, String> {
     store::get_settings(&app_handle).map_err(|e| e.to_string())
 }
@@ -414,8 +404,6 @@ pub fn run() {
                 Err(e) => eprintln!("注册全局快捷键失败: {}", e),
             }
 
-            incoming_chat::start_incoming_chat_monitor(app.app_handle());
-
             // 创建AI模型托盘
             match tray::create_tray(app.app_handle()) {
                 Ok(_) => println!("托盘创建成功"),
@@ -443,19 +431,13 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             greet,
             update_translator_shortcut,
-            update_incoming_chat_shortcut,
             log_to_backend,
             get_settings,
             get_version,
             get_public_backend_config,
             set_app_enabled,
             update_phrases,
-            get_latest_release_metadata,
-            incoming_chat::start_incoming_chat_selection,
-            incoming_chat::start_incoming_chat_roi_calibration,
-            incoming_chat::clear_incoming_chat_roi_override,
-            incoming_chat::submit_incoming_chat_selection,
-            incoming_chat::cancel_incoming_chat_selection
+            get_latest_release_metadata
         ]);
 
     #[cfg(not(target_os = "windows"))]

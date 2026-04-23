@@ -35,6 +35,11 @@ if (!version) {
 
 const versionRoot = path.join(PrepDir, 'releases', `v${version}`);
 const manifestRoot = path.join(PrepDir, 'releases');
+const RefreshStableAliases = !['0', 'false', 'no', 'off'].includes(
+  String(process.env.COS_REFRESH_STABLE_ALIASES || '1')
+    .trim()
+    .toLowerCase(),
+);
 const MULTIPART_THRESHOLD_BYTES = Number(process.env.COS_MULTIPART_THRESHOLD_BYTES || 1024 * 1024);
 const MULTIPART_CHUNK_SIZE_BYTES = Number(process.env.COS_MULTIPART_CHUNK_SIZE_BYTES || 512 * 1024);
 const MULTIPART_ASYNC_LIMIT = Number(process.env.COS_MULTIPART_ASYNC_LIMIT || 2);
@@ -326,10 +331,24 @@ try {
   const criticalFileSet = new Set(criticalUpdaterFiles.map((filePath) => path.resolve(filePath)));
 
   await uploadVersionedReleaseFiles(criticalUpdaterFiles);
-  await uploadUpdaterManifest();
+  if (RefreshStableAliases) {
+    await uploadUpdaterManifest();
+  } else {
+    console.log(
+      `Skipping stable updater manifest upload for v${version}; only releases/v${version} mirror files will be refreshed.`,
+    );
+  }
   await uploadVersionedReleaseFiles(
     versionedFiles.filter((filePath) => !criticalFileSet.has(path.resolve(filePath))),
   );
+
+  if (!RefreshStableAliases) {
+    console.log(
+      `Skipping stable alias and latest-web.json upload for v${version}; current latest release pointers remain unchanged.`,
+    );
+    console.log(`Tencent COS versioned mirror upload completed for v${version}.`);
+    process.exit(0);
+  }
 
   let stableAliasesUploaded = false;
   try {

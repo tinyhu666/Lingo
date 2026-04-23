@@ -1,5 +1,86 @@
 # Client Stability Changes
 
+change338 日期:2026-04-07 | 文件:.phrase/phases/phase-client-stability-20260326/task_client-stability_20260326.md | 操作:Modify | 影响:task017 实际验收记录 | 说明:补充 v0.4.0 历史镜像安全补跑的真实 workflow run 结果与 latest manifest 未漂移的验证闭环 | 关联:task017
+change339 日期:2026-04-07 | 文件:.phrase/docs/CHANGE.md | 操作:Modify | 影响:全局变更索引 | 说明:将历史镜像安全补跑的真实验收结果补入全局 CHANGE 摘要范围 | 关联:task017
+
+change332 日期:2026-04-07 | 文件:.phrase/phases/phase-client-stability-20260326/spec_client-stability_20260326.md | 操作:Modify | 影响:阶段需求说明 | 说明:补充历史版本 COS 补镜像默认不得覆盖当前 latest manifest 与稳定下载别名的目标、流程和边界 | 关联:task017
+change333 日期:2026-04-07 | 文件:.phrase/phases/phase-client-stability-20260326/plan_client-stability_20260326.md | 操作:Modify | 影响:阶段计划与风险约束 | 说明:新增历史补镜像安全收口里程碑，并把旧 tag 回退当前 latest 入口的风险提升到 P0 | 关联:task017
+change334 日期:2026-04-07 | 文件:.phrase/phases/phase-client-stability-20260326/task_client-stability_20260326.md | 操作:Modify | 影响:任务清单 | 说明:将遗留 task017 收口为历史镜像已满足且手工补跑默认只刷新版本目录的闭环任务 | 关联:task017
+change335 日期:2026-04-07 | 文件:.github/workflows/release.yml | 操作:Modify | 影响:历史镜像补跑 workflow | 说明:为 workflow_dispatch 增加刷新 stable latest 别名的显式开关，并让手工历史补镜像默认不改写全局 latest.json 与 GitHub release latest 资产 | 关联:task017
+change336 日期:2026-04-07 | 文件:scripts/upload-cos-release.mjs | 操作:Modify | 影响:Tencent COS 上传策略 | 说明:新增稳定别名刷新开关，允许历史镜像补跑只同步 `releases/v<version>/` 目录而不覆盖当前 latest manifest 与稳定下载别名 | 关联:task017
+change337 日期:2026-04-07 | 文件:.phrase/docs/CHANGE.md | 操作:Modify | 影响:全局变更索引 | 说明:将历史版本 COS 补镜像的安全收口补入全局 CHANGE 摘要 | 关联:task017
+
+change328 日期:2026-04-07 | 文件:.phrase/phases/phase-client-stability-20260326/spec_client-stability_20260326.md | 操作:Modify | 影响:阶段需求说明 | 说明:补充 0.6.8 正式发布后仍需完成 GitHub/COS 清单与官网下载入口的公网验收 | 关联:task045
+change329 日期:2026-04-07 | 文件:.phrase/phases/phase-client-stability-20260326/plan_client-stability_20260326.md | 操作:Modify | 影响:阶段计划与优先级 | 说明:新增 0.6.8 发版后公网 smoke 里程碑，并将外部 manifest 与下载入口验收提升为 P0 | 关联:task045
+change330 日期:2026-04-07 | 文件:.phrase/phases/phase-client-stability-20260326/task_client-stability_20260326.md | 操作:Modify | 影响:任务清单 | 说明:新增并完成 task045，记录 GitHub/COS latest manifest、官网下载入口与代理摘要的发版后验收闭环 | 关联:task045
+change331 日期:2026-04-07 | 文件:.phrase/docs/CHANGE.md | 操作:Modify | 影响:全局变更索引 | 说明:将 0.6.8 的发版后公网 smoke 验收补入全局 CHANGE 摘要 | 关联:task045
+
+change317 日期:2026-04-07 | 文件:.phrase/phases/phase-client-stability-20260326/spec_client-stability_20260326.md | 操作:Modify | 影响:阶段需求说明 | 说明:补充 task041-task043 的桌面端 UI 收口需统一打包为 0.6.8 补丁版本的目标 | 关联:task044
+change318 日期:2026-04-07 | 文件:.phrase/phases/phase-client-stability-20260326/plan_client-stability_20260326.md | 操作:Modify | 影响:阶段计划与优先级 | 说明:新增 0.6.8 发版里程碑，并将版本元数据与正式发版链路一致性提升为 P0 | 关联:task044
+change319 日期:2026-04-07 | 文件:.phrase/phases/phase-client-stability-20260326/task_client-stability_20260326.md | 操作:Modify | 影响:任务清单 | 说明:新增并完成 task044，记录 0.6.8 的版本同步、本地验证与正式发版闭环 | 关联:task044
+change320 日期:2026-04-07 | 文件:CHANGELOG.md | 操作:Modify | 影响:0.6.8 更新日志 | 说明:新增 0.6.8 用户可见发布说明，收口首页上下文条、共享组件与壳层一致性改动 | 关联:task044
+change321 日期:2026-04-07 | 文件:package.json | 操作:Modify | 影响:前端版本元数据 | 说明:将客户端版本号同步到 0.6.8，准备新的正式补丁版本 | 关联:task044
+change322 日期:2026-04-07 | 文件:package-lock.json | 操作:Modify | 影响:npm 锁文件版本元数据 | 说明:同步 lockfile 顶层版本到 0.6.8，保持包元数据与安装包版本一致 | 关联:task044
+change323 日期:2026-04-07 | 文件:src-tauri/Cargo.toml | 操作:Modify | 影响:Tauri Rust 包版本 | 说明:将桌面端 Cargo 包版本同步到 0.6.8 | 关联:task044
+change324 日期:2026-04-07 | 文件:src-tauri/Cargo.lock | 操作:Modify | 影响:Rust 锁文件顶层包版本 | 说明:将锁文件中的 Lingo 包版本同步到 0.6.8 | 关联:task044
+change325 日期:2026-04-07 | 文件:src-tauri/tauri.conf.json | 操作:Modify | 影响:Tauri 打包版本元数据 | 说明:将桌面应用版本号同步到 0.6.8，确保安装包命名与应用内版本一致 | 关联:task044
+change326 日期:2026-04-07 | 文件:.github/workflows/release.yml | 操作:Modify | 影响:Release workflow 默认输入 | 说明:将手动镜像补跑入口的默认 release_tag 更新到 v0.6.8，避免后续误补旧版本 | 关联:task044
+change327 日期:2026-04-07 | 文件:.phrase/docs/CHANGE.md | 操作:Modify | 影响:全局变更索引 | 说明:将桌面端 UI 收口与 0.6.8 发版收尾补入全局 CHANGE 摘要 | 关联:task044
+
+change308 日期:2026-04-07 | 文件:.phrase/phases/phase-client-stability-20260326/spec_client-stability_20260326.md | 操作:Modify | 影响:阶段需求说明 | 说明:补充标题栏、侧边栏、下拉菜单与 toast 也需完成壳层级统一收敛的目标与验收标准 | 关联:task043
+change309 日期:2026-04-07 | 文件:.phrase/phases/phase-client-stability-20260326/plan_client-stability_20260326.md | 操作:Modify | 影响:阶段计划与风险约束 | 说明:新增壳层级统一收口里程碑，并补充外壳与内容区风格脱节和 toast 仍停留内联实现的风险说明 | 关联:task043
+change310 日期:2026-04-07 | 文件:.phrase/phases/phase-client-stability-20260326/task_client-stability_20260326.md | 操作:Modify | 影响:任务清单 | 说明:新增并完成 task043，记录标题栏、侧边栏、菜单与 toast 的壳层收口闭环 | 关联:task043
+change311 日期:2026-04-07 | 文件:src/utils/toast.js | 操作:Modify | 影响:窗口级反馈配置 | 说明:移除 toast 内联样式并改为通过统一 CSS 类表达 success/info/error 反馈 | 关联:task043
+change312 日期:2026-04-07 | 文件:src/components/Layout.jsx | 操作:Modify | 影响:Toaster 壳层接入 | 说明:将 Toaster 接入统一容器类和壳层样式，去掉内联视觉配置 | 关联:task043
+change313 日期:2026-04-07 | 文件:src/components/Sidebar.jsx | 操作:Modify | 影响:侧边栏更新徽标 | 说明:将关于页更新提醒改为复用共享状态芯片，统一导航内的状态表达语言 | 关联:task043
+change314 日期:2026-04-07 | 文件:src/components/DropdownMenu.jsx | 操作:Modify | 影响:语言菜单面板与选中态 | 说明:将下拉菜单面板和选项状态改为复用统一 shell-menu 样式类，减少内联 Tailwind 视觉规则 | 关联:task043
+change315 日期:2026-04-07 | 文件:src/index.css | 操作:Modify | 影响:标题栏、侧边栏、菜单与 toast 样式 | 说明:补齐 shell-menu、toast 样式和侧边栏更新徽标细节，让桌面外壳层与内容区共享同一套工具风语言 | 关联:task043
+change316 日期:2026-04-07 | 文件:.phrase/docs/CHANGE.md | 操作:Modify | 影响:全局变更索引 | 说明:将壳层级统一收口补入全局 CHANGE 摘要 | 关联:task043
+
+change290 日期:2026-04-07 | 文件:.phrase/phases/phase-client-stability-20260326/spec_client-stability_20260326.md | 操作:Modify | 影响:阶段需求说明 | 说明:补充第二轮 UI 收口需沉淀为共享页头、面板、状态芯片与键帽组件的目标与验收标准 | 关联:task042
+change291 日期:2026-04-07 | 文件:.phrase/phases/phase-client-stability-20260326/plan_client-stability_20260326.md | 操作:Modify | 影响:阶段计划与风险约束 | 说明:新增共享组件化里程碑、范围、优先级与只抽样式不抽结构的维护风险说明 | 关联:task042
+change292 日期:2026-04-07 | 文件:.phrase/phases/phase-client-stability-20260326/task_client-stability_20260326.md | 操作:Modify | 影响:任务清单 | 说明:新增并完成 task042，记录五个主页面共享组件化与验证闭环 | 关联:task042
+change293 日期:2026-04-07 | 文件:src/components/PageHeader.jsx | 操作:Add | 影响:页面标题与操作区 | 说明:新增共享页头组件，统一标题密度、图标位和操作按钮区布局 | 关联:task042
+change294 日期:2026-04-07 | 文件:src/components/PanelCard.jsx | 操作:Add | 影响:内容面板容器 | 说明:新增共享面板组件，统一卡片边框、图标区、头部结构与内容区承载方式 | 关联:task042
+change295 日期:2026-04-07 | 文件:src/components/StatusChip.jsx | 操作:Add | 影响:状态标签表达 | 说明:新增统一状态芯片组件，收敛中性/成功/警告/信息/错误语气 | 关联:task042
+change296 日期:2026-04-07 | 文件:src/components/KeycapGroup.jsx | 操作:Add | 影响:快捷键展示 | 说明:新增共享键帽组件，用于首页快捷键和常用语快捷键区域的统一表达 | 关联:task042
+change297 日期:2026-04-07 | 文件:src/index.css | 操作:Modify | 影响:共享组件样式与页面细节 | 说明:补齐 PageHeader、PanelCard、StatusChip、KeycapGroup 的统一样式规则，并收紧首页卡片标题和常用语热键编辑区布局 | 关联:task042
+change298 日期:2026-04-07 | 文件:src/pages/Translate.jsx | 操作:Modify | 影响:翻译风格页结构 | 说明:改用共享页头和状态芯片表达当前模式，并让模式卡接入统一面板语言 | 关联:task042
+change299 日期:2026-04-07 | 文件:src/pages/Phrases.jsx | 操作:Modify | 影响:常用语工作台结构 | 说明:改用共享页头、状态芯片和面板容器承载工作台顶部操作与表格主体 | 关联:task042
+change300 日期:2026-04-07 | 文件:src/pages/Tutorial.jsx | 操作:Modify | 影响:教程页层级 | 说明:将教程页收敛到共享页头与统一面板结构，并用状态芯片承接示例区标记 | 关联:task042
+change301 日期:2026-04-07 | 文件:src/pages/About.jsx | 操作:Modify | 影响:关于页更新中心与项目信息区 | 说明:改用共享页头、面板和状态芯片承载版本状态、更新操作和项目说明层级 | 关联:task042
+change302 日期:2026-04-07 | 文件:src/pages/home/index.jsx | 操作:Modify | 影响:首页上下文步骤提示 | 说明:将首页三步流程提示收敛为共享状态芯片样式，减少局部自定义标签 | 关联:task042
+change303 日期:2026-04-07 | 文件:src/pages/home/components/TranslationDirectionCard.jsx | 操作:Modify | 影响:首页翻译语言卡 | 说明:改用共享面板容器承载语言设置卡的头部和内容结构 | 关联:task042
+change304 日期:2026-04-07 | 文件:src/pages/home/components/EnableStatusCard.jsx | 操作:Modify | 影响:首页启用状态卡 | 说明:改用共享面板与状态芯片表达启用状态，让顶部状态信息更可扫读 | 关联:task042
+change305 日期:2026-04-07 | 文件:src/pages/home/components/GameSceneCard.jsx | 操作:Modify | 影响:首页游戏选择卡 | 说明:改用共享面板容器承载游戏选择卡，统一首页四张核心卡的头部结构 | 关联:task042
+change306 日期:2026-04-07 | 文件:src/pages/home/components/HotkeyCard.jsx | 操作:Modify | 影响:首页快捷键卡 | 说明:改用共享面板与键帽组件展示快捷键录制结果，替代纯文本组合键输出 | 关联:task042
+change307 日期:2026-04-07 | 文件:.phrase/docs/CHANGE.md | 操作:Modify | 影响:全局变更索引 | 说明:将五个主页面共享组件化与层级收敛补入全局 CHANGE 摘要 | 关联:task042
+
+change277 日期:2026-04-05 | 文件:.phrase/phases/phase-client-stability-20260326/spec_client-stability_20260326.md | 操作:Modify | 影响:阶段需求说明 | 说明:补充桌面端五个主页面统一收敛为工具风极简工作台的目标、用户流、边界与验收标准 | 关联:task041
+change278 日期:2026-04-05 | 文件:.phrase/phases/phase-client-stability-20260326/plan_client-stability_20260326.md | 操作:Modify | 影响:阶段计划与风险约束 | 说明:新增主页面视觉重构里程碑、范围与 shared shell 回归风险说明 | 关联:task041
+change279 日期:2026-04-05 | 文件:.phrase/phases/phase-client-stability-20260326/task_client-stability_20260326.md | 操作:Modify | 影响:任务清单 | 说明:新增并完成 task041，记录桌面端工具风 UI 重构与多语言文案收敛闭环 | 关联:task041
+change280 日期:2026-04-05 | 文件:src/index.css | 操作:Modify | 影响:全局设计 token、桌面壳层与页面布局样式 | 说明:将玻璃感蓝色主题收敛为更克制的浅色工具风系统，并补齐首页上下文条、表格工作台和说明页的语义样式 | 关联:task041
+change281 日期:2026-04-05 | 文件:src/pages/home/index.jsx | 操作:Modify | 影响:首页布局结构 | 说明:新增克制的翻译上下文条与示例气泡，让首页先解释工作方式再承接四个核心操作卡片 | 关联:task041
+change282 日期:2026-04-05 | 文件:src/pages/Translate.jsx | 操作:Modify | 影响:翻译风格页层级与选中态 | 说明:收紧风格卡片层级与状态样式，让三种模式更像可执行策略选择而非装饰型卡片 | 关联:task041
+change283 日期:2026-04-05 | 文件:src/pages/Phrases.jsx | 操作:Modify | 影响:常用语工作台结构 | 说明:为常用语页补齐更明确的工作台与表格语义容器，提升高频编辑场景的扫读性 | 关联:task041
+change284 日期:2026-04-05 | 文件:src/pages/Tutorial.jsx | 操作:Modify | 影响:教程页步骤与示例视觉层级 | 说明:强化三步流程编号与前后对照区块，让教程页更像桌面产品说明面板 | 关联:task041
+change285 日期:2026-04-05 | 文件:src/pages/About.jsx | 操作:Modify | 影响:版本中心提示与联系卡片 | 说明:收紧更新提示、联系方式和项目信息的样式语气，强化可信度和工具化观感 | 关联:task041
+change286 日期:2026-04-05 | 文件:src/components/Layout.jsx | 操作:Modify | 影响:桌面壳层提示反馈 | 说明:同步调整 toast 视觉样式，使窗口级反馈与新的浅色工具风系统一致 | 关联:task041
+change287 日期:2026-04-05 | 文件:src/components/DropdownMenu.jsx | 操作:Modify | 影响:下拉菜单面板与选中态 | 说明:去掉重玻璃感菜单样式并收敛为更清晰的桌面工具菜单层级 | 关联:task041
+change288 日期:2026-04-05 | 文件:src/i18n/messages.js | 操作:Modify | 影响:首页、教程、设置与关于页产品文案 | 说明:移除“嘴替 / in-game voice / голос в игре”类比，统一回到更专业的游戏内聊天翻译表述 | 关联:task041
+change289 日期:2026-04-05 | 文件:.phrase/docs/CHANGE.md | 操作:Modify | 影响:全局变更索引 | 说明:将桌面端工具风 UI 重构与文案收敛补入全局 CHANGE 摘要 | 关联:task041
+
+change267 日期:2026-04-02 | 文件:.phrase/phases/phase-client-stability-20260326/spec_client-stability_20260326.md | 操作:Modify | 影响:阶段需求说明 | 说明:补充 lingo.ink 迁移时需移除 GitHub Pages 自定义域名残留并按全部 CADDY_DOMAIN 校验的目标、边界与验收标准 | 关联:task040
+change268 日期:2026-04-02 | 文件:.phrase/phases/phase-client-stability-20260326/plan_client-stability_20260326.md | 操作:Modify | 影响:阶段计划与风险约束 | 说明:新增域名迁移代码侧收尾里程碑、范围、优先级以及 GoDaddy/secret 仍属外部依赖的风险说明 | 关联:task040
+change269 日期:2026-04-02 | 文件:.phrase/phases/phase-client-stability-20260326/task_client-stability_20260326.md | 操作:Modify | 影响:任务清单 | 说明:新增并完成 task040，记录清理 GitHub Pages 残留与多域名部署验收的闭环 | 关联:task040
+change270 日期:2026-04-02 | 文件:server/translate-proxy/.env.example | 操作:Modify | 影响:Caddy 多域名示例配置 | 说明:将示例域名扩展为 buffpp.com、lingo.ink 与 www.lingo.ink，便于域名切换时一次声明完整站点入口 | 关联:task040
+change271 日期:2026-04-02 | 文件:.github/workflows/deploy-tencent-light-server.yml | 操作:Modify | 影响:腾讯云 translate-proxy 部署验收 | 说明:从 secret 解析全部 CADDY_DOMAIN 并在服务器本机按 Host 头逐个校验 /translate 与首页路由，避免只验证首个域名 | 关联:task040
+change272 日期:2026-04-02 | 文件:.github/workflows/deploy-tencent-website.yml | 操作:Modify | 影响:腾讯云官网部署验收 | 说明:改为在服务器本机按全部 CADDY_DOMAIN 逐个验证静态首页，避免受外部 DNS 与证书切换状态误导 | 关联:task040
+change273 日期:2026-04-02 | 文件:docs/tencent-cloud-translate-proxy.md | 操作:Modify | 影响:腾讯云部署文档 | 说明:补充 www.lingo.ink 示例配置、去除 lingoweb public/CNAME 的迁移提示与多域名 Host 头验收步骤 | 关联:task040
+change274 日期:2026-04-02 | 文件:../lingoweb/README.md | 操作:Modify | 影响:官网仓库部署说明 | 说明:明确腾讯云为主生产入口、GitHub Pages 仅作辅助发布路径，并提示清理 GitHub Pages 自定义域名设置 | 关联:task040
+change275 日期:2026-04-02 | 文件:../lingoweb/public/CNAME | 操作:Delete | 影响:官网仓库 GitHub Pages 自定义域名声明 | 说明:移除受控 CNAME 文件，避免仓库代码继续声明 lingo.ink 属于 GitHub Pages 自定义域名 | 关联:task040
+change276 日期:2026-04-02 | 文件:.phrase/docs/CHANGE.md | 操作:Modify | 影响:全局变更索引 | 说明:将域名迁移代码侧收尾改动补入全局 CHANGE 摘要，明确这次仅清理代码残留而非替代 GoDaddy 权威 DNS 切换 | 关联:task040
+
 change265 日期:2026-04-01 | 文件:../lingoweb/src/lib/release.ts | 操作:Modify | 影响:官网版本信息兜底策略 | 说明:当腾讯云 latest-web.json 仍停留在旧版本时，官网直接回退到内置的当前正式版腾讯云直链，避免下载区继续展示旧版本 | 关联:task038
 change266 日期:2026-04-01 | 文件:.phrase/docs/CHANGE.md | 操作:Modify | 影响:全局变更索引 | 说明:将官网忽略滞后 latest-web.json 的兜底修复补入全局 CHANGE 索引摘要 | 关联:task038
 

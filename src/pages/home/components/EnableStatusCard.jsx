@@ -1,6 +1,8 @@
 ﻿import { motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
 import { useStore } from '../../../components/StoreProvider';
+import PanelCard from '../../../components/PanelCard';
+import StatusChip from '../../../components/StatusChip';
 import { PowerToggle } from '../../../icons';
 import { invokeCommand, hasTauriRuntime } from '../../../services/tauriRuntime';
 import { showError, showSuccess } from '../../../utils/toast';
@@ -52,26 +54,20 @@ export default function EnableStatusCard() {
   };
 
   return (
-    <motion.section
-      className='home-stat-card home-control-card dota-card tool-rise'
+    <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.06 }}>
-      <div className='home-stat-card__header'>
-        <div className='home-stat-card__header-main'>
-          <span className='home-stat-card__icon-shell'>
-            <PowerToggle className='home-stat-card__header-icon' />
-          </span>
-          <h3 className='home-stat-card__title'>{t('home.enableStatus.title')}</h3>
-        </div>
-        <span className='home-control-card__value'>
-          {isEnabled ? t('common.enabled') : t('common.paused')}
-        </span>
-      </div>
-
-      <div className='home-stat-card__body'>
-        <div className='home-top-copy home-stat-card__copy home-stat-card__copy--compact'>
-          <p className='tool-body home-stat-card__summary'>{t('home.enableStatus.desc')}</p>
+      <PanelCard
+        className='home-stat-card tool-rise'
+        icon={<PowerToggle className='home-stat-card__header-icon' />}
+        title={t('home.enableStatus.title')}
+        actions={
+          <StatusChip label={isEnabled ? t('common.enabled') : t('common.paused')} tone={isEnabled ? 'success' : 'warning'} />
+        }
+        bodyClassName='home-stat-card__body'>
+        <div className='home-top-copy home-stat-card__copy home-stat-card__copy--single'>
+          <p className='tool-body'>{t('home.enableStatus.desc')}</p>
         </div>
 
         <div className='home-top-actions'>
@@ -110,7 +106,7 @@ export default function EnableStatusCard() {
             </div>
           </div>
         </div>
-      </div>
-    </motion.section>
+      </PanelCard>
+    </motion.div>
   );
 }

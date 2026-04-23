@@ -17,7 +17,6 @@ function LayoutShell({ children, activeItem, setActiveItem }) {
   const [showLocaleMenu, setShowLocaleMenu] = useState(false);
   const localeTriggerRef = useRef(null);
   const busyToastAtRef = useRef(0);
-  const workspaceContentRef = useRef(null);
 
   const localeMap = useMemo(
     () =>
@@ -111,14 +110,6 @@ function LayoutShell({ children, activeItem, setActiveItem }) {
     };
   }, [t]);
 
-  useEffect(() => {
-    workspaceContentRef.current?.scrollTo({
-      top: 0,
-      left: 0,
-      behavior: 'auto',
-    });
-  }, [activeItem]);
-
   return (
     <div className='lingo-app-shell'>
       <header className='lingo-titlebar'>
@@ -184,16 +175,10 @@ function LayoutShell({ children, activeItem, setActiveItem }) {
       </header>
 
       <Toaster
+        gutter={12}
+        containerClassName='lingo-toast-stack'
         toastOptions={{
-          className: 'text-sm',
-          style: {
-            borderRadius: '14px',
-            background: 'rgba(255,255,255,0.94)',
-            color: '#1f2937',
-            border: '1px solid rgba(212,220,232,0.88)',
-            boxShadow: '0 18px 40px rgba(15, 23, 42, 0.14)',
-            backdropFilter: 'blur(18px)',
-          },
+          className: 'lingo-toast',
         }}
       />
 
@@ -203,9 +188,7 @@ function LayoutShell({ children, activeItem, setActiveItem }) {
         </aside>
 
         <section className='lingo-shell__workspace'>
-          <div className='workspace-content' ref={workspaceContentRef}>
-            {children}
-          </div>
+          <div className='workspace-content'>{children}</div>
         </section>
       </div>
     </div>

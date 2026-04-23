@@ -4,9 +4,14 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: Existing release tag to mirror to Tencent COS
+        description: Existing release tag to mirror into Tencent COS versioned assets
         required: true
-        default: v0.6.7
+        default: v0.6.9
+      refresh_latest_aliases:
+        description: Refresh global latest manifests and stable download aliases
+        required: false
+        type: boolean
+        default: false
   push:
     tags:
       - 'v*'
@@ -453,9 +458,11 @@ jobs:
           TENCENT_SECRET_ID: ${{ secrets.TENCENT_SECRET_ID }}
           TENCENT_SECRET_KEY: ${{ secrets.TENCENT_SECRET_KEY }}
           TENCENT_COS_SESSION_TOKEN: ${{ secrets.TENCENT_COS_SESSION_TOKEN }}
+          COS_REFRESH_STABLE_ALIASES: ${{ inputs.refresh_latest_aliases == true && '1' || '0' }}
         run: node ./scripts/upload-cos-release.mjs
 
       - name: Rewrite GitHub latest.json To Tencent COS URLs
+        if: ${{ inputs.refresh_latest_aliases == true }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: gh release upload "$RELEASE_TAG" .mirror-cos/releases/latest.json --clobber
