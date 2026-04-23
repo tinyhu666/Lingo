@@ -166,20 +166,25 @@ export default function HotkeyCard() {
     <motion.button
       type='button'
       onClick={beginRecording}
-      className='home-stat-card dota-card tool-rise transition-all duration-200'
+      className='home-stat-card home-control-card dota-card tool-rise transition-all duration-200'
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.2 }}>
       <div className='home-stat-card__header'>
-        <span className='home-stat-card__icon-shell'>
-          <KeyboardAlt className='home-stat-card__header-icon' />
+        <div className='home-stat-card__header-main'>
+          <span className='home-stat-card__icon-shell'>
+            <KeyboardAlt className='home-stat-card__header-icon' />
+          </span>
+          <h3 className='home-stat-card__title'>{t('home.hotkey.title')}</h3>
+        </div>
+        <span className='home-control-card__value home-control-card__value--key'>
+          {typeof hotkeyDisplay === 'string' ? hotkeyDisplay : defaultTranslatorHotkeyLabel()}
         </span>
-        <h3 className='home-stat-card__title'>{t('home.hotkey.title')}</h3>
       </div>
 
       <div className='home-stat-card__body'>
-        <div className='home-top-copy home-stat-card__copy home-stat-card__copy--single'>
-          <p className='tool-body'>
+        <div className='home-top-copy home-stat-card__copy home-stat-card__copy--compact'>
+          <p className='tool-body home-stat-card__summary'>
             {recording
               ? t('home.hotkey.recordingHint')
               : t('home.hotkey.defaultHint', { shortcut: defaultTranslatorHotkeyLabel() })}

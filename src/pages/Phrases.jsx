@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { motion } from 'framer-motion';
+import PageHeader from '../components/PageHeader';
 import { useStore } from '../components/StoreProvider';
 import { defaultPhraseModifier, defaultPhraseModifierLabel } from '../constants/hotkeys';
 import { invokeCommand, hasTauriRuntime } from '../services/tauriRuntime';
@@ -61,7 +61,7 @@ export default function Phrases() {
   useEffect(() => {
     const source = settings?.phrases || [];
     if (source.length === 0) {
-      setRows([createRow(1)]);
+      setRows([]);
       return;
     }
 
@@ -115,11 +115,6 @@ export default function Phrases() {
   };
 
   const removeRow = (id) => {
-    if (rows.length <= 1) {
-      showError(t('phrases.errors.minOne'));
-      return;
-    }
-
     setRows((prev) =>
       prev
         .filter((row) => row.id !== id)
@@ -186,10 +181,10 @@ export default function Phrases() {
       if (hasTauriRuntime()) {
         const latest = await invokeCommand('update_phrases', { phrases: payload });
         await syncSettings(latest);
-        showSuccess(t('phrases.toasts.saved'));
+        showSuccess(t(payload.length === 0 ? 'phrases.toasts.cleared' : 'phrases.toasts.saved'));
       } else {
         await updateSettings({ phrases: payload });
-        showSuccess(t('phrases.toasts.previewSaved'));
+        showSuccess(t(payload.length === 0 ? 'phrases.toasts.previewCleared' : 'phrases.toasts.previewSaved'));
       }
     } catch (error) {
       showError(t('phrases.errors.saveFailed', { error: toErrorMessage(error) }));
@@ -199,88 +194,118 @@ export default function Phrases() {
   };
 
   return (
-    <div className='flex min-h-full flex-col gap-6'>
-      <motion.section className='dota-card tool-rise p-6' initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-        <div className='desktop-tight-header desktop-tight-header--start flex flex-col items-start gap-4 lg:flex-row lg:items-start lg:justify-between'>
-          <div className='min-w-0'>
-            <div className='flex flex-wrap items-center gap-3'>
-              <h2 className='tool-page-title mt-0'>{t('phrases.title')}</h2>
-              <span className='tool-pill min-w-[76px] justify-center'>{rows.length}/{MAX_PHRASE_COUNT}</span>
-            </div>
-            <p className='tool-body mt-3'>{t('phrases.summary')}</p>
-          </div>
-          <div className='desktop-tight-actions flex w-full flex-wrap items-center gap-2 lg:w-auto lg:shrink-0 lg:justify-end'>
-            <button type='button' onClick={addRow} className='desktop-tight-button tool-btn min-w-[120px] flex-1 whitespace-nowrap px-4 sm:flex-none'>
+    <div className='page-stack phrases-page phrases-page--ops'>
+      <PageHeader
+        eyebrow={t('sidebar.nav.phrases')}
+        meta={<span className='tool-pill min-w-[76px] justify-center'>{rows.length}/{MAX_PHRASE_COUNT}</span>}
+        title={t('phrases.title')}
+        summary={t('phrases.summary')}
+        aside={
+          <div className='page-header__action-row'>
+            <button type='button' onClick={addRow} className='desktop-tight-button tool-btn min-w-[120px] whitespace-nowrap px-4'>
               {t('phrases.add')}
             </button>
             <button
               type='button'
               onClick={saveRows}
               disabled={saving}
-              className={`desktop-tight-button tool-btn-primary min-w-[104px] flex-1 whitespace-nowrap px-4 sm:flex-none ${saving ? 'opacity-70 cursor-not-allowed' : ''}`}>
+              className={`desktop-tight-button tool-btn-primary min-w-[104px] whitespace-nowrap px-4 ${saving ? 'opacity-70 cursor-not-allowed' : ''}`}>
               {saving ? t('phrases.saving') : t('phrases.save')}
             </button>
           </div>
+        }
+      />
+
+      <section className='phrases-table-shell phrases-table-shell--ops'>
+        <div className='phrases-shell__head'>
+          <div className='phrases-shell__copy'>
+            <div className='workspace-section-label'>{t('sidebar.nav.phrases')}</div>
+            <h2 className='workspace-section-title'>{t('phrases.title')}</h2>
+            <p className='tool-body'>{t('phrases.summary')}</p>
+          </div>
+
+          <div className='phrases-shell__metrics'>
+            <article className='phrases-shell__metric'>
+              <span className='tool-caption'>{t('phrases.deck.count')}</span>
+              <strong>{rows.length}</strong>
+            </article>
+            <article className='phrases-shell__metric'>
+              <span className='tool-caption'>{t('phrases.deck.modifier')}</span>
+              <strong>{MODIFIER_LABEL}</strong>
+            </article>
+            <article className='phrases-shell__metric'>
+              <span className='tool-caption'>{t('phrases.deck.capacity')}</span>
+              <strong>{MAX_PHRASE_COUNT}</strong>
+            </article>
+          </div>
         </div>
-      </motion.section>
 
-      <motion.section className='dota-card tool-rise flex-1 p-4' initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.06 }}>
-        <div className='h-full overflow-x-auto overflow-y-auto rounded-[20px] border border-[rgba(219,228,239,0.9)] bg-[rgba(255,255,255,0.62)]'>
-          <table className='min-w-full border-separate border-spacing-0'>
-            <thead className='sticky top-0 z-10 bg-[rgba(248,251,255,0.96)] backdrop-blur-xl'>
-              <tr>
-                <th className='px-5 py-4 text-left tool-caption w-[64px]'>{t('phrases.table.index')}</th>
-                <th className='px-4 py-4 text-left tool-caption'>{t('phrases.table.content')}</th>
-                <th className='px-4 py-4 text-left tool-caption w-[210px]'>{t('phrases.table.hotkey')}</th>
-                <th className='px-5 py-4 text-left tool-caption w-[92px]'>{t('phrases.table.action')}</th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {rows.map((row) => (
-                <tr key={row.id} className='border-t border-[rgba(226,233,243,0.8)] hover:bg-[rgba(248,251,255,0.9)]'>
-                  <td className='px-5 py-4 text-sm font-semibold text-zinc-500 align-top'>{row.id}</td>
-
-                  <td className='px-4 py-4'>
-                    <input
-                      value={row.phrase}
-                      onChange={(event) => patchRow(row.id, { phrase: event.target.value })}
-                      className='tool-input'
-                      placeholder={t('phrases.contentPlaceholder')}
-                      maxLength={MAX_PHRASE_LENGTH}
-                    />
-                  </td>
-
-                  <td className='px-4 py-4'>
-                    <div className='flex items-center gap-2'>
-                      <span className='tool-chip'>{MODIFIER_LABEL}</span>
-                      <select
-                        value={row.keyCode}
-                        onChange={(event) => patchRow(row.id, { keyCode: event.target.value })}
-                        className='tool-input'>
-                        {KEY_OPTIONS.map((option) => (
-                          <option key={option.code} value={option.code}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </td>
-
-                  <td className='px-5 py-4 align-top'>
-                    <button
-                      type='button'
-                      onClick={() => removeRow(row.id)}
-                      className='tool-btn tool-btn-danger min-w-[72px] px-3 text-sm'>
-                      {t('common.remove')}
-                    </button>
-                  </td>
+        {rows.length === 0 ? (
+          <div className='phrases-empty-state'>
+            <div className='tool-card-title'>{t('phrases.empty.title')}</div>
+            <p className='tool-body mt-3 max-w-[420px]'>{t('phrases.empty.summary')}</p>
+            <button type='button' onClick={addRow} className='tool-btn mt-5 px-4'>
+              {t('phrases.add')}
+            </button>
+          </div>
+        ) : (
+          <div className='phrases-table-shell__scroller phrases-table-shell__scroller--ops overflow-x-auto overflow-y-auto'>
+            <table className='phrases-table min-w-full border-separate border-spacing-0'>
+              <thead className='phrases-table__head sticky top-0 z-10'>
+                <tr>
+                  <th className='px-5 py-4 text-left tool-caption w-[64px]'>{t('phrases.table.index')}</th>
+                  <th className='px-4 py-4 text-left tool-caption'>{t('phrases.table.content')}</th>
+                  <th className='px-4 py-4 text-left tool-caption w-[210px]'>{t('phrases.table.hotkey')}</th>
+                  <th className='px-5 py-4 text-left tool-caption w-[92px]'>{t('phrases.table.action')}</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </motion.section>
+              </thead>
+
+              <tbody>
+                {rows.map((row) => (
+                  <tr key={row.id} className='phrases-table__row border-t border-[rgba(226,233,243,0.8)]'>
+                    <td className='px-5 py-4 text-sm font-semibold text-zinc-500 align-top'>{row.id}</td>
+
+                    <td className='px-4 py-4'>
+                      <input
+                        value={row.phrase}
+                        onChange={(event) => patchRow(row.id, { phrase: event.target.value })}
+                        className='tool-input'
+                        placeholder={t('phrases.contentPlaceholder')}
+                        maxLength={MAX_PHRASE_LENGTH}
+                      />
+                    </td>
+
+                    <td className='px-4 py-4'>
+                      <div className='flex items-center gap-2'>
+                        <span className='tool-chip'>{MODIFIER_LABEL}</span>
+                        <select
+                          value={row.keyCode}
+                          onChange={(event) => patchRow(row.id, { keyCode: event.target.value })}
+                          className='tool-input'>
+                          {KEY_OPTIONS.map((option) => (
+                            <option key={option.code} value={option.code}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </td>
+
+                    <td className='px-5 py-4 align-top'>
+                      <button
+                        type='button'
+                        onClick={() => removeRow(row.id)}
+                        className='tool-btn tool-btn-danger min-w-[72px] px-3 text-sm'>
+                        {t('common.remove')}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
     </div>
   );
 }

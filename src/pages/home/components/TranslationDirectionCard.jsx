@@ -61,6 +61,8 @@ export default function TranslationDirectionCard() {
 
   const from = settings?.translation_from || 'zh';
   const to = settings?.translation_to || 'en';
+  const fromLabel = getLanguageMeta(from, locale).label;
+  const toLabel = getLanguageMeta(to, locale).label;
 
   const options = useMemo(
     () =>
@@ -122,20 +124,22 @@ export default function TranslationDirectionCard() {
 
   return (
     <motion.section
-      className='home-stat-card dota-card tool-rise relative'
+      className='home-stat-card home-control-card dota-card tool-rise relative'
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}>
       <div className='home-stat-card__header'>
-        <span className='home-stat-card__icon-shell'>
-          <Translate className='home-stat-card__header-icon' />
-        </span>
-        <h3 className='home-stat-card__title'>{t('home.translationLanguage.title')}</h3>
+        <div className='home-stat-card__header-main'>
+          <span className='home-stat-card__icon-shell'>
+            <Translate className='home-stat-card__header-icon' />
+          </span>
+          <h3 className='home-stat-card__title'>{t('home.translationLanguage.title')}</h3>
+        </div>
+        <span className='home-control-card__value'>{`${fromLabel} -> ${toLabel}`}</span>
       </div>
 
       <div className='home-stat-card__body'>
-        <div className='home-top-copy home-stat-card__copy'>
-          <p className='tool-body'>{t('home.translationLanguage.desc1')}</p>
-          <p className='tool-body'>{t('home.translationLanguage.desc2')}</p>
+        <div className='home-top-copy home-stat-card__copy home-stat-card__copy--compact'>
+          <p className='tool-body home-stat-card__summary'>{t('home.translationLanguage.desc1')}</p>
         </div>
 
         <div className='home-top-actions'>

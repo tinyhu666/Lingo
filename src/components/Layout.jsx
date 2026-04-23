@@ -17,6 +17,7 @@ function LayoutShell({ children, activeItem, setActiveItem }) {
   const [showLocaleMenu, setShowLocaleMenu] = useState(false);
   const localeTriggerRef = useRef(null);
   const busyToastAtRef = useRef(0);
+  const workspaceContentRef = useRef(null);
 
   const localeMap = useMemo(
     () =>
@@ -110,6 +111,14 @@ function LayoutShell({ children, activeItem, setActiveItem }) {
     };
   }, [t]);
 
+  useEffect(() => {
+    workspaceContentRef.current?.scrollTo({
+      top: 0,
+      left: 0,
+      behavior: 'auto',
+    });
+  }, [activeItem]);
+
   return (
     <div className='lingo-app-shell'>
       <header className='lingo-titlebar'>
@@ -194,7 +203,9 @@ function LayoutShell({ children, activeItem, setActiveItem }) {
         </aside>
 
         <section className='lingo-shell__workspace'>
-          <div className='workspace-content'>{children}</div>
+          <div className='workspace-content' ref={workspaceContentRef}>
+            {children}
+          </div>
         </section>
       </div>
     </div>

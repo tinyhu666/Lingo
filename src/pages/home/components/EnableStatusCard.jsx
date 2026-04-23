@@ -53,20 +53,25 @@ export default function EnableStatusCard() {
 
   return (
     <motion.section
-      className='home-stat-card dota-card tool-rise'
+      className='home-stat-card home-control-card dota-card tool-rise'
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.06 }}>
       <div className='home-stat-card__header'>
-        <span className='home-stat-card__icon-shell'>
-          <PowerToggle className='home-stat-card__header-icon' />
+        <div className='home-stat-card__header-main'>
+          <span className='home-stat-card__icon-shell'>
+            <PowerToggle className='home-stat-card__header-icon' />
+          </span>
+          <h3 className='home-stat-card__title'>{t('home.enableStatus.title')}</h3>
+        </div>
+        <span className='home-control-card__value'>
+          {isEnabled ? t('common.enabled') : t('common.paused')}
         </span>
-        <h3 className='home-stat-card__title'>{t('home.enableStatus.title')}</h3>
       </div>
 
       <div className='home-stat-card__body'>
-        <div className='home-top-copy home-stat-card__copy home-stat-card__copy--single'>
-          <p className='tool-body'>{t('home.enableStatus.desc')}</p>
+        <div className='home-top-copy home-stat-card__copy home-stat-card__copy--compact'>
+          <p className='tool-body home-stat-card__summary'>{t('home.enableStatus.desc')}</p>
         </div>
 
         <div className='home-top-actions'>

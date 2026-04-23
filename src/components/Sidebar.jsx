@@ -8,9 +8,26 @@ import { useI18n } from '../i18n/I18nProvider';
 export default function Sidebar({ activeItem, setActiveItem }) {
   const { hasUpdate } = useUpdater();
   const { t } = useI18n();
+  const activeLabel = t(NAV_ITEMS.find((item) => item.id === activeItem)?.labelKey || 'common.appName');
 
   return (
     <div className='sidebar-panel'>
+      <div className='sidebar-overview'>
+        <div className='sidebar-overview__eyebrow-row'>
+          <div className='sidebar-section__label'>{t('common.appName')}</div>
+          <span className='sidebar-overview__state'>{t('sidebar.desk')}</span>
+        </div>
+        <div className='sidebar-overview__title-row'>
+          <h2 className='sidebar-overview__title'>{activeLabel}</h2>
+          {hasUpdate ? <span className='sidebar-overview__badge'>{t('sidebar.updateAvailable')}</span> : null}
+        </div>
+        <p className='sidebar-overview__summary'>{APP_VERSION_LABEL}</p>
+        <div className='sidebar-overview__route'>
+          <span className='sidebar-overview__route-label'>{t('sidebar.route')}</span>
+          <strong className='sidebar-overview__route-value'>{activeItem}</strong>
+        </div>
+      </div>
+
       <div className='sidebar-section'>
         <nav className='sidebar-nav'>
           {NAV_ITEMS.map((item) => {

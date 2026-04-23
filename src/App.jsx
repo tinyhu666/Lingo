@@ -32,11 +32,19 @@ function PageFallback() {
 }
 
 function App() {
-  const [activeItem, setActiveItem] = useState('home');
-  const CurrentPage = pages[activeItem] || Home;
   const desktopPlatform = useMemo(() => getDesktopPlatform(), []);
   const windowsClient = desktopPlatform === 'windows';
   const desktopClient = Boolean(desktopPlatform);
+  const initialPage = useMemo(() => {
+    if (typeof window === 'undefined') {
+      return 'home';
+    }
+
+    const candidate = new URLSearchParams(window.location.search).get('page') || 'home';
+    return pages[candidate] ? candidate : 'home';
+  }, []);
+  const [activeItem, setActiveItem] = useState(initialPage);
+  const CurrentPage = pages[activeItem] || Home;
   const windowMode = useMemo(() => {
     if (typeof window === 'undefined') {
       return '';

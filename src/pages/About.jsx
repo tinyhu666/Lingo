@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
-import { motion } from 'framer-motion';
 import { openUrl } from '@tauri-apps/plugin-opener';
-import { ChatBubbleMessage, CircleInfo, Dock, GamingPad, Globe } from '../icons';
+import { ArrowRight, AT, ChatBubbleMessage, CircleInfo, Dock, GamingPad, Globe } from '../icons';
+import PageHeader from '../components/PageHeader';
 import { useUpdater } from '../components/UpdateProvider';
 import { APP_VERSION_LABEL, RELEASE_PAGE_URL } from '../constants/version';
 import { hasTauriRuntime } from '../services/tauriRuntime';
 import { DEFAULT_PUBLIC_SITE_CONFIG, loadPublicSiteConfig } from '../services/publicSiteConfig';
 import { useI18n } from '../i18n/I18nProvider';
-import { showError, showSuccess } from '../utils/toast';
+import { showError, showInfo, showSuccess } from '../utils/toast';
 import { toErrorMessage } from '../utils/error';
 
 const stripLeadingMarkdownHeading = (value) => {
@@ -53,24 +53,66 @@ const openContactLink = async (url, t) => {
   }
 };
 
+const copyTextFallback = (value) => {
+  if (typeof document === 'undefined') {
+    return false;
+  }
+
+  const textarea = document.createElement('textarea');
+  textarea.value = value;
+  textarea.setAttribute('readonly', '');
+  textarea.style.position = 'fixed';
+  textarea.style.opacity = '0';
+  textarea.style.pointerEvents = 'none';
+  textarea.style.left = '-9999px';
+  textarea.style.top = '0';
+
+  document.body.appendChild(textarea);
+  textarea.focus();
+  textarea.select();
+  textarea.setSelectionRange(0, textarea.value.length);
+
+  let copied = false;
+  try {
+    copied = Boolean(document.execCommand?.('copy'));
+  } finally {
+    textarea.remove();
+  }
+
+  return copied;
+};
+
 const copyContactValue = async (value, t) => {
   try {
-    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
-      await navigator.clipboard.writeText(value);
-      showSuccess(t('about.project.contactQqCopied'));
-      return;
-    }
-
     if (hasTauriRuntime()) {
-      const { writeText } = await import('@tauri-apps/plugin-clipboard-manager');
-      await writeText(value);
+      try {
+        const { writeText } = await import('@tauri-apps/plugin-clipboard-manager');
+        await writeText(value);
+        showSuccess(t('about.project.contactQqCopied'));
+        return;
+      } catch {
+        // Fall through to browser clipboard helpers.
+      }
+    }
+
+    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+      try {
+        await navigator.clipboard.writeText(value);
+        showSuccess(t('about.project.contactQqCopied'));
+        return;
+      } catch {
+        // Some preview/browser contexts expose the clipboard API but deny permission.
+      }
+    }
+
+    if (copyTextFallback(value)) {
       showSuccess(t('about.project.contactQqCopied'));
       return;
     }
 
-    throw new Error('Clipboard is not available in this environment.');
+    showInfo(t('about.project.contactCopyManual', { value }));
   } catch (error) {
-    showError(t('developerNote.openLinkFailed', { error: toErrorMessage(error) }));
+    showError(t('about.project.contactCopyFailed', { error: toErrorMessage(error) }));
   }
 };
 
@@ -157,34 +199,58 @@ export default function About() {
   const actionDisabled = !supportsUpdater || checking || downloading;
   const releaseNotesBody = normalizeReleaseNotes(releaseBody);
   const shouldShowReleaseNotes = hasUpdate && Boolean(releaseNotesBody);
+
   const contactItems = useMemo(() => {
     const contact = publicSiteConfig?.contact || DEFAULT_PUBLIC_SITE_CONFIG.contact;
 
     return [
       {
         key: 'discord',
+        icon: ChatBubbleMessage,
         label: t('about.project.contactDiscord'),
         value: contact.discordUrl.replace(/^https?:\/\//, ''),
+        hint: t('about.project.contactDiscordHint'),
+        actionLabel: t('about.project.contactActionOpen'),
         action: () => openContactLink(contact.discordUrl, t),
       },
       {
         key: 'qq-group',
+        icon: Dock,
         label: t('about.project.contactQqGroup'),
         value: contact.qqGroup,
+        hint: t('about.project.contactQqHint'),
+        actionLabel: t('about.project.contactActionCopy'),
         action: () => copyContactValue(contact.qqGroup, t),
       },
       {
         key: 'email',
+        icon: AT,
         label: t('about.project.contactEmail'),
         value: contact.email,
+        hint: t('about.project.contactEmailHint'),
+        actionLabel: t('about.project.contactActionOpen'),
         action: () => openContactLink(`mailto:${contact.email}`, t),
       },
     ];
   }, [publicSiteConfig, t]);
 
   return (
-    <div className='flex h-full flex-col gap-6'>
-      <motion.section className='dota-card tool-rise p-6' initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+    <div className='page-stack about-page about-page--ops'>
+      <PageHeader
+        eyebrow={t('sidebar.nav.about')}
+        meta={<span className='tool-pill'>{versionLabel}</span>}
+        title={t('about.project.title')}
+        summary={t('about.project.summary')}
+        icon={CircleInfo}
+        aside={
+          <div className='page-header__badge-cluster'>
+            <span className='tool-pill'>{latestVersionLabel}</span>
+            {hasUpdate ? <span className='tool-pill tool-pill--accent'>{actionLabel}</span> : null}
+          </div>
+        }
+      />
+
+      <section className='about-panel about-update-panel about-update-panel--ops'>
         <div className='tool-section-head'>
           <div className='tool-section-head__main'>
             <div className='tool-section-head__title-row'>
@@ -205,20 +271,20 @@ export default function About() {
           ) : null}
         </div>
 
-        <div className='about-update-grid mt-5'>
-          <div className='tool-subcard min-w-0 p-4'>
+        <div className='about-update-grid about-update-grid--ops mt-5'>
+          <div className='tool-subcard about-update-stat min-w-0 p-4'>
             <div className='tool-caption'>{t('about.update.currentVersion')}</div>
             <div className='tool-card-title mt-2'>{versionLabel}</div>
           </div>
-          <div className='tool-subcard min-w-0 p-4'>
+          <div className='tool-subcard about-update-stat min-w-0 p-4'>
             <div className='tool-caption'>{t('about.update.latestVersion')}</div>
             <div className='tool-card-title mt-2'>{latestVersionLabel}</div>
           </div>
-          <div className='tool-subcard min-w-0 p-4'>
+          <div className='tool-subcard about-update-stat min-w-0 p-4'>
             <div className='tool-caption'>{t('about.update.releaseDate')}</div>
             <div className='tool-card-title mt-2'>{formatReleaseDate(releaseDate)}</div>
           </div>
-          <div className='tool-subcard min-w-0 p-4'>
+          <div className='tool-subcard about-update-stat min-w-0 p-4'>
             <div className='tool-caption'>{t('about.update.checkedAt')}</div>
             <div className='tool-body mt-2 break-words'>{formatTime(checkedAt)}</div>
           </div>
@@ -266,72 +332,81 @@ export default function About() {
             </div>
           ) : null}
         </div>
-      </motion.section>
+      </section>
 
-      <motion.section
-        className='dota-card tool-rise p-6'
-        initial={{ opacity: 0, y: 18 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}>
-        <div className='tool-section-head'>
-          <div className='tool-section-head__main'>
-            <div className='tool-section-head__title-row'>
-              <CircleInfo className='tool-section-head__icon' />
-              <h3 className='tool-card-title'>{t('about.project.title')}</h3>
+      <section className='about-panel about-panel--hub'>
+        <div className='about-hub'>
+          <div className='about-hub__contacts'>
+            <div className='tool-section-head'>
+              <div className='tool-section-head__main'>
+                <div className='tool-section-head__title-row'>
+                  <ChatBubbleMessage className='tool-section-head__icon' />
+                  <h2 className='tool-card-title'>{t('about.project.contactTitle')}</h2>
+                </div>
+                <p className='tool-body tool-section-summary'>{t('about.project.introBody')}</p>
+              </div>
+            </div>
+
+            <div className='about-contact-list mt-5'>
+              {contactItems.map((item) => {
+                const Icon = item.icon;
+
+                return (
+                  <button
+                    key={item.key}
+                    type='button'
+                    onClick={() => {
+                      void item.action();
+                    }}
+                    className='about-contact-row'>
+                    <div className='about-contact-row__identity'>
+                      <span className='about-contact-row__icon' aria-hidden='true'>
+                        <Icon className='h-4 w-4 stroke-current' />
+                      </span>
+                      <div className='about-contact-row__copy'>
+                        <div className='about-contact-row__label'>{item.label}</div>
+                        <div className='about-contact-row__value'>{item.value}</div>
+                        <div className='about-contact-row__hint'>{item.hint}</div>
+                      </div>
+                    </div>
+
+                    <span className='about-contact-row__action'>
+                      {item.actionLabel}
+                      <ArrowRight className='h-4 w-4 stroke-current' />
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className='about-project-grid about-project-grid--ops mt-0'>
+            <div className='tool-subcard about-project-card min-w-0 p-5'>
+              <div className='flex items-center gap-2'>
+                <CircleInfo className='h-4 w-4 stroke-zinc-500' />
+                <span className='tool-caption'>{t('about.project.introTitle')}</span>
+              </div>
+              <p className='tool-body mt-3'>{t('about.project.introBody')}</p>
+            </div>
+
+            <div className='tool-subcard about-project-card min-w-0 p-5'>
+              <div className='flex items-center gap-2'>
+                <GamingPad className='h-4 w-4 stroke-zinc-500' />
+                <span className='tool-caption'>{t('about.project.featureTitle')}</span>
+              </div>
+              <p className='tool-body mt-3'>{t('about.project.featureBody')}</p>
+            </div>
+
+            <div className='tool-subcard about-project-card min-w-0 p-5'>
+              <div className='flex items-center gap-2'>
+                <Globe className='h-4 w-4 stroke-zinc-500' />
+                <span className='tool-caption'>{t('about.project.roadmapTitle')}</span>
+              </div>
+              <p className='tool-body mt-3'>{t('about.project.roadmapBody')}</p>
             </div>
           </div>
         </div>
-        <p className='tool-body tool-section-summary'>{t('about.project.summary')}</p>
-
-        <div className='mt-4 rounded-2xl border border-[rgba(205,218,237,0.96)] bg-[rgba(248,251,255,0.9)] p-4 shadow-[0_10px_24px_rgba(27,42,72,0.04)]'>
-          <div className='flex items-center gap-2'>
-            <span className='tool-inline-icon-shell' aria-hidden='true'>
-              <ChatBubbleMessage className='h-3.5 w-3.5 stroke-zinc-500' />
-            </span>
-            <span className='tool-caption'>{t('about.project.contactTitle')}</span>
-          </div>
-          <div className='mt-3 flex flex-wrap gap-3'>
-            {contactItems.map((item) => (
-              <button
-                key={item.key}
-                type='button'
-                onClick={() => {
-                  void item.action();
-                }}
-                className='min-w-[220px] flex-1 rounded-2xl border border-[rgba(196,210,233,0.96)] bg-[rgba(255,255,255,0.94)] px-4 py-3 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition-all duration-150 hover:-translate-y-[1px] hover:border-[rgba(157,181,229,0.98)] hover:bg-[rgba(252,254,255,0.98)]'>
-                <div className='text-[11px] font-extrabold uppercase tracking-[0.12em] text-[#7a89a1]'>{item.label}</div>
-                <div className='mt-1 text-[14px] font-semibold text-[#2d3d59]'>{item.value}</div>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className='about-project-grid mt-5'>
-          <div className='tool-subcard min-w-0 p-5'>
-            <div className='flex items-center gap-2'>
-              <CircleInfo className='h-4 w-4 stroke-zinc-500' />
-              <span className='tool-caption'>{t('about.project.introTitle')}</span>
-            </div>
-            <p className='tool-body mt-3'>{t('about.project.introBody')}</p>
-          </div>
-
-          <div className='tool-subcard min-w-0 p-5'>
-            <div className='flex items-center gap-2'>
-              <GamingPad className='h-4 w-4 stroke-zinc-500' />
-              <span className='tool-caption'>{t('about.project.featureTitle')}</span>
-            </div>
-            <p className='tool-body mt-3'>{t('about.project.featureBody')}</p>
-          </div>
-
-          <div className='tool-subcard min-w-0 p-5'>
-            <div className='flex items-center gap-2'>
-              <Globe className='h-4 w-4 stroke-zinc-500' />
-              <span className='tool-caption'>{t('about.project.roadmapTitle')}</span>
-            </div>
-            <p className='tool-body mt-3'>{t('about.project.roadmapBody')}</p>
-          </div>
-        </div>
-      </motion.section>
+      </section>
     </div>
   );
 }
