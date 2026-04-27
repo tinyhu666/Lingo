@@ -6,7 +6,7 @@ on:
       release_tag:
         description: Existing release tag to mirror into Tencent COS versioned assets
         required: true
-        default: v0.6.9
+        default: v0.6.10
       refresh_latest_aliases:
         description: Refresh global latest manifests and stable download aliases
         required: false

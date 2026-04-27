@@ -1,0 +1,352 @@
+@layer components {
+  .sidebar-panel::before {
+    content: none !important;
+    display: none !important;
+  }
+
+  .sidebar-brand {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin: 2px 4px 14px;
+    padding: 12px 12px 14px;
+    border-radius: 8px;
+    border: 1px solid rgba(91, 112, 132, 0.18);
+    background:
+      linear-gradient(135deg, rgba(255, 255, 255, 0.94), rgba(232, 248, 250, 0.72)),
+      repeating-linear-gradient(90deg, transparent 0 20px, rgba(0, 167, 183, 0.045) 20px 21px);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.94), 0 10px 20px rgba(31, 48, 66, 0.06);
+  }
+
+  .sidebar-brand__eyebrow {
+    color: var(--text-3);
+    font-size: 10px;
+    font-weight: 900;
+    letter-spacing: 0.16em !important;
+    text-transform: uppercase;
+  }
+
+  .sidebar-brand__name {
+    margin-top: 5px;
+    color: var(--text-1);
+    font-family: var(--font-display);
+    font-size: 28px;
+    font-weight: 900;
+    line-height: 0.95;
+  }
+
+  .sidebar-brand__version {
+    min-width: 54px;
+    border-radius: 999px;
+    border: 1px solid rgba(0, 167, 183, 0.2);
+    background: #ffffff;
+    color: var(--accent-ink);
+    font-size: 11px;
+    font-weight: 900;
+    line-height: 24px;
+    text-align: center;
+  }
+
+  .sidebar-status-card {
+    display: grid;
+    grid-template-columns: 10px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 10px;
+    margin: auto 4px 0;
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid rgba(91, 112, 132, 0.18);
+    background: rgba(255, 255, 255, 0.74);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  }
+
+  .sidebar-status-card__dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 999px;
+  }
+
+  .sidebar-status-card__dot--enabled {
+    background: var(--success);
+    box-shadow: 0 0 0 5px rgba(10, 159, 115, 0.12), 0 0 18px rgba(10, 159, 115, 0.42);
+  }
+
+  .sidebar-status-card__dot--paused {
+    background: var(--warning);
+    box-shadow: 0 0 0 5px rgba(189, 106, 18, 0.12);
+  }
+
+  .sidebar-status-card__copy {
+    min-width: 0;
+  }
+
+  .sidebar-status-card__title {
+    overflow: hidden;
+    color: var(--text-1);
+    font-size: 13px;
+    font-weight: 900;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .sidebar-status-card__meta {
+    margin-top: 2px;
+    color: var(--text-3);
+    font-size: 11px;
+    font-weight: 700;
+  }
+
+  .sidebar-footer {
+    margin-top: 10px !important;
+  }
+
+  .home-dashboard {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    min-height: 0;
+  }
+
+  .home-brief {
+    min-height: 276px;
+    padding: 18px;
+    grid-template-columns: minmax(340px, 0.9fr) minmax(440px, 1.1fr);
+    background:
+      radial-gradient(380px 220px at 7% 8%, rgba(0, 167, 183, 0.11), transparent 70%),
+      linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(240, 247, 251, 0.9)) !important;
+  }
+
+  .home-brief::before {
+    display: none !important;
+  }
+
+  .home-brief__hero {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    justify-content: center;
+    padding: 10px 14px;
+  }
+
+  .home-brief__quick-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 20px;
+  }
+
+  .home-brief__flow {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    justify-content: stretch;
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(237, 247, 250, 0.72)),
+      linear-gradient(rgba(0, 167, 183, 0.045) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0, 167, 183, 0.04) 1px, transparent 1px);
+    background-size: auto, 24px 24px, 24px 24px;
+  }
+
+  .home-brief__flow-grid {
+    flex: 1;
+  }
+
+  .home-guide-strip {
+    display: grid;
+    grid-template-columns: 240px minmax(0, 1fr);
+    gap: 14px;
+    padding: 16px;
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(243, 249, 252, 0.88)),
+      repeating-linear-gradient(90deg, transparent 0 34px, rgba(44, 111, 159, 0.035) 34px 35px);
+  }
+
+  .home-guide-strip__head {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 18px;
+    padding: 6px;
+  }
+
+  .home-guide-strip__lead {
+    color: var(--text-2);
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1.6;
+  }
+
+  .home-guide-strip__steps {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .home-guide-step {
+    display: grid;
+    grid-template-columns: 46px minmax(0, 1fr);
+    gap: 12px;
+    min-width: 0;
+    border-radius: 8px;
+    border: 1px solid rgba(98, 121, 144, 0.18);
+    background: rgba(255, 255, 255, 0.82);
+    padding: 14px;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.94);
+  }
+
+  .home-guide-step__number {
+    display: inline-flex;
+    width: 38px;
+    height: 38px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    background: linear-gradient(180deg, #19c4cf, #008da0);
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: 950;
+    box-shadow: 0 10px 18px rgba(0, 141, 160, 0.2);
+  }
+
+  .translate-mode-grid,
+  html.platform-desktop .translate-mode-grid,
+  body.platform-desktop .translate-mode-grid {
+    grid-template-columns: 1fr !important;
+    gap: 12px;
+  }
+
+  .home-grid,
+  html.platform-desktop .home-grid,
+  body.platform-desktop .home-grid {
+    flex: 0 0 auto;
+    height: auto;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-rows: none;
+    gap: 12px;
+    align-items: stretch;
+  }
+
+  .mode-card {
+    display: grid !important;
+    grid-template-columns: 128px minmax(0, 1fr) minmax(260px, 0.62fr);
+    gap: 18px;
+    min-height: 166px !important;
+    align-items: center;
+    opacity: 1 !important;
+  }
+
+  .mode-card:not(.mode-card--active) {
+    background: rgba(255, 255, 255, 0.78);
+  }
+
+  .mode-card .tool-body {
+    color: #4d6073;
+  }
+
+  .mode-card__rail {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 14px;
+  }
+
+  .mode-card__content {
+    min-width: 0;
+  }
+
+  .mode-card__hint {
+    align-self: stretch;
+    margin-top: 0 !important;
+    background: rgba(247, 251, 252, 0.92);
+  }
+
+  .mode-card--active .mode-card__hint {
+    border-color: rgba(0, 167, 183, 0.24);
+    background: #effcfc;
+  }
+
+  .tutorial-layout-grid,
+  html.platform-desktop .tutorial-layout-grid,
+  body.platform-desktop .tutorial-layout-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .tutorial-step-grid,
+  html.platform-desktop .tutorial-step-grid,
+  body.platform-desktop .tutorial-step-grid {
+    position: relative;
+    grid-template-columns: 1fr !important;
+    gap: 12px;
+  }
+
+  .tutorial-step-grid::before {
+    content: '';
+    position: absolute;
+    inset: 30px auto 30px 16px;
+    width: 1px;
+    background: linear-gradient(180deg, rgba(0, 167, 183, 0.24), rgba(44, 111, 159, 0.08));
+  }
+
+  .tutorial-step {
+    position: relative;
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr);
+    gap: 12px;
+    align-items: start;
+    padding: 14px 16px;
+  }
+
+  .tutorial-step__copy {
+    min-width: 0;
+  }
+
+  .tutorial-step__copy .tool-body {
+    max-width: 940px;
+    color: #4d6073;
+  }
+
+  .tutorial-step__number {
+    z-index: 1;
+    margin-top: 0 !important;
+  }
+
+  .tutorial-step .tool-card-title {
+    margin-top: 0 !important;
+  }
+
+  .about-project-grid .tool-body,
+  .about-contact-card {
+    color: #4d6073;
+    opacity: 1 !important;
+  }
+
+  @media (max-width: 1420px) {
+    .home-grid,
+    html.platform-desktop .home-grid,
+    body.platform-desktop .home-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .home-guide-strip {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  @media (max-width: 1100px) {
+    .home-brief {
+      grid-template-columns: 1fr;
+    }
+
+    .mode-card,
+    html.platform-desktop .mode-card,
+    body.platform-desktop .mode-card {
+      grid-template-columns: 1fr;
+    }
+
+    .home-guide-strip__steps {
+      grid-template-columns: 1fr;
+    }
+  }
+}
