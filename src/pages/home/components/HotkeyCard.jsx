@@ -185,7 +185,10 @@ export default function HotkeyCard() {
         as='button'
         type='button'
         onClick={beginRecording}
-        className='home-stat-card home-stat-card--button tool-rise transition-all duration-200'
+        aria-pressed={recording}
+        className={`home-stat-card home-stat-card--button home-stat-card--interactive panel-card--interactive tool-rise transition-all duration-200 ${
+          recording ? 'home-stat-card--recording' : ''
+        }`}
         icon={<KeyboardAlt className='home-stat-card__header-icon' />}
         title={t('home.hotkey.title')}
         bodyClassName='home-stat-card__body'>

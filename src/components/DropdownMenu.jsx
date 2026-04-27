@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { useCallback, useEffect, useLayoutEffect, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { CheckTick } from '../icons';
 import { twMerge } from 'tailwind-merge';
@@ -21,9 +21,11 @@ export default function DropdownMenu({
   anchorRef = null,
   usePortal = true,
 }) {
+  const entries = useMemo(() => Object.entries(options), [options]);
   const isDownward = direction === 'down';
   const placementClass = isDownward ? 'top-full mt-3' : 'bottom-full mb-3';
   const startOffsetY = isDownward ? -10 : 10;
+  const buttonRefs = useRef([]);
   const shouldUsePortal =
     show &&
     usePortal &&
@@ -31,6 +33,36 @@ export default function DropdownMenu({
     typeof document !== 'undefined' &&
     typeof window !== 'undefined';
   const [portalStyle, setPortalStyle] = useState(null);
+
+  const restoreFocus = useCallback(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    window.requestAnimationFrame(() => {
+      const anchorElement = anchorRef?.current;
+      if (!anchorElement) {
+        return;
+      }
+
+      const focusTarget =
+        anchorElement.matches?.('button, [role="button"], [tabindex]') ?
+          anchorElement
+        : anchorElement.querySelector?.('button, [role="button"], [tabindex]:not([tabindex="-1"])');
+
+      focusTarget?.focus();
+    });
+  }, [anchorRef]);
+
+  const requestClose = useCallback(
+    ({ restore = true } = {}) => {
+      onClose();
+      if (restore) {
+        restoreFocus();
+      }
+    },
+    [onClose, restoreFocus],
+  );
 
   const updatePortalStyle = useCallback(() => {
     const anchorElement = anchorRef?.current;
@@ -97,14 +129,82 @@ export default function DropdownMenu({
         return;
       }
       event.preventDefault();
-      onClose();
+      requestClose();
     };
 
     window.addEventListener('keydown', handleEscape);
     return () => {
       window.removeEventListener('keydown', handleEscape);
     };
-  }, [show, onClose]);
+  }, [requestClose, show]);
+
+  useEffect(() => {
+    if (!show || typeof window === 'undefined') {
+      return undefined;
+    }
+
+    const activeIndex = Math.max(
+      entries.findIndex(([value]) => value === currentValue),
+      0,
+    );
+
+    const frameId = window.requestAnimationFrame(() => {
+      buttonRefs.current[activeIndex]?.focus();
+    });
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+    };
+  }, [currentValue, entries, show]);
+
+  const handleMenuKeyDown = useCallback(
+    (event) => {
+      if (entries.length === 0) {
+        return;
+      }
+
+      const fallbackIndex = Math.max(
+        entries.findIndex(([value]) => value === currentValue),
+        0,
+      );
+      const focusedIndex = buttonRefs.current.findIndex((button) => button === document.activeElement);
+      const currentIndex = focusedIndex >= 0 ? focusedIndex : fallbackIndex;
+
+      if (event.key === 'Tab') {
+        onClose();
+        return;
+      }
+
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        requestClose();
+        return;
+      }
+
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        buttonRefs.current[currentIndex]?.click();
+        return;
+      }
+
+      let nextIndex = currentIndex;
+      if (event.key === 'ArrowDown') {
+        nextIndex = (currentIndex + 1) % entries.length;
+      } else if (event.key === 'ArrowUp') {
+        nextIndex = (currentIndex - 1 + entries.length) % entries.length;
+      } else if (event.key === 'Home') {
+        nextIndex = 0;
+      } else if (event.key === 'End') {
+        nextIndex = entries.length - 1;
+      } else {
+        return;
+      }
+
+      event.preventDefault();
+      buttonRefs.current[nextIndex]?.focus();
+    },
+    [currentValue, entries, onClose, requestClose],
+  );
 
   if (!show) {
     return null;
@@ -119,26 +219,38 @@ export default function DropdownMenu({
 
   const menuBody = (
     <>
-      <div className={overlayClass} onClick={onClose} />
+      <div className={overlayClass} onClick={() => requestClose()} />
       <motion.div
         initial={{ opacity: 0, y: startOffsetY, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: startOffsetY, scale: 0.98 }}
         style={shouldUsePortal ? portalStyle || undefined : undefined}
+        role='menu'
+        aria-orientation='vertical'
+        onKeyDown={handleMenuKeyDown}
         className={twMerge(menuClass, className)}>
-        {Object.entries(options).map(([value, label]) => {
+        {entries.map(([value, label], index) => {
           const isActive = value === currentValue;
           return (
             <button
               key={value}
+              ref={(node) => {
+                buttonRefs.current[index] = node;
+              }}
               type='button'
+              role='menuitemradio'
+              aria-checked={isActive}
+              tabIndex={isActive || (currentValue == null && index === 0) ? 0 : -1}
               className={twMerge(
                 'shell-menu__option',
                 isActive
                   ? 'shell-menu__option--active'
                   : 'shell-menu__option--idle',
               )}
-              onClick={() => onSelect(value)}>
+              onClick={() => {
+                onSelect(value);
+                restoreFocus();
+              }}>
               {renderOption ? renderOption(value, label) : label}
               {isActive ? <CheckTick className='ml-auto h-5 w-5 stroke-zinc-900' /> : null}
             </button>

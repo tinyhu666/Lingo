@@ -7,11 +7,12 @@ import { DEFAULT_GAME_SCENE, getGameSceneLabel } from '../constants/gameScenes';
 import { useI18n } from '../i18n/I18nProvider';
 
 export default function Settings() {
-  const { settings } = useStore();
+  const { settings, loading } = useStore();
   const { locale, t } = useI18n();
+  const resolvedSettings = settings || {};
 
   const serviceStatus = useMemo(() => {
-    if (!settings) {
+    if (loading) {
       return {
         label: t('settings.loading'),
         tone: 'text-zinc-600',
@@ -19,7 +20,7 @@ export default function Settings() {
       };
     }
 
-    if (settings.app_enabled === false) {
+    if (resolvedSettings.app_enabled === false) {
       return {
         label: t('settings.paused'),
         tone: 'text-amber-600',
@@ -32,12 +33,12 @@ export default function Settings() {
       tone: 'text-emerald-600',
       hint: t('settings.enabledHint'),
     };
-  }, [settings, t]);
+  }, [loading, resolvedSettings.app_enabled, t]);
 
-  const from = settings?.translation_from || 'zh';
-  const to = settings?.translation_to || 'en';
-  const scene = getGameSceneLabel(settings?.game_scene || DEFAULT_GAME_SCENE, locale);
-  const modeKey = `translate.mode.${settings?.translation_mode || 'auto'}.title`;
+  const from = resolvedSettings.translation_from || 'zh';
+  const to = resolvedSettings.translation_to || 'en';
+  const scene = getGameSceneLabel(resolvedSettings.game_scene || DEFAULT_GAME_SCENE, locale);
+  const modeKey = `translate.mode.${resolvedSettings.translation_mode || 'auto'}.title`;
   const modeLabel = t(modeKey) === modeKey ? t('translate.mode.auto.title') : t(modeKey);
 
   return (
@@ -58,7 +59,7 @@ export default function Settings() {
 
       <div className='grid grid-cols-1 gap-6 xl:grid-cols-2'>
         <motion.section className='dota-card tool-rise min-w-0 p-6' initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.06 }}>
-          <div className='flex items-center gap-3 mb-5'>
+          <div className='mb-5 flex items-center gap-3'>
             <Server className='h-5 w-5 stroke-zinc-500' />
             <h3 className='tool-card-title'>{t('settings.section.status')}</h3>
           </div>
@@ -72,7 +73,7 @@ export default function Settings() {
             <div className='tool-subcard min-w-0 p-4'>
               <div className='tool-caption'>{t('settings.defaultLanguage')}</div>
               <div className='tool-card-title mt-2 text-zinc-900'>
-                {getLanguageMeta(from, locale).label} → {getLanguageMeta(to, locale).label}
+                {getLanguageMeta(from, locale).label} {'->'} {getLanguageMeta(to, locale).label}
               </div>
               <p className='tool-body mt-2'>{t('settings.defaultLanguageHint')}</p>
             </div>
@@ -80,7 +81,7 @@ export default function Settings() {
         </motion.section>
 
         <motion.section className='dota-card tool-rise min-w-0 p-6' initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-          <div className='flex items-center gap-3 mb-5'>
+          <div className='mb-5 flex items-center gap-3'>
             <Cpu className='h-5 w-5 stroke-zinc-500' />
             <h3 className='tool-card-title'>{t('settings.section.strategy')}</h3>
           </div>

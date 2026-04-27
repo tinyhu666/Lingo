@@ -10,12 +10,14 @@ const sourcePng = join(repoRoot, 'icon2048.png');
 const appIconSvgPath = join(repoRoot, 'assets/lingo-app-icon.svg');
 const horizontalLogoSvgPath = join(repoRoot, 'assets/lingo-logo-horizontal.svg');
 const badgeSvgPath = join(repoRoot, 'assets/lingo-translation-game-badge.svg');
+const rootIconSvgPath = join(repoRoot, 'icon.svg');
 const tauriIconsDir = join(repoRoot, 'src-tauri/icons');
 const appIconRoot = join(repoRoot, 'app-icon.png');
 const appIconSrc = join(repoRoot, 'src/assets/app-icon.png');
 const faviconPath = join(repoRoot, 'public/favicon.png');
 const websiteRoot = resolve(repoRoot, '../lingoweb');
-const websiteExists = existsSync(join(websiteRoot, 'package.json'));
+const websiteExists =
+  process.env.LINGO_SYNC_WEBSITE_BRAND === '1' && existsSync(join(websiteRoot, 'package.json'));
 const websiteAppIconSvgPath = join(websiteRoot, 'src/assets/lingo-app-icon.svg');
 const websiteLogoSvgPath = join(websiteRoot, 'src/assets/lingo-logo-horizontal.svg');
 const websiteAppIconPngPath = join(websiteRoot, 'src/assets/app-icon.png');
@@ -37,7 +39,7 @@ const cachedBundleIconPaths = [
   join(repoRoot, 'src-tauri/target/release/resources/icon.png'),
 ];
 
-const APP_ICON_VIEWBOX = '334 620 1380 828';
+const APP_ICON_VIEWBOX = '0 0 2048 2048';
 const BRAND_FONT_STACK =
   '-apple-system, BlinkMacSystemFont, SF Pro Display, Segoe UI, PingFang SC, Microsoft YaHei, sans-serif';
 const sourcePngDataUri = `data:image/png;base64,${readFileSync(sourcePng).toString('base64')}`;
@@ -86,28 +88,13 @@ const brandIcon = ({ x, y, width, height }) => `
 
 const buildAppIconSvg = () => `<?xml version="1.0" encoding="UTF-8"?>
 <svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <linearGradient id="appTileBg" x1="132" y1="112" x2="892" y2="936" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#F7FBFF" />
-      <stop offset="0.34" stop-color="#EDF4FF" />
-      <stop offset="0.76" stop-color="#DCE7FF" />
-      <stop offset="1" stop-color="#C5D6F6" />
-    </linearGradient>
-    <linearGradient id="appTileOverlay" x1="118" y1="94" x2="926" y2="956" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.82" />
-      <stop offset="0.42" stop-color="#E8F1FF" stop-opacity="0.2" />
-      <stop offset="1" stop-color="#8EAFFF" stop-opacity="0.12" />
-    </linearGradient>
-    <linearGradient id="appTileStroke" x1="132" y1="112" x2="892" y2="936" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.9" />
-      <stop offset="1" stop-color="#8EA6D9" stop-opacity="0.78" />
-    </linearGradient>
-  </defs>
+  <image href="${sourcePngDataUri}" x="0" y="0" width="1024" height="1024" preserveAspectRatio="xMidYMid meet" />
+</svg>
+`;
 
-  <rect x="72" y="72" width="880" height="880" rx="246" fill="url(#appTileBg)" />
-  <rect x="72" y="72" width="880" height="880" rx="246" fill="url(#appTileOverlay)" />
-  <rect x="72.5" y="72.5" width="879" height="879" rx="245.5" stroke="url(#appTileStroke)" stroke-width="1" />
-  ${brandIcon({ x: 150, y: 291, width: 724, height: 434 })}
+const buildRootIconSvg = () => `<?xml version="1.0" encoding="UTF-8"?>
+<svg width="2048" height="2048" viewBox="0 0 2048 2048" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <image href="${sourcePngDataUri}" x="0" y="0" width="2048" height="2048" preserveAspectRatio="xMidYMid meet" />
 </svg>
 `;
 
@@ -115,22 +102,22 @@ const buildHorizontalLogoSvg = () => `<?xml version="1.0" encoding="UTF-8"?>
 <svg width="1200" height="320" viewBox="0 0 1200 320" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <linearGradient id="lingoWordmark" x1="340" y1="86" x2="760" y2="232" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#111827" />
-      <stop offset="0.52" stop-color="#2947A7" />
-      <stop offset="1" stop-color="#6E50DB" />
+      <stop offset="0" stop-color="#0F172A" />
+      <stop offset="0.58" stop-color="#2563EB" />
+      <stop offset="1" stop-color="#60A5FA" />
     </linearGradient>
   </defs>
 
-  ${brandIcon({ x: 20, y: 74, width: 280, height: 168 })}
+  ${brandIcon({ x: 58, y: 56, width: 208, height: 208 })}
 
   <text
-    x="324"
-    y="196"
+    x="318"
+    y="204"
     fill="url(#lingoWordmark)"
-    font-size="126"
+    font-size="118"
     font-family="${BRAND_FONT_STACK}"
     font-weight="700"
-    letter-spacing="-4"
+    letter-spacing="0"
   >
     Lingo
   </text>
@@ -145,23 +132,23 @@ const buildBadgeSvg = () => `<?xml version="1.0" encoding="UTF-8"?>
       <stop offset="1" stop-color="#E7EEFF" />
     </linearGradient>
     <linearGradient id="badgeWordmark" x1="102" y1="28" x2="220" y2="68" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#111827" />
-      <stop offset="0.52" stop-color="#2947A7" />
-      <stop offset="1" stop-color="#6E50DB" />
+      <stop offset="0" stop-color="#0F172A" />
+      <stop offset="0.58" stop-color="#2563EB" />
+      <stop offset="1" stop-color="#60A5FA" />
     </linearGradient>
   </defs>
 
   <rect x="4" y="4" width="312" height="88" rx="44" fill="url(#badgeBg)" stroke="#6983D6" stroke-opacity="0.28" stroke-width="2" />
-  ${brandIcon({ x: 14, y: 20, width: 96, height: 58 })}
+  ${brandIcon({ x: 20, y: 18, width: 60, height: 60 })}
 
   <text
-    x="120"
+    x="104"
     y="58"
     fill="url(#badgeWordmark)"
     font-size="36"
     font-family="${BRAND_FONT_STACK}"
     font-weight="700"
-    letter-spacing="-1.2"
+    letter-spacing="0"
   >
     Lingo
   </text>
@@ -174,6 +161,7 @@ try {
   writeTextFile(appIconSvgPath, buildAppIconSvg());
   writeTextFile(horizontalLogoSvgPath, buildHorizontalLogoSvg());
   writeTextFile(badgeSvgPath, buildBadgeSvg());
+  writeTextFile(rootIconSvgPath, buildRootIconSvg());
 
   run('npx', ['tauri', 'icon', appIconSvgPath, '-o', tauriIconsDir]);
   run('npx', ['tauri', 'icon', appIconSvgPath, '-o', tempDir, '-p', '1024', '-p', '256']);
