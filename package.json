@@ -1,7 +1,7 @@
 {
   "name": "lingo",
   "private": true,
-  "version": "0.6.12",
+  "version": "0.6.13",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -40,8 +40,8 @@
     "@tauri-apps/api": "^2.10.1",
     "@tauri-apps/cli": "^2.10.1",
     "@vitejs/plugin-react": "^6.0.0",
-    "postcss": "^8.5.8",
+    "postcss": "^8.5.12",
     "tailwindcss": "^4.2.1",
-    "vite": "^8.0.0"
+    "vite": "^8.0.10"
   }
 }
