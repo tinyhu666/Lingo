@@ -5,13 +5,24 @@ import { APP_VERSION_LABEL } from '../constants/version';
 import { useUpdater } from './UpdateProvider';
 import { useI18n } from '../i18n/I18nProvider';
 import StatusChip from './StatusChip';
+import { useStore } from './StoreProvider';
 
 export default function Sidebar({ activeItem, setActiveItem }) {
   const { hasUpdate } = useUpdater();
+  const { settings } = useStore();
   const { t } = useI18n();
+  const isEnabled = settings?.app_enabled ?? true;
 
   return (
     <div className='sidebar-panel'>
+      <div className='sidebar-brand' aria-label={t('common.appName')}>
+        <div>
+          <div className='sidebar-brand__eyebrow'>{t('sidebar.controlDeck')}</div>
+          <div className='sidebar-brand__name'>{t('common.appName')}</div>
+        </div>
+        <div className='sidebar-brand__version'>{APP_VERSION_LABEL}</div>
+      </div>
+
       <div className='sidebar-section'>
         <nav className='sidebar-nav'>
           {NAV_ITEMS.map((item) => {
@@ -44,6 +55,22 @@ export default function Sidebar({ activeItem, setActiveItem }) {
             );
           })}
         </nav>
+      </div>
+
+      <div className='sidebar-status-card'>
+        <span
+          className={`sidebar-status-card__dot ${
+            isEnabled ? 'sidebar-status-card__dot--enabled' : 'sidebar-status-card__dot--paused'
+          }`}
+          aria-hidden='true'
+        />
+        <div className='sidebar-status-card__copy'>
+          <div className='sidebar-status-card__title'>
+            {isEnabled ? t('sidebar.serviceRunning') : t('sidebar.servicePaused')}
+          </div>
+          <div className='sidebar-status-card__meta'>{t('sidebar.hotkeyReady')}</div>
+        </div>
+        <StatusChip label={isEnabled ? t('common.enabled') : t('common.paused')} tone={isEnabled ? 'success' : 'warning'} />
       </div>
 
       <div className='sidebar-footer'>

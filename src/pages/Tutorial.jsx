@@ -51,8 +51,10 @@ export default function Tutorial() {
               {steps.map((step) => (
                 <article key={step.id} className='tutorial-step tool-subcard tool-rise'>
                   <div className='tutorial-step__number'>{step.id}</div>
-                  <h3 className='tool-card-title mt-2'>{step.title}</h3>
-                  <p className='tool-body'>{step.desc}</p>
+                  <div className='tutorial-step__copy'>
+                    <h3 className='tool-card-title mt-2'>{step.title}</h3>
+                    <p className='tool-body'>{step.desc}</p>
+                  </div>
                 </article>
               ))}
             </div>
