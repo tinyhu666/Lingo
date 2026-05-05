@@ -319,8 +319,7 @@ After the proxy is online, point release builds to it:
 
 1. Set GitHub Actions variable `LINGO_BACKEND_URL=https://your-domain.example.com`
 2. Set GitHub secret or variable `LINGO_BACKEND_ANON_KEY` to the same value as `BACKEND_PUBLIC_KEY`
-3. Remove `SUPABASE_PROJECT_ID` from release defaults if you do not want fallback to Supabase
-4. Build and publish a new desktop release
+3. Build and publish a new desktop release
 
 If the website is not deployed on the same origin as the Tencent Cloud proxy,
 set `VITE_PUBLIC_BACKEND_URL=https://your-domain.example.com` when building the
@@ -348,9 +347,9 @@ This repository now includes a manual workflow:
 
 - `.github/workflows/deploy-tencent-light-server.yml`
 
-It is the Tencent Cloud path. The older
-`.github/workflows/deploy-translate-proxy.yml` workflow is still the Supabase
-legacy path and should be ignored for Tencent Light Server deployments.
+It is the only supported translation backend deployment path. The old Supabase
+Edge Function translation path has been retired; runtime translation settings
+live on the Tencent server in `data/runtime-config.json`.
 
 Configure these GitHub repository secrets:
 

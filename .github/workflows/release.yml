@@ -271,15 +271,16 @@ jobs:
         shell: bash
         env:
           CONFIGURED_BACKEND_URL: ${{ vars.LINGO_BACKEND_URL }}
-          SUPABASE_PROJECT_ID: ${{ vars.SUPABASE_PROJECT_ID }}
           CONFIGURED_BACKEND_ANON_KEY_SECRET: ${{ secrets.LINGO_BACKEND_ANON_KEY }}
           CONFIGURED_BACKEND_ANON_KEY_VAR: ${{ vars.LINGO_BACKEND_ANON_KEY }}
         run: |
           set -euo pipefail
 
           BACKEND_URL="${CONFIGURED_BACKEND_URL:-}"
-          if [ -z "$BACKEND_URL" ] && [ -n "${SUPABASE_PROJECT_ID:-}" ]; then
-            BACKEND_URL="https://${SUPABASE_PROJECT_ID}.supabase.co/functions/v1"
+          if [ -z "$BACKEND_URL" ]; then
+            echo "LINGO_BACKEND_URL repo variable is required for release builds."
+            echo "Supabase fallback is retired; use the Tencent translate proxy URL, for example https://buffpp.com."
+            exit 1
           fi
 
           BACKEND_ANON_KEY="${CONFIGURED_BACKEND_ANON_KEY_SECRET:-}"
@@ -290,11 +291,7 @@ jobs:
           echo "LINGO_BACKEND_URL=$BACKEND_URL" >> "$GITHUB_ENV"
           echo "LINGO_BACKEND_ANON_KEY=$BACKEND_ANON_KEY" >> "$GITHUB_ENV"
 
-          if [ -n "$BACKEND_URL" ]; then
-            echo "Using embedded translation backend: $BACKEND_URL"
-          else
-            echo "Translation backend default is not configured; release builds will require runtime environment variables."
-          fi
+          echo "Using embedded translation backend: $BACKEND_URL"
 
       - name: Build And Publish Release
         uses: tauri-apps/tauri-action@v0

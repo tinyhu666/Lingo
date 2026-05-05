@@ -16,10 +16,7 @@ const PREWARM_COOLDOWN_MS: u64 = 30_000;
 const DEBUG_LOCAL_PROXY_URL: &str = "http://127.0.0.1:8787";
 
 const COMPILED_BACKEND_URL: Option<&str> = option_env!("LINGO_BACKEND_URL");
-const COMPILED_FUNCTIONS_URL: Option<&str> = option_env!("SUPABASE_FUNCTIONS_URL");
-const COMPILED_SUPABASE_URL: Option<&str> = option_env!("SUPABASE_URL");
 const COMPILED_BACKEND_ANON_KEY: Option<&str> = option_env!("LINGO_BACKEND_ANON_KEY");
-const COMPILED_SUPABASE_ANON_KEY: Option<&str> = option_env!("SUPABASE_ANON_KEY");
 
 struct BackendConfig {
     base_url: String,
@@ -70,10 +67,6 @@ fn normalize_url(raw: &str) -> Option<String> {
     Some(normalized)
 }
 
-fn normalize_supabase_root(raw: &str) -> Option<String> {
-    normalize_url(raw).map(|value| format!("{}/functions/v1", value))
-}
-
 fn read_runtime_value(key: &str) -> Option<String> {
     std::env::var(key)
         .ok()
@@ -81,34 +74,13 @@ fn read_runtime_value(key: &str) -> Option<String> {
 }
 
 fn read_runtime_backend_base_url() -> Option<(String, &'static str)> {
-    read_runtime_value("LINGO_BACKEND_URL")
-        .map(|value| (value, "runtime:LINGO_BACKEND_URL"))
-        .or_else(|| {
-            read_runtime_value("SUPABASE_FUNCTIONS_URL")
-                .map(|value| (value, "runtime:SUPABASE_FUNCTIONS_URL"))
-        })
-        .or_else(|| {
-            std::env::var("SUPABASE_URL")
-                .ok()
-                .and_then(|value| normalize_supabase_root(&value))
-                .map(|value| (value, "runtime:SUPABASE_URL"))
-        })
+    read_runtime_value("LINGO_BACKEND_URL").map(|value| (value, "runtime:LINGO_BACKEND_URL"))
 }
 
 fn read_compiled_backend_base_url() -> Option<(String, &'static str)> {
     COMPILED_BACKEND_URL
         .and_then(normalize_url)
         .map(|value| (value, "compiled:LINGO_BACKEND_URL"))
-        .or_else(|| {
-            COMPILED_FUNCTIONS_URL
-                .and_then(normalize_url)
-                .map(|value| (value, "compiled:SUPABASE_FUNCTIONS_URL"))
-        })
-        .or_else(|| {
-            COMPILED_SUPABASE_URL
-                .and_then(normalize_supabase_root)
-                .map(|value| (value, "compiled:SUPABASE_URL"))
-        })
 }
 
 fn read_debug_backend_base_url() -> Option<(String, &'static str)> {
@@ -125,22 +97,11 @@ fn read_debug_backend_base_url() -> Option<(String, &'static str)> {
 }
 
 fn read_runtime_backend_api_key() -> Option<(String, &'static str)> {
-    ["LINGO_BACKEND_ANON_KEY", "SUPABASE_ANON_KEY"]
-        .into_iter()
-        .find_map(|key| {
-            std::env::var(key)
-                .ok()
-                .map(|value| value.trim().to_string())
-                .filter(|value| !value.is_empty())
-                .map(|value| {
-                    let source = if key == "LINGO_BACKEND_ANON_KEY" {
-                        "runtime:LINGO_BACKEND_ANON_KEY"
-                    } else {
-                        "runtime:SUPABASE_ANON_KEY"
-                    };
-                    (value, source)
-                })
-        })
+    std::env::var("LINGO_BACKEND_ANON_KEY")
+        .ok()
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
+        .map(|value| (value, "runtime:LINGO_BACKEND_ANON_KEY"))
 }
 
 fn read_compiled_backend_api_key() -> Option<(String, &'static str)> {
@@ -148,12 +109,6 @@ fn read_compiled_backend_api_key() -> Option<(String, &'static str)> {
         .map(|value| value.trim().to_string())
         .filter(|value| !value.is_empty())
         .map(|value| (value, "compiled:LINGO_BACKEND_ANON_KEY"))
-        .or_else(|| {
-            COMPILED_SUPABASE_ANON_KEY
-                .map(|value| value.trim().to_string())
-                .filter(|value| !value.is_empty())
-                .map(|value| (value, "compiled:SUPABASE_ANON_KEY"))
-        })
 }
 
 pub fn public_backend_config() -> PublicBackendConfig {
@@ -176,7 +131,7 @@ fn backend_config() -> Result<BackendConfig> {
         .or_else(read_debug_backend_base_url)
         .ok_or_else(|| {
             anyhow!(
-                "未配置翻译代理地址：请设置运行时 LINGO_BACKEND_URL / SUPABASE_URL，或在发布构建时注入默认后端配置"
+                "未配置翻译代理地址：请设置运行时 LINGO_BACKEND_URL，或在发布构建时注入默认后端配置"
             )
         })?;
 
@@ -300,7 +255,12 @@ pub async fn warm_translation_backend() -> Result<()> {
         .header("Accept", "application/json")
         .send()
         .await
-        .map_err(|error| anyhow!("预热翻译代理失败: {}", request_error_message(&backend, &error)))?;
+        .map_err(|error| {
+            anyhow!(
+                "预热翻译代理失败: {}",
+                request_error_message(&backend, &error)
+            )
+        })?;
 
     let status = response.status();
     let body_text = response
@@ -615,7 +575,9 @@ mod tests {
         String::from_utf8_lossy(&buffer[..bytes_read]).into_owned()
     }
 
-    fn start_mock_translate_server(response_body: &'static str) -> (String, thread::JoinHandle<()>) {
+    fn start_mock_translate_server(
+        response_body: &'static str,
+    ) -> (String, thread::JoinHandle<()>) {
         let listener = TcpListener::bind("127.0.0.1:0").expect("bind mock translate server");
         let address = format!("http://{}", listener.local_addr().expect("mock local addr"));
 
@@ -655,9 +617,6 @@ mod tests {
         let _env = EnvGuard::set(&[
             ("LINGO_BACKEND_URL", Some(base_url.as_str())),
             ("LINGO_BACKEND_ANON_KEY", None),
-            ("SUPABASE_FUNCTIONS_URL", None),
-            ("SUPABASE_URL", None),
-            ("SUPABASE_ANON_KEY", None),
             ("LINGO_LOCAL_PROXY_URL", None),
         ]);
 
@@ -666,7 +625,9 @@ mod tests {
         })
         .expect("translate should succeed");
 
-        handle.join().expect("mock translate server should exit cleanly");
+        handle
+            .join()
+            .expect("mock translate server should exit cleanly");
         assert_eq!(translated, "Hello team");
     }
 
@@ -677,9 +638,6 @@ mod tests {
         let _env = EnvGuard::set(&[
             ("LINGO_BACKEND_URL", None),
             ("LINGO_BACKEND_ANON_KEY", None),
-            ("SUPABASE_FUNCTIONS_URL", None),
-            ("SUPABASE_URL", None),
-            ("SUPABASE_ANON_KEY", None),
             ("LINGO_LOCAL_PROXY_URL", Some("http://127.0.0.1:9")),
         ]);
 
