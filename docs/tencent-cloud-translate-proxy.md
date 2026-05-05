@@ -80,24 +80,22 @@ as the selected style profile allows it.
 For SiliconFlow-backed translation, avoid using `deepseek-ai/DeepSeek-R1` or
 `DeepSeek-R1-Distill-*` as the primary translation model. They are reasoning
 models and usually add latency without improving short chat-style translation.
-As of March 27, 2026, SiliconFlow's official docs show `deepseek-ai/DeepSeek-V3.2`,
-`Qwen/Qwen3-32B`, and `Qwen/Qwen3-14B` as supported chat-completions model IDs;
-I did not find a published `Qwen3.5` model ID in the current official docs.
+As of May 5, 2026, SiliconFlow lists `deepseek-ai/DeepSeek-V4-Flash` as an
+available chat-completions model. Use that exact model ID for Lingo's
+SiliconFlow translation traffic.
 
 Recommended split for Lingo:
 
-- Primary model: `deepseek-ai/DeepSeek-V3.2`
-- Fast lane model: `Qwen/Qwen3-14B`
+- Primary model: `deepseek-ai/DeepSeek-V4-Flash`
+- Fast lane model: `deepseek-ai/DeepSeek-V4-Flash`
 
-If this is still not strong enough for your game terminology, stay on the same
-primary model and move the fast lane to a larger Qwen3-tier model that is
-actually listed in SiliconFlow's official model catalog. In Lingo's live
-testing, `Qwen/Qwen3-32B` was strong enough but too heavy for the fast-lane
-role: short requests repeatedly waited for the fast model and then returned via
-`fast-fallback`, which erased most latency gains. `Qwen/Qwen3-14B` keeps the
-Qwen3 family while fitting the fast-lane budget more realistically. Do not
-switch the primary model to `R1` unless you specifically want slower
-reasoning-heavy behavior.
+Keep fast lane enabled if you want the shorter timeout and token budget for
+eligible short `translate` and `rewrite` requests, but keep it on the same
+DeepSeek V4 Flash model unless you are deliberately running a separate model
+experiment. Do not leave fast lane on a Qwen model if the goal is for all
+SiliconFlow translation traffic to use DeepSeek V4 Flash. Do not switch the
+primary model to `R1` unless you specifically want slower reasoning-heavy
+behavior.
 
 Suggested split:
 
@@ -256,7 +254,7 @@ curl -X PUT "https://your-domain.example.com/admin/runtime-config" \
     "enabled": true,
     "provider": "openai-compatible",
     "api_url": "https://api.siliconflow.cn/v1/chat/completions",
-    "model_name": "deepseek-ai/DeepSeek-V3.2",
+    "model_name": "deepseek-ai/DeepSeek-V4-Flash",
     "api_key_env_name": "MODEL_API_KEY",
     "timeout_ms": 12000,
     "max_tokens": 96,
@@ -272,7 +270,7 @@ curl -X PUT "https://your-domain.example.com/admin/runtime-config" \
       "enabled": true,
       "provider": "openai-compatible",
       "api_url": "https://api.siliconflow.cn/v1/chat/completions",
-      "model_name": "Qwen/Qwen3-14B",
+      "model_name": "deepseek-ai/DeepSeek-V4-Flash",
       "api_key_env_name": "MODEL_API_KEY",
       "timeout_ms": 5000,
       "max_tokens": 48,
@@ -301,8 +299,8 @@ survive container restarts.
 ```
 
 This repository's current latency-first recommendation is the same payload:
-`DeepSeek-V3.2` stays as the primary model, and `Qwen/Qwen3-14B`
-handles short `translate` and `rewrite` requests through fast lane.
+`DeepSeek-V4-Flash` is used as both the primary model and the fast-lane model;
+fast lane only changes the timeout, token budget, and eligible prompt variants.
 
 For a repeatable feasibility check against your live proxy, run:
 

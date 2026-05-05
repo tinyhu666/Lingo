@@ -14,7 +14,7 @@ jobs:
       MODEL_API_KEY_SECRET_NAME: MODEL_API_KEY
       MODEL_PROVIDER: openai-compatible
       MODEL_API_URL: https://api.siliconflow.cn/v1/chat/completions
-      MODEL_NAME: deepseek-ai/DeepSeek-V3
+      MODEL_NAME: deepseek-ai/DeepSeek-V4-Flash
       RUNTIME_CONFIG_SUPABASE_URL: https://${{ vars.SUPABASE_PROJECT_ID }}.supabase.co
       TRANSLATION_RUNTIME_CONFIG_JSON: ${{ vars.TRANSLATION_RUNTIME_CONFIG_JSON }}
     steps:
