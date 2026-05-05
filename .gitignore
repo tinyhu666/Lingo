@@ -42,3 +42,19 @@ server/translate-proxy/data/runtime-config.json
 server/translate-proxy/data/*.sqlite
 server/translate-proxy/data/*.sqlite-shm
 server/translate-proxy/data/*.sqlite-wal
+
+# Local agent/tooling state and generated review artifacts
+.codex/
+.omx/
+.playwright-mcp/
+.tmp-*/
+.tmp-*
+server/translate-proxy/reports/
+server/translate-proxy/samples/
+server/translate-proxy/scripts/__pycache__/
+src/assets/lingo-image2-backdrop.png
+get_news.py
+get_news2.py
+lingo-client-image2-*.png
+lingo-ink-home.png
+temp_news.txt
