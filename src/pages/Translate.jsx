@@ -71,7 +71,7 @@ export default function Translate() {
         </PanelCard>
       </motion.div>
 
-      <div className='translate-mode-grid'>
+      <div className='translate-mode-grid' role='radiogroup' aria-label={t('translate.title')}>
         {MODE_OPTIONS.map((mode, idx) => {
           const Icon = mode.icon;
           const isActive = activeMode === mode.id;
@@ -79,6 +79,9 @@ export default function Translate() {
             <motion.button
               key={mode.id}
               type='button'
+              role='radio'
+              aria-checked={isActive}
+              aria-pressed={isActive}
               onClick={() => handleModeChange(mode.id)}
               className={`panel-card panel-card--interactive tool-rise mode-card min-h-[260px] min-w-0 text-left ${isActive ? 'mode-card--active' : ''}`}
               initial={{ opacity: 0, y: 18 }}
@@ -101,13 +104,15 @@ export default function Translate() {
                 <p className='tool-body mode-card__desc mt-4'>{t(`translate.mode.${mode.id}.desc`)}</p>
               </div>
 
-              <div className='tool-subcard mode-card__hint p-4'>
-                <div className='flex items-center gap-2'>
-                  <Sparkles className='h-4 w-4 stroke-zinc-500' />
-                  <span className='tool-caption'>{t('common.hint')}</span>
+              {isActive ? (
+                <div className='tool-subcard mode-card__hint p-4'>
+                  <div className='flex items-center gap-2'>
+                    <Sparkles className='h-4 w-4 stroke-zinc-500' />
+                    <span className='tool-caption'>{t('common.hint')}</span>
+                  </div>
+                  <p className='tool-body mt-2'>{t(`translate.mode.${mode.id}.detail`)}</p>
                 </div>
-                <p className='tool-body mt-2'>{t(`translate.mode.${mode.id}.detail`)}</p>
-              </div>
+              ) : null}
             </motion.button>
           );
         })}

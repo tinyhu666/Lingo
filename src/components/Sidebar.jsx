@@ -2,6 +2,7 @@
 import { twMerge } from 'tailwind-merge';
 import { NAV_ITEMS } from '../constants/navigation';
 import { APP_VERSION_LABEL } from '../constants/version';
+import appIcon from '../assets/app-icon.png';
 import { useUpdater } from './UpdateProvider';
 import { useI18n } from '../i18n/I18nProvider';
 import StatusChip from './StatusChip';
@@ -16,11 +17,13 @@ export default function Sidebar({ activeItem, setActiveItem }) {
   return (
     <div className='sidebar-panel'>
       <div className='sidebar-brand' aria-label={t('common.appName')}>
-        <div>
+        <div className='sidebar-brand__lockup'>
+          <img src={appIcon} alt='' className='sidebar-brand__icon' />
+          <div>
           <div className='sidebar-brand__eyebrow'>{t('sidebar.controlDeck')}</div>
           <div className='sidebar-brand__name'>{t('common.appName')}</div>
+          </div>
         </div>
-        <div className='sidebar-brand__version'>{APP_VERSION_LABEL}</div>
       </div>
 
       <div className='sidebar-section'>

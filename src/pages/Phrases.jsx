@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useStore } from '../components/StoreProvider';
 import PageHeader from '../components/PageHeader';
@@ -61,6 +61,7 @@ export default function Phrases() {
   const { t } = useI18n();
   const [rows, setRows] = useState([]);
   const [saving, setSaving] = useState(false);
+  const inputRefs = useRef(new Map());
 
   useEffect(() => {
     const source = settings?.phrases || [];
@@ -116,6 +117,7 @@ export default function Phrases() {
     const keyCode = available?.code || fallback;
 
     setRows((prev) => [...prev, createRow(nextId, '', keyCode)]);
+    window.setTimeout(() => inputRefs.current.get(nextId)?.focus(), 0);
   };
 
   const removeRow = (id) => {
@@ -205,7 +207,7 @@ export default function Phrases() {
           description={t('phrases.summary')}
           actions={
             <>
-              <StatusChip label={`${rows.length}/${MAX_PHRASE_COUNT}`} tone='neutral' />
+              <StatusChip label={`${rows.length}/${MAX_PHRASE_COUNT}`} tone='neutral' className='phrases-count-chip' />
               <button type='button' onClick={addRow} className='desktop-tight-button tool-btn min-w-[120px] whitespace-nowrap px-4'>
                 {t('phrases.add')}
               </button>
@@ -223,6 +225,10 @@ export default function Phrases() {
 
       <motion.div className='flex-1' initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.06 }}>
         <PanelCard className='phrases-panel tool-rise flex-1'>
+          <div className='phrases-workflow-note'>
+            {t('phrases.workflowHint')}
+          </div>
+
           {rows.length === 0 ? (
             <div className='flex min-h-[280px] flex-col items-center justify-center rounded-[28px] border border-dashed border-[rgba(201,214,234,0.96)] bg-[rgba(249,252,255,0.9)] px-6 py-10 text-center'>
               <div className='tool-card-title'>{t('phrases.empty.title')}</div>
@@ -246,10 +252,17 @@ export default function Phrases() {
                 <tbody>
                   {rows.map((row) => (
                     <tr key={row.id} className='phrases-table__row border-t border-[rgba(226,233,243,0.8)]'>
-                      <td className='px-5 py-4 align-top text-sm font-semibold text-zinc-500'>{row.id}</td>
+                      <td className='px-5 py-4 align-top text-sm font-semibold text-zinc-500' data-label={t('phrases.table.index')}>{row.id}</td>
 
-                      <td className='px-4 py-4'>
+                      <td className='px-4 py-4' data-label={t('phrases.table.content')}>
                         <input
+                          ref={(node) => {
+                            if (node) {
+                              inputRefs.current.set(row.id, node);
+                            } else {
+                              inputRefs.current.delete(row.id);
+                            }
+                          }}
                           value={row.phrase}
                           onChange={(event) => patchRow(row.id, { phrase: event.target.value })}
                           className='tool-input'
@@ -258,7 +271,7 @@ export default function Phrases() {
                         />
                       </td>
 
-                      <td className='px-4 py-4'>
+                      <td className='px-4 py-4' data-label={t('phrases.table.hotkey')}>
                         <div className='phrases-hotkey-editor'>
                           <KeycapGroup keys={[MODIFIER_LABEL]} size='sm' />
                           <select
@@ -274,7 +287,7 @@ export default function Phrases() {
                         </div>
                       </td>
 
-                      <td className='px-5 py-4 align-top'>
+                      <td className='px-5 py-4 align-top' data-label={t('phrases.table.action')}>
                         <button
                           type='button'
                           onClick={() => removeRow(row.id)}

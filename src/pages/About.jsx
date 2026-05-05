@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { openUrl } from '@tauri-apps/plugin-opener';
-import { ChatBubbleMessage, CircleInfo, Dock, GamingPad, Globe } from '../icons';
+import { ChatBubbleMessage, CircleInfo, GamingPad, Globe } from '../icons';
+import appIcon from '../assets/app-icon.png';
 import { useUpdater } from '../components/UpdateProvider';
 import PageHeader from '../components/PageHeader';
 import PanelCard from '../components/PanelCard';
@@ -219,20 +220,20 @@ export default function About() {
 
     return [
       {
-        key: 'discord',
-        label: t('about.project.contactDiscord'),
-        value: contact.discordUrl.replace(/^https?:\/\//, ''),
-        hint: t('about.project.contactDiscordHint'),
-        actionLabel: t('about.project.contactActionOpen'),
-        action: () => openContactLink(contact.discordUrl, t),
-      },
-      {
         key: 'qq-group',
         label: t('about.project.contactQqGroup'),
         value: contact.qqGroup,
         hint: t('about.project.contactQqHint'),
         actionLabel: t('about.project.contactActionCopy'),
         action: () => copyContactValue(contact.qqGroup, t),
+      },
+      {
+        key: 'discord',
+        label: t('about.project.contactDiscord'),
+        value: contact.discordUrl.replace(/^https?:\/\//, '').replace(/\/$/, ''),
+        hint: t('about.project.contactDiscordHint'),
+        actionLabel: t('about.project.contactActionOpen'),
+        action: () => openContactLink(contact.discordUrl, t),
       },
       {
         key: 'email',
@@ -250,7 +251,8 @@ export default function About() {
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
         <PanelCard className='tool-rise'>
           <PageHeader
-            icon={<Dock className='h-5 w-5 stroke-current' />}
+            eyebrow={t('common.appName')}
+            icon={<img src={appIcon} alt='' className='about-header-icon' />}
             title={t('about.update.title')}
             description={t('about.update.summary')}
             actions={
@@ -339,14 +341,14 @@ export default function About() {
           icon={<CircleInfo className='h-5 w-5 stroke-current' />}
           title={t('about.project.title')}
           description={t('about.project.summary')}>
-          <div className='mt-4 rounded-2xl border border-[rgba(205,218,237,0.96)] bg-[rgba(248,251,255,0.9)] p-4 shadow-[0_10px_24px_rgba(27,42,72,0.04)]'>
+          <div className='about-contact-panel mt-4 p-4'>
             <div className='flex items-center gap-2'>
               <span className='tool-inline-icon-shell' aria-hidden='true'>
                 <ChatBubbleMessage className='h-3.5 w-3.5 stroke-zinc-500' />
               </span>
               <span className='tool-caption'>{t('about.project.contactTitle')}</span>
             </div>
-            <div className='mt-3 flex flex-wrap gap-3'>
+            <div className='about-contact-grid mt-3'>
               {contactItems.map((item) => (
                 <button
                   key={item.key}
@@ -354,11 +356,13 @@ export default function About() {
                   onClick={() => {
                     void item.action();
                   }}
-                  className='about-contact-card min-w-[220px] flex-1 rounded-2xl border border-[rgba(196,210,233,0.96)] bg-[rgba(255,255,255,0.94)] px-4 py-3 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition-all duration-150 hover:-translate-y-[1px] hover:border-[rgba(157,181,229,0.98)] hover:bg-[rgba(252,254,255,0.98)]'>
-                  <div className='text-[11px] font-extrabold uppercase tracking-[0.12em] text-[#7a89a1]'>{item.label}</div>
-                  <div className='mt-1 text-[14px] font-semibold text-[#2d3d59]'>{item.value}</div>
+                  className={`about-contact-card px-4 py-3 text-left transition-all duration-150 ${
+                    item.key === 'qq-group' ? 'about-contact-card--primary' : ''
+                  }`}>
+                  <div className='about-contact-card__label'>{item.label}</div>
+                  <div className='about-contact-card__value'>{item.value}</div>
                   <div className='mt-3 flex items-center justify-between gap-3'>
-                    <div className='text-[12px] leading-5 text-[#6f8099]'>{item.hint}</div>
+                    <div className='about-contact-card__hint'>{item.hint}</div>
                     <StatusChip label={item.actionLabel} tone='neutral' className='shrink-0' />
                   </div>
                 </button>

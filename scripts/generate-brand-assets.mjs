@@ -102,9 +102,9 @@ const buildHorizontalLogoSvg = () => `<?xml version="1.0" encoding="UTF-8"?>
 <svg width="1200" height="320" viewBox="0 0 1200 320" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <linearGradient id="lingoWordmark" x1="340" y1="86" x2="760" y2="232" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#0F172A" />
-      <stop offset="0.58" stop-color="#2563EB" />
-      <stop offset="1" stop-color="#60A5FA" />
+      <stop offset="0" stop-color="#0F3457" />
+      <stop offset="0.58" stop-color="#168BE6" />
+      <stop offset="1" stop-color="#8BD3FF" />
     </linearGradient>
   </defs>
 
@@ -129,16 +129,16 @@ const buildBadgeSvg = () => `<?xml version="1.0" encoding="UTF-8"?>
   <defs>
     <linearGradient id="badgeBg" x1="20" y1="8" x2="298" y2="104" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="#F8FBFF" />
-      <stop offset="1" stop-color="#E7EEFF" />
+      <stop offset="1" stop-color="#E7F6FF" />
     </linearGradient>
     <linearGradient id="badgeWordmark" x1="102" y1="28" x2="220" y2="68" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#0F172A" />
-      <stop offset="0.58" stop-color="#2563EB" />
-      <stop offset="1" stop-color="#60A5FA" />
+      <stop offset="0" stop-color="#0F3457" />
+      <stop offset="0.58" stop-color="#168BE6" />
+      <stop offset="1" stop-color="#8BD3FF" />
     </linearGradient>
   </defs>
 
-  <rect x="4" y="4" width="312" height="88" rx="44" fill="url(#badgeBg)" stroke="#6983D6" stroke-opacity="0.28" stroke-width="2" />
+  <rect x="4" y="4" width="312" height="88" rx="44" fill="url(#badgeBg)" stroke="#4AB7FF" stroke-opacity="0.24" stroke-width="2" />
   ${brandIcon({ x: 20, y: 18, width: 60, height: 60 })}
 
   <text

@@ -132,7 +132,6 @@ export default function TranslationDirectionCard() {
         bodyClassName='home-stat-card__body'>
         <div className='home-top-copy home-stat-card__copy'>
           <p className='tool-body'>{t('home.translationLanguage.desc1')}</p>
-          <p className='tool-body'>{t('home.translationLanguage.desc2')}</p>
         </div>
 
         <div className='home-top-actions'>

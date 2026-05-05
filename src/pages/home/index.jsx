@@ -1,6 +1,5 @@
 import { ArrowRight, Sparkles } from '../../icons';
 import { useI18n } from '../../i18n/I18nProvider';
-import StatusChip from '../../components/StatusChip';
 import HotkeyCard from './components/HotkeyCard';
 import TranslationDirectionCard from './components/TranslationDirectionCard';
 import GameSceneCard from './components/GameSceneCard';
@@ -8,23 +7,6 @@ import EnableStatusCard from './components/EnableStatusCard';
 
 export default function Home() {
   const { t } = useI18n();
-  const steps = [
-    {
-      id: '01',
-      title: t('home.guide.step1Title'),
-      desc: t('home.guide.step1Desc'),
-    },
-    {
-      id: '02',
-      title: t('home.guide.step2Title'),
-      desc: t('home.guide.step2Desc'),
-    },
-    {
-      id: '03',
-      title: t('home.guide.step3Title'),
-      desc: t('home.guide.step3Desc'),
-    },
-  ];
 
   return (
     <div className='home-dashboard'>
@@ -36,11 +18,6 @@ export default function Home() {
           </div>
           <h1 className='home-brief__title'>{t('common.appName')}</h1>
           <p className='home-brief__summary'>{t('home.guide.summary')}</p>
-          <div className='home-brief__quick-row'>
-            <StatusChip label={t('home.translationLanguage.title')} tone='info' className='home-brief__step' />
-            <StatusChip label={t('home.gameScene.title')} tone='neutral' className='home-brief__step' />
-            <StatusChip label={t('home.hotkey.title')} tone='neutral' className='home-brief__step' />
-          </div>
         </article>
 
         <article className='home-brief__flow'>
@@ -80,25 +57,6 @@ export default function Home() {
           <HotkeyCard />
         </div>
       </div>
-
-      <section className='home-guide-strip dota-card'>
-        <div className='home-guide-strip__head'>
-          <span className='tool-caption'>{t('home.guide.title')}</span>
-          <p className='home-guide-strip__lead'>{t('home.demo.summary')}</p>
-        </div>
-
-        <div className='home-guide-strip__steps'>
-          {steps.map((step) => (
-            <article key={step.id} className='home-guide-step tool-rise'>
-              <span className='home-guide-step__number'>{step.id}</span>
-              <div>
-                <h2 className='tool-card-title'>{step.title}</h2>
-                <p className='tool-body'>{step.desc}</p>
-              </div>
-            </article>
-          ))}
-        </div>
-      </section>
     </div>
   );
 }

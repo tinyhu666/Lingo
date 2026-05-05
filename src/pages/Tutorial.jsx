@@ -1,9 +1,8 @@
 import { motion } from 'framer-motion';
-import { BookOpen, CircleInfo, KeyboardAlt, Sparkles } from '../icons';
+import { ArrowRight, BookOpen, CircleInfo, KeyboardAlt, Sparkles } from '../icons';
 import { useI18n } from '../i18n/I18nProvider';
 import PageHeader from '../components/PageHeader';
 import PanelCard from '../components/PanelCard';
-import StatusChip from '../components/StatusChip';
 
 export default function Tutorial() {
   const { t } = useI18n();
@@ -67,10 +66,9 @@ export default function Tutorial() {
           transition={{ delay: 0.1 }}>
           <PanelCard
             className='tutorial-layout-grid__demo home-panel tool-rise'
-            icon={<CircleInfo className='tool-section-head__icon' />}
+            icon={<KeyboardAlt className='tool-section-head__icon' />}
             title={t('tutorial.demo.title')}
-            description={t('tutorial.demo.summary')}
-            actions={<StatusChip label={t('tutorial.demo.badge')} tone='info' />}>
+            description={t('tutorial.demo.summary')}>
 
             <div className='tutorial-demo-stack'>
               <div className='tool-subcard tutorial-demo-block p-4'>
@@ -83,7 +81,9 @@ export default function Tutorial() {
 
               <div className='tutorial-demo-connector flex items-center gap-3 px-1'>
                 <div className='h-px flex-1 bg-[rgba(214,224,236,0.86)]' />
-                <StatusChip label={t('tutorial.demo.resultBadge')} tone='success' />
+                <span className='tutorial-demo-arrow' aria-hidden='true'>
+                  <ArrowRight className='h-4 w-4 stroke-current' />
+                </span>
                 <div className='h-px flex-1 bg-[rgba(214,224,236,0.86)]' />
               </div>
 

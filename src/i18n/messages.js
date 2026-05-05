@@ -160,6 +160,7 @@ export const messages = {
       add: '新增常用语',
       save: '保存',
       saving: '保存中...',
+      workflowHint: '先填短句，再选快捷键，最后保存。空列表也可以保留。',
       contentPlaceholder: '输入常用语内容',
       empty: {
         title: '还没有常用语',
@@ -445,6 +446,7 @@ export const messages = {
       add: 'Add Phrase',
       save: 'Save',
       saving: 'Saving...',
+      workflowHint: 'Add the line, pick its hotkey, then save. Keeping the list empty is fine.',
       contentPlaceholder: 'Enter phrase content',
       empty: {
         title: 'No phrases yet',
@@ -730,6 +732,7 @@ export const messages = {
       add: 'Добавить фразу',
       save: 'Сохранить',
       saving: 'Сохранение...',
+      workflowHint: 'Добавьте фразу, выберите хоткей и сохраните. Пустой список тоже допустим.',
       contentPlaceholder: 'Введите текст фразы',
       empty: {
         title: 'Фраз пока нет',
