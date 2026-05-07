@@ -2113,3 +2113,303 @@
     }
   }
 }
+
+@layer components {
+  /* Final home layout guard for the fixed 1280x720 desktop shell. */
+  .workspace-content,
+  html.platform-desktop .workspace-content,
+  body.platform-desktop .workspace-content {
+    overflow: hidden;
+  }
+
+  .home-dashboard,
+  html.platform-desktop .home-dashboard,
+  body.platform-desktop .home-dashboard {
+    display: grid;
+    grid-template-rows: 188px minmax(0, 1fr);
+    gap: 10px;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .home-brief,
+  html.platform-desktop .home-brief,
+  body.platform-desktop .home-brief {
+    min-height: 0 !important;
+    height: 188px;
+    grid-template-columns: minmax(0, 0.92fr) minmax(430px, 1.08fr) !important;
+    gap: 12px;
+    padding: 14px !important;
+    overflow: hidden;
+  }
+
+  .home-brief__hero {
+    min-height: 0;
+    padding: 4px 10px !important;
+    justify-content: center;
+  }
+
+  .home-brief__eyebrow {
+    height: 26px !important;
+    padding-inline: 10px !important;
+    font-size: 11px !important;
+  }
+
+  .home-brief__title {
+    margin-top: 10px !important;
+    font-size: clamp(40px, 5.4vw, 58px) !important;
+    line-height: 0.94 !important;
+  }
+
+  .home-brief__summary {
+    margin-top: 10px !important;
+    max-width: 560px !important;
+    font-size: 14px !important;
+    line-height: 1.45 !important;
+  }
+
+  .home-brief__flow {
+    min-height: 0;
+    padding: 12px !important;
+  }
+
+  .home-brief__flow-label,
+  .home-brief__bubble-label {
+    font-size: 11px !important;
+  }
+
+  .home-brief__flow-grid {
+    min-height: 0 !important;
+    height: auto !important;
+    flex: 1;
+    grid-template-columns: minmax(0, 1fr) 34px minmax(0, 1fr) !important;
+    gap: 8px !important;
+  }
+
+  .home-brief__bubble {
+    min-height: 0;
+    padding: 10px 12px !important;
+  }
+
+  .home-brief__bubble-copy {
+    margin-top: 6px !important;
+    font-size: clamp(15px, 1.25vw, 18px) !important;
+    line-height: 1.32 !important;
+  }
+
+  .home-brief__flow-arrow {
+    width: 34px !important;
+    min-width: 34px;
+  }
+
+  .home-grid,
+  html.platform-desktop .home-grid,
+  body.platform-desktop .home-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    grid-template-rows: repeat(2, minmax(0, 1fr)) !important;
+    grid-auto-rows: minmax(0, 1fr);
+    gap: 10px !important;
+    height: 100%;
+    min-height: 0;
+    overflow: visible;
+  }
+
+  .home-grid__stat,
+  html.platform-desktop .home-grid__stat,
+  body.platform-desktop .home-grid__stat,
+  .home-grid__stat > * {
+    min-width: 0;
+    min-height: 0;
+    width: 100%;
+    height: 100%;
+  }
+
+  .home-grid__stat--translation,
+  .home-grid__stat--status,
+  .home-grid__stat--game,
+  .home-grid__stat--hotkey {
+    grid-column: auto !important;
+  }
+
+  .home-stat-card,
+  html.platform-desktop .home-stat-card,
+  body.platform-desktop .home-stat-card {
+    min-height: 0 !important;
+    height: 100%;
+    gap: 8px !important;
+    padding: 12px 14px !important;
+    overflow: visible;
+  }
+
+  .home-stat-card .panel-card__header {
+    min-height: 0 !important;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: nowrap;
+  }
+
+  .home-stat-card .panel-card__heading {
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+  }
+
+  .home-stat-card .panel-card__icon-shell {
+    width: 34px !important;
+    height: 34px !important;
+    min-width: 34px !important;
+    border-radius: 10px !important;
+  }
+
+  .home-stat-card__header-icon {
+    width: 17px !important;
+    height: 17px !important;
+  }
+
+  .home-stat-card .tool-card-title {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    font-size: 17px !important;
+    line-height: 1.18 !important;
+  }
+
+  .home-stat-card .panel-card__actions {
+    flex: 0 0 auto;
+    align-items: center;
+  }
+
+  .home-stat-card .status-chip {
+    min-height: 24px;
+    padding-inline: 8px;
+    white-space: nowrap;
+  }
+
+  .home-stat-card__body,
+  html.platform-desktop .home-stat-card__body,
+  body.platform-desktop .home-stat-card__body {
+    display: grid !important;
+    grid-template-rows: minmax(0, 1fr) auto !important;
+    gap: 8px !important;
+    min-height: 0;
+    margin-top: 4px !important;
+  }
+
+  .home-top-copy {
+    min-height: 0 !important;
+    align-content: start;
+  }
+
+  .home-stat-card__copy .tool-body {
+    margin: 0 !important;
+    font-size: 13px !important;
+    line-height: 1.42 !important;
+  }
+
+  .home-top-actions {
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+  }
+
+  .home-top-control-shell,
+  .home-top-control-slot {
+    min-height: 0 !important;
+  }
+
+  .home-top-control-shell {
+    padding: 7px !important;
+  }
+
+  .home-top-control-frame,
+  .home-status-toggle,
+  .home-language-chip {
+    min-height: 38px !important;
+  }
+
+  .home-status-toggle {
+    padding: 0 10px !important;
+  }
+
+  .home-status-switch {
+    width: 40px !important;
+    height: 22px !important;
+  }
+
+  .home-status-switch-thumb {
+    width: 18px !important;
+    height: 18px !important;
+  }
+
+  .home-status-switch-thumb.translate-x-5 {
+    transform: translateX(18px) !important;
+  }
+
+  .home-language-chip {
+    padding: 0 9px !important;
+  }
+
+  .home-language-chip__meta {
+    gap: 7px !important;
+  }
+
+  .home-language-chip__label,
+  .tool-control-text {
+    font-size: 13px !important;
+    line-height: 1.2;
+  }
+
+  .keycap-group {
+    gap: 6px !important;
+  }
+
+  .keycap {
+    min-width: 34px !important;
+    min-height: 30px !important;
+    padding-inline: 10px !important;
+    font-size: 13px !important;
+  }
+
+  @media (max-width: 1100px) {
+    .home-dashboard,
+    html.platform-desktop .home-dashboard,
+    body.platform-desktop .home-dashboard {
+      grid-template-rows: auto auto;
+      overflow: auto;
+    }
+
+    .home-brief,
+    html.platform-desktop .home-brief,
+    body.platform-desktop .home-brief {
+      height: auto;
+      grid-template-columns: 1fr !important;
+    }
+  }
+
+  @media (max-width: 780px) {
+    .workspace-content,
+    html.platform-desktop .workspace-content,
+    body.platform-desktop .workspace-content,
+    .home-dashboard,
+    html.platform-desktop .home-dashboard,
+    body.platform-desktop .home-dashboard {
+      overflow: auto;
+    }
+
+    .home-grid,
+    html.platform-desktop .home-grid,
+    body.platform-desktop .home-grid {
+      grid-template-columns: 1fr !important;
+      grid-template-rows: none !important;
+    }
+
+    .home-brief__flow-grid {
+      grid-template-columns: 1fr !important;
+    }
+
+    .home-brief__flow-arrow {
+      width: 100% !important;
+      height: 32px !important;
+    }
+  }
+}
