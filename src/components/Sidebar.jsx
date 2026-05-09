@@ -19,10 +19,7 @@ export default function Sidebar({ activeItem, setActiveItem }) {
       <div className='sidebar-brand' aria-label={t('common.appName')}>
         <div className='sidebar-brand__lockup'>
           <img src={appIcon} alt='' className='sidebar-brand__icon' />
-          <div>
-          <div className='sidebar-brand__eyebrow'>{t('sidebar.controlDeck')}</div>
           <div className='sidebar-brand__name'>{t('common.appName')}</div>
-          </div>
         </div>
       </div>
 

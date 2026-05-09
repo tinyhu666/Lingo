@@ -30,7 +30,6 @@
   --shadow-sm: 0 10px 22px rgba(0, 0, 0, 0.12);
 }
 
-
 @layer components {
 
   .lingo-theme *,
@@ -2411,5 +2410,36 @@
       width: 100% !important;
       height: 32px !important;
     }
+  }
+}
+
+@layer components {
+  .lingo-titlebar__icon,
+  .sidebar-brand__icon,
+  .about-header-icon {
+    object-fit: contain;
+    filter: none !important;
+  }
+
+  .lingo-titlebar__icon {
+    width: 36px !important;
+    height: 36px !important;
+    border-radius: 9px !important;
+  }
+
+  .sidebar-brand__icon {
+    width: 44px !important;
+    height: 44px !important;
+    border-radius: 10px !important;
+  }
+
+  .about-header-icon {
+    width: 34px !important;
+    height: 34px !important;
+    border-radius: 9px !important;
+  }
+
+  .sidebar-brand__name {
+    margin-top: 0 !important;
   }
 }
