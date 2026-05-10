@@ -79,7 +79,7 @@ where
 
 fn build_shortcut_text(modifiers: &[String], key: &str) -> String {
     format!(
-        "{}+{}",
+        "{} + {}",
         modifiers
             .iter()
             .map(|m| match m.as_str() {
@@ -108,7 +108,7 @@ fn build_shortcut_text(modifiers: &[String], key: &str) -> String {
                 _ => m,
             })
             .collect::<Vec<_>>()
-            .join("+"),
+            .join(" + "),
         format_key_display(key)
     )
 }
@@ -246,9 +246,6 @@ pub fn update_translator_shortcut(app: &AppHandle, keys: Vec<String>) -> Result<
 }
 
 pub fn update_phrases(app: &AppHandle, phrases: Vec<Phrase>) -> Result<Vec<Phrase>, String> {
-    if phrases.is_empty() {
-        return Err("请至少保留一条常用语".to_string());
-    }
     if phrases.len() > 20 {
         return Err("常用语最多 20 条".to_string());
     }
@@ -334,5 +331,19 @@ fn format_key_display(key: &str) -> String {
             "CapsLock" => "⇪".to_string(),
             _ => key.to_string(),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn shortcut_text_uses_visible_combo_separator() {
+        assert_eq!(build_shortcut_text(&["Alt".to_string()], "KeyT"), "Alt + T");
+        assert_eq!(
+            build_shortcut_text(&["Control".to_string(), "Shift".to_string()], "Digit1"),
+            "Ctrl + ⇧ + 1"
+        );
     }
 }

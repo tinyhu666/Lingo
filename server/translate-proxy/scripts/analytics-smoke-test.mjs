@@ -5,6 +5,24 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const analyticsDayFormatter = new Intl.DateTimeFormat('en', {
+  timeZone: 'Asia/Shanghai',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+});
+
+const getAnalyticsDayKey = (date = new Date()) => {
+  const parts = analyticsDayFormatter.formatToParts(date);
+  const partMap = parts.reduce((acc, item) => {
+    if (item.type !== 'literal') {
+      acc[item.type] = item.value;
+    }
+    return acc;
+  }, {});
+
+  return `${partMap.year}-${partMap.month}-${partMap.day}`;
+};
 
 const waitForServer = async (baseUrl) => {
   for (let attempt = 1; attempt <= 30; attempt += 1) {
@@ -77,14 +95,17 @@ child.stderr.on('data', (chunk) => process.stderr.write(chunk));
 try {
   await waitForServer(baseUrl);
 
-  const duplicateOccurredAt = '2026-03-28T12:00:00.000Z';
+  const duplicateTime = new Date();
+  const duplicateOccurredAt = duplicateTime.toISOString();
+  const analyticsDay = getAnalyticsDayKey(duplicateTime);
+  const secondOccurredAt = new Date(duplicateTime.getTime() + 1000).toISOString();
   const firstBatch = await postEvents(baseUrl, [
     {
       installation_id: 'install-1',
       event_name: 'install_registered',
       occurred_at: duplicateOccurredAt,
       session_id: 'session-1',
-      analytics_day: '2026-03-28',
+      analytics_day: analyticsDay,
       platform: 'windows',
       app_version: '0.6.2',
       ui_locale: 'zh-CN',
@@ -95,7 +116,7 @@ try {
       event_name: 'app_launch',
       occurred_at: duplicateOccurredAt,
       session_id: 'session-1',
-      analytics_day: '2026-03-28',
+      analytics_day: analyticsDay,
       platform: 'windows',
       app_version: '0.6.2',
       ui_locale: 'zh-CN',
@@ -106,7 +127,7 @@ try {
       event_name: 'app_active_ping',
       occurred_at: duplicateOccurredAt,
       session_id: 'session-1',
-      analytics_day: '2026-03-28',
+      analytics_day: analyticsDay,
       platform: 'windows',
       app_version: '0.6.2',
       ui_locale: 'zh-CN',
@@ -125,7 +146,7 @@ try {
       event_name: 'app_launch',
       occurred_at: duplicateOccurredAt,
       session_id: 'session-1',
-      analytics_day: '2026-03-28',
+      analytics_day: analyticsDay,
       platform: 'windows',
       app_version: '0.6.2',
       ui_locale: 'zh-CN',
@@ -134,9 +155,9 @@ try {
     {
       installation_id: 'install-2',
       event_name: 'app_active_ping',
-      occurred_at: '2026-03-28T13:00:00.000Z',
+      occurred_at: secondOccurredAt,
       session_id: 'session-2',
-      analytics_day: '2026-03-28',
+      analytics_day: analyticsDay,
       platform: 'macos',
       app_version: '0.6.2',
       ui_locale: 'en-US',
@@ -149,7 +170,7 @@ try {
   expect(secondBatch.json.inserted === 1, 'second analytics batch should insert only one new event');
   expect(secondBatch.json.duplicates === 1, 'second analytics batch should report one duplicate');
 
-  const daily = await fetchJson(`${baseUrl}/analytics/public/daily?from=2026-03-28&to=2026-03-28`);
+  const daily = await fetchJson(`${baseUrl}/analytics/public/daily?from=${analyticsDay}&to=${analyticsDay}`);
   expect(daily.ok, 'daily analytics endpoint should succeed');
   expect(daily.json.timezone === 'Asia/Shanghai', 'daily analytics should report Asia/Shanghai timezone');
   expect(Array.isArray(daily.json.days) && daily.json.days.length === 1, 'daily analytics should return one row');

@@ -188,7 +188,7 @@ function LayoutShell({ children, activeItem, setActiveItem }) {
         </aside>
 
         <section className='lingo-shell__workspace'>
-          <div className='workspace-content'>{children}</div>
+          <div className={`workspace-content workspace-content--${activeItem}`}>{children}</div>
         </section>
       </div>
     </div>

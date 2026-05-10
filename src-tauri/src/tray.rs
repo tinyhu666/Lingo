@@ -1,7 +1,21 @@
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::TrayIconBuilder;
 use tauri::AppHandle;
+use tauri::Emitter;
 use tauri::Manager;
+
+fn show_main_window(app: &AppHandle) {
+    if let Some(window) = app.get_webview_window("main") {
+        #[cfg(target_os = "macos")]
+        let _ = app.set_activation_policy(tauri::ActivationPolicy::Regular);
+        if let Err(error) = window.show() {
+            eprintln!("托盘显示窗口失败: {}", error);
+        }
+        if let Err(error) = window.set_focus() {
+            eprintln!("托盘聚焦窗口失败: {}", error);
+        }
+    }
+}
 
 pub fn create_tray(app: &AppHandle) -> tauri::Result<()> {
     // let show_icon = Image::from_path("icons/window.png")?;
@@ -28,19 +42,13 @@ pub fn create_tray(app: &AppHandle) -> tauri::Result<()> {
         .show_menu_on_left_click(true)
         .on_menu_event(|app, event| match event.id.as_ref() {
             "show" => {
-                if let Some(window) = app.get_webview_window("main") {
-                    #[cfg(target_os = "macos")]
-                    let _ = app.set_activation_policy(tauri::ActivationPolicy::Regular);
-                    if let Err(error) = window.show() {
-                        eprintln!("托盘显示窗口失败: {}", error);
-                    }
-                    if let Err(error) = window.set_focus() {
-                        eprintln!("托盘聚焦窗口失败: {}", error);
-                    }
-                }
+                show_main_window(app);
             }
             "check_update" => {
-                println!("检查更新菜单项被点击");
+                show_main_window(app);
+                if let Err(error) = app.emit("tray_check_update", ()) {
+                    eprintln!("托盘检查更新事件发送失败: {}", error);
+                }
             }
             "quit" => {
                 println!("quit menu item was clicked");

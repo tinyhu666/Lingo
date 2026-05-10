@@ -1,7 +1,9 @@
 ﻿import { Suspense, lazy, useEffect, useMemo, useState } from 'react';
 import Layout from './components/Layout';
+import { listen } from '@tauri-apps/api/event';
 import Home from './pages/home';
 import { useI18n } from './i18n/I18nProvider';
+import { hasTauriRuntime } from './services/tauriRuntime';
 import { getDesktopPlatform } from './utils/platform';
 
 const TranslatePage = lazy(() => import('./pages/Translate'));
@@ -66,6 +68,41 @@ function App() {
       body.classList.remove('platform-macos');
     };
   }, [desktopClient, desktopPlatform]);
+
+  useEffect(() => {
+    if (!hasTauriRuntime()) {
+      return undefined;
+    }
+
+    let disposed = false;
+    let unlisten = null;
+
+    const bind = async () => {
+      try {
+        const cleanup = await listen('tray_check_update', () => {
+          if (!disposed) {
+            setActiveItem('about');
+          }
+        });
+        if (disposed) {
+          cleanup();
+        } else {
+          unlisten = cleanup;
+        }
+      } catch (error) {
+        console.error('Failed to bind tray update navigation', error);
+      }
+    };
+
+    void bind();
+
+    return () => {
+      disposed = true;
+      if (unlisten) {
+        unlisten();
+      }
+    };
+  }, []);
 
   return (
     <div

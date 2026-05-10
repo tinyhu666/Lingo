@@ -43,7 +43,11 @@ impl HotkeyConfig {
         Self {
             modifiers: vec![modifier.to_string()],
             key: key.to_string(),
-            shortcut: format!("{}+{}", symbol, key.replace("Key", "").replace("Digit", "")),
+            shortcut: format!(
+                "{} + {}",
+                symbol,
+                key.replace("Key", "").replace("Digit", "")
+            ),
         }
     }
 }
@@ -65,6 +69,7 @@ pub struct AppSettings {
     pub game_scene: String,
     pub translation_mode: String,
     pub daily_mode: bool,
+    #[serde(default = "default_phrases")]
     pub phrases: Vec<Phrase>,
 }
 
@@ -156,10 +161,6 @@ fn normalize_settings(settings: &mut AppSettings) {
 
     if settings.translation_mode.is_empty() {
         settings.translation_mode = "auto".to_string();
-    }
-
-    if settings.phrases.is_empty() {
-        settings.phrases = default_phrases();
     }
 
     for (idx, phrase) in settings.phrases.iter_mut().enumerate() {
@@ -274,5 +275,47 @@ mod tests {
             normalize_settings(&mut settings);
             assert_eq!(settings.game_scene, scene, "scene={scene}");
         }
+    }
+
+    #[test]
+    fn normalize_settings_preserves_intentionally_empty_phrases() {
+        let mut settings = AppSettings {
+            phrases: Vec::new(),
+            ..AppSettings::default()
+        };
+
+        normalize_settings(&mut settings);
+
+        assert!(settings.phrases.is_empty());
+    }
+
+    #[test]
+    fn missing_phrases_field_uses_defaults_but_empty_list_stays_empty() {
+        let missing_phrases: AppSettings = serde_json::from_value(serde_json::json!({
+            "app_enabled": true,
+            "trans_hotkey": HotkeyConfig::default(),
+            "translation_from": "zh",
+            "translation_to": "en",
+            "game_scene": "dota2",
+            "translation_mode": "auto",
+            "daily_mode": false
+        }))
+        .expect("settings should deserialize without phrases");
+
+        assert_eq!(missing_phrases.phrases.len(), default_phrases().len());
+
+        let empty_phrases: AppSettings = serde_json::from_value(serde_json::json!({
+            "app_enabled": true,
+            "trans_hotkey": HotkeyConfig::default(),
+            "translation_from": "zh",
+            "translation_to": "en",
+            "game_scene": "dota2",
+            "translation_mode": "auto",
+            "daily_mode": false,
+            "phrases": []
+        }))
+        .expect("settings should deserialize with empty phrases");
+
+        assert!(empty_phrases.phrases.is_empty());
     }
 }

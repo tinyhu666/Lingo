@@ -1,4 +1,5 @@
 ﻿import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { listen } from '@tauri-apps/api/event';
 import { check } from '@tauri-apps/plugin-updater';
 import { relaunch } from '@tauri-apps/plugin-process';
 import { hasTauriRuntime, invokeCommand } from '../services/tauriRuntime';
@@ -532,6 +533,41 @@ export function UpdateProvider({ children }) {
       void closePreviousUpdateHandle();
     };
   }, [checkForUpdates, closePreviousUpdateHandle, loadCurrentVersion]);
+
+  useEffect(() => {
+    if (!hasTauriRuntime()) {
+      return undefined;
+    }
+
+    let disposed = false;
+    let unlisten = null;
+
+    const bind = async () => {
+      try {
+        const cleanup = await listen('tray_check_update', () => {
+          if (!disposed) {
+            void checkForUpdates({ silent: false });
+          }
+        });
+        if (disposed) {
+          cleanup();
+        } else {
+          unlisten = cleanup;
+        }
+      } catch (error) {
+        console.error('Failed to bind tray update check', error);
+      }
+    };
+
+    void bind();
+
+    return () => {
+      disposed = true;
+      if (unlisten) {
+        unlisten();
+      }
+    };
+  }, [checkForUpdates]);
 
   const value = useMemo(
     () => ({

@@ -2,7 +2,6 @@
 import { twMerge } from 'tailwind-merge';
 import { NAV_ITEMS } from '../constants/navigation';
 import { APP_VERSION_LABEL } from '../constants/version';
-import appIcon from '../assets/app-icon.png';
 import { useUpdater } from './UpdateProvider';
 import { useI18n } from '../i18n/I18nProvider';
 import StatusChip from './StatusChip';
@@ -16,13 +15,6 @@ export default function Sidebar({ activeItem, setActiveItem }) {
 
   return (
     <div className='sidebar-panel'>
-      <div className='sidebar-brand' aria-label={t('common.appName')}>
-        <div className='sidebar-brand__lockup'>
-          <img src={appIcon} alt='' className='sidebar-brand__icon' />
-          <div className='sidebar-brand__name'>{t('common.appName')}</div>
-        </div>
-      </div>
-
       <div className='sidebar-section'>
         <nav className='sidebar-nav'>
           {NAV_ITEMS.map((item) => {
@@ -68,9 +60,7 @@ export default function Sidebar({ activeItem, setActiveItem }) {
           <div className='sidebar-status-card__title'>
             {isEnabled ? t('sidebar.serviceRunning') : t('sidebar.servicePaused')}
           </div>
-          <div className='sidebar-status-card__meta'>{t('sidebar.hotkeyReady')}</div>
         </div>
-        <StatusChip label={isEnabled ? t('common.enabled') : t('common.paused')} tone={isEnabled ? 'success' : 'warning'} />
       </div>
 
       <div className='sidebar-footer'>

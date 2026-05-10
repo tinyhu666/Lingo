@@ -2115,9 +2115,9 @@
 
 @layer components {
   /* Final home layout guard for the fixed 1280x720 desktop shell. */
-  .workspace-content,
-  html.platform-desktop .workspace-content,
-  body.platform-desktop .workspace-content {
+  .workspace-content--home,
+  html.platform-desktop .workspace-content--home,
+  body.platform-desktop .workspace-content--home {
     overflow: hidden;
   }
 
@@ -2555,5 +2555,93 @@
 
   .sidebar-footer {
     border-top: 0 !important;
+  }
+}
+
+@layer components {
+  .sidebar-section {
+    margin-top: 4px !important;
+  }
+
+  .sidebar-status-card {
+    grid-template-columns: 10px minmax(0, 1fr) !important;
+    padding: 11px 12px !important;
+  }
+
+  .sidebar-status-card__copy {
+    min-width: 0;
+  }
+
+  .keycap-group {
+    gap: 0 !important;
+  }
+
+  .keycap-group__item,
+  .keycap-separator {
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .keycap-separator {
+    min-width: 22px;
+    justify-content: center;
+    color: var(--text-2);
+    font-weight: 900;
+    line-height: 1;
+  }
+
+  .keycap-separator--sm {
+    min-width: 18px;
+    font-size: 12px;
+  }
+
+  .home-status-toggle {
+    padding-right: 18px !important;
+    overflow: hidden;
+  }
+
+  .home-status-switch {
+    margin-left: auto;
+    margin-right: 4px;
+  }
+
+  .translate-page__status-chip {
+    white-space: nowrap;
+  }
+
+  .phrases-hotkey-editor {
+    display: flex !important;
+    align-items: center !important;
+    gap: 0 !important;
+  }
+
+  .phrases-hotkey-editor .keycap-group {
+    flex-shrink: 0;
+  }
+
+  .phrases-hotkey-separator {
+    display: inline-flex;
+    width: 18px;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-2);
+    font-weight: 900;
+    line-height: 1;
+  }
+
+  .phrases-hotkey-select {
+    min-width: 72px;
+    max-width: 92px;
+    padding-inline: 10px !important;
+    text-align: center;
+    text-align-last: center;
+  }
+
+  @media (max-width: 780px) {
+    .phrases-hotkey-editor {
+      display: grid !important;
+      grid-template-columns: auto 18px minmax(72px, 1fr) !important;
+      justify-content: start;
+    }
   }
 }

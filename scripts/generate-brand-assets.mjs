@@ -1,4 +1,4 @@
-import { copyFileSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -41,6 +41,7 @@ const cachedBundleIconPaths = [
 
 const BRAND_FONT_STACK =
   '-apple-system, BlinkMacSystemFont, SF Pro Display, Segoe UI, PingFang SC, Microsoft YaHei, sans-serif';
+const DESKTOP_ICON_SCALE = 1.14;
 
 const run = (command, args, options = {}) => {
   const usesWindowsShell = process.platform === 'win32' && command === 'npx';
@@ -181,16 +182,35 @@ const buildBadgeSvg = () => `<?xml version="1.0" encoding="UTF-8"?>
 </svg>
 `;
 
+const writeAmplifiedDesktopSourceSvg = (filePath) => {
+  const canvasSize = 2048;
+  const scaledSize = canvasSize * DESKTOP_ICON_SCALE;
+  const offset = (canvasSize - scaledSize) / 2;
+  const sourceBase64 = readFileSync(sourcePng).toString('base64');
+
+  writeTextFile(
+    filePath,
+    `<?xml version="1.0" encoding="UTF-8"?>
+<svg width="${canvasSize}" height="${canvasSize}" viewBox="0 0 ${canvasSize} ${canvasSize}" xmlns="http://www.w3.org/2000/svg">
+  <image href="data:image/png;base64,${sourceBase64}" x="${offset}" y="${offset}" width="${scaledSize}" height="${scaledSize}" />
+</svg>
+`,
+  );
+};
+
 const tempDir = mkdtempSync(join(tmpdir(), 'lingo-brand-'));
 
 try {
+  const desktopSourceSvgPath = join(tempDir, 'desktop-icon-source.svg');
+
   writeTextFile(appIconSvgPath, buildAppIconSvg());
   writeTextFile(horizontalLogoSvgPath, buildHorizontalLogoSvg());
   writeTextFile(badgeSvgPath, buildBadgeSvg());
   writeTextFile(rootIconSvgPath, buildRootIconSvg());
+  writeAmplifiedDesktopSourceSvg(desktopSourceSvgPath);
 
-  run('npx', ['tauri', 'icon', sourcePng, '-o', tauriIconsDir]);
-  run('npx', ['tauri', 'icon', sourcePng, '-o', tempDir, '-p', '1024', '-p', '256']);
+  run('npx', ['tauri', 'icon', desktopSourceSvgPath, '-o', tauriIconsDir]);
+  run('npx', ['tauri', 'icon', desktopSourceSvgPath, '-o', tempDir, '-p', '1024', '-p', '256']);
 
   copyFileSync(join(tempDir, '1024x1024.png'), appIconRoot);
   copyFileSync(join(tempDir, '256x256.png'), appIconSrc);

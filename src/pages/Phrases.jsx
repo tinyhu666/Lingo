@@ -39,15 +39,15 @@ const rowSignature = (keyCode) => `${MODIFIER_CODE}+${keyCode}`;
 
 const formatShortcutLabel = (keyCode) => {
   if (!keyCode) {
-    return `${MODIFIER_LABEL}+?`;
+    return `${MODIFIER_LABEL} + ?`;
   }
   if (keyCode.startsWith('Digit')) {
-    return `${MODIFIER_LABEL}+${keyCode.slice(5)}`;
+    return `${MODIFIER_LABEL} + ${keyCode.slice(5)}`;
   }
   if (keyCode.startsWith('Key')) {
-    return `${MODIFIER_LABEL}+${keyCode.slice(3)}`;
+    return `${MODIFIER_LABEL} + ${keyCode.slice(3)}`;
   }
-  return `${MODIFIER_LABEL}+${keyCode}`;
+  return `${MODIFIER_LABEL} + ${keyCode}`;
 };
 
 const createRow = (id, phrase = '', keyCode = `Digit${Math.min(id, 9)}`) => ({
@@ -274,10 +274,13 @@ export default function Phrases() {
                       <td className='px-4 py-4' data-label={t('phrases.table.hotkey')}>
                         <div className='phrases-hotkey-editor'>
                           <KeycapGroup keys={[MODIFIER_LABEL]} size='sm' />
+                          <span className='phrases-hotkey-separator' aria-hidden='true'>
+                            +
+                          </span>
                           <select
                             value={row.keyCode}
                             onChange={(event) => patchRow(row.id, { keyCode: event.target.value })}
-                            className='tool-input'>
+                            className='tool-input phrases-hotkey-select'>
                             {KEY_OPTIONS.map((option) => (
                               <option key={option.code} value={option.code}>
                                 {option.label}

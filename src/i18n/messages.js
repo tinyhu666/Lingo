@@ -50,7 +50,6 @@ export const messages = {
       },
       serviceRunning: '服务运行中',
       servicePaused: '服务已暂停',
-      hotkeyReady: '快捷键待命',
       updateAvailable: '可更新',
     },
     home: {
@@ -173,7 +172,6 @@ export const messages = {
       },
       errors: {
         maxCount: '常用语最多 {{max}} 条',
-        minOne: '请至少保留一条常用语',
         rowEmpty: '第 {{index}} 条常用语为空',
         rowTooLong: '第 {{index}} 条常用语超过 {{max}} 字',
         rowHotkeyMissing: '第 {{index}} 条快捷键未设置',
@@ -335,7 +333,6 @@ export const messages = {
       },
       serviceRunning: 'Service running',
       servicePaused: 'Service paused',
-      hotkeyReady: 'Hotkey ready',
       updateAvailable: 'Update',
     },
     home: {
@@ -458,7 +455,6 @@ export const messages = {
       },
       errors: {
         maxCount: 'Maximum {{max}} phrases allowed',
-        minOne: 'Keep at least one phrase',
         rowEmpty: 'Phrase {{index}} is empty',
         rowTooLong: 'Phrase {{index}} exceeds {{max}} characters',
         rowHotkeyMissing: 'Hotkey for phrase {{index}} is missing',
@@ -620,7 +616,6 @@ export const messages = {
       },
       serviceRunning: 'Сервис работает',
       servicePaused: 'Сервис на паузе',
-      hotkeyReady: 'Хоткей готов',
       updateAvailable: 'Обновление',
     },
     home: {
@@ -743,7 +738,6 @@ export const messages = {
       },
       errors: {
         maxCount: 'Максимум {{max}} фраз',
-        minOne: 'Нужно оставить хотя бы одну фразу',
         rowEmpty: 'Фраза {{index}} пуста',
         rowTooLong: 'Фраза {{index}} длиннее {{max}} символов',
         rowHotkeyMissing: 'Для фразы {{index}} не задан хоткей',

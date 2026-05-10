@@ -26,7 +26,7 @@ export const formatMainKeyLabel = (keyCode = '') => {
   return keyCode.replace('Key', '').replace('Digit', '');
 };
 
-export const defaultTranslatorHotkeyLabel = () => (detectMac() ? '⌘+T' : 'Alt+T');
+export const defaultTranslatorHotkeyLabel = () => (detectMac() ? '⌘ + T' : 'Alt + T');
 
 export const defaultPhraseModifier = () => (detectMac() ? 'Meta' : 'Alt');
 
@@ -43,6 +43,6 @@ export const buildHotkeyFromKeyCodes = (keyCodes) => {
   return {
     modifiers,
     key,
-    shortcut: `${modifiers.map(formatModifierLabel).join('+')}+${formatMainKeyLabel(key)}`,
+    shortcut: `${modifiers.map(formatModifierLabel).join(' + ')} + ${formatMainKeyLabel(key)}`,
   };
 };
