@@ -69,9 +69,19 @@ export default function Phrases() {
       return;
     }
 
-    const mapped = source.map((item, index) =>
-      createRow(index + 1, item?.phrase || '', item?.hotkey?.key || `Digit${Math.min(index + 1, 9)}`),
-    );
+    const claimed = new Set();
+    const mapped = source.map((item, index) => {
+      const existing = item?.hotkey?.key;
+      let keyCode = existing;
+      if (!keyCode || claimed.has(keyCode)) {
+        const fallback =
+          KEY_OPTIONS.find((option) => !claimed.has(option.code))?.code ||
+          `Digit${Math.min(index + 1, 9)}`;
+        keyCode = fallback;
+      }
+      claimed.add(keyCode);
+      return createRow(index + 1, item?.phrase || '', keyCode);
+    });
 
     setRows(mapped);
   }, [settings?.phrases]);

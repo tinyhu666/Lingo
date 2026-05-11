@@ -128,7 +128,6 @@ export function StoreProvider({ children }) {
       replaceSettings,
       syncSettings,
       reloadSettings,
-      // 兼容旧代码结构，避免其他页面读取 store 字段时报错
       store: null,
     }),
     [settings, loading, updateSettings, replaceSettings, syncSettings, reloadSettings],
@@ -140,7 +139,7 @@ export function StoreProvider({ children }) {
 export const useStore = () => {
   const context = useContext(StoreContext);
   if (!context) {
-    throw new Error('useStore 必须在 StoreProvider 内部使用');
+    throw new Error('useStore must be called inside a StoreProvider');
   }
   return context;
 };

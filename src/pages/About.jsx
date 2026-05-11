@@ -210,7 +210,7 @@ export default function About() {
         ? 'info'
         : 'success';
   const updateStatusLabel = errorMessage
-    ? t('titlebar.translationFailed')
+    ? t('about.update.statusError')
     : hasUpdate
       ? t('sidebar.updateAvailable')
       : t('common.enabled');

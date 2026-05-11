@@ -103,15 +103,53 @@ struct ReleaseMetadata {
     body: Option<String>,
 }
 
+fn split_version(value: &str) -> (Vec<u64>, Option<String>) {
+    let without_build = value.split_once('+').map(|(a, _)| a).unwrap_or(value);
+    let (core, prerelease) = match without_build.split_once('-') {
+        Some((core, pre)) => (core, Some(pre.to_string())),
+        None => (without_build, None),
+    };
+    let parts = core
+        .split('.')
+        .map(|part| part.parse::<u64>().unwrap_or(0))
+        .collect::<Vec<_>>();
+    (parts, prerelease)
+}
+
+fn compare_prerelease(left: &str, right: &str) -> std::cmp::Ordering {
+    let left_ids: Vec<&str> = left.split('.').collect();
+    let right_ids: Vec<&str> = right.split('.').collect();
+    let max_len = left_ids.len().max(right_ids.len());
+
+    for index in 0..max_len {
+        let l = left_ids.get(index);
+        let r = right_ids.get(index);
+        match (l, r) {
+            (None, Some(_)) => return std::cmp::Ordering::Less,
+            (Some(_), None) => return std::cmp::Ordering::Greater,
+            (None, None) => return std::cmp::Ordering::Equal,
+            (Some(l), Some(r)) => {
+                let l_num = l.parse::<u64>().ok();
+                let r_num = r.parse::<u64>().ok();
+                let ordering = match (l_num, r_num) {
+                    (Some(ln), Some(rn)) => ln.cmp(&rn),
+                    (Some(_), None) => std::cmp::Ordering::Less,
+                    (None, Some(_)) => std::cmp::Ordering::Greater,
+                    (None, None) => l.cmp(r),
+                };
+                if ordering != std::cmp::Ordering::Equal {
+                    return ordering;
+                }
+            }
+        }
+    }
+
+    std::cmp::Ordering::Equal
+}
+
 fn compare_versions(left: &str, right: &str) -> std::cmp::Ordering {
-    let left_parts = left
-        .split('.')
-        .map(|part| part.parse::<u64>().unwrap_or(0))
-        .collect::<Vec<_>>();
-    let right_parts = right
-        .split('.')
-        .map(|part| part.parse::<u64>().unwrap_or(0))
-        .collect::<Vec<_>>();
+    let (left_parts, left_pre) = split_version(left);
+    let (right_parts, right_pre) = split_version(right);
     let max_len = left_parts.len().max(right_parts.len());
 
     for index in 0..max_len {
@@ -124,7 +162,12 @@ fn compare_versions(left: &str, right: &str) -> std::cmp::Ordering {
         }
     }
 
-    std::cmp::Ordering::Equal
+    match (left_pre, right_pre) {
+        (None, None) => std::cmp::Ordering::Equal,
+        (None, Some(_)) => std::cmp::Ordering::Greater,
+        (Some(_), None) => std::cmp::Ordering::Less,
+        (Some(l), Some(r)) => compare_prerelease(&l, &r),
+    }
 }
 
 fn pick_newer_version(left: Option<String>, right: Option<String>) -> Option<String> {
@@ -143,7 +186,14 @@ fn pick_newer_version(left: Option<String>, right: Option<String>) -> Option<Str
 
 fn normalize_version(value: Option<String>) -> Option<String> {
     value
-        .map(|item| item.trim().trim_start_matches('v').trim().to_string())
+        .map(|item| {
+            let trimmed = item.trim();
+            let stripped = trimmed
+                .strip_prefix('v')
+                .or_else(|| trimmed.strip_prefix('V'))
+                .unwrap_or(trimmed);
+            stripped.trim().to_string()
+        })
         .filter(|item| !item.is_empty())
 }
 
@@ -233,11 +283,6 @@ fn get_version(app_handle: tauri::AppHandle) -> String {
 #[tauri::command]
 fn get_public_backend_config() -> ai_translator::PublicBackendConfig {
     ai_translator::public_backend_config()
-}
-
-#[tauri::command]
-fn greet(name: &str) -> String {
-    format!("Hello, {}! You've been greeted from Rust!", name)
 }
 
 #[tauri::command]
@@ -429,7 +474,6 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
-            greet,
             update_translator_shortcut,
             log_to_backend,
             get_settings,

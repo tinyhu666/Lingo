@@ -37,7 +37,7 @@ export const buildHotkeyFromKeyCodes = (keyCodes) => {
   const key = [...keyCodes].reverse().find((item) => !isModifierKeyCode(item));
 
   if (!modifiers.length || !key) {
-    throw new Error('快捷键必须包含修饰键和主键');
+    throw new Error('Hotkey must include at least one modifier and one main key');
   }
 
   return {

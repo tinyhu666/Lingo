@@ -1,7 +1,7 @@
 const isPlainObject = (value) =>
   value !== null && typeof value === 'object' && value.constructor === Object;
 
-export const toErrorMessage = (error, fallback = '操作失败，请重试') => {
+export const toErrorMessage = (error, fallback = 'Unknown error') => {
   if (!error) {
     return fallback;
   }

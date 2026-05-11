@@ -117,6 +117,26 @@ const STYLE_PROFILES = {
 const translationCache = new Map();
 const translationInflight = new Map();
 const fastLaneCircuit = new Map();
+const ANALYTICS_PUBLIC_CACHE_TTL_MS = 30_000;
+const analyticsPublicCache = new Map();
+
+const ENV_PLACEHOLDER_VALUES = new Set([
+  'replace-with-a-long-random-token',
+  'replace-with-a-public-client-key',
+]);
+
+const isPlaceholderEnvValue = (value) => ENV_PLACEHOLDER_VALUES.has(String(value || '').trim());
+
+const cachedAnalyticsResponse = (key, builder) => {
+  const now = Date.now();
+  const hit = analyticsPublicCache.get(key);
+  if (hit && hit.expiresAt > now) {
+    return hit.value;
+  }
+  const value = builder();
+  analyticsPublicCache.set(key, { value, expiresAt: now + ANALYTICS_PUBLIC_CACHE_TTL_MS });
+  return value;
+};
 const currentDir = dirname(fileURLToPath(import.meta.url));
 const analyticsDashboardHtml = readFileSync(
   join(currentDir, '..', 'public', 'analytics-dashboard.html'),
@@ -499,7 +519,7 @@ const requestModelOnce = async ({
 }) => {
   const startedAt = Date.now();
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(new Error('MODEL_TIMEOUT')), config.timeout_ms);
+  const timer = setTimeout(() => controller.abort(), config.timeout_ms);
 
   try {
     if (config.provider === 'anthropic') {
@@ -527,6 +547,7 @@ const requestModelOnce = async ({
             `Anthropic request failed (HTTP ${response.status}): ${summarizeText(raw)}`,
         );
         error.status = response.status;
+        error.fromUpstream = true;
         throw error;
       }
 
@@ -577,6 +598,7 @@ const requestModelOnce = async ({
           `Model request failed (HTTP ${response.status}): ${summarizeText(raw)}`,
       );
       error.status = response.status;
+      error.fromUpstream = true;
       throw error;
     }
 
@@ -977,15 +999,17 @@ const routeAnalyticsEvents = async (req, res, traceId) => {
 };
 
 const routeAnalyticsPublicOverview = (res, traceId) => {
+  const payload = cachedAnalyticsResponse('overview', queryAnalyticsOverview);
   return jsonResponse(res, 200, {
-    ...queryAnalyticsOverview(),
+    ...payload,
     trace_id: traceId,
   });
 };
 
 const routeAnalyticsPublicDistributions = (res, traceId) => {
+  const payload = cachedAnalyticsResponse('distributions', queryAnalyticsDistributions);
   return jsonResponse(res, 200, {
-    ...queryAnalyticsDistributions(),
+    ...payload,
     trace_id: traceId,
   });
 };
@@ -994,8 +1018,12 @@ const routeAnalyticsPublicDaily = (url, res, traceId) => {
   const from = url.searchParams.get('from');
   const to = url.searchParams.get('to');
 
+  const payload = cachedAnalyticsResponse(`daily:${from || ''}:${to || ''}`, () =>
+    queryAnalyticsDaily({ from, to }),
+  );
+
   return jsonResponse(res, 200, {
-    ...queryAnalyticsDaily({ from, to }),
+    ...payload,
     trace_id: traceId,
   });
 };
@@ -1048,6 +1076,23 @@ const server = createServer(async (req, res) => {
     }
 
     if (url.pathname === '/analytics/dashboard') {
+      const configuredAdmin = String(process.env.ADMIN_TOKEN || '').trim();
+      if (!configuredAdmin || isPlaceholderEnvValue(configuredAdmin)) {
+        jsonResponse(res, 503, {
+          message: 'ADMIN_TOKEN is not configured',
+          trace_id: traceId,
+        });
+        return;
+      }
+      const providedToken =
+        readBearerToken(req.headers.authorization) || url.searchParams.get('token') || '';
+      if (providedToken !== configuredAdmin) {
+        jsonResponse(res, 401, {
+          message: 'Unauthorized',
+          trace_id: traceId,
+        });
+        return;
+      }
       htmlResponse(res, 200, analyticsDashboardHtml);
       return;
     }
@@ -1062,29 +1107,65 @@ const server = createServer(async (req, res) => {
       trace_id: traceId,
     });
   } catch (error) {
-    const status = Number.isInteger(error?.status) ? Number(error.status) : 500;
-    const isTimeout =
-      error?.name === 'AbortError' || String(error?.message || '').includes('MODEL_TIMEOUT');
-    const message = isTimeout ? 'Model request timed out' : error?.message || 'Internal error';
+    const rawStatus = Number.isInteger(error?.status) ? Number(error.status) : 500;
+    const status = Math.min(599, Math.max(400, rawStatus));
+    const isTimeout = error?.name === 'AbortError';
+    const internalMessage = isTimeout
+      ? 'Model request timed out'
+      : error?.message || 'Internal error';
+    const clientMessage = error?.fromUpstream
+      ? `Upstream service error (HTTP ${status})`
+      : internalMessage;
 
     console.error(
       JSON.stringify({
         trace_id: traceId,
         status,
-        message,
+        message: internalMessage,
+        from_upstream: Boolean(error?.fromUpstream),
       }),
     );
 
     jsonResponse(res, isTimeout ? 504 : status, {
-      message,
+      message: clientMessage,
       trace_id: traceId,
     });
   }
 });
 
-const port = Number.parseInt(process.env.PORT || '8787', 10);
+const parsedPort = Number.parseInt(process.env.PORT || '8787', 10);
+if (!Number.isInteger(parsedPort) || parsedPort <= 0 || parsedPort > 65535) {
+  console.error(`[translate-proxy] invalid PORT value: ${process.env.PORT}`);
+  process.exit(1);
+}
+const port = parsedPort;
+
+const warnAboutCredentialsAtStartup = () => {
+  const backendKey = String(process.env.BACKEND_PUBLIC_KEY || '').trim();
+  if (!backendKey) {
+    console.warn(
+      '[translate-proxy] WARNING: BACKEND_PUBLIC_KEY is not set — /translate and /analytics/events accept any caller. Set BACKEND_PUBLIC_KEY in your environment for production.',
+    );
+  } else if (isPlaceholderEnvValue(backendKey)) {
+    console.warn(
+      '[translate-proxy] WARNING: BACKEND_PUBLIC_KEY still uses the .env.example placeholder. Replace it with a real secret before deploying.',
+    );
+  }
+
+  const adminToken = String(process.env.ADMIN_TOKEN || '').trim();
+  if (!adminToken) {
+    console.warn(
+      '[translate-proxy] WARNING: ADMIN_TOKEN is not set — /admin/* and /analytics/dashboard will respond 503.',
+    );
+  } else if (isPlaceholderEnvValue(adminToken)) {
+    console.warn(
+      '[translate-proxy] WARNING: ADMIN_TOKEN still uses the .env.example placeholder. Replace it with a real secret before deploying.',
+    );
+  }
+};
 
 server.listen(port, '0.0.0.0', async () => {
+  warnAboutCredentialsAtStartup();
   const config = await loadRuntimeConfig(process.env);
   console.log(
     `[translate-proxy] listening on :${port} provider=${config.provider} model=${config.model_name} source=${config.source}`,

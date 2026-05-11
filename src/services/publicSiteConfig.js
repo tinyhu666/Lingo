@@ -83,23 +83,32 @@ const resolveBackendBaseUrl = async () => {
   return resolveWebBackendBaseUrl();
 };
 
+const PUBLIC_SITE_CONFIG_TIMEOUT_MS = 8000;
+
 const fetchPublicSiteConfig = async () => {
   const baseUrl = await resolveBackendBaseUrl();
   if (!baseUrl) {
     return DEFAULT_PUBLIC_SITE_CONFIG;
   }
 
-  const response = await fetch(`${baseUrl}${PUBLIC_SITE_CONFIG_PATH}`, {
-    headers: {
-      Accept: 'application/json',
-    },
-  });
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), PUBLIC_SITE_CONFIG_TIMEOUT_MS);
+  try {
+    const response = await fetch(`${baseUrl}${PUBLIC_SITE_CONFIG_PATH}`, {
+      headers: {
+        Accept: 'application/json',
+      },
+      signal: controller.signal,
+    });
 
-  if (!response.ok) {
-    throw new Error(`Failed to load public site config (${response.status})`);
+    if (!response.ok) {
+      throw new Error(`Failed to load public site config (${response.status})`);
+    }
+
+    return normalizePublicSiteConfig(await response.json());
+  } finally {
+    clearTimeout(timer);
   }
-
-  return normalizePublicSiteConfig(await response.json());
 };
 
 export const loadPublicSiteConfig = async ({ forceReload = false } = {}) => {

@@ -1,6 +1,7 @@
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::TrayIconBuilder;
 use tauri::AppHandle;
+use tauri::Emitter;
 use tauri::Manager;
 
 pub fn create_tray(app: &AppHandle) -> tauri::Result<()> {
@@ -40,7 +41,15 @@ pub fn create_tray(app: &AppHandle) -> tauri::Result<()> {
                 }
             }
             "check_update" => {
-                println!("检查更新菜单项被点击");
+                if let Some(window) = app.get_webview_window("main") {
+                    #[cfg(target_os = "macos")]
+                    let _ = app.set_activation_policy(tauri::ActivationPolicy::Regular);
+                    let _ = window.show();
+                    let _ = window.set_focus();
+                }
+                if let Err(error) = app.emit("tray:check_update", ()) {
+                    eprintln!("发送托盘检查更新事件失败: {}", error);
+                }
             }
             "quit" => {
                 println!("quit menu item was clicked");

@@ -12,6 +12,14 @@ use tauri_plugin_global_shortcut::{
 
 static TRANSLATION_IN_FLIGHT: AtomicBool = AtomicBool::new(false);
 
+struct InFlightGuard;
+
+impl Drop for InFlightGuard {
+    fn drop(&mut self) {
+        TRANSLATION_IN_FLIGHT.store(false, Ordering::Release);
+    }
+}
+
 fn parse_modifiers(modifiers: &[String]) -> Modifiers {
     let mut result = Modifiers::empty();
     for modifier in modifiers {
@@ -130,11 +138,11 @@ fn create_trans_handler(
 
             let app_clone = Arc::clone(&app);
             tauri::async_runtime::spawn(async move {
+                let _guard = InFlightGuard;
                 if let Err(e) = trans_and_replace_text(app_clone.as_ref()).await {
                     println!("翻译替换失败: {:?}", e);
                     let _ = app_clone.emit("translation_failed", format!("翻译失败：{}", e));
                 }
-                TRANSLATION_IN_FLIGHT.store(false, Ordering::Release);
             });
         }
     }
@@ -202,11 +210,15 @@ pub fn update_translator_shortcut(app: &AppHandle, keys: Vec<String>) -> Result<
         .cloned()
         .collect::<Vec<_>>();
     let modifiers = normalize_modifiers(&raw_modifiers);
-    let key = keys
-        .iter()
-        .rev()
-        .find(|k| !is_modifier_key(k))
-        .cloned()
+    let main_keys: Vec<&String> = keys.iter().filter(|k| !is_modifier_key(k)).collect();
+
+    if main_keys.len() > 1 {
+        return Err("快捷键只能包含一个主键(Control/Alt/Shift/Command 之外的按键)".to_string());
+    }
+
+    let key = main_keys
+        .first()
+        .map(|k| (*k).clone())
         .unwrap_or_default();
 
     if modifiers.is_empty() || key.is_empty() {

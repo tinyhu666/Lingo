@@ -167,11 +167,24 @@ fn normalize_settings(settings: &mut AppSettings) {
     }
 }
 
+const SETTINGS_BACKUP_KEY: &str = "settings_corrupted_backup";
+
 fn load_settings_from_store(app: &AppHandle) -> Result<(AppSettings, bool), anyhow::Error> {
     let store = app.store(STORE_FILENAME)?;
     let value = store.get("settings");
     let settings = match value.clone() {
-        Some(raw) => serde_json::from_value::<AppSettings>(raw).unwrap_or_default(),
+        Some(raw) => match serde_json::from_value::<AppSettings>(raw.clone()) {
+            Ok(parsed) => parsed,
+            Err(err) => {
+                eprintln!(
+                    "failed to deserialize stored settings, preserving raw under '{}' and falling back to defaults: {}",
+                    SETTINGS_BACKUP_KEY, err
+                );
+                store.set(SETTINGS_BACKUP_KEY, raw);
+                let _ = store.save();
+                AppSettings::default()
+            }
+        },
         None => AppSettings::default(),
     };
 
