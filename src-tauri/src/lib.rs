@@ -410,6 +410,135 @@ async fn get_latest_release_metadata() -> Result<ReleaseMetadata, String> {
     })
 }
 
+// =============================================================================
+// Incoming-chat translation commands (v0.7.0 scaffolding)
+// =============================================================================
+//
+// These commands expose the API surface the front-end will call once the
+// incoming-translation feature is live. Most are intentionally thin during
+// the scaffolding phase: they persist user settings now so the UI is fully
+// configurable, but they do not yet drive the capture/OCR/translate pipeline.
+// The pipeline itself is wired in v0.7.0-rc.2.
+
+#[tauri::command]
+async fn get_incoming_status(
+    app_handle: tauri::AppHandle,
+) -> Result<incoming::IncomingStatus, String> {
+    let settings = store::get_settings(&app_handle).map_err(|e| e.to_string())?;
+    let scene = settings.game_scene.clone();
+    let has_region = settings.incoming_regions.contains_key(&scene);
+    Ok(incoming::IncomingStatus {
+        enabled: settings.incoming_enabled,
+        // `active` mirrors `enabled` while the pipeline is a stub; once the
+        // real run-loop lands this will report whether the capture task is
+        // actually ticking.
+        active: settings.incoming_enabled,
+        permission: incoming::current_permission_state(),
+        current_game_scene: Some(scene),
+        has_region_for_current_scene: has_region,
+        capture_rate_hz: settings.incoming_capture_rate_hz,
+        last_error: None,
+    })
+}
+
+#[tauri::command]
+async fn set_incoming_enabled(
+    app_handle: tauri::AppHandle,
+    enabled: bool,
+) -> Result<store::AppSettings, String> {
+    store::update_settings_field(&app_handle, |settings| {
+        settings.incoming_enabled = enabled;
+    })
+    .map_err(|e| e.to_string())?;
+    store::get_settings(&app_handle).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn save_incoming_chat_region(
+    app_handle: tauri::AppHandle,
+    game_scene: String,
+    region: incoming::ChatRegion,
+) -> Result<store::AppSettings, String> {
+    let scene = game_scene.trim().to_string();
+    if scene.is_empty() {
+        return Err("game_scene must not be empty".to_string());
+    }
+    if region.bounds.w == 0 || region.bounds.h == 0 {
+        return Err("chat region must have non-zero width and height".to_string());
+    }
+
+    store::update_settings_field(&app_handle, |settings| {
+        settings.incoming_regions.insert(scene.clone(), region.clone());
+    })
+    .map_err(|e| e.to_string())?;
+    store::get_settings(&app_handle).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn clear_incoming_chat_region(
+    app_handle: tauri::AppHandle,
+    game_scene: String,
+) -> Result<store::AppSettings, String> {
+    let scene = game_scene.trim().to_string();
+    if scene.is_empty() {
+        return Err("game_scene must not be empty".to_string());
+    }
+    store::update_settings_field(&app_handle, |settings| {
+        settings.incoming_regions.remove(&scene);
+    })
+    .map_err(|e| e.to_string())?;
+    store::get_settings(&app_handle).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn update_incoming_overlay_preferences(
+    app_handle: tauri::AppHandle,
+    preferences: store::OverlayPreferences,
+) -> Result<store::AppSettings, String> {
+    store::update_settings_field(&app_handle, |settings| {
+        settings.incoming_overlay = preferences.clone();
+    })
+    .map_err(|e| e.to_string())?;
+    store::get_settings(&app_handle).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn set_incoming_capture_rate(
+    app_handle: tauri::AppHandle,
+    rate_hz: f32,
+) -> Result<store::AppSettings, String> {
+    if !rate_hz.is_finite() || rate_hz < 0.5 || rate_hz > 4.0 {
+        return Err(format!(
+            "capture rate must be a finite number in [0.5, 4.0], got {rate_hz}"
+        ));
+    }
+    store::update_settings_field(&app_handle, |settings| {
+        settings.incoming_capture_rate_hz = rate_hz;
+    })
+    .map_err(|e| e.to_string())?;
+    store::get_settings(&app_handle).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn list_displays() -> Result<Vec<incoming::DisplayInfo>, String> {
+    // Stub list during scaffolding. Real impl in v0.7.0-rc.2 will enumerate
+    // displays via ScreenCaptureKit (macOS) and EnumDisplayMonitors (Windows).
+    Ok(incoming::list_displays_stub())
+}
+
+#[tauri::command]
+async fn check_screen_recording_permission() -> Result<incoming::PermissionState, String> {
+    Ok(incoming::current_permission_state())
+}
+
+#[tauri::command]
+async fn request_screen_recording_permission() -> Result<incoming::PermissionState, String> {
+    // Stub. macOS impl will call `CGRequestScreenCaptureAccess()`; the OS
+    // shows its own prompt and the user typically has to restart the app
+    // before the new state takes effect.
+    Ok(incoming::current_permission_state())
+}
+
 pub fn run() {
     println!("Starting application...");
 
@@ -482,7 +611,17 @@ pub fn run() {
             get_public_backend_config,
             set_app_enabled,
             update_phrases,
-            get_latest_release_metadata
+            get_latest_release_metadata,
+            // v0.7.0 incoming-chat translation
+            get_incoming_status,
+            set_incoming_enabled,
+            save_incoming_chat_region,
+            clear_incoming_chat_region,
+            update_incoming_overlay_preferences,
+            set_incoming_capture_rate,
+            list_displays,
+            check_screen_recording_permission,
+            request_screen_recording_permission,
         ]);
 
     #[cfg(not(target_os = "windows"))]

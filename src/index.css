@@ -1918,7 +1918,7 @@
   body.platform-desktop .home-grid {
     height: auto;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    grid-template-rows: repeat(2, minmax(0, 1fr));
+    grid-template-rows: repeat(3, minmax(0, auto));
     gap: 20px;
     align-content: stretch;
   }
@@ -1946,6 +1946,11 @@
   html.platform-desktop .home-grid__stat--status,
   body.platform-desktop .home-grid__stat--status {
     grid-column: auto;
+  }
+
+  html.platform-desktop .home-grid__stat--incoming,
+  body.platform-desktop .home-grid__stat--incoming {
+    grid-column: 1 / -1;
   }
 
   html.platform-desktop .home-grid__stat,

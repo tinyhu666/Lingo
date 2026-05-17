@@ -34,3 +34,79 @@ pub use ocr::{OcrEngine, OcrError, OcrOptions, RecognitionLevel, TextLine};
 pub use pipeline::IncomingPipeline;
 pub use region::{ChatRegion, Rect};
 pub use tracker::{LineTracker, NewMessage};
+
+use serde::{Deserialize, Serialize};
+
+/// Macro state the front-end needs to render the home status card and the
+/// settings page without launching the pipeline.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct IncomingStatus {
+    pub enabled: bool,
+    pub active: bool,
+    pub permission: PermissionState,
+    pub current_game_scene: Option<String>,
+    pub has_region_for_current_scene: bool,
+    pub capture_rate_hz: f32,
+    pub last_error: Option<String>,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum PermissionState {
+    /// Querying the OS hasn't completed yet (or no answer received).
+    Unknown,
+    /// User has granted the OS-level permission required to capture pixels.
+    Granted,
+    /// User denied or revoked; the front-end should show a "open system
+    /// settings" CTA.
+    Denied,
+    /// Platform doesn't require an explicit permission for capture
+    /// (e.g. Windows.Graphics.Capture on Windows 10+).
+    NotApplicable,
+}
+
+/// Returns the platform's screen-capture permission status. macOS uses the
+/// CoreGraphics preflight API in a future revision; for now this is a
+/// scaffold value matching the eventual return type.
+pub fn current_permission_state() -> PermissionState {
+    #[cfg(target_os = "macos")]
+    {
+        // TODO(v0.7.0-rc.2): call CGPreflightScreenCaptureAccess via objc2.
+        PermissionState::Unknown
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        PermissionState::NotApplicable
+    }
+
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+    {
+        PermissionState::Unknown
+    }
+}
+
+/// Display metadata as exposed to the front-end during region calibration.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DisplayInfo {
+    pub id: u64,
+    pub name: String,
+    pub width: u32,
+    pub height: u32,
+    pub scale_factor: f32,
+    pub is_primary: bool,
+}
+
+/// Returns the platform's display list. Stub returns a single synthetic
+/// "primary" entry so the front-end calibration UI can render without
+/// crashing while the real implementation is in flight.
+pub fn list_displays_stub() -> Vec<DisplayInfo> {
+    vec![DisplayInfo {
+        id: 0,
+        name: "Primary Display".to_string(),
+        width: 1920,
+        height: 1080,
+        scale_factor: 1.0,
+        is_primary: true,
+    }]
+}
