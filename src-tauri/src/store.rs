@@ -69,6 +69,10 @@ pub struct OverlayPreferences {
     pub show_original: bool,
     pub fade_ms: u32,
     pub max_lines: u32,
+    /// When true, the overlay window ignores mouse events so clicks pass
+    /// through to the game underneath. The user toggles this from the main
+    /// window since once enabled the overlay itself becomes uninteractable.
+    pub click_through: bool,
 }
 
 impl Default for OverlayPreferences {
@@ -83,6 +87,7 @@ impl Default for OverlayPreferences {
             show_original: true,
             fade_ms: 8000,
             max_lines: 6,
+            click_through: false,
         }
     }
 }

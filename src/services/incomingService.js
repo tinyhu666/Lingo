@@ -63,3 +63,14 @@ export const requestScreenRecordingPermission = async () =>
     {},
     PERMISSION_STATES.UNKNOWN,
   )) || PERMISSION_STATES.UNKNOWN;
+
+export const showIncomingOverlay = async () =>
+  invokeIfPossible('show_incoming_overlay', {}, null);
+
+export const hideIncomingOverlay = async () =>
+  invokeIfPossible('hide_incoming_overlay', {}, null);
+
+export const setIncomingOverlayClickThrough = async (clickThrough) =>
+  invokeIfPossible('set_incoming_overlay_click_through', {
+    clickThrough: Boolean(clickThrough),
+  }, null);

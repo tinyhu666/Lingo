@@ -454,6 +454,17 @@ fn show_incoming_overlay_window(app: &tauri::AppHandle) -> Result<(), String> {
         return Err("incoming-overlay window not found".to_string());
     };
     window.show().map_err(|e| e.to_string())?;
+
+    // Re-apply persisted click-through state. A freshly shown window comes
+    // up interactive by default; we want to honor the user's last choice.
+    let click_through = store::get_settings(app)
+        .map(|s| s.incoming_overlay.click_through)
+        .unwrap_or(false);
+    if click_through {
+        if let Err(error) = window.set_ignore_cursor_events(true) {
+            eprintln!("[incoming] failed to restore click-through state: {error}");
+        }
+    }
     Ok(())
 }
 
@@ -464,6 +475,33 @@ fn hide_incoming_overlay_window(app: &tauri::AppHandle) -> Result<(), String> {
     };
     window.hide().map_err(|e| e.to_string())?;
     Ok(())
+}
+
+fn apply_incoming_overlay_click_through(
+    app: &tauri::AppHandle,
+    click_through: bool,
+) -> Result<(), String> {
+    use tauri::Manager;
+    let Some(window) = app.get_webview_window("incoming-overlay") else {
+        return Err("incoming-overlay window not found".to_string());
+    };
+    window
+        .set_ignore_cursor_events(click_through)
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+async fn set_incoming_overlay_click_through(
+    app_handle: tauri::AppHandle,
+    click_through: bool,
+) -> Result<store::AppSettings, String> {
+    apply_incoming_overlay_click_through(&app_handle, click_through)?;
+    store::update_settings_field(&app_handle, |settings| {
+        settings.incoming_overlay.click_through = click_through;
+    })
+    .map_err(|e| e.to_string())?;
+    store::get_settings(&app_handle).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -692,6 +730,7 @@ pub fn run() {
             request_screen_recording_permission,
             show_incoming_overlay,
             hide_incoming_overlay,
+            set_incoming_overlay_click_through,
         ]);
 
     #[cfg(not(target_os = "windows"))]

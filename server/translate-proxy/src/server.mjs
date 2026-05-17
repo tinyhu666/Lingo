@@ -252,6 +252,13 @@ const shouldOpenFastLaneCircuit = (error) => {
   return [400, 401, 403, 404, 405, 422].includes(status);
 };
 
+const normalizeDirection = (value) => {
+  const lowered = String(value || 'outgoing').trim().toLowerCase();
+  return lowered === 'incoming' ? 'incoming' : 'outgoing';
+};
+
+const isIncomingDirection = (payload) => normalizeDirection(payload?.direction) === 'incoming';
+
 const buildTranslationCacheKey = ({ routeConfig, routeName, tuning, payload, text }) =>
   JSON.stringify({
     route_name: routeName,
@@ -265,6 +272,7 @@ const buildTranslationCacheKey = ({ routeConfig, routeName, tuning, payload, tex
     translation_mode: normalizeTranslationMode(payload?.translation_mode),
     game_scene: normalizeGameScene(payload?.game_scene),
     daily_mode: Boolean(payload?.daily_mode),
+    direction: normalizeDirection(payload?.direction),
     text,
   });
 
@@ -349,6 +357,20 @@ const buildSystemPrompt = (payload) => {
     ? 'Daily mode:on. Keep it conversational and send-ready.'
     : 'Daily mode:off. Keep it concise and paced for in-game chat.';
 
+  // Incoming chat: the user is READING what another player typed, not
+  // composing their own message. Style / send-ready instructions become
+  // counter-productive (we must NOT rewrite). Hand-tuned prompt below.
+  if (isIncomingDirection(payload)) {
+    return [
+      `Translate an in-game chat message FROM another player from ${sourceLabel} to ${targetLabel}.`,
+      `Game:${gameSceneProfile.label}. ${gameSceneProfile.promptInstruction}`,
+      'The user is reading this to understand teammates or opponents.',
+      'Preserve player nicknames, hero/ability/item names, callouts, and tactical abbreviations.',
+      'Do not paraphrase, do not soften tone (even toxic content), do not add commentary.',
+      'Output only the translated line. No notes. No quotes. No labels.',
+    ].join(' ');
+  }
+
   if (isRewrite) {
     return [
       `Rewrite in-game chat in ${targetLabel}.`,
@@ -416,6 +438,16 @@ const canUseFastLane = ({ config, payload, text, promptVariant }) => {
   const fastLane = config.fast_lane;
   if (!fastLane?.enabled || !fastLane.model_name) {
     return false;
+  }
+
+  // Incoming chat is high-volume and quality-sensitive only in the
+  // "did the user understand it" sense. The fast lane (now also DeepSeek
+  // V4-Flash by default) is the right home for it: short prompts, short
+  // outputs, lower latency. We skip the style/profile checks that exist
+  // to guard outgoing-translation quality, but still respect the circuit
+  // breaker so a failing fast lane can drain.
+  if (isIncomingDirection(payload)) {
+    return getFastLaneCircuitExpiresAt(fastLane) === 0;
   }
 
   const styleProfile = STYLE_PROFILES[normalizeTranslationMode(payload?.translation_mode)];
@@ -931,6 +963,7 @@ const routeTranslate = async (req, res, traceId) => {
 
   const latencyMs = Date.now() - startedAt;
   const proxyOverheadMs = Math.max(0, latencyMs - modelLatencyMs);
+  const direction = normalizeDirection(payload?.direction);
   console.log(
     JSON.stringify({
       trace_id: traceId,
@@ -948,6 +981,7 @@ const routeTranslate = async (req, res, traceId) => {
       effective_max_tokens: effectiveMaxTokens,
       effective_temperature: effectiveTemperature,
       text_length: text.length,
+      direction,
     }),
   );
 
