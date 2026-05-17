@@ -423,16 +423,14 @@ async fn get_latest_release_metadata() -> Result<ReleaseMetadata, String> {
 #[tauri::command]
 async fn get_incoming_status(
     app_handle: tauri::AppHandle,
+    pipeline: tauri::State<'_, std::sync::Arc<incoming::IncomingPipeline>>,
 ) -> Result<incoming::IncomingStatus, String> {
     let settings = store::get_settings(&app_handle).map_err(|e| e.to_string())?;
     let scene = settings.game_scene.clone();
     let has_region = settings.incoming_regions.contains_key(&scene);
     Ok(incoming::IncomingStatus {
         enabled: settings.incoming_enabled,
-        // `active` mirrors `enabled` while the pipeline is a stub; once the
-        // real run-loop lands this will report whether the capture task is
-        // actually ticking.
-        active: settings.incoming_enabled,
+        active: pipeline.is_running(),
         permission: incoming::current_permission_state(),
         current_game_scene: Some(scene),
         has_region_for_current_scene: has_region,
@@ -441,16 +439,70 @@ async fn get_incoming_status(
     })
 }
 
+fn start_options_from_settings(settings: &store::AppSettings) -> incoming::StartOptions {
+    incoming::StartOptions {
+        capture_rate_hz: settings.incoming_capture_rate_hz,
+        game_scene: settings.game_scene.clone(),
+        target_lang: settings.translation_to.clone(),
+        show_original: settings.incoming_overlay.show_original,
+    }
+}
+
+fn show_incoming_overlay_window(app: &tauri::AppHandle) -> Result<(), String> {
+    use tauri::Manager;
+    let Some(window) = app.get_webview_window("incoming-overlay") else {
+        return Err("incoming-overlay window not found".to_string());
+    };
+    window.show().map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+fn hide_incoming_overlay_window(app: &tauri::AppHandle) -> Result<(), String> {
+    use tauri::Manager;
+    let Some(window) = app.get_webview_window("incoming-overlay") else {
+        return Ok(());
+    };
+    window.hide().map_err(|e| e.to_string())?;
+    Ok(())
+}
+
 #[tauri::command]
 async fn set_incoming_enabled(
     app_handle: tauri::AppHandle,
+    pipeline: tauri::State<'_, std::sync::Arc<incoming::IncomingPipeline>>,
     enabled: bool,
 ) -> Result<store::AppSettings, String> {
     store::update_settings_field(&app_handle, |settings| {
         settings.incoming_enabled = enabled;
     })
     .map_err(|e| e.to_string())?;
-    store::get_settings(&app_handle).map_err(|e| e.to_string())
+
+    let settings = store::get_settings(&app_handle).map_err(|e| e.to_string())?;
+
+    if enabled {
+        let opts = start_options_from_settings(&settings);
+        pipeline.start(app_handle.clone(), opts)?;
+        if let Err(error) = show_incoming_overlay_window(&app_handle) {
+            eprintln!("[incoming] show overlay failed: {error}");
+        }
+    } else {
+        pipeline.stop();
+        if let Err(error) = hide_incoming_overlay_window(&app_handle) {
+            eprintln!("[incoming] hide overlay failed: {error}");
+        }
+    }
+
+    Ok(settings)
+}
+
+#[tauri::command]
+async fn show_incoming_overlay(app_handle: tauri::AppHandle) -> Result<(), String> {
+    show_incoming_overlay_window(&app_handle)
+}
+
+#[tauri::command]
+async fn hide_incoming_overlay(app_handle: tauri::AppHandle) -> Result<(), String> {
+    hide_incoming_overlay_window(&app_handle)
 }
 
 #[tauri::command]
@@ -542,7 +594,10 @@ async fn request_screen_recording_permission() -> Result<incoming::PermissionSta
 pub fn run() {
     println!("Starting application...");
 
+    let incoming_pipeline = std::sync::Arc::new(incoming::IncomingPipeline::new());
+
     let builder = tauri::Builder::default()
+        .manage(incoming_pipeline.clone())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_store::Builder::default().build())
@@ -552,7 +607,7 @@ pub fn run() {
         .plugin(tauri_plugin_clipboard_manager::init())
         // opener插件
         .plugin(tauri_plugin_opener::init())
-        .setup(|app| {
+        .setup(move |app| {
             // 初始化存储
             println!("Initializing...");
             match initialize_settings(app.app_handle()) {
@@ -570,6 +625,19 @@ pub fn run() {
                 }
                 Ok(_) => println!("应用当前处于暂停状态，跳过翻译代理预热"),
                 Err(error) => eprintln!("读取设置以决定是否预热失败: {}", error),
+            }
+
+            // Restore incoming-translation state from persisted settings.
+            if let Ok(settings) = store::get_settings(app.app_handle()) {
+                if settings.incoming_enabled {
+                    let opts = start_options_from_settings(&settings);
+                    if let Err(error) = incoming_pipeline.start(app.app_handle().clone(), opts) {
+                        eprintln!("启动入向翻译管线失败: {}", error);
+                    }
+                    if let Err(error) = show_incoming_overlay_window(app.app_handle()) {
+                        eprintln!("显示入向翻译覆盖窗失败: {}", error);
+                    }
+                }
             }
 
             // 初始化所有快捷键
@@ -622,6 +690,8 @@ pub fn run() {
             list_displays,
             check_screen_recording_permission,
             request_screen_recording_permission,
+            show_incoming_overlay,
+            hide_incoming_overlay,
         ]);
 
     #[cfg(not(target_os = "windows"))]

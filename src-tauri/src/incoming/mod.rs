@@ -31,7 +31,7 @@ pub mod tracker;
 
 pub use capture::{CaptureError, CaptureSource, OcrFrame, PixelFormat};
 pub use ocr::{OcrEngine, OcrError, OcrOptions, RecognitionLevel, TextLine};
-pub use pipeline::IncomingPipeline;
+pub use pipeline::{IncomingPipeline, StartOptions};
 pub use region::{ChatRegion, Rect};
 pub use tracker::{LineTracker, NewMessage};
 
@@ -84,6 +84,31 @@ pub fn current_permission_state() -> PermissionState {
     {
         PermissionState::Unknown
     }
+}
+
+/// Payload for the `incoming:translation` Tauri event consumed by the
+/// overlay window. Mirrors what the v0.7.0-rc.2 real pipeline will emit;
+/// for now it carries demo content tagged with `demo: true`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct IncomingTranslation {
+    pub id: String,
+    pub sender: Option<String>,
+    pub scope: Option<MessageScope>,
+    pub source_text: String,
+    pub translated_text: String,
+    pub source_lang: Option<String>,
+    pub target_lang: Option<String>,
+    pub timestamp_ms: u64,
+    /// `true` when this event was emitted by the demo / mock emitter
+    /// instead of a real OCR -> translation pass.
+    pub demo: bool,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum MessageScope {
+    Team,
+    All,
 }
 
 /// Display metadata as exposed to the front-end during region calibration.

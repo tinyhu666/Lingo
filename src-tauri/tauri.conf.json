@@ -13,6 +13,7 @@
     "macOSPrivateApi": true,
     "windows": [
       {
+        "label": "main",
         "title": "Lingo",
         "width": 1280,
         "height": 720,
@@ -25,6 +26,26 @@
         "decorations": false,
         "transparent": true,
         "shadow": false
+      },
+      {
+        "label": "incoming-overlay",
+        "title": "Lingo Incoming",
+        "url": "overlay.html",
+        "width": 420,
+        "height": 320,
+        "minWidth": 280,
+        "minHeight": 160,
+        "x": 32,
+        "y": 32,
+        "decorations": false,
+        "transparent": true,
+        "shadow": false,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "focus": false,
+        "resizable": true,
+        "visible": false,
+        "acceptFirstMouse": true
       }
     ]
   },
