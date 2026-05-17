@@ -19,6 +19,7 @@ use windows_sys::Win32::Graphics::Dwm::{
 #[cfg(target_os = "windows")]
 use windows_sys::Win32::Graphics::Gdi::{CreateRoundRectRgn, SetWindowRgn};
 pub mod ai_translator;
+pub mod incoming;
 pub mod shell_helper;
 pub mod shortcut;
 pub mod store;
