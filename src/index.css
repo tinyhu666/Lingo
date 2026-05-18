@@ -2844,6 +2844,38 @@
     border-color: rgba(91, 124, 169, 0.6);
   }
 
+  .home-incoming-actions__btn--warning {
+    background: rgba(245, 188, 89, 0.16);
+    color: #8a4f00;
+    border-color: rgba(245, 188, 89, 0.55);
+  }
+
+  .home-incoming-actions__btn--warning:hover:not(:disabled) {
+    background: rgba(245, 188, 89, 0.28);
+    border-color: rgba(245, 188, 89, 0.78);
+  }
+
+  .home-incoming-hotkey-hint {
+    margin-top: 10px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px 18px;
+    font-size: 11px;
+    color: rgba(60, 76, 110, 0.65);
+  }
+
+  .home-incoming-hotkey-hint kbd {
+    background: rgba(91, 124, 169, 0.12);
+    border: 1px solid rgba(91, 124, 169, 0.28);
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+      "Microsoft YaHei", monospace;
+    font-weight: 600;
+    color: var(--ink-strong, #1b2a48);
+    margin-left: 4px;
+  }
+
   .lingo-calibration-backdrop {
     position: fixed;
     inset: 0;

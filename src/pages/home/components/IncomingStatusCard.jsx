@@ -9,6 +9,7 @@ import { hasTauriRuntime } from '../../../services/tauriRuntime';
 import {
   PERMISSION_STATES,
   getIncomingStatus,
+  requestScreenRecordingPermission,
   setIncomingEnabled,
   setIncomingOverlayClickThrough,
 } from '../../../services/incomingService';
@@ -132,6 +133,19 @@ export default function IncomingStatusCard() {
     void refreshStatus();
   }, [refreshStatus]);
 
+  const handleRequestPermission = useCallback(async () => {
+    try {
+      await requestScreenRecordingPermission();
+      showInfo(t('home.incoming.permissionRequested'));
+      void refreshStatus();
+    } catch (error) {
+      showError(t('home.incoming.permissionRequestFailed', { error: toErrorMessage(error) }));
+    }
+  }, [refreshStatus, t]);
+
+  const toggleShortcut = settings?.incoming_toggle_hotkey?.shortcut || '';
+  const clickThroughShortcut = settings?.incoming_click_through_hotkey?.shortcut || '';
+
   return (
     <>
       <motion.div
@@ -172,7 +186,31 @@ export default function IncomingStatusCard() {
                   ? t('home.incoming.clickThroughOn')
                   : t('home.incoming.clickThroughOff')}
               </button>
+              {permissionMissing && (
+                <button
+                  type='button'
+                  className='home-incoming-actions__btn home-incoming-actions__btn--warning'
+                  onClick={handleRequestPermission}>
+                  {t('home.incoming.grantPermission')}
+                </button>
+              )}
             </div>
+            {(toggleShortcut || clickThroughShortcut) && (
+              <p className='home-incoming-hotkey-hint'>
+                {toggleShortcut && (
+                  <span>
+                    {t('home.incoming.hotkeyToggleLabel')}{' '}
+                    <kbd>{toggleShortcut}</kbd>
+                  </span>
+                )}
+                {clickThroughShortcut && (
+                  <span>
+                    {t('home.incoming.hotkeyLockLabel')}{' '}
+                    <kbd>{clickThroughShortcut}</kbd>
+                  </span>
+                )}
+              </p>
+            )}
           </div>
 
           <div className='home-top-actions'>

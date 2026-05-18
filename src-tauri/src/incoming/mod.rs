@@ -25,6 +25,7 @@
 
 pub mod capture;
 pub mod ocr;
+pub mod permission;
 pub mod pipeline;
 pub mod region;
 pub mod tracker;
@@ -65,25 +66,17 @@ pub enum PermissionState {
     NotApplicable,
 }
 
-/// Returns the platform's screen-capture permission status. macOS uses the
-/// CoreGraphics preflight API in a future revision; for now this is a
-/// scaffold value matching the eventual return type.
+/// Returns the platform's screen-capture permission status. On macOS this
+/// calls `CGPreflightScreenCaptureAccess` (lazy-resolved via `dlsym` so
+/// pre-10.15 builds degrade to `Unknown` instead of failing to load).
 pub fn current_permission_state() -> PermissionState {
-    #[cfg(target_os = "macos")]
-    {
-        // TODO(v0.7.0-rc.2): call CGPreflightScreenCaptureAccess via objc2.
-        PermissionState::Unknown
-    }
+    permission::current_state()
+}
 
-    #[cfg(target_os = "windows")]
-    {
-        PermissionState::NotApplicable
-    }
-
-    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
-    {
-        PermissionState::Unknown
-    }
+/// Triggers the OS Screen Recording prompt on macOS. No-op on platforms
+/// without an explicit permission gate.
+pub fn request_permission_prompt() -> PermissionState {
+    permission::request()
 }
 
 /// Payload for the `incoming:translation` Tauri event consumed by the

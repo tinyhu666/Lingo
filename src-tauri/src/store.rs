@@ -107,6 +107,28 @@ fn default_incoming_toggle_hotkey() -> HotkeyConfig {
     }
 }
 
+fn default_incoming_click_through_hotkey() -> HotkeyConfig {
+    // ⌘⌥L / Ctrl+Alt+L — "L for Lock to game". Picked because Control+L and
+    // Cmd+L are rare in DotA / LoL / Overwatch keybinds and there's no
+    // common chat conflict.
+    #[cfg(target_os = "macos")]
+    let (modifiers, symbol) = (
+        vec!["Meta".to_string(), "Alt".to_string()],
+        "\u{2318}+\u{2325}",
+    );
+    #[cfg(not(target_os = "macos"))]
+    let (modifiers, symbol) = (
+        vec!["Control".to_string(), "Alt".to_string()],
+        "Ctrl+Alt",
+    );
+
+    HotkeyConfig {
+        modifiers,
+        key: "KeyL".to_string(),
+        shortcut: format!("{}+L", symbol),
+    }
+}
+
 fn default_capture_rate_hz() -> f32 {
     1.5
 }
@@ -130,6 +152,8 @@ pub struct AppSettings {
     pub incoming_enabled: bool,
     #[serde(default = "default_incoming_toggle_hotkey")]
     pub incoming_toggle_hotkey: HotkeyConfig,
+    #[serde(default = "default_incoming_click_through_hotkey")]
+    pub incoming_click_through_hotkey: HotkeyConfig,
     #[serde(default)]
     pub incoming_regions: HashMap<String, ChatRegion>,
     #[serde(default)]
@@ -151,6 +175,7 @@ impl Default for AppSettings {
             phrases: default_phrases(),
             incoming_enabled: false,
             incoming_toggle_hotkey: default_incoming_toggle_hotkey(),
+            incoming_click_through_hotkey: default_incoming_click_through_hotkey(),
             incoming_regions: HashMap::new(),
             incoming_overlay: OverlayPreferences::default(),
             incoming_capture_rate_hz: default_capture_rate_hz(),
@@ -243,6 +268,10 @@ fn normalize_settings(settings: &mut AppSettings) {
 
     if settings.incoming_toggle_hotkey.key.is_empty() {
         settings.incoming_toggle_hotkey = default_incoming_toggle_hotkey();
+    }
+
+    if settings.incoming_click_through_hotkey.key.is_empty() {
+        settings.incoming_click_through_hotkey = default_incoming_click_through_hotkey();
     }
 
     if !settings.incoming_capture_rate_hz.is_finite()

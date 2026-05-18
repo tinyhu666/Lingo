@@ -439,7 +439,7 @@ async fn get_incoming_status(
     })
 }
 
-fn start_options_from_settings(settings: &store::AppSettings) -> incoming::StartOptions {
+pub(crate) fn start_options_from_settings(settings: &store::AppSettings) -> incoming::StartOptions {
     incoming::StartOptions {
         capture_rate_hz: settings.incoming_capture_rate_hz,
         game_scene: settings.game_scene.clone(),
@@ -448,7 +448,7 @@ fn start_options_from_settings(settings: &store::AppSettings) -> incoming::Start
     }
 }
 
-fn show_incoming_overlay_window(app: &tauri::AppHandle) -> Result<(), String> {
+pub(crate) fn show_incoming_overlay_window(app: &tauri::AppHandle) -> Result<(), String> {
     use tauri::Manager;
     let Some(window) = app.get_webview_window("incoming-overlay") else {
         return Err("incoming-overlay window not found".to_string());
@@ -468,7 +468,7 @@ fn show_incoming_overlay_window(app: &tauri::AppHandle) -> Result<(), String> {
     Ok(())
 }
 
-fn hide_incoming_overlay_window(app: &tauri::AppHandle) -> Result<(), String> {
+pub(crate) fn hide_incoming_overlay_window(app: &tauri::AppHandle) -> Result<(), String> {
     use tauri::Manager;
     let Some(window) = app.get_webview_window("incoming-overlay") else {
         return Ok(());
@@ -477,7 +477,7 @@ fn hide_incoming_overlay_window(app: &tauri::AppHandle) -> Result<(), String> {
     Ok(())
 }
 
-fn apply_incoming_overlay_click_through(
+pub(crate) fn apply_incoming_overlay_click_through(
     app: &tauri::AppHandle,
     click_through: bool,
 ) -> Result<(), String> {
@@ -496,12 +496,52 @@ async fn set_incoming_overlay_click_through(
     app_handle: tauri::AppHandle,
     click_through: bool,
 ) -> Result<store::AppSettings, String> {
-    apply_incoming_overlay_click_through(&app_handle, click_through)?;
-    store::update_settings_field(&app_handle, |settings| {
+    apply_click_through(&app_handle, click_through)
+}
+
+/// Flip `incoming_enabled` and apply the side-effects (start/stop pipeline,
+/// show/hide overlay). Shared between the Tauri command and the global
+/// hotkey handler.
+pub(crate) fn apply_incoming_enabled(
+    app: &tauri::AppHandle,
+    pipeline: &std::sync::Arc<incoming::IncomingPipeline>,
+    enabled: bool,
+) -> Result<store::AppSettings, String> {
+    store::update_settings_field(app, |settings| {
+        settings.incoming_enabled = enabled;
+    })
+    .map_err(|e| e.to_string())?;
+
+    let settings = store::get_settings(app).map_err(|e| e.to_string())?;
+
+    if enabled {
+        let opts = start_options_from_settings(&settings);
+        pipeline.start(app.clone(), opts)?;
+        if let Err(error) = show_incoming_overlay_window(app) {
+            eprintln!("[incoming] show overlay failed: {error}");
+        }
+    } else {
+        pipeline.stop();
+        if let Err(error) = hide_incoming_overlay_window(app) {
+            eprintln!("[incoming] hide overlay failed: {error}");
+        }
+    }
+
+    Ok(settings)
+}
+
+/// Flip `incoming_overlay.click_through` and apply the side-effect.
+/// Shared between the Tauri command and the global hotkey handler.
+pub(crate) fn apply_click_through(
+    app: &tauri::AppHandle,
+    click_through: bool,
+) -> Result<store::AppSettings, String> {
+    apply_incoming_overlay_click_through(app, click_through)?;
+    store::update_settings_field(app, |settings| {
         settings.incoming_overlay.click_through = click_through;
     })
     .map_err(|e| e.to_string())?;
-    store::get_settings(&app_handle).map_err(|e| e.to_string())
+    store::get_settings(app).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -510,27 +550,7 @@ async fn set_incoming_enabled(
     pipeline: tauri::State<'_, std::sync::Arc<incoming::IncomingPipeline>>,
     enabled: bool,
 ) -> Result<store::AppSettings, String> {
-    store::update_settings_field(&app_handle, |settings| {
-        settings.incoming_enabled = enabled;
-    })
-    .map_err(|e| e.to_string())?;
-
-    let settings = store::get_settings(&app_handle).map_err(|e| e.to_string())?;
-
-    if enabled {
-        let opts = start_options_from_settings(&settings);
-        pipeline.start(app_handle.clone(), opts)?;
-        if let Err(error) = show_incoming_overlay_window(&app_handle) {
-            eprintln!("[incoming] show overlay failed: {error}");
-        }
-    } else {
-        pipeline.stop();
-        if let Err(error) = hide_incoming_overlay_window(&app_handle) {
-            eprintln!("[incoming] hide overlay failed: {error}");
-        }
-    }
-
-    Ok(settings)
+    apply_incoming_enabled(&app_handle, &pipeline, enabled)
 }
 
 #[tauri::command]
@@ -623,10 +643,10 @@ async fn check_screen_recording_permission() -> Result<incoming::PermissionState
 
 #[tauri::command]
 async fn request_screen_recording_permission() -> Result<incoming::PermissionState, String> {
-    // Stub. macOS impl will call `CGRequestScreenCaptureAccess()`; the OS
-    // shows its own prompt and the user typically has to restart the app
-    // before the new state takes effect.
-    Ok(incoming::current_permission_state())
+    // macOS shows its own Screen Recording prompt on first call. The user
+    // typically has to restart the app before a freshly granted permission
+    // takes effect — the front-end surfaces that hint.
+    Ok(incoming::request_permission_prompt())
 }
 
 pub fn run() {
