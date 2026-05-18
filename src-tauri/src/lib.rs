@@ -609,6 +609,34 @@ async fn update_incoming_overlay_preferences(
         settings.incoming_overlay = preferences.clone();
     })
     .map_err(|e| e.to_string())?;
+
+    let updated = store::get_settings(&app_handle).map_err(|e| e.to_string())?;
+
+    // The overlay window listens for `incoming:prefs` and live-updates
+    // opacity / font size / fade / max_lines without a reload.
+    use tauri::Emitter;
+    if let Err(error) = app_handle.emit("incoming:prefs", &updated.incoming_overlay) {
+        eprintln!("[incoming] failed to broadcast prefs: {error}");
+    }
+
+    Ok(updated)
+}
+
+#[tauri::command]
+async fn update_incoming_toggle_hotkey(
+    app_handle: tauri::AppHandle,
+    keys: Vec<String>,
+) -> Result<store::AppSettings, String> {
+    shortcut::update_incoming_toggle_shortcut(&app_handle, keys)?;
+    store::get_settings(&app_handle).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn update_incoming_click_through_hotkey(
+    app_handle: tauri::AppHandle,
+    keys: Vec<String>,
+) -> Result<store::AppSettings, String> {
+    shortcut::update_incoming_click_through_shortcut(&app_handle, keys)?;
     store::get_settings(&app_handle).map_err(|e| e.to_string())
 }
 
@@ -751,6 +779,8 @@ pub fn run() {
             show_incoming_overlay,
             hide_incoming_overlay,
             set_incoming_overlay_click_through,
+            update_incoming_toggle_hotkey,
+            update_incoming_click_through_hotkey,
         ]);
 
     #[cfg(not(target_os = "windows"))]

@@ -3034,4 +3034,252 @@
       grid-template-columns: 1fr;
     }
   }
+
+  /* ====================================================================== */
+  /* Incoming advanced settings modal                                       */
+  /* ====================================================================== */
+
+  .lingo-advanced-dialog {
+    width: min(640px, 100%);
+  }
+
+  .lingo-advanced-section {
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(91, 124, 169, 0.16);
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .lingo-advanced-section:first-of-type {
+    border-top: none;
+    padding-top: 8px;
+    margin-top: 12px;
+  }
+
+  .lingo-advanced-section__title {
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+    color: rgba(60, 76, 110, 0.85);
+    margin: 0;
+  }
+
+  .lingo-advanced-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .lingo-advanced-field--row {
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 10px;
+    cursor: pointer;
+  }
+
+  .lingo-advanced-field__head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+
+  .lingo-advanced-field__value {
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    color: var(--ink-strong, #1b2a48);
+    font-size: 13px;
+  }
+
+  .lingo-advanced-field__label {
+    font-weight: 600;
+    color: var(--ink-strong, #1b2a48);
+    font-size: 13px;
+    display: block;
+  }
+
+  .lingo-advanced-field__hint {
+    color: rgba(60, 76, 110, 0.65);
+    font-size: 12px;
+    line-height: 1.45;
+    display: block;
+    margin-top: 2px;
+  }
+
+  .lingo-advanced-field__chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .lingo-advanced-field__chip {
+    appearance: none;
+    border: 1px solid rgba(91, 124, 169, 0.32);
+    background: rgba(248, 251, 255, 0.85);
+    color: var(--ink-strong, #1b2a48);
+    padding: 5px 11px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 120ms ease, border-color 120ms ease;
+  }
+
+  .lingo-advanced-field__chip:hover {
+    background: rgba(232, 240, 252, 0.95);
+  }
+
+  .lingo-advanced-field__chip--active {
+    background: rgba(91, 124, 169, 0.22);
+    color: #1b2a48;
+    border-color: rgba(91, 124, 169, 0.62);
+  }
+
+  .lingo-advanced-field input[type='range'] {
+    width: 100%;
+    height: 28px;
+    appearance: none;
+    background: transparent;
+  }
+
+  .lingo-advanced-field input[type='range']::-webkit-slider-runnable-track {
+    height: 4px;
+    background: rgba(91, 124, 169, 0.28);
+    border-radius: 2px;
+  }
+
+  .lingo-advanced-field input[type='range']::-moz-range-track {
+    height: 4px;
+    background: rgba(91, 124, 169, 0.28);
+    border-radius: 2px;
+  }
+
+  .lingo-advanced-field input[type='range']::-webkit-slider-thumb {
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #5fb6ff;
+    border: 2px solid #ffffff;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
+    margin-top: -6px;
+  }
+
+  .lingo-advanced-field input[type='range']::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #5fb6ff;
+    border: 2px solid #ffffff;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
+  }
+
+  .lingo-advanced-field input[type='checkbox'] {
+    width: 16px;
+    height: 16px;
+    margin-top: 3px;
+    accent-color: #5fb6ff;
+    cursor: pointer;
+  }
+
+  .lingo-advanced-hotkey {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 10px 14px;
+    border-radius: 10px;
+    background: rgba(248, 251, 255, 0.75);
+    border: 1px solid rgba(91, 124, 169, 0.18);
+  }
+
+  .lingo-advanced-hotkey__copy {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    flex: 1;
+  }
+
+  .lingo-advanced-hotkey__label {
+    font-weight: 600;
+    color: var(--ink-strong, #1b2a48);
+    font-size: 13px;
+  }
+
+  .lingo-advanced-hotkey__hint {
+    color: rgba(60, 76, 110, 0.65);
+    font-size: 11px;
+    line-height: 1.4;
+  }
+
+  .lingo-advanced-hotkey__btn {
+    appearance: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 132px;
+    justify-content: center;
+    border: 1px solid rgba(91, 124, 169, 0.4);
+    background: #ffffff;
+    color: var(--ink-strong, #1b2a48);
+    padding: 7px 14px;
+    border-radius: 9px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 120ms ease, border-color 120ms ease;
+  }
+
+  .lingo-advanced-hotkey__btn:hover:not(:disabled) {
+    background: rgba(232, 240, 252, 0.95);
+    border-color: rgba(91, 124, 169, 0.65);
+  }
+
+  .lingo-advanced-hotkey__btn--recording {
+    background: rgba(95, 182, 255, 0.16);
+    border-color: rgba(95, 182, 255, 0.65);
+    color: #1b3a72;
+    animation: lingo-advanced-recording-pulse 1.4s ease-in-out infinite;
+  }
+
+  .lingo-advanced-hotkey__icon,
+  .lingo-advanced-hotkey__spinner {
+    width: 14px;
+    height: 14px;
+    stroke-width: 2;
+    flex-shrink: 0;
+  }
+
+  .lingo-advanced-hotkey__spinner {
+    animation: lingo-advanced-spin 1s linear infinite;
+    color: #5fb6ff;
+  }
+
+  .lingo-advanced-hotkey__current {
+    font-variant-numeric: tabular-nums;
+  }
+
+  .lingo-advanced-footer__hint {
+    font-size: 11px;
+    color: rgba(60, 76, 110, 0.55);
+    flex: 1;
+  }
+
+  @keyframes lingo-advanced-recording-pulse {
+    0%, 100% {
+      box-shadow: 0 0 0 0 rgba(95, 182, 255, 0.35);
+    }
+    50% {
+      box-shadow: 0 0 0 6px rgba(95, 182, 255, 0);
+    }
+  }
+
+  @keyframes lingo-advanced-spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
 }

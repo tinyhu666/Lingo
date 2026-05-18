@@ -323,7 +323,11 @@ pub fn init_shortcuts(app: &AppHandle) -> Result<(), String> {
     rebind_all_shortcuts(app, &settings)
 }
 
-pub fn update_translator_shortcut(app: &AppHandle, keys: Vec<String>) -> Result<(), String> {
+/// Validate user-pressed keys and turn them into a normalized
+/// [`HotkeyConfig`]. Shared by every hotkey-rebind entry point so the
+/// "exactly one main key + at least one modifier + valid Code" contract
+/// stays consistent.
+fn build_hotkey_from_keys(keys: &[String]) -> Result<HotkeyConfig, String> {
     let raw_modifiers = keys
         .iter()
         .filter(|k| is_modifier_key(k))
@@ -349,27 +353,107 @@ pub fn update_translator_shortcut(app: &AppHandle, keys: Vec<String>) -> Result<
 
     Code::from_str(&key).map_err(|_| "快捷键主键无效，请重试".to_string())?;
 
-    let settings = get_settings(app).map_err(|e| e.to_string())?;
-    let trans_sig = shortcut_signature(&modifiers, &key);
+    Ok(HotkeyConfig {
+        shortcut: build_shortcut_text(&modifiers, &key),
+        modifiers,
+        key,
+    })
+}
 
+/// Returns Ok(()) if `signature` doesn't collide with any other
+/// known shortcut. `self_label` is the field being assigned so callers
+/// can produce a helpful "won't conflict with itself" exclusion (we
+/// pass it through to skip the comparison against the same field).
+fn ensure_no_signature_conflict(
+    settings: &crate::store::AppSettings,
+    candidate: &str,
+    self_label: HotkeyOwner,
+) -> Result<(), String> {
+    let trans_sig = shortcut_signature(
+        &normalize_modifiers(&settings.trans_hotkey.modifiers),
+        &settings.trans_hotkey.key,
+    );
+    let incoming_toggle_sig = shortcut_signature(
+        &normalize_modifiers(&settings.incoming_toggle_hotkey.modifiers),
+        &settings.incoming_toggle_hotkey.key,
+    );
+    let incoming_lock_sig = shortcut_signature(
+        &normalize_modifiers(&settings.incoming_click_through_hotkey.modifiers),
+        &settings.incoming_click_through_hotkey.key,
+    );
+
+    if self_label != HotkeyOwner::Translator && candidate == trans_sig {
+        return Err("该快捷键已被翻译快捷键占用，请更换组合".to_string());
+    }
+    if self_label != HotkeyOwner::IncomingToggle && candidate == incoming_toggle_sig {
+        return Err("该快捷键已被入向翻译切换占用，请更换组合".to_string());
+    }
+    if self_label != HotkeyOwner::IncomingClickThrough && candidate == incoming_lock_sig {
+        return Err("该快捷键已被锁定到游戏占用，请更换组合".to_string());
+    }
     for phrase in &settings.phrases {
         let sig = shortcut_signature(
             &normalize_modifiers(&phrase.hotkey.modifiers),
             &phrase.hotkey.key,
         );
-        if sig == trans_sig {
+        if sig == candidate {
             return Err("该快捷键已被常用语占用，请更换组合".to_string());
         }
     }
+    Ok(())
+}
 
-    let new_hotkey = HotkeyConfig {
-        shortcut: build_shortcut_text(&modifiers, &key),
-        modifiers,
-        key,
-    };
+#[derive(PartialEq, Eq)]
+enum HotkeyOwner {
+    Translator,
+    IncomingToggle,
+    IncomingClickThrough,
+}
+
+pub fn update_translator_shortcut(app: &AppHandle, keys: Vec<String>) -> Result<(), String> {
+    let new_hotkey = build_hotkey_from_keys(&keys)?;
+    let settings = get_settings(app).map_err(|e| e.to_string())?;
+    let candidate = shortcut_signature(&new_hotkey.modifiers, &new_hotkey.key);
+    ensure_no_signature_conflict(&settings, &candidate, HotkeyOwner::Translator)?;
 
     update_settings_field(app, |settings| {
         settings.trans_hotkey = new_hotkey;
+    })
+    .map_err(|e| e.to_string())?;
+
+    let new_settings = get_settings(app).map_err(|e| e.to_string())?;
+    rebind_all_shortcuts(app, &new_settings)
+}
+
+pub fn update_incoming_toggle_shortcut(
+    app: &AppHandle,
+    keys: Vec<String>,
+) -> Result<(), String> {
+    let new_hotkey = build_hotkey_from_keys(&keys)?;
+    let settings = get_settings(app).map_err(|e| e.to_string())?;
+    let candidate = shortcut_signature(&new_hotkey.modifiers, &new_hotkey.key);
+    ensure_no_signature_conflict(&settings, &candidate, HotkeyOwner::IncomingToggle)?;
+
+    update_settings_field(app, |settings| {
+        settings.incoming_toggle_hotkey = new_hotkey;
+    })
+    .map_err(|e| e.to_string())?;
+
+    let new_settings = get_settings(app).map_err(|e| e.to_string())?;
+    rebind_all_shortcuts(app, &new_settings)
+}
+
+pub fn update_incoming_click_through_shortcut(
+    app: &AppHandle,
+    keys: Vec<String>,
+) -> Result<(), String> {
+    let new_hotkey = build_hotkey_from_keys(&keys)?;
+    let settings = get_settings(app).map_err(|e| e.to_string())?;
+    let candidate = shortcut_signature(&new_hotkey.modifiers, &new_hotkey.key);
+    ensure_no_signature_conflict(&settings, &candidate, HotkeyOwner::IncomingClickThrough)?;
+
+    update_settings_field(app, |settings| {
+        settings.incoming_click_through_hotkey = new_hotkey;
     })
     .map_err(|e| e.to_string())?;
 

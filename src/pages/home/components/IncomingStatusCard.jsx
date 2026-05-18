@@ -4,6 +4,7 @@ import { useStore } from '../../../components/StoreProvider';
 import PanelCard from '../../../components/PanelCard';
 import StatusChip from '../../../components/StatusChip';
 import IncomingCalibrationModal from '../../../components/IncomingCalibrationModal';
+import IncomingAdvancedSettingsModal from '../../../components/IncomingAdvancedSettingsModal';
 import { ChatBubbleMessage } from '../../../icons';
 import { hasTauriRuntime } from '../../../services/tauriRuntime';
 import {
@@ -24,6 +25,7 @@ export default function IncomingStatusCard() {
   const [pending, setPending] = useState(false);
   const [clickPending, setClickPending] = useState(false);
   const [calibrationOpen, setCalibrationOpen] = useState(false);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
 
   const persistedEnabled = Boolean(settings?.incoming_enabled);
   const gameScene = settings?.game_scene || 'dota2';
@@ -194,6 +196,12 @@ export default function IncomingStatusCard() {
                   {t('home.incoming.grantPermission')}
                 </button>
               )}
+              <button
+                type='button'
+                className='home-incoming-actions__btn'
+                onClick={() => setAdvancedOpen(true)}>
+                {t('home.incoming.advancedSettings')}
+              </button>
             </div>
             {(toggleShortcut || clickThroughShortcut) && (
               <p className='home-incoming-hotkey-hint'>
@@ -258,6 +266,17 @@ export default function IncomingStatusCard() {
         gameScene={gameScene}
         currentRegion={region}
         onSaved={handleCalibrationSaved}
+      />
+
+      <IncomingAdvancedSettingsModal
+        open={advancedOpen}
+        onClose={() => setAdvancedOpen(false)}
+        settings={settings}
+        onChange={async (next) => {
+          if (next && typeof next === 'object') {
+            await syncSettings(next);
+          }
+        }}
       />
     </>
   );
