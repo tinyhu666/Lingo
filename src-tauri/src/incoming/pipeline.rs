@@ -1,29 +1,48 @@
 //! capture → OCR → tracker → translation loop.
 //!
-//! v0.7.0-rc.1 state: real lifecycle (tokio task, start/stop, cancellation)
-//! but the capture + OCR stages still return [`Unimplemented`]. When the run
-//! loop detects that both engines are unavailable it switches to a **mock
-//! demo emitter** so the front-end overlay can render real-shaped events
-//! end-to-end. The demo events are tagged `demo: true` so the UI labels them
-//! plainly and users can tell what's real.
+//! The real pipeline. Each tick:
 //!
-//! As capture / OCR engines start returning Ok, the loop will incrementally
-//! become real. No changes required from the pipeline's consumers.
+//! 1. Read fresh settings (so the user's region/rate/scene/target-lang
+//!    edits land on the next frame, not the next restart).
+//! 2. Check Screen Recording permission. If denied / unknown → emit
+//!    `incoming:permission_required` and back off.
+//! 3. Look up the chat region for the current `game_scene`. If unset
+//!    → emit `incoming:region_required` and back off.
+//! 4. Capture the region via `CaptureSource::capture`.
+//! 5. OCR via `OcrEngine::recognize_multilingual` (the macOS impl runs a
+//!    two-pass auto-detect + ru-RU merge, see `incoming/ocr/macos.rs`).
+//! 6. Run the new lines through `LineTracker` to dedupe against the last
+//!    45 s of history.
+//! 7. For each [`NewMessage`], spawn a fire-and-forget translation task
+//!    that POSTs to translate-proxy with `direction: "incoming"` and
+//!    emits `incoming:translation` when the response lands. Translation
+//!    latency does NOT block the next capture tick.
+//!
+//! Errors at any stage are logged + (where useful) emitted as
+//! `incoming:status_note` / `incoming:capture_error`, but never kill the
+//! loop. The user can recover by fixing the underlying cause (granting
+//! permission, calibrating a region, fixing network) without restarting.
 
-use crate::incoming::capture::default_capture_source;
-use crate::incoming::ocr::default_ocr_engine;
-use crate::incoming::tracker::LineTracker;
-use crate::incoming::{IncomingTranslation, MessageScope};
+use crate::ai_translator::translate_incoming;
+use crate::incoming::capture::{default_capture_source, CaptureSource};
+use crate::incoming::ocr::{default_ocr_engine, OcrEngine, OcrOptions};
+use crate::incoming::tracker::{LineTracker, NewMessage};
+use crate::incoming::{IncomingTranslation, PermissionState};
+use crate::store;
 use serde::Serialize;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Mutex;
-use std::time::Duration;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tauri::async_runtime::JoinHandle;
 use tauri::{AppHandle, Emitter};
 use tokio::sync::oneshot;
 
-const MIN_TICK_MS: u64 = 150;
+const MIN_TICK_MS: u64 = 200;
 const MAX_TICK_MS: u64 = 4_000;
-const DEMO_TICK_INTERVAL: Duration = Duration::from_millis(2_600);
+/// When permission / region / capture are unavailable we slow the loop
+/// down to avoid spamming logs while still recovering quickly when the
+/// blocking condition lifts.
+const BACKOFF_TICK_MS: u64 = 2_500;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct StartOptions {
@@ -57,7 +76,7 @@ impl IncomingPipeline {
 
     /// Spawns the run loop. Idempotent: a second call while already running
     /// is a no-op rather than an error.
-    pub fn start(&self, app: AppHandle, opts: StartOptions) -> Result<(), String> {
+    pub fn start(&self, app: AppHandle, _opts: StartOptions) -> Result<(), String> {
         let mut state = self
             .inner
             .lock()
@@ -66,7 +85,7 @@ impl IncomingPipeline {
             return Ok(());
         }
         let (cancel_tx, cancel_rx) = oneshot::channel();
-        let handle = tauri::async_runtime::spawn(run_loop(app, opts, cancel_rx));
+        let handle = tauri::async_runtime::spawn(run_loop(app, cancel_rx));
         state.handle = Some(handle);
         state.cancel = Some(cancel_tx);
         state.running = true;
@@ -91,163 +110,299 @@ impl IncomingPipeline {
     }
 }
 
-async fn run_loop(app: AppHandle, opts: StartOptions, mut cancel: oneshot::Receiver<()>) {
-    let capture = default_capture_source();
-    let ocr = default_ocr_engine();
-    let demo_mode = capture.is_err() || ocr.is_err();
-    let mut tracker = LineTracker::default();
+// ---------------------------------------------------------------------------
+// Run loop
+// ---------------------------------------------------------------------------
 
-    let tick_period = if demo_mode {
-        DEMO_TICK_INTERVAL
-    } else {
-        let raw_ms = (1000.0 / opts.capture_rate_hz.max(0.5)) as u64;
-        Duration::from_millis(raw_ms.clamp(MIN_TICK_MS, MAX_TICK_MS))
+async fn run_loop(app: AppHandle, mut cancel: oneshot::Receiver<()>) {
+    let capture: Box<dyn CaptureSource> = match default_capture_source() {
+        Ok(c) => c,
+        Err(error) => {
+            let _ = app.emit(
+                "incoming:fatal",
+                format!("capture engine unavailable: {error}"),
+            );
+            let _ = app.emit("incoming:stopped", ());
+            return;
+        }
+    };
+    let ocr: Box<dyn OcrEngine> = match default_ocr_engine() {
+        Ok(o) => o,
+        Err(error) => {
+            let _ = app.emit("incoming:fatal", format!("OCR engine unavailable: {error}"));
+            let _ = app.emit("incoming:stopped", ());
+            return;
+        }
     };
 
-    if demo_mode {
-        let _ = app.emit(
-            "incoming:status_note",
-            "Pipeline running in demo mode (capture/OCR not yet implemented).",
-        );
-    }
+    let mut tracker = LineTracker::default();
+    let id_counter = std::sync::Arc::new(AtomicU64::new(1));
 
-    let mut ticker = tokio::time::interval(tick_period);
-    ticker.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
-
-    let mut idx: usize = 0;
-    let mut next_id: u64 = 1;
+    let mut last_note: Option<&'static str> = None;
+    let mut backoff_active = false;
 
     loop {
+        // Wait for the next tick or cancel signal.
+        let tick_ms = if backoff_active {
+            BACKOFF_TICK_MS
+        } else {
+            settings_tick_ms(&app)
+        };
         tokio::select! {
             biased;
-            _ = &mut cancel => {
-                break;
+            _ = &mut cancel => break,
+            _ = tokio::time::sleep(Duration::from_millis(tick_ms)) => {}
+        }
+
+        // ---- Refresh settings ------------------------------------------
+        let settings = match store::get_settings(&app) {
+            Ok(s) => s,
+            Err(error) => {
+                eprintln!("[incoming] settings read failed: {error}");
+                backoff_active = true;
+                continue;
             }
-            _ = ticker.tick() => {
-                if demo_mode {
-                    let msg = demo_message_at(idx, &mut next_id, &opts);
-                    idx = idx.wrapping_add(1);
-                    if let Err(error) = app.emit("incoming:translation", &msg) {
-                        eprintln!("[incoming] emit failed: {error}");
-                    }
-                    // Even in demo mode we still pump the tracker so its state
-                    // resembles a real run for future debugging.
-                    let _ = tracker.ingest(&[]);
-                } else {
-                    // Real pipeline goes here in v0.7.0-rc.2:
-                    //   let frame = capture.as_ref().unwrap().capture(&region)?;
-                    //   let lines = ocr.as_ref().unwrap().recognize(&frame, &opts)?;
-                    //   let new_msgs = tracker.ingest(&lines);
-                    //   for each → translate-proxy → emit.
-                    break;
+        };
+
+        // ---- Permission preflight --------------------------------------
+        match crate::incoming::current_permission_state() {
+            PermissionState::Granted | PermissionState::NotApplicable => {}
+            PermissionState::Denied => {
+                if last_note != Some("permission_denied") {
+                    let _ = app.emit(
+                        "incoming:permission_required",
+                        "Screen Recording permission is required. Grant it in System Settings → Privacy & Security → Screen Recording, then restart Lingo.",
+                    );
+                    last_note = Some("permission_denied");
                 }
+                backoff_active = true;
+                continue;
             }
+            PermissionState::Unknown => {
+                if last_note != Some("permission_unknown") {
+                    let _ = app.emit(
+                        "incoming:permission_required",
+                        "Screen Recording permission status is unknown on this macOS version.",
+                    );
+                    last_note = Some("permission_unknown");
+                }
+                backoff_active = true;
+                continue;
+            }
+        }
+
+        // ---- Region lookup --------------------------------------------
+        let region = match settings.incoming_regions.get(&settings.game_scene) {
+            Some(r) => r.clone(),
+            None => {
+                if last_note != Some("region_missing") {
+                    let _ = app.emit(
+                        "incoming:region_required",
+                        format!(
+                            "No chat region calibrated for game scene '{}'. Open the Advanced settings on the home card to calibrate.",
+                            settings.game_scene
+                        ),
+                    );
+                    last_note = Some("region_missing");
+                }
+                backoff_active = true;
+                continue;
+            }
+        };
+
+        // ---- Capture ---------------------------------------------------
+        let frame = match capture.capture(&region) {
+            Ok(f) => f,
+            Err(error) => {
+                eprintln!("[incoming] capture failed: {error}");
+                if last_note != Some("capture_error") {
+                    let _ = app.emit("incoming:capture_error", error.to_string());
+                    last_note = Some("capture_error");
+                }
+                backoff_active = true;
+                continue;
+            }
+        };
+
+        // ---- OCR -------------------------------------------------------
+        let lines = match ocr.recognize_multilingual(&frame, &OcrOptions::default()) {
+            Ok(lines) => lines,
+            Err(error) => {
+                eprintln!("[incoming] OCR failed: {error}");
+                if last_note != Some("ocr_error") {
+                    let _ = app.emit("incoming:ocr_error", error.to_string());
+                    last_note = Some("ocr_error");
+                }
+                backoff_active = true;
+                continue;
+            }
+        };
+
+        if last_note.is_some() {
+            // We recovered — clear the sticky-note status so the next
+            // genuine error fires its event again.
+            let _ = app.emit("incoming:status_cleared", ());
+            last_note = None;
+        }
+        backoff_active = false;
+
+        // ---- Tracker dedupe -------------------------------------------
+        let new_msgs = tracker.ingest(&lines);
+        if new_msgs.is_empty() {
+            continue;
+        }
+
+        // ---- Per-line translate (fire-and-forget) ----------------------
+        for msg in new_msgs {
+            let app_for_task = app.clone();
+            let target_lang = settings.translation_to.clone();
+            let game_scene = settings.game_scene.clone();
+            let counter = id_counter.clone();
+            tauri::async_runtime::spawn(async move {
+                translate_and_emit(app_for_task, msg, target_lang, game_scene, counter).await;
+            });
         }
     }
 
     let _ = app.emit("incoming:stopped", ());
 }
 
-// ---------------------------------------------------------------------------
-// Demo corpus
-// ---------------------------------------------------------------------------
+/// Resolve the next tick duration from the current settings (so live
+/// capture-rate edits take effect on the very next frame).
+fn settings_tick_ms(app: &AppHandle) -> u64 {
+    let hz = store::get_settings(app)
+        .map(|s| s.incoming_capture_rate_hz)
+        .unwrap_or(1.5)
+        .max(0.5);
+    let raw = (1000.0 / hz) as u64;
+    raw.clamp(MIN_TICK_MS, MAX_TICK_MS)
+}
 
-fn demo_message_at(idx: usize, next_id: &mut u64, opts: &StartOptions) -> IncomingTranslation {
-    let sample = &DEMO_SAMPLES[idx % DEMO_SAMPLES.len()];
-    let id_value = *next_id;
-    *next_id = next_id.wrapping_add(1);
+async fn translate_and_emit(
+    app: AppHandle,
+    msg: NewMessage,
+    target_lang: String,
+    game_scene: String,
+    counter: std::sync::Arc<AtomicU64>,
+) {
+    // Skip lines that are already in the user's native language. The
+    // proxy would noop them, but we save a round-trip and avoid the
+    // overlay flashing the same text twice.
+    if is_same_language_as_target(&msg.text, &target_lang) {
+        return;
+    }
 
-    let timestamp_ms = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
+    let translated = match translate_incoming(&msg.text, &target_lang, &game_scene).await {
+        Ok(text) => text,
+        Err(error) => {
+            eprintln!(
+                "[incoming] translate failed for {:?} → {}: {}",
+                msg.sender, target_lang, error
+            );
+            return;
+        }
+    };
+
+    if translated.trim().is_empty() {
+        return;
+    }
+
+    let id_value = counter.fetch_add(1, Ordering::Relaxed);
+    let payload = IncomingTranslation {
+        id: format!("ic-{id_value}"),
+        sender: msg.sender,
+        scope: msg.scope,
+        source_text: msg.text,
+        translated_text: translated,
+        source_lang: None,
+        target_lang: Some(target_lang),
+        timestamp_ms: now_ms(),
+        demo: false,
+    };
+
+    if let Err(error) = app.emit("incoming:translation", &payload) {
+        eprintln!("[incoming] emit failed: {error}");
+    }
+}
+
+fn now_ms() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
         .map(|d| d.as_millis() as u64)
-        .unwrap_or(0);
+        .unwrap_or(0)
+}
 
-    let translated = pick_translation(sample, &opts.target_lang);
+/// Heuristic: if the OCR text appears to be the user's native language
+/// already, don't bother translating. This is intentionally conservative
+/// — false negatives just spend an API call, false positives hide a
+/// translation entirely, so we lean toward "always translate".
+fn is_same_language_as_target(text: &str, target: &str) -> bool {
+    let trimmed = text.trim();
+    if trimmed.is_empty() {
+        return true;
+    }
+    let target_norm = target.to_ascii_lowercase();
+    let cjk_chars = trimmed.chars().filter(|c| is_cjk(*c)).count();
+    let latin_chars = trimmed.chars().filter(|c| c.is_ascii_alphabetic()).count();
+    let cyrillic_chars = trimmed.chars().filter(|c| is_cyrillic(*c)).count();
+    let total_letters = cjk_chars + latin_chars + cyrillic_chars;
+    if total_letters == 0 {
+        return true; // pure punctuation / numbers
+    }
 
-    IncomingTranslation {
-        id: format!("demo-{id_value}"),
-        sender: Some(sample.sender.to_string()),
-        scope: Some(sample.scope),
-        source_text: sample.source.to_string(),
-        translated_text: translated.to_string(),
-        source_lang: Some(sample.source_lang.to_string()),
-        target_lang: Some(opts.target_lang.clone()),
-        timestamp_ms,
-        demo: true,
+    if target_norm.starts_with("zh") {
+        // Mostly CJK and not significantly Cyrillic → already Chinese.
+        return cjk_chars * 2 >= total_letters && cyrillic_chars == 0;
+    }
+    if target_norm.starts_with("en") {
+        return latin_chars * 2 >= total_letters && cjk_chars == 0 && cyrillic_chars == 0;
+    }
+    if target_norm.starts_with("ru") {
+        return cyrillic_chars * 2 >= total_letters;
+    }
+    false
+}
+
+fn is_cjk(c: char) -> bool {
+    let code = c as u32;
+    (0x4E00..=0x9FFF).contains(&code) // CJK Unified Ideographs
+        || (0x3000..=0x303F).contains(&code) // CJK Symbols and Punctuation
+        || (0x3400..=0x4DBF).contains(&code) // CJK Unified Ideographs Extension A
+}
+
+fn is_cyrillic(c: char) -> bool {
+    let code = c as u32;
+    (0x0400..=0x04FF).contains(&code) || (0x0500..=0x052F).contains(&code)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn same_language_zh_recognizes_chinese_text() {
+        assert!(is_same_language_as_target("推中路", "zh"));
+        assert!(is_same_language_as_target("等我大招再推", "zh-CN"));
+        assert!(!is_same_language_as_target("gg wp", "zh"));
+        assert!(!is_same_language_as_target("Иди в лес", "zh"));
+    }
+
+    #[test]
+    fn same_language_en_recognizes_english_text() {
+        assert!(is_same_language_as_target("smoke and gank bot", "en"));
+        assert!(!is_same_language_as_target("推中路", "en"));
+    }
+
+    #[test]
+    fn same_language_ru_recognizes_cyrillic_text() {
+        assert!(is_same_language_as_target("Иди в лес я фармлю", "ru"));
+        assert!(!is_same_language_as_target("gg wp", "ru"));
+    }
+
+    #[test]
+    fn same_language_handles_empty_input() {
+        assert!(is_same_language_as_target("", "zh"));
+        assert!(is_same_language_as_target("   ", "zh"));
+        assert!(is_same_language_as_target("123 456", "zh")); // punctuation/numbers only
     }
 }
-
-fn pick_translation<'a>(sample: &'a DemoSample, target: &str) -> &'a str {
-    match target {
-        "en" | "en-US" => sample.translated_en,
-        "ru" | "ru-RU" => sample.translated_ru,
-        _ => sample.translated_zh,
-    }
-}
-
-struct DemoSample {
-    sender: &'static str,
-    scope: MessageScope,
-    source: &'static str,
-    source_lang: &'static str,
-    translated_zh: &'static str,
-    translated_en: &'static str,
-    translated_ru: &'static str,
-}
-
-const DEMO_SAMPLES: &[DemoSample] = &[
-    DemoSample {
-        sender: "Pudge",
-        scope: MessageScope::Team,
-        source: "gg wp",
-        source_lang: "en",
-        translated_zh: "干得漂亮",
-        translated_en: "Good game, well played.",
-        translated_ru: "Хорошая игра, молодцы.",
-    },
-    DemoSample {
-        sender: "AntiMage",
-        scope: MessageScope::All,
-        source: "mid miss, beware",
-        source_lang: "en",
-        translated_zh: "中路丢人，小心",
-        translated_en: "Mid missing, watch out.",
-        translated_ru: "Мид пропал, осторожно.",
-    },
-    DemoSample {
-        sender: "Sven",
-        scope: MessageScope::Team,
-        source: "smoke and gank bot",
-        source_lang: "en",
-        translated_zh: "抱团烟雾偷下路",
-        translated_en: "Smoke and gank bot lane.",
-        translated_ru: "Дым и ганк на боте.",
-    },
-    DemoSample {
-        sender: "Lion",
-        scope: MessageScope::All,
-        source: "Иди в лес, я фармлю",
-        source_lang: "ru",
-        translated_zh: "去打野，我在补刀",
-        translated_en: "Go jungle, I'm farming.",
-        translated_ru: "Иди в лес, я фармлю.",
-    },
-    DemoSample {
-        sender: "Templar",
-        scope: MessageScope::Team,
-        source: "no buyback on enemy carry",
-        source_lang: "en",
-        translated_zh: "敌方核心没买活",
-        translated_en: "Enemy carry has no buyback.",
-        translated_ru: "У вражеского керри нет байбэка.",
-    },
-    DemoSample {
-        sender: "Phantom",
-        scope: MessageScope::Team,
-        source: "wait my ult then push",
-        source_lang: "en",
-        translated_zh: "等我大招再推",
-        translated_en: "Wait for my ult then push.",
-        translated_ru: "Подождите мой ульт, потом пуш.",
-    },
-];

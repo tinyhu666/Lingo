@@ -8,6 +8,7 @@
 //! the `incoming` subsystem at this stage.
 
 use crate::incoming::ocr::TextLine;
+use crate::incoming::MessageScope;
 use std::collections::VecDeque;
 use std::time::{Duration, Instant};
 
@@ -16,6 +17,10 @@ use std::time::{Duration, Instant};
 pub struct NewMessage {
     pub sender: Option<String>,
     pub text: String,
+    /// `Some(MessageScope::Team|All)` if we could read a scope tag at the
+    /// start of the line, otherwise `None`. OCR garbles brackets often
+    /// enough that we treat scope as a best-effort signal.
+    pub scope: Option<MessageScope>,
 }
 
 #[derive(Debug, Clone)]
@@ -95,8 +100,9 @@ impl LineTracker {
     }
 }
 
-/// Strip the leading `[scope]` tag (ASCII or full-width brackets) and split
-/// on the first `:` / `：` to extract `Sender: message`.
+/// Strip the leading `[scope]` tag (ASCII or full-width brackets), capture
+/// the scope label if recognizable, and split on the first `:` / `：` to
+/// extract `Sender: message`.
 fn parse_line(raw: &str) -> Option<NewMessage> {
     let trimmed = raw.trim();
     if trimmed.is_empty() {
@@ -105,10 +111,11 @@ fn parse_line(raw: &str) -> Option<NewMessage> {
 
     // Strip a leading bracketed scope tag if present. Tolerates ASCII `[…]`
     // and full-width `［…］`. OCR sometimes garbles the inside of the
-    // brackets; we strip it regardless of content.
-    let after_scope = match strip_leading_bracket(trimmed) {
-        Some(rest) => rest,
-        None => trimmed,
+    // brackets; we strip it regardless of content but capture the scope
+    // when we can recognize it.
+    let (after_scope, scope) = match strip_leading_bracket(trimmed) {
+        Some((rest, tag)) => (rest, detect_scope(tag)),
+        None => (trimmed, None),
     };
 
     // Look for the first colon (ASCII or full-width).
@@ -124,6 +131,7 @@ fn parse_line(raw: &str) -> Option<NewMessage> {
             return Some(NewMessage {
                 sender: Some(sender.to_string()),
                 text: text.to_string(),
+                scope,
             });
         }
     }
@@ -131,23 +139,57 @@ fn parse_line(raw: &str) -> Option<NewMessage> {
     Some(NewMessage {
         sender: None,
         text: after_scope.to_string(),
+        scope,
     })
 }
 
-fn strip_leading_bracket(s: &str) -> Option<&str> {
+/// Returns `Some((remainder_after_bracket, tag_contents))` if the input
+/// starts with a recognized opening bracket and contains its matching
+/// closer; the `tag_contents` slice excludes both brackets so callers can
+/// run keyword detection on the inside.
+fn strip_leading_bracket(s: &str) -> Option<(&str, &str)> {
     let mut chars = s.char_indices();
     let (_, first) = chars.next()?;
-    let (open, close) = match first {
-        '[' => ('[', ']'),
-        '［' => ('［', '］'),
-        '【' => ('【', '】'),
+    let close = match first {
+        '[' => ']',
+        '［' => '］',
+        '【' => '】',
         _ => return None,
     };
-    let _ = open; // silence
+    let content_start = first.len_utf8();
     for (idx, c) in chars {
         if c == close {
-            return Some(s[idx + c.len_utf8()..].trim_start());
+            let tag_contents = &s[content_start..idx];
+            let rest = s[idx + c.len_utf8()..].trim_start();
+            return Some((rest, tag_contents));
         }
+    }
+    None
+}
+
+/// Look at the bracket contents and guess which channel this line came
+/// from. Tolerates OCR-garbled tags by matching against multiple
+/// localisations and ignoring case. Returns `None` if the tag is
+/// unrecognizable — the line will still ship without a scope hint.
+fn detect_scope(tag: &str) -> Option<MessageScope> {
+    let lower: String = tag
+        .chars()
+        .flat_map(char::to_lowercase)
+        .collect();
+
+    // Chinese: 全部 = All, 队伍 = Team (and 队 alone often survives garbling).
+    if tag.contains('全') {
+        return Some(MessageScope::All);
+    }
+    if tag.contains('队') {
+        return Some(MessageScope::Team);
+    }
+    // English / Russian / generic.
+    if lower.contains("all") || lower.contains("обще") {
+        return Some(MessageScope::All);
+    }
+    if lower.contains("team") || lower.contains("союз") || lower.contains("кома") {
+        return Some(MessageScope::Team);
     }
     None
 }
@@ -205,6 +247,7 @@ mod tests {
         assert_eq!(out.len(), 1);
         assert_eq!(out[0].sender.as_deref(), Some("Pudge"));
         assert_eq!(out[0].text, "gg wp");
+        assert_eq!(out[0].scope, Some(MessageScope::Team));
     }
 
     #[test]
@@ -214,6 +257,35 @@ mod tests {
         assert_eq!(out.len(), 1);
         assert_eq!(out[0].sender.as_deref(), Some("Crystal"));
         assert_eq!(out[0].text, "我们去打肉山");
+        assert_eq!(out[0].scope, Some(MessageScope::Team));
+    }
+
+    #[test]
+    fn detects_all_scope_chinese() {
+        let mut t = LineTracker::default();
+        let out = t.ingest(&[line("[全部] Lion: gg")]);
+        assert_eq!(out[0].scope, Some(MessageScope::All));
+    }
+
+    #[test]
+    fn detects_all_scope_english() {
+        let mut t = LineTracker::default();
+        let out = t.ingest(&[line("[All] Pudge: smoke now")]);
+        assert_eq!(out[0].scope, Some(MessageScope::All));
+    }
+
+    #[test]
+    fn scope_none_for_unrecognized_tag() {
+        let mut t = LineTracker::default();
+        let out = t.ingest(&[line("[BA fa] Templar: no buyback on enemy carry")]);
+        assert_eq!(out[0].scope, None);
+    }
+
+    #[test]
+    fn scope_none_when_no_tag() {
+        let mut t = LineTracker::default();
+        let out = t.ingest(&[line("server reconnecting")]);
+        assert_eq!(out[0].scope, None);
     }
 
     #[test]
