@@ -74,19 +74,60 @@ headroom for team-fight bursts up to 3 Hz.
 4. **`usesLanguageCorrection = true` had zero effect** on this corpus.
    Don't bother turning it on.
 
-## Open questions for real-game validation
+## Real-game validation (2026-05)
 
-We tested HelveticaNeue-Bold on synthetic dark panels. Real DotA 2 uses a
-custom Radiance variant on a partially-transparent in-game background that
-can overlap with terrain/units. Need to re-run on actual game screenshots
-before locking in the architecture.
+Ran the spike against 10 real DotA 2 screenshots at 2940×1912 (covered
+zh/en/ru, scope = team/all, busy + quiet backgrounds, long player IDs).
+See `samples/dota2/` for the corpus. Key findings that drove the Rust
+port design:
 
-- [ ] Real DotA 2 chat screenshots (Chinese / English / Russian, 10 each)
-- [ ] LoL chat screenshots (font is different again)
-- [ ] Overwatch screenshots (text overlays unit world)
+| Category | Accuracy (real game) | Notes |
+|---|---|---|
+| Chinese message body | 100% | `推中路`, `等我大招出来再开团，对面火枪没买活` ← perfect |
+| English message body | 100% | `gg wp`, `smoke up rosh after their bkb` ← perfect |
+| Mixed CN + EN | ~100% | Lost a space token only |
+| Russian, full-screen auto-detect | **0%** | `Иди в лес я фармлю` → `MAHBJIeC9 中aPMJIO` |
+| Russian, cropped + `["ru-RU"]` | ~80% | `иди влеся фармлю` (missing one space) |
+| Player nickname (heavy art font) | ~30% | `萌新` → `期新 / 羽新 / 頭新`. **Doesn't matter** — we don't translate the name. |
+| `[队友]` scope tag | varies | Strippable in the line tracker by position. |
+| Steam IDs / system messages | 100% | Clean signal. |
 
-If accuracy holds within ~5% of these synthetic results on real game UI, the
-Rust port can begin.
+Latency on 2940×1912 full-screen: 125–200 ms steady-state.
+Latency on cropped 800×90 chat band: **23–39 ms**. We crop in
+production, so the steady budget is ~40 ms per pass.
+
+### Architectural decisions locked in by this measurement
+
+1. **Crop to the user-calibrated chat region before OCR.** Justified by
+   both accuracy (Russian recovery) and latency (5× faster). The
+   `incoming::region::ChatRegion` calibration UI already exists for
+   this.
+
+2. **Two-pass OCR for Cyrillic recovery.** Auto-detect on a CJK-heavy
+   image silently mangles Cyrillic; explicit `["ru-RU"]` on the same
+   image recovers ~80% accuracy. Single-pass would lose Russian users
+   entirely. Implemented as `OcrEngine::recognize_multilingual` —
+   default impl falls back to a single `recognize` call so non-macOS
+   engines opt in only when they have something to add.
+
+3. **`automaticallyDetectsLanguage = true` for the primary pass.** The
+   spike originally suggested explicit language list, but on real
+   game UI auto-detect handled CN/EN/mixed cleanly. The Cyrillic gap
+   is filled by the second pass.
+
+4. **`usesLanguageCorrection = false`.** Game slang (`gg`, `wp`,
+   `bkb`, `roshan`) is precisely what language correction kills.
+
+The Rust port lives at `src-tauri/src/incoming/ocr/macos.rs`.
+
+## Open follow-ups
+
+- [ ] Ground-truth TSV for the 10-image corpus so a regression script
+      can fail CI when an engine update degrades accuracy.
+- [ ] LoL chat screenshots (font is different).
+- [ ] Overwatch / WoW screenshots (text overlays game world directly).
+- [ ] Spike B: Windows.Media.Ocr equivalent on the same corpus, once a
+      Windows test box is available.
 
 ## Rust port checklist
 

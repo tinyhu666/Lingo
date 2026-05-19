@@ -1,3 +1,14 @@
+# Built spike binaries
 spike-ocr
 gen-synthetic
-*.png
+
+# Generated synthetic image (reproducible via gen-synthetic)
+synthetic-chat.png
+
+# Per-run OCR output dumps
+out/
+*.ocr.json
+
+# Real game screenshots live under samples/ and ARE tracked.
+# (Path-anchored allow rules deliberately not used here; instead we
+# just narrow the ignore patterns above so samples/*.png stays in git.)
