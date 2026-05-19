@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { invoke } from '@tauri-apps/api/core';
+import { listen } from '@tauri-apps/api/event';
 import { XClose } from '../icons';
 import { useI18n } from '../i18n/I18nProvider';
 import {
@@ -7,61 +9,59 @@ import {
   saveIncomingChatRegion,
   clearIncomingChatRegion,
 } from '../services/incomingService';
+import { hasTauriRuntime } from '../services/tauriRuntime';
 import { showError, showSuccess } from '../utils/toast';
 import { toErrorMessage } from '../utils/error';
 
 /**
- * Region calibration modal for the v0.7.0 incoming-chat translation feature.
+ * Region calibration modal — v0.7.0-rc.2 redesign.
  *
- * Until the macOS / Windows screen-capture engines land in v0.7.0-rc.2, the
- * modal does not show a live game screenshot. Instead it lets the user dial
- * in chat-region coordinates two ways:
+ * The rc.1 version asked users to pick from three hardcoded resolution
+ * presets (1080p/1440p/4K) and edit four numeric inputs. On HiDPI Macs
+ * the displays report logical sizes like 1470×956 and none of the
+ * presets fit. Painful.
  *
- * 1. Snap to a per-resolution preset (most users on stock 1080p / 1440p
- *    setups should never have to read the numbers).
- * 2. Hand-edit x / y / width / height numeric inputs.
- *
- * A scaled rectangle preview shows where the region sits relative to the
- * full display so users can spot off-screen / sub-pixel mistakes before
- * saving.
- *
- * When the capture engine ships, the SVG background will be replaced with
- * the live frame and we'll add drag-to-resize handles; the save contract
- * stays exactly the same.
+ * This version:
+ * 1. **Drag-to-select fullscreen picker.** Primary CTA. Clicking it
+ *    opens a transparent always-on-top window that covers the chosen
+ *    display; the user drags a rectangle on the actual screen with a
+ *    Cmd+Shift+5-style dim. Mouseup -> Save in the picker -> region
+ *    persists -> picker hides -> this modal updates.
+ * 2. **Auto-scaled DotA default** that's computed from the actual
+ *    detected display dimensions, not hardcoded pixel coords. Works on
+ *    any resolution, including the scaled HiDPI configs Apple ships by
+ *    default.
+ * 3. **Manual x/y/w/h inputs** retained as a power-user fallback for
+ *    folks who already know the exact coords.
  */
-
-const PRESETS = [
-  {
-    id: 'dota2-1080p',
-    label: '1920×1080 · Dota 2',
-    displayW: 1920,
-    displayH: 1080,
-    region: { x: 60, y: 820, w: 580, h: 210 },
-  },
-  {
-    id: 'dota2-1440p',
-    label: '2560×1440 · Dota 2',
-    displayW: 2560,
-    displayH: 1440,
-    region: { x: 80, y: 1090, w: 760, h: 280 },
-  },
-  {
-    id: 'dota2-4k',
-    label: '3840×2160 · Dota 2',
-    displayW: 3840,
-    displayH: 2160,
-    region: { x: 120, y: 1640, w: 1140, h: 420 },
-  },
-];
 
 const DEFAULT_DISPLAY = {
   id: 0,
   name: 'Primary Display',
   width: 1920,
   height: 1080,
+  origin_x: 0,
+  origin_y: 0,
   scale_factor: 1.0,
   is_primary: true,
 };
+
+/**
+ * Compute a sensible default chat region for DotA 2 as a function of
+ * the display size, in the same units the rest of the pipeline uses
+ * (logical points on macOS, pixels on Windows).
+ *
+ * Anchors: bottom-left of the screen, ~30% wide, ~22% tall, with a 3%
+ * inset from the screen edges. Tuned against DotA 2's default UI scale
+ * across 1080p / 1440p / 4K and the M1 Air's 1470×956 logical mode.
+ */
+function dota2DefaultRegion(displayW, displayH) {
+  const w = Math.round(displayW * 0.3);
+  const h = Math.round(displayH * 0.22);
+  const x = Math.round(displayW * 0.03);
+  const y = Math.round(displayH * 0.75);
+  return { x, y, w, h };
+}
 
 export default function IncomingCalibrationModal({
   open,
@@ -74,14 +74,17 @@ export default function IncomingCalibrationModal({
 
   const [displays, setDisplays] = useState([DEFAULT_DISPLAY]);
   const [displayId, setDisplayId] = useState(DEFAULT_DISPLAY.id);
-  const [region, setRegion] = useState({ x: 60, y: 820, w: 580, h: 210 });
+  const [region, setRegion] = useState(dota2DefaultRegion(
+    DEFAULT_DISPLAY.width,
+    DEFAULT_DISPLAY.height,
+  ));
   const [saving, setSaving] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
 
-  // ---- Load displays + seed initial region from current settings ----------
+  // ---- Load displays + seed initial region ----
   useEffect(() => {
     if (!open) return;
     let cancelled = false;
-
     (async () => {
       const list = await listDisplays();
       if (cancelled) return;
@@ -92,20 +95,55 @@ export default function IncomingCalibrationModal({
           ? currentRegion.display_id
           : next[0].id;
       setDisplayId(initialDisplayId);
+      const initialDisplay = next.find((d) => d.id === initialDisplayId) || next[0];
       if (currentRegion?.bounds) {
         setRegion({
-          x: currentRegion.bounds.x ?? 60,
-          y: currentRegion.bounds.y ?? 820,
-          w: currentRegion.bounds.w ?? 580,
-          h: currentRegion.bounds.h ?? 210,
+          x: currentRegion.bounds.x ?? 0,
+          y: currentRegion.bounds.y ?? 0,
+          w: currentRegion.bounds.w ?? 0,
+          h: currentRegion.bounds.h ?? 0,
         });
+      } else {
+        setRegion(dota2DefaultRegion(initialDisplay.width, initialDisplay.height));
       }
     })();
-
     return () => {
       cancelled = true;
     };
   }, [open, currentRegion]);
+
+  // ---- Subscribe to region-picker events ----
+  useEffect(() => {
+    if (!open) return;
+    let unlistenSaved = null;
+    let unlistenCancelled = null;
+    (async () => {
+      try {
+        unlistenSaved = await listen('region-picker:saved', (event) => {
+          const payload = event.payload || {};
+          if (payload.region?.bounds) {
+            setRegion({ ...payload.region.bounds });
+          }
+          if (payload.region?.display_id != null) {
+            setDisplayId(payload.region.display_id);
+          }
+          setPickerOpen(false);
+          showSuccess(t('home.incoming.calibration.saved'));
+          onSaved?.();
+        });
+        unlistenCancelled = await listen('region-picker:cancelled', () => {
+          setPickerOpen(false);
+        });
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.warn('failed to listen for picker events', err);
+      }
+    })();
+    return () => {
+      if (typeof unlistenSaved === 'function') unlistenSaved();
+      if (typeof unlistenCancelled === 'function') unlistenCancelled();
+    };
+  }, [open, onSaved, t]);
 
   const activeDisplay = useMemo(
     () => displays.find((d) => d.id === displayId) || displays[0] || DEFAULT_DISPLAY,
@@ -118,10 +156,6 @@ export default function IncomingCalibrationModal({
     setRegion((prev) => ({ ...prev, [field]: Number.isFinite(parsed) ? parsed : 0 }));
   };
 
-  const applyPreset = (preset) => {
-    setRegion(preset.region);
-  };
-
   const isValid =
     region.w > 0 &&
     region.h > 0 &&
@@ -129,6 +163,27 @@ export default function IncomingCalibrationModal({
     region.y >= 0 &&
     region.x + region.w <= activeDisplay.width &&
     region.y + region.h <= activeDisplay.height;
+
+  const handleApplyAutoDefault = () => {
+    setRegion(dota2DefaultRegion(activeDisplay.width, activeDisplay.height));
+  };
+
+  const handleOpenPicker = async () => {
+    if (!hasTauriRuntime()) {
+      showError(t('home.incoming.calibration.pickerDesktopOnly'));
+      return;
+    }
+    setPickerOpen(true);
+    try {
+      await invoke('open_region_picker', {
+        displayId: activeDisplay.id,
+        gameScene,
+      });
+    } catch (error) {
+      setPickerOpen(false);
+      showError(t('home.incoming.calibration.pickerFailed', { error: toErrorMessage(error) }));
+    }
+  };
 
   const handleClear = useCallback(async () => {
     setSaving(true);
@@ -167,7 +222,7 @@ export default function IncomingCalibrationModal({
     }
   }, [activeDisplay.id, gameScene, isValid, onClose, onSaved, region, t]);
 
-  // ---- Preview SVG --------------------------------------------------------
+  // ---- Preview SVG ----
   const previewW = 360;
   const scaleX = previewW / activeDisplay.width;
   const previewH = Math.max(160, Math.round(activeDisplay.height * scaleX));
@@ -183,7 +238,7 @@ export default function IncomingCalibrationModal({
         <motion.div
           className='lingo-calibration-backdrop'
           initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
+          animate={{ opacity: pickerOpen ? 0 : 1 }}
           exit={{ opacity: 0 }}
           onClick={onClose}>
           <motion.div
@@ -213,6 +268,26 @@ export default function IncomingCalibrationModal({
               {t('home.incoming.calibration.intro')}
             </p>
 
+            {/* ---------------- Primary CTA: drag-to-pick ---------------- */}
+            <div className='lingo-calibration-primary'>
+              <button
+                type='button'
+                className='lingo-calibration-primary__btn'
+                onClick={handleOpenPicker}>
+                <span className='lingo-calibration-primary__btn-title'>
+                  {t('home.incoming.calibration.pickerCta')}
+                </span>
+                <span className='lingo-calibration-primary__btn-hint'>
+                  {t('home.incoming.calibration.pickerHint')}
+                </span>
+              </button>
+            </div>
+
+            <div className='lingo-calibration-divider'>
+              <span>{t('home.incoming.calibration.or')}</span>
+            </div>
+
+            {/* ---------------- Auto-default + manual coords ------------- */}
             <div className='lingo-calibration-dialog__grid'>
               <div className='lingo-calibration-form'>
                 <label className='tool-caption' htmlFor='calib-display'>
@@ -222,14 +297,30 @@ export default function IncomingCalibrationModal({
                   id='calib-display'
                   className='tool-input'
                   value={displayId}
-                  onChange={(e) => setDisplayId(Number(e.target.value))}>
+                  onChange={(e) => {
+                    const nextId = Number(e.target.value);
+                    setDisplayId(nextId);
+                    const nextDisplay =
+                      displays.find((d) => d.id === nextId) || displays[0] || DEFAULT_DISPLAY;
+                    setRegion(dota2DefaultRegion(nextDisplay.width, nextDisplay.height));
+                  }}>
                   {displays.map((d) => (
                     <option key={d.id} value={d.id}>
-                      {d.name} · {d.width}×{d.height}
+                      {d.name}
                       {d.is_primary ? ` · ${t('home.incoming.calibration.primary')}` : ''}
                     </option>
                   ))}
                 </select>
+
+                <button
+                  type='button'
+                  className='lingo-calibration-form__preset-btn lingo-calibration-form__preset-btn--wide'
+                  onClick={handleApplyAutoDefault}>
+                  {t('home.incoming.calibration.autoDefaultCta', {
+                    w: activeDisplay.width,
+                    h: activeDisplay.height,
+                  })}
+                </button>
 
                 <div className='lingo-calibration-form__coords'>
                   {[
@@ -251,23 +342,8 @@ export default function IncomingCalibrationModal({
                   ))}
                 </div>
 
-                <div className='lingo-calibration-form__presets'>
-                  <span className='tool-caption'>{t('home.incoming.calibration.presets')}</span>
-                  <div className='lingo-calibration-form__preset-row'>
-                    {PRESETS.map((p) => (
-                      <button
-                        key={p.id}
-                        type='button'
-                        className='lingo-calibration-form__preset-btn'
-                        onClick={() => applyPreset(p)}>
-                        {p.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
                 <p className='lingo-calibration-form__hint'>
-                  {t('home.incoming.calibration.captureSoonNote')}
+                  {t('home.incoming.calibration.coordsHint')}
                 </p>
               </div>
 

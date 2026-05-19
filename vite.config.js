@@ -42,6 +42,7 @@ export default defineConfig(async () => ({
       input: {
         main: resolve(projectRoot, "index.html"),
         overlay: resolve(projectRoot, "overlay.html"),
+        regionPicker: resolve(projectRoot, "region-picker.html"),
       },
       output: {
         manualChunks(id) {

@@ -665,6 +665,117 @@ async fn list_displays() -> Result<Vec<incoming::DisplayInfo>, String> {
 }
 
 #[tauri::command]
+async fn open_region_picker(
+    app_handle: tauri::AppHandle,
+    display_id: u64,
+    game_scene: String,
+) -> Result<(), String> {
+    use tauri::{LogicalPosition, LogicalSize, Manager};
+    let displays = incoming::list_displays();
+    let display = displays
+        .iter()
+        .find(|d| d.id == display_id)
+        .cloned()
+        .or_else(|| displays.first().cloned())
+        .ok_or_else(|| "no displays available".to_string())?;
+
+    let Some(window) = app_handle.get_webview_window("region-picker") else {
+        return Err("region-picker window not found".to_string());
+    };
+
+    window
+        .set_size(LogicalSize::new(display.width as f64, display.height as f64))
+        .map_err(|e| e.to_string())?;
+    window
+        .set_position(LogicalPosition::new(
+            display.origin_x as f64,
+            display.origin_y as f64,
+        ))
+        .map_err(|e| e.to_string())?;
+
+    use serde_json::json;
+    let payload = json!({
+        "display_id": display.id,
+        "game_scene": game_scene,
+        "display_width": display.width,
+        "display_height": display.height,
+    });
+    use tauri::Emitter;
+    // Emit AFTER show so the JS side definitely has its listener wired.
+    window.show().map_err(|e| e.to_string())?;
+    window.set_focus().map_err(|e| e.to_string())?;
+    // Brief delay so the listener registers before we deliver the event.
+    let app_for_emit = app_handle.clone();
+    tauri::async_runtime::spawn(async move {
+        tokio::time::sleep(std::time::Duration::from_millis(80)).await;
+        if let Err(error) = app_for_emit.emit("region-picker:open", payload) {
+            eprintln!("[region-picker] open emit failed: {error}");
+        }
+    });
+    Ok(())
+}
+
+#[tauri::command]
+async fn cancel_region_picker(app_handle: tauri::AppHandle) -> Result<(), String> {
+    use tauri::Manager;
+    if let Some(window) = app_handle.get_webview_window("region-picker") {
+        let _ = window.hide();
+    }
+    use tauri::Emitter;
+    let _ = app_handle.emit("region-picker:cancelled", ());
+    Ok(())
+}
+
+#[allow(clippy::too_many_arguments)]
+#[tauri::command]
+async fn save_picked_region(
+    app_handle: tauri::AppHandle,
+    game_scene: String,
+    display_id: u64,
+    x: i32,
+    y: i32,
+    w: u32,
+    h: u32,
+) -> Result<store::AppSettings, String> {
+    use tauri::{Emitter, Manager};
+    let scene = game_scene.trim().to_string();
+    if scene.is_empty() {
+        return Err("game_scene must not be empty".to_string());
+    }
+    if w == 0 || h == 0 {
+        return Err("picked region has zero width or height".to_string());
+    }
+
+    let region = incoming::ChatRegion {
+        display_id,
+        bounds: incoming::Rect { x, y, w, h },
+        languages: vec![],
+    };
+
+    store::update_settings_field(&app_handle, |settings| {
+        settings.incoming_regions.insert(scene.clone(), region.clone());
+    })
+    .map_err(|e| e.to_string())?;
+
+    let updated = store::get_settings(&app_handle).map_err(|e| e.to_string())?;
+
+    // Hide the picker window and fan an event out to the main window so
+    // the calibration modal can refresh its preview.
+    if let Some(window) = app_handle.get_webview_window("region-picker") {
+        let _ = window.hide();
+    }
+    let payload = serde_json::json!({
+        "game_scene": scene,
+        "region": region,
+    });
+    if let Err(error) = app_handle.emit("region-picker:saved", payload) {
+        eprintln!("[region-picker] saved emit failed: {error}");
+    }
+
+    Ok(updated)
+}
+
+#[tauri::command]
 async fn check_screen_recording_permission() -> Result<incoming::PermissionState, String> {
     Ok(incoming::current_permission_state())
 }
@@ -781,6 +892,9 @@ pub fn run() {
             set_incoming_overlay_click_through,
             update_incoming_toggle_hotkey,
             update_incoming_click_through_hotkey,
+            open_region_picker,
+            cancel_region_picker,
+            save_picked_region,
         ]);
 
     #[cfg(not(target_os = "windows"))]

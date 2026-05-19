@@ -111,6 +111,13 @@ pub struct DisplayInfo {
     pub name: String,
     pub width: u32,
     pub height: u32,
+    /// Origin in the global desktop coordinate space (logical points on
+    /// macOS, pixels on Windows). The region-picker window uses this to
+    /// position itself over the right display in a multi-monitor setup.
+    #[serde(default)]
+    pub origin_x: i32,
+    #[serde(default)]
+    pub origin_y: i32,
     pub scale_factor: f32,
     pub is_primary: bool,
 }
@@ -132,6 +139,8 @@ pub fn list_displays_stub() -> Vec<DisplayInfo> {
         name: "Primary Display".to_string(),
         width: 1920,
         height: 1080,
+        origin_x: 0,
+        origin_y: 0,
         scale_factor: 1.0,
         is_primary: true,
     }]

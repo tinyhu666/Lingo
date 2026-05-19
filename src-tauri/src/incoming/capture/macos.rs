@@ -92,15 +92,24 @@ pub fn list_displays() -> Vec<DisplayInfo> {
         } else {
             1.0
         };
+        // The DisplayInfo dimensions we expose to the front-end are in
+        // *logical points*, which is what Tauri windows and CSS pixels
+        // both use on macOS. The region-picker window needs to size +
+        // position itself in points, and the chat region we save also
+        // gets used in points by `CGDisplayCreateImageForRect` later.
+        let logical_w = bounds.size.width.round() as u32;
+        let logical_h = bounds.size.height.round() as u32;
         out.push(DisplayInfo {
             id: id as u64,
             name: if id == main_id {
-                format!("Main display ({width}\u{00d7}{height})")
+                format!("Main display ({logical_w}\u{00d7}{logical_h})")
             } else {
-                format!("Display {id} ({width}\u{00d7}{height})")
+                format!("Display {id} ({logical_w}\u{00d7}{logical_h})")
             },
-            width,
-            height,
+            width: logical_w,
+            height: logical_h,
+            origin_x: bounds.origin.x.round() as i32,
+            origin_y: bounds.origin.y.round() as i32,
             scale_factor,
             is_primary: id == main_id,
         });
