@@ -1,14 +1,16 @@
 //! Screen-region capture abstraction.
 //!
 //! Production implementations:
-//! - macOS: `ScreenCaptureKit` via the `screencapturekit` crate. Requires
-//!   user-granted Screen Recording permission. First-launch flow asks
-//!   politely; status is queryable via `CGPreflightScreenCaptureAccess`.
-//! - Windows: `Windows.Graphics.Capture` via the `windows-capture` crate.
-//!   No UAC prompt required on Windows 10 1903+.
+//! - macOS: `CGDisplayCreateImageForRect` (CoreGraphics) for the captured
+//!   region, then re-rendered into a premultiplied-first BGRA8 buffer via
+//!   `CGBitmapContext`. The legacy CG path is intentional — it runs back
+//!   to macOS 10.13 (our minimum) where `ScreenCaptureKit` (macOS 12.3+) /
+//!   `SCScreenshotManager` (macOS 14+) don't exist. The user-grant flow
+//!   for Screen Recording is queried via `CGPreflightScreenCaptureAccess`.
+//! - Windows: `Windows.Graphics.Capture` (planned, Spike B).
 //!
-//! Both impls produce premultiplied BGRA8 frames; conversion to whatever the
-//! OCR engine wants is the caller's job.
+//! Both impls produce premultiplied BGRA8 frames; conversion to whatever
+//! the OCR engine wants is the caller's job.
 
 use crate::incoming::region::ChatRegion;
 use std::fmt;
@@ -71,19 +73,11 @@ pub fn default_capture_source() -> Result<Box<dyn CaptureSource>, CaptureError> 
 }
 
 // ---------------------------------------------------------------------------
-// Platform-specific stubs. Each module will grow into a real implementation
-// in v0.7.0-rc.2. Until then they return Unimplemented so the surface
-// compiles on both platforms.
+// Platform impls.
 // ---------------------------------------------------------------------------
 
 #[cfg(target_os = "macos")]
-mod macos {
-    use super::*;
-
-    pub fn create() -> Result<Box<dyn CaptureSource>, CaptureError> {
-        Err(CaptureError::Unimplemented)
-    }
-}
+pub mod macos;
 
 #[cfg(target_os = "windows")]
 mod windows {
@@ -92,4 +86,30 @@ mod windows {
     pub fn create() -> Result<Box<dyn CaptureSource>, CaptureError> {
         Err(CaptureError::Unimplemented)
     }
+}
+
+/// Platform-specific permission state for Screen Recording.
+#[cfg(target_os = "macos")]
+pub use macos::{list_displays, permission_state, request_permission};
+
+#[cfg(not(target_os = "macos"))]
+pub fn permission_state() -> crate::incoming::PermissionState {
+    #[cfg(target_os = "windows")]
+    {
+        crate::incoming::PermissionState::NotApplicable
+    }
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+    {
+        crate::incoming::PermissionState::Unknown
+    }
+}
+
+#[cfg(not(target_os = "macos"))]
+pub fn request_permission() -> crate::incoming::PermissionState {
+    permission_state()
+}
+
+#[cfg(not(target_os = "macos"))]
+pub fn list_displays() -> Vec<crate::incoming::DisplayInfo> {
+    crate::incoming::list_displays_stub()
 }

@@ -115,9 +115,17 @@ pub struct DisplayInfo {
     pub is_primary: bool,
 }
 
-/// Returns the platform's display list. Stub returns a single synthetic
-/// "primary" entry so the front-end calibration UI can render without
-/// crashing while the real implementation is in flight.
+/// Returns the platform's display list. On macOS this calls
+/// `CGGetActiveDisplayList` to enumerate active displays. On unsupported
+/// platforms it falls back to [`list_displays_stub`] so the front-end
+/// calibration UI can still render.
+pub fn list_displays() -> Vec<DisplayInfo> {
+    capture::list_displays()
+}
+
+/// Synthetic single-entry display list, used as a fallback when the
+/// platform refuses or there is no usable display API. Kept public so
+/// the platform-specific implementations can defer to it on error.
 pub fn list_displays_stub() -> Vec<DisplayInfo> {
     vec![DisplayInfo {
         id: 0,

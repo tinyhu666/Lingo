@@ -58,8 +58,17 @@ objc2-core-graphics = { version = "0.3", features = [
   "CGImage",
   "CGDataProvider",
   "CGColorSpace",
+  "CGContext",
+  "CGBitmapContext",
+  "CGDirectDisplay",
+  "CGError",
 ] }
-objc2-core-foundation = { version = "0.3", features = ["CFData"] }
+# We intentionally do NOT enable the "CGWindow" feature here. That would
+# pull in `CGPreflightScreenCaptureAccess` / `CGRequestScreenCaptureAccess`
+# as hard-linked symbols which don't exist before macOS 10.15. Permission
+# checks instead go through `incoming::permission`, which uses `dlsym` so
+# the binary still loads on older macOS and just reports `Unknown`.
+objc2-core-foundation = { version = "0.3", features = ["CFData", "CFCGTypes"] }
 
 [target.'cfg(target_os = "windows")'.dependencies]
 raw-window-handle = "0.6"

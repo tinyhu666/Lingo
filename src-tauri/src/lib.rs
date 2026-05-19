@@ -659,9 +659,9 @@ async fn set_incoming_capture_rate(
 
 #[tauri::command]
 async fn list_displays() -> Result<Vec<incoming::DisplayInfo>, String> {
-    // Stub list during scaffolding. Real impl in v0.7.0-rc.2 will enumerate
-    // displays via ScreenCaptureKit (macOS) and EnumDisplayMonitors (Windows).
-    Ok(incoming::list_displays_stub())
+    // macOS: CGGetActiveDisplayList. Windows: still stub until
+    // Spike B lands.
+    Ok(incoming::list_displays())
 }
 
 #[tauri::command]
