@@ -1,6 +1,6 @@
 [package]
 name = "Lingo"
-version = "0.6.9"
+version = "0.7.1"
 description = "A Tauri App"
 authors = ["you"]
 license = ""
@@ -37,6 +37,39 @@ tokio = { version = "1", features = ["time"] }
 tauri-plugin-global-shortcut = "2"
 tauri-plugin-updater = "2"
 
+[target.'cfg(target_os = "macos")'.dependencies]
+# Apple Vision OCR for the v0.7.0 incoming-chat translation feature.
+# Reference impl lives at spikes/ocr-vision/spike.swift.
+objc2 = "0.6"
+objc2-foundation = { version = "0.3", features = [
+  "NSArray",
+  "NSDictionary",
+  "NSError",
+  "NSString",
+  "NSValue",
+] }
+objc2-vision = { version = "0.3", features = [
+  "VNRequest",
+  "VNRequestHandler",
+  "VNObservation",
+  "VNRecognizeTextRequest",
+] }
+objc2-core-graphics = { version = "0.3", features = [
+  "CGImage",
+  "CGDataProvider",
+  "CGColorSpace",
+  "CGContext",
+  "CGBitmapContext",
+  "CGDirectDisplay",
+  "CGError",
+] }
+# We intentionally do NOT enable the "CGWindow" feature here. That would
+# pull in `CGPreflightScreenCaptureAccess` / `CGRequestScreenCaptureAccess`
+# as hard-linked symbols which don't exist before macOS 10.15. Permission
+# checks instead go through `incoming::permission`, which uses `dlsym` so
+# the binary still loads on older macOS and just reports `Unknown`.
+objc2-core-foundation = { version = "0.3", features = ["CFData", "CFCGTypes"] }
+
 [target.'cfg(target_os = "windows")'.dependencies]
 raw-window-handle = "0.6"
 windows-sys = { version = "0.61", features = [
@@ -44,4 +77,31 @@ windows-sys = { version = "0.61", features = [
   "Win32_Graphics_Dwm",
   "Win32_Graphics_Gdi",
   "Win32_UI_WindowsAndMessaging",
+] }
+# High-level WinRT-projecting crate for the v0.7.0 incoming-translation
+# feature. Used by `incoming::ocr::windows` (Windows.Media.Ocr) and
+# `incoming::capture::windows` (Windows.Graphics.Capture). Coexists with
+# `windows-sys` above; they target different layers (WinRT vs raw Win32)
+# and don't conflict. Pinned to match the spike crate so the COM ABI is
+# guaranteed identical.
+# Reference: spikes/ocr-vision/SPIKE_B_WINDOWS.md.
+windows = { version = "=0.61.3", features = [
+  "Foundation",
+  "Foundation_Collections",
+  "Globalization",
+  "Graphics_Capture",
+  "Graphics_DirectX",
+  "Graphics_DirectX_Direct3D11",
+  "Graphics_Imaging",
+  "Media_Ocr",
+  "Storage_Streams",
+  "Win32_Foundation",
+  "Win32_Graphics_Direct3D",
+  "Win32_Graphics_Direct3D11",
+  "Win32_Graphics_Dxgi",
+  "Win32_Graphics_Dxgi_Common",
+  "Win32_Graphics_Gdi",
+  "Win32_System_WinRT",
+  "Win32_System_WinRT_Direct3D11",
+  "Win32_System_WinRT_Graphics_Capture",
 ] }

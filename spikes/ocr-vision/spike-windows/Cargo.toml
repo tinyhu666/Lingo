@@ -1,0 +1,24 @@
+[package]
+name = "spike-windows-ocr"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+# Standalone spike binary for the v0.7.0 incoming-translation Windows port.
+# Measures Windows.Media.Ocr accuracy + latency against samples/dota2/.
+# Findings drive the design of src-tauri/src/incoming/ocr/windows.rs.
+
+[[bin]]
+name = "spike-windows-ocr"
+path = "src/main.rs"
+
+[dependencies]
+windows = { version = "=0.61.3", features = [
+    "Foundation",
+    "Foundation_Collections",
+    "Globalization",
+    "Graphics_Imaging",
+    "Media_Ocr",
+    "Storage_Streams",
+] }
+image = { version = "=0.25.10", default-features = false, features = ["png"] }

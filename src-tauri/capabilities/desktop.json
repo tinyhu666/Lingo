@@ -29,22 +29,12 @@
       "identifier": "shell:allow-execute",
       "allow": [
         {
-          "name": "exec-sh",
-          "cmd": "sh",
-          "args": [
-            "-c",
-            {
-              "validator": "\\S+"
-            }
-          ]
-        },
-        {
           "name": "exec-osascript",
           "cmd": "osascript",
           "args": [
             "-e",
             {
-              "validator": "^tell application \"System Events\".+"
+              "validator": "^tell application \"System Events\"\\n(    keystroke \"[acv]\" using command down\\n    delay 0\\.03\\n){1,2}end tell\\n$"
             }
           ]
         },
@@ -54,7 +44,7 @@
           "args": [
             "-Command",
             {
-              "validator": "^Add-Type.+"
+              "validator": "^Add-Type -AssemblyName System\\.Windows\\.Forms\\n(\\[System\\.Windows\\.Forms\\.SendKeys\\]::SendWait\\(\"\\^[acv]\"\\)\\nStart-Sleep -Milliseconds 30\\n){1,2}$"
             }
           ]
         }

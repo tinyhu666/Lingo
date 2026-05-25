@@ -19,6 +19,7 @@ use windows_sys::Win32::Graphics::Dwm::{
 #[cfg(target_os = "windows")]
 use windows_sys::Win32::Graphics::Gdi::{CreateRoundRectRgn, SetWindowRgn};
 pub mod ai_translator;
+pub mod incoming;
 pub mod shell_helper;
 pub mod shortcut;
 pub mod store;
@@ -103,15 +104,53 @@ struct ReleaseMetadata {
     body: Option<String>,
 }
 
+fn split_version(value: &str) -> (Vec<u64>, Option<String>) {
+    let without_build = value.split_once('+').map(|(a, _)| a).unwrap_or(value);
+    let (core, prerelease) = match without_build.split_once('-') {
+        Some((core, pre)) => (core, Some(pre.to_string())),
+        None => (without_build, None),
+    };
+    let parts = core
+        .split('.')
+        .map(|part| part.parse::<u64>().unwrap_or(0))
+        .collect::<Vec<_>>();
+    (parts, prerelease)
+}
+
+fn compare_prerelease(left: &str, right: &str) -> std::cmp::Ordering {
+    let left_ids: Vec<&str> = left.split('.').collect();
+    let right_ids: Vec<&str> = right.split('.').collect();
+    let max_len = left_ids.len().max(right_ids.len());
+
+    for index in 0..max_len {
+        let l = left_ids.get(index);
+        let r = right_ids.get(index);
+        match (l, r) {
+            (None, Some(_)) => return std::cmp::Ordering::Less,
+            (Some(_), None) => return std::cmp::Ordering::Greater,
+            (None, None) => return std::cmp::Ordering::Equal,
+            (Some(l), Some(r)) => {
+                let l_num = l.parse::<u64>().ok();
+                let r_num = r.parse::<u64>().ok();
+                let ordering = match (l_num, r_num) {
+                    (Some(ln), Some(rn)) => ln.cmp(&rn),
+                    (Some(_), None) => std::cmp::Ordering::Less,
+                    (None, Some(_)) => std::cmp::Ordering::Greater,
+                    (None, None) => l.cmp(r),
+                };
+                if ordering != std::cmp::Ordering::Equal {
+                    return ordering;
+                }
+            }
+        }
+    }
+
+    std::cmp::Ordering::Equal
+}
+
 fn compare_versions(left: &str, right: &str) -> std::cmp::Ordering {
-    let left_parts = left
-        .split('.')
-        .map(|part| part.parse::<u64>().unwrap_or(0))
-        .collect::<Vec<_>>();
-    let right_parts = right
-        .split('.')
-        .map(|part| part.parse::<u64>().unwrap_or(0))
-        .collect::<Vec<_>>();
+    let (left_parts, left_pre) = split_version(left);
+    let (right_parts, right_pre) = split_version(right);
     let max_len = left_parts.len().max(right_parts.len());
 
     for index in 0..max_len {
@@ -124,7 +163,12 @@ fn compare_versions(left: &str, right: &str) -> std::cmp::Ordering {
         }
     }
 
-    std::cmp::Ordering::Equal
+    match (left_pre, right_pre) {
+        (None, None) => std::cmp::Ordering::Equal,
+        (None, Some(_)) => std::cmp::Ordering::Greater,
+        (Some(_), None) => std::cmp::Ordering::Less,
+        (Some(l), Some(r)) => compare_prerelease(&l, &r),
+    }
 }
 
 fn pick_newer_version(left: Option<String>, right: Option<String>) -> Option<String> {
@@ -143,7 +187,14 @@ fn pick_newer_version(left: Option<String>, right: Option<String>) -> Option<Str
 
 fn normalize_version(value: Option<String>) -> Option<String> {
     value
-        .map(|item| item.trim().trim_start_matches('v').trim().to_string())
+        .map(|item| {
+            let trimmed = item.trim();
+            let stripped = trimmed
+                .strip_prefix('v')
+                .or_else(|| trimmed.strip_prefix('V'))
+                .unwrap_or(trimmed);
+            stripped.trim().to_string()
+        })
         .filter(|item| !item.is_empty())
 }
 
@@ -233,11 +284,6 @@ fn get_version(app_handle: tauri::AppHandle) -> String {
 #[tauri::command]
 fn get_public_backend_config() -> ai_translator::PublicBackendConfig {
     ai_translator::public_backend_config()
-}
-
-#[tauri::command]
-fn greet(name: &str) -> String {
-    format!("Hello, {}! You've been greeted from Rust!", name)
 }
 
 #[tauri::command]
@@ -364,10 +410,391 @@ async fn get_latest_release_metadata() -> Result<ReleaseMetadata, String> {
     })
 }
 
+// =============================================================================
+// Incoming-chat translation commands (v0.7.0 scaffolding)
+// =============================================================================
+//
+// These commands expose the API surface the front-end will call once the
+// incoming-translation feature is live. Most are intentionally thin during
+// the scaffolding phase: they persist user settings now so the UI is fully
+// configurable, but they do not yet drive the capture/OCR/translate pipeline.
+// The pipeline itself is wired in v0.7.0-rc.2.
+
+#[tauri::command]
+async fn get_incoming_status(
+    app_handle: tauri::AppHandle,
+    pipeline: tauri::State<'_, std::sync::Arc<incoming::IncomingPipeline>>,
+) -> Result<incoming::IncomingStatus, String> {
+    let settings = store::get_settings(&app_handle).map_err(|e| e.to_string())?;
+    let scene = settings.game_scene.clone();
+    let has_region = settings.incoming_regions.contains_key(&scene);
+    Ok(incoming::IncomingStatus {
+        enabled: settings.incoming_enabled,
+        active: pipeline.is_running(),
+        permission: incoming::current_permission_state(),
+        current_game_scene: Some(scene),
+        has_region_for_current_scene: has_region,
+        capture_rate_hz: settings.incoming_capture_rate_hz,
+        last_error: None,
+    })
+}
+
+pub(crate) fn start_options_from_settings(settings: &store::AppSettings) -> incoming::StartOptions {
+    incoming::StartOptions {
+        capture_rate_hz: settings.incoming_capture_rate_hz,
+        game_scene: settings.game_scene.clone(),
+        target_lang: settings.translation_to.clone(),
+        show_original: settings.incoming_overlay.show_original,
+    }
+}
+
+pub(crate) fn show_incoming_overlay_window(app: &tauri::AppHandle) -> Result<(), String> {
+    use tauri::Manager;
+    let Some(window) = app.get_webview_window("incoming-overlay") else {
+        return Err("incoming-overlay window not found".to_string());
+    };
+    window.show().map_err(|e| e.to_string())?;
+
+    // Re-apply persisted click-through state. A freshly shown window comes
+    // up interactive by default; we want to honor the user's last choice.
+    let click_through = store::get_settings(app)
+        .map(|s| s.incoming_overlay.click_through)
+        .unwrap_or(false);
+    if click_through {
+        if let Err(error) = window.set_ignore_cursor_events(true) {
+            eprintln!("[incoming] failed to restore click-through state: {error}");
+        }
+    }
+    Ok(())
+}
+
+pub(crate) fn hide_incoming_overlay_window(app: &tauri::AppHandle) -> Result<(), String> {
+    use tauri::Manager;
+    let Some(window) = app.get_webview_window("incoming-overlay") else {
+        return Ok(());
+    };
+    window.hide().map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+pub(crate) fn apply_incoming_overlay_click_through(
+    app: &tauri::AppHandle,
+    click_through: bool,
+) -> Result<(), String> {
+    use tauri::Manager;
+    let Some(window) = app.get_webview_window("incoming-overlay") else {
+        return Err("incoming-overlay window not found".to_string());
+    };
+    window
+        .set_ignore_cursor_events(click_through)
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+async fn set_incoming_overlay_click_through(
+    app_handle: tauri::AppHandle,
+    click_through: bool,
+) -> Result<store::AppSettings, String> {
+    apply_click_through(&app_handle, click_through)
+}
+
+/// Flip `incoming_enabled` and apply the side-effects (start/stop pipeline,
+/// show/hide overlay). Shared between the Tauri command and the global
+/// hotkey handler.
+pub(crate) fn apply_incoming_enabled(
+    app: &tauri::AppHandle,
+    pipeline: &std::sync::Arc<incoming::IncomingPipeline>,
+    enabled: bool,
+) -> Result<store::AppSettings, String> {
+    store::update_settings_field(app, |settings| {
+        settings.incoming_enabled = enabled;
+    })
+    .map_err(|e| e.to_string())?;
+
+    let settings = store::get_settings(app).map_err(|e| e.to_string())?;
+
+    if enabled {
+        let opts = start_options_from_settings(&settings);
+        pipeline.start(app.clone(), opts)?;
+        if let Err(error) = show_incoming_overlay_window(app) {
+            eprintln!("[incoming] show overlay failed: {error}");
+        }
+    } else {
+        pipeline.stop();
+        if let Err(error) = hide_incoming_overlay_window(app) {
+            eprintln!("[incoming] hide overlay failed: {error}");
+        }
+    }
+
+    Ok(settings)
+}
+
+/// Flip `incoming_overlay.click_through` and apply the side-effect.
+/// Shared between the Tauri command and the global hotkey handler.
+pub(crate) fn apply_click_through(
+    app: &tauri::AppHandle,
+    click_through: bool,
+) -> Result<store::AppSettings, String> {
+    apply_incoming_overlay_click_through(app, click_through)?;
+    store::update_settings_field(app, |settings| {
+        settings.incoming_overlay.click_through = click_through;
+    })
+    .map_err(|e| e.to_string())?;
+    store::get_settings(app).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn set_incoming_enabled(
+    app_handle: tauri::AppHandle,
+    pipeline: tauri::State<'_, std::sync::Arc<incoming::IncomingPipeline>>,
+    enabled: bool,
+) -> Result<store::AppSettings, String> {
+    apply_incoming_enabled(&app_handle, &pipeline, enabled)
+}
+
+#[tauri::command]
+async fn show_incoming_overlay(app_handle: tauri::AppHandle) -> Result<(), String> {
+    show_incoming_overlay_window(&app_handle)
+}
+
+#[tauri::command]
+async fn hide_incoming_overlay(app_handle: tauri::AppHandle) -> Result<(), String> {
+    hide_incoming_overlay_window(&app_handle)
+}
+
+#[tauri::command]
+async fn save_incoming_chat_region(
+    app_handle: tauri::AppHandle,
+    game_scene: String,
+    region: incoming::ChatRegion,
+) -> Result<store::AppSettings, String> {
+    let scene = game_scene.trim().to_string();
+    if scene.is_empty() {
+        return Err("game_scene must not be empty".to_string());
+    }
+    if region.bounds.w == 0 || region.bounds.h == 0 {
+        return Err("chat region must have non-zero width and height".to_string());
+    }
+
+    store::update_settings_field(&app_handle, |settings| {
+        settings.incoming_regions.insert(scene.clone(), region.clone());
+    })
+    .map_err(|e| e.to_string())?;
+    store::get_settings(&app_handle).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn clear_incoming_chat_region(
+    app_handle: tauri::AppHandle,
+    game_scene: String,
+) -> Result<store::AppSettings, String> {
+    let scene = game_scene.trim().to_string();
+    if scene.is_empty() {
+        return Err("game_scene must not be empty".to_string());
+    }
+    store::update_settings_field(&app_handle, |settings| {
+        settings.incoming_regions.remove(&scene);
+    })
+    .map_err(|e| e.to_string())?;
+    store::get_settings(&app_handle).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn update_incoming_overlay_preferences(
+    app_handle: tauri::AppHandle,
+    preferences: store::OverlayPreferences,
+) -> Result<store::AppSettings, String> {
+    store::update_settings_field(&app_handle, |settings| {
+        settings.incoming_overlay = preferences.clone();
+    })
+    .map_err(|e| e.to_string())?;
+
+    let updated = store::get_settings(&app_handle).map_err(|e| e.to_string())?;
+
+    // The overlay window listens for `incoming:prefs` and live-updates
+    // opacity / font size / fade / max_lines without a reload.
+    use tauri::Emitter;
+    if let Err(error) = app_handle.emit("incoming:prefs", &updated.incoming_overlay) {
+        eprintln!("[incoming] failed to broadcast prefs: {error}");
+    }
+
+    Ok(updated)
+}
+
+#[tauri::command]
+async fn update_incoming_toggle_hotkey(
+    app_handle: tauri::AppHandle,
+    keys: Vec<String>,
+) -> Result<store::AppSettings, String> {
+    shortcut::update_incoming_toggle_shortcut(&app_handle, keys)?;
+    store::get_settings(&app_handle).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn update_incoming_click_through_hotkey(
+    app_handle: tauri::AppHandle,
+    keys: Vec<String>,
+) -> Result<store::AppSettings, String> {
+    shortcut::update_incoming_click_through_shortcut(&app_handle, keys)?;
+    store::get_settings(&app_handle).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn set_incoming_capture_rate(
+    app_handle: tauri::AppHandle,
+    rate_hz: f32,
+) -> Result<store::AppSettings, String> {
+    if !rate_hz.is_finite() || rate_hz < 0.5 || rate_hz > 4.0 {
+        return Err(format!(
+            "capture rate must be a finite number in [0.5, 4.0], got {rate_hz}"
+        ));
+    }
+    store::update_settings_field(&app_handle, |settings| {
+        settings.incoming_capture_rate_hz = rate_hz;
+    })
+    .map_err(|e| e.to_string())?;
+    store::get_settings(&app_handle).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn list_displays() -> Result<Vec<incoming::DisplayInfo>, String> {
+    // macOS: CGGetActiveDisplayList. Windows: still stub until
+    // Spike B lands.
+    Ok(incoming::list_displays())
+}
+
+#[tauri::command]
+async fn open_region_picker(
+    app_handle: tauri::AppHandle,
+    display_id: u64,
+    game_scene: String,
+) -> Result<(), String> {
+    use tauri::{LogicalPosition, LogicalSize, Manager};
+    let displays = incoming::list_displays();
+    let display = displays
+        .iter()
+        .find(|d| d.id == display_id)
+        .cloned()
+        .or_else(|| displays.first().cloned())
+        .ok_or_else(|| "no displays available".to_string())?;
+
+    let Some(window) = app_handle.get_webview_window("region-picker") else {
+        return Err("region-picker window not found".to_string());
+    };
+
+    window
+        .set_size(LogicalSize::new(display.width as f64, display.height as f64))
+        .map_err(|e| e.to_string())?;
+    window
+        .set_position(LogicalPosition::new(
+            display.origin_x as f64,
+            display.origin_y as f64,
+        ))
+        .map_err(|e| e.to_string())?;
+
+    use serde_json::json;
+    let payload = json!({
+        "display_id": display.id,
+        "game_scene": game_scene,
+        "display_width": display.width,
+        "display_height": display.height,
+    });
+    use tauri::Emitter;
+    // Emit AFTER show so the JS side definitely has its listener wired.
+    window.show().map_err(|e| e.to_string())?;
+    window.set_focus().map_err(|e| e.to_string())?;
+    // Brief delay so the listener registers before we deliver the event.
+    let app_for_emit = app_handle.clone();
+    tauri::async_runtime::spawn(async move {
+        tokio::time::sleep(std::time::Duration::from_millis(80)).await;
+        if let Err(error) = app_for_emit.emit("region-picker:open", payload) {
+            eprintln!("[region-picker] open emit failed: {error}");
+        }
+    });
+    Ok(())
+}
+
+#[tauri::command]
+async fn cancel_region_picker(app_handle: tauri::AppHandle) -> Result<(), String> {
+    use tauri::Manager;
+    if let Some(window) = app_handle.get_webview_window("region-picker") {
+        let _ = window.hide();
+    }
+    use tauri::Emitter;
+    let _ = app_handle.emit("region-picker:cancelled", ());
+    Ok(())
+}
+
+#[allow(clippy::too_many_arguments)]
+#[tauri::command]
+async fn save_picked_region(
+    app_handle: tauri::AppHandle,
+    game_scene: String,
+    display_id: u64,
+    x: i32,
+    y: i32,
+    w: u32,
+    h: u32,
+) -> Result<store::AppSettings, String> {
+    use tauri::{Emitter, Manager};
+    let scene = game_scene.trim().to_string();
+    if scene.is_empty() {
+        return Err("game_scene must not be empty".to_string());
+    }
+    if w == 0 || h == 0 {
+        return Err("picked region has zero width or height".to_string());
+    }
+
+    let region = incoming::ChatRegion {
+        display_id,
+        bounds: incoming::Rect { x, y, w, h },
+        languages: vec![],
+    };
+
+    store::update_settings_field(&app_handle, |settings| {
+        settings.incoming_regions.insert(scene.clone(), region.clone());
+    })
+    .map_err(|e| e.to_string())?;
+
+    let updated = store::get_settings(&app_handle).map_err(|e| e.to_string())?;
+
+    // Hide the picker window and fan an event out to the main window so
+    // the calibration modal can refresh its preview.
+    if let Some(window) = app_handle.get_webview_window("region-picker") {
+        let _ = window.hide();
+    }
+    let payload = serde_json::json!({
+        "game_scene": scene,
+        "region": region,
+    });
+    if let Err(error) = app_handle.emit("region-picker:saved", payload) {
+        eprintln!("[region-picker] saved emit failed: {error}");
+    }
+
+    Ok(updated)
+}
+
+#[tauri::command]
+async fn check_screen_recording_permission() -> Result<incoming::PermissionState, String> {
+    Ok(incoming::current_permission_state())
+}
+
+#[tauri::command]
+async fn request_screen_recording_permission() -> Result<incoming::PermissionState, String> {
+    // macOS shows its own Screen Recording prompt on first call. The user
+    // typically has to restart the app before a freshly granted permission
+    // takes effect — the front-end surfaces that hint.
+    Ok(incoming::request_permission_prompt())
+}
+
 pub fn run() {
     println!("Starting application...");
 
+    let incoming_pipeline = std::sync::Arc::new(incoming::IncomingPipeline::new());
+
     let builder = tauri::Builder::default()
+        .manage(incoming_pipeline.clone())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_store::Builder::default().build())
@@ -377,7 +804,7 @@ pub fn run() {
         .plugin(tauri_plugin_clipboard_manager::init())
         // opener插件
         .plugin(tauri_plugin_opener::init())
-        .setup(|app| {
+        .setup(move |app| {
             // 初始化存储
             println!("Initializing...");
             match initialize_settings(app.app_handle()) {
@@ -395,6 +822,19 @@ pub fn run() {
                 }
                 Ok(_) => println!("应用当前处于暂停状态，跳过翻译代理预热"),
                 Err(error) => eprintln!("读取设置以决定是否预热失败: {}", error),
+            }
+
+            // Restore incoming-translation state from persisted settings.
+            if let Ok(settings) = store::get_settings(app.app_handle()) {
+                if settings.incoming_enabled {
+                    let opts = start_options_from_settings(&settings);
+                    if let Err(error) = incoming_pipeline.start(app.app_handle().clone(), opts) {
+                        eprintln!("启动入向翻译管线失败: {}", error);
+                    }
+                    if let Err(error) = show_incoming_overlay_window(app.app_handle()) {
+                        eprintln!("显示入向翻译覆盖窗失败: {}", error);
+                    }
+                }
             }
 
             // 初始化所有快捷键
@@ -429,7 +869,6 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
-            greet,
             update_translator_shortcut,
             log_to_backend,
             get_settings,
@@ -437,7 +876,25 @@ pub fn run() {
             get_public_backend_config,
             set_app_enabled,
             update_phrases,
-            get_latest_release_metadata
+            get_latest_release_metadata,
+            // v0.7.0 incoming-chat translation
+            get_incoming_status,
+            set_incoming_enabled,
+            save_incoming_chat_region,
+            clear_incoming_chat_region,
+            update_incoming_overlay_preferences,
+            set_incoming_capture_rate,
+            list_displays,
+            check_screen_recording_permission,
+            request_screen_recording_permission,
+            show_incoming_overlay,
+            hide_incoming_overlay,
+            set_incoming_overlay_click_through,
+            update_incoming_toggle_hotkey,
+            update_incoming_click_through_hotkey,
+            open_region_picker,
+            cancel_region_picker,
+            save_picked_region,
         ]);
 
     #[cfg(not(target_os = "windows"))]

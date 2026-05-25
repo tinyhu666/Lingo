@@ -1,6 +1,9 @@
 use serde_json::json;
+use std::collections::HashMap;
 use tauri::AppHandle;
 use tauri_plugin_store::StoreExt;
+
+use crate::incoming::region::ChatRegion;
 
 const STORE_FILENAME: &str = "store.json";
 const UI_LOCALE_KEY: &str = "ui_locale";
@@ -56,6 +59,82 @@ impl Default for HotkeyConfig {
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 #[serde(default)]
+pub struct OverlayPreferences {
+    pub x: i32,
+    pub y: i32,
+    pub w: u32,
+    pub h: u32,
+    pub opacity: f32,
+    pub font_size: u32,
+    pub show_original: bool,
+    pub fade_ms: u32,
+    pub max_lines: u32,
+    /// When true, the overlay window ignores mouse events so clicks pass
+    /// through to the game underneath. The user toggles this from the main
+    /// window since once enabled the overlay itself becomes uninteractable.
+    pub click_through: bool,
+}
+
+impl Default for OverlayPreferences {
+    fn default() -> Self {
+        Self {
+            x: 24,
+            y: 24,
+            w: 380,
+            h: 280,
+            opacity: 0.85,
+            font_size: 14,
+            show_original: true,
+            fade_ms: 8000,
+            max_lines: 6,
+            click_through: false,
+        }
+    }
+}
+
+fn default_incoming_toggle_hotkey() -> HotkeyConfig {
+    // Lingo's outgoing translator already owns plain `Cmd/Alt + T`. Use the
+    // same main key + Shift so the two halves stay mentally paired.
+    #[cfg(target_os = "macos")]
+    let (modifiers, symbol) = (vec!["Meta".to_string(), "Shift".to_string()], "\u{2318}+\u{21E7}");
+    #[cfg(not(target_os = "macos"))]
+    let (modifiers, symbol) = (vec!["Alt".to_string(), "Shift".to_string()], "Alt+\u{21E7}");
+
+    HotkeyConfig {
+        modifiers,
+        key: "KeyT".to_string(),
+        shortcut: format!("{}+T", symbol),
+    }
+}
+
+fn default_incoming_click_through_hotkey() -> HotkeyConfig {
+    // ⌘⌥L / Ctrl+Alt+L — "L for Lock to game". Picked because Control+L and
+    // Cmd+L are rare in DotA / LoL / Overwatch keybinds and there's no
+    // common chat conflict.
+    #[cfg(target_os = "macos")]
+    let (modifiers, symbol) = (
+        vec!["Meta".to_string(), "Alt".to_string()],
+        "\u{2318}+\u{2325}",
+    );
+    #[cfg(not(target_os = "macos"))]
+    let (modifiers, symbol) = (
+        vec!["Control".to_string(), "Alt".to_string()],
+        "Ctrl+Alt",
+    );
+
+    HotkeyConfig {
+        modifiers,
+        key: "KeyL".to_string(),
+        shortcut: format!("{}+L", symbol),
+    }
+}
+
+fn default_capture_rate_hz() -> f32 {
+    1.5
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[serde(default)]
 pub struct AppSettings {
     #[serde(default = "default_true")]
     pub app_enabled: bool,
@@ -66,6 +145,21 @@ pub struct AppSettings {
     pub translation_mode: String,
     pub daily_mode: bool,
     pub phrases: Vec<Phrase>,
+
+    // ---- v0.7.0 incoming-chat translation ---------------------------------
+    // All fields default-on-missing so existing settings files keep loading.
+    #[serde(default)]
+    pub incoming_enabled: bool,
+    #[serde(default = "default_incoming_toggle_hotkey")]
+    pub incoming_toggle_hotkey: HotkeyConfig,
+    #[serde(default = "default_incoming_click_through_hotkey")]
+    pub incoming_click_through_hotkey: HotkeyConfig,
+    #[serde(default)]
+    pub incoming_regions: HashMap<String, ChatRegion>,
+    #[serde(default)]
+    pub incoming_overlay: OverlayPreferences,
+    #[serde(default = "default_capture_rate_hz")]
+    pub incoming_capture_rate_hz: f32,
 }
 
 impl Default for AppSettings {
@@ -79,6 +173,12 @@ impl Default for AppSettings {
             translation_mode: "auto".to_string(),
             daily_mode: false,
             phrases: default_phrases(),
+            incoming_enabled: false,
+            incoming_toggle_hotkey: default_incoming_toggle_hotkey(),
+            incoming_click_through_hotkey: default_incoming_click_through_hotkey(),
+            incoming_regions: HashMap::new(),
+            incoming_overlay: OverlayPreferences::default(),
+            incoming_capture_rate_hz: default_capture_rate_hz(),
         }
     }
 }
@@ -165,13 +265,52 @@ fn normalize_settings(settings: &mut AppSettings) {
     for (idx, phrase) in settings.phrases.iter_mut().enumerate() {
         phrase.id = (idx + 1) as i32;
     }
+
+    if settings.incoming_toggle_hotkey.key.is_empty() {
+        settings.incoming_toggle_hotkey = default_incoming_toggle_hotkey();
+    }
+
+    if settings.incoming_click_through_hotkey.key.is_empty() {
+        settings.incoming_click_through_hotkey = default_incoming_click_through_hotkey();
+    }
+
+    if !settings.incoming_capture_rate_hz.is_finite()
+        || settings.incoming_capture_rate_hz < 0.5
+        || settings.incoming_capture_rate_hz > 4.0
+    {
+        settings.incoming_capture_rate_hz = default_capture_rate_hz();
+    }
+
+    let ov = &mut settings.incoming_overlay;
+    ov.opacity = ov.opacity.clamp(0.4, 1.0);
+    if !ov.opacity.is_finite() {
+        ov.opacity = 0.85;
+    }
+    ov.font_size = ov.font_size.clamp(10, 28);
+    ov.fade_ms = ov.fade_ms.clamp(2_000, 30_000);
+    ov.max_lines = ov.max_lines.clamp(1, 20);
+    ov.w = ov.w.clamp(220, 1200);
+    ov.h = ov.h.clamp(120, 1200);
 }
+
+const SETTINGS_BACKUP_KEY: &str = "settings_corrupted_backup";
 
 fn load_settings_from_store(app: &AppHandle) -> Result<(AppSettings, bool), anyhow::Error> {
     let store = app.store(STORE_FILENAME)?;
     let value = store.get("settings");
     let settings = match value.clone() {
-        Some(raw) => serde_json::from_value::<AppSettings>(raw).unwrap_or_default(),
+        Some(raw) => match serde_json::from_value::<AppSettings>(raw.clone()) {
+            Ok(parsed) => parsed,
+            Err(err) => {
+                eprintln!(
+                    "failed to deserialize stored settings, preserving raw under '{}' and falling back to defaults: {}",
+                    SETTINGS_BACKUP_KEY, err
+                );
+                store.set(SETTINGS_BACKUP_KEY, raw);
+                let _ = store.save();
+                AppSettings::default()
+            }
+        },
         None => AppSettings::default(),
     };
 

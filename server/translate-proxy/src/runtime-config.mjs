@@ -8,9 +8,9 @@ const CONFIG_CACHE_TTL_MS = 1_000;
 const DEFAULT_TIMEOUT_MS = 12_000;
 const DEFAULT_MAX_TOKENS = 96;
 const DEFAULT_TEMPERATURE = 0.2;
-const DEFAULT_MODEL_NAME = 'deepseek-ai/DeepSeek-V3.2';
+const DEFAULT_MODEL_NAME = 'deepseek-ai/DeepSeek-V4-Flash';
 const DEFAULT_API_KEY_ENV_NAME = 'MODEL_API_KEY';
-const DEFAULT_FAST_LANE_MODEL_NAME = 'Qwen/Qwen3-14B';
+const DEFAULT_FAST_LANE_MODEL_NAME = 'deepseek-ai/DeepSeek-V4-Flash';
 const DEFAULT_FAST_LANE_TIMEOUT_MS = 5_000;
 const DEFAULT_FAST_LANE_MAX_TOKENS = 48;
 const DEFAULT_FAST_LANE_TEMPERATURE = 0.1;
@@ -51,11 +51,46 @@ const normalizeOpenAICompletionsUrl = (apiUrl) => {
   return `${trimmed}${OPENAI_PATH}`;
 };
 
+const isLinkLocalHostname = (hostname) => {
+  if (!hostname) {
+    return false;
+  }
+  const lower = hostname.toLowerCase();
+  // Cloud metadata endpoints commonly live on the link-local 169.254/16 range.
+  if (lower.startsWith('169.254.')) {
+    return true;
+  }
+  // IPv6 link-local: fe80::/10
+  if (lower.startsWith('fe80:') || lower === 'fe80::') {
+    return true;
+  }
+  return false;
+};
+
+const assertSafeApiUrl = (rawUrl) => {
+  let parsed;
+  try {
+    parsed = new URL(rawUrl);
+  } catch {
+    return;
+  }
+
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+    throw new Error(`Unsupported api_url protocol: ${parsed.protocol}`);
+  }
+
+  if (isLinkLocalHostname(parsed.hostname)) {
+    throw new Error(`api_url is not allowed to point at link-local host: ${parsed.hostname}`);
+  }
+};
+
 export const normalizeApiUrlByProvider = (apiUrl, provider) => {
   const trimmed = String(apiUrl || '').trim();
   if (!trimmed) {
     return defaultApiUrl(provider);
   }
+
+  assertSafeApiUrl(trimmed);
 
   if (provider === 'anthropic' && trimmed.endsWith(OPENAI_PATH)) {
     return `${trimmed.slice(0, -OPENAI_PATH.length)}${ANTHROPIC_PATH}`;

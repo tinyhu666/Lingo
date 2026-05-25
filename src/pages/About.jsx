@@ -10,7 +10,7 @@ import { APP_VERSION_LABEL, RELEASE_PAGE_URL } from '../constants/version';
 import { hasTauriRuntime } from '../services/tauriRuntime';
 import { DEFAULT_PUBLIC_SITE_CONFIG, loadPublicSiteConfig } from '../services/publicSiteConfig';
 import { useI18n } from '../i18n/I18nProvider';
-import { showError, showSuccess } from '../utils/toast';
+import { showError, showInfo, showSuccess } from '../utils/toast';
 import { toErrorMessage } from '../utils/error';
 
 const stripLeadingMarkdownHeading = (value) => {
@@ -56,24 +56,66 @@ const openContactLink = async (url, t) => {
   }
 };
 
+const copyTextFallback = (value) => {
+  if (typeof document === 'undefined') {
+    return false;
+  }
+
+  const textarea = document.createElement('textarea');
+  textarea.value = value;
+  textarea.setAttribute('readonly', '');
+  textarea.style.position = 'fixed';
+  textarea.style.opacity = '0';
+  textarea.style.pointerEvents = 'none';
+  textarea.style.left = '-9999px';
+  textarea.style.top = '0';
+
+  document.body.appendChild(textarea);
+  textarea.focus();
+  textarea.select();
+  textarea.setSelectionRange(0, textarea.value.length);
+
+  let copied = false;
+  try {
+    copied = Boolean(document.execCommand?.('copy'));
+  } finally {
+    textarea.remove();
+  }
+
+  return copied;
+};
+
 const copyContactValue = async (value, t) => {
   try {
-    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
-      await navigator.clipboard.writeText(value);
-      showSuccess(t('about.project.contactQqCopied'));
-      return;
-    }
-
     if (hasTauriRuntime()) {
-      const { writeText } = await import('@tauri-apps/plugin-clipboard-manager');
-      await writeText(value);
+      try {
+        const { writeText } = await import('@tauri-apps/plugin-clipboard-manager');
+        await writeText(value);
+        showSuccess(t('about.project.contactQqCopied'));
+        return;
+      } catch {
+        // Fall through to browser clipboard helpers.
+      }
+    }
+
+    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+      try {
+        await navigator.clipboard.writeText(value);
+        showSuccess(t('about.project.contactQqCopied'));
+        return;
+      } catch {
+        // Some preview/browser contexts deny clipboard permission even when the API exists.
+      }
+    }
+
+    if (copyTextFallback(value)) {
       showSuccess(t('about.project.contactQqCopied'));
       return;
     }
 
-    throw new Error('Clipboard is not available in this environment.');
+    showInfo(t('about.project.contactCopyManual', { value }));
   } catch (error) {
-    showError(t('developerNote.openLinkFailed', { error: toErrorMessage(error) }));
+    showError(t('about.project.contactCopyFailed', { error: toErrorMessage(error) }));
   }
 };
 
@@ -168,7 +210,7 @@ export default function About() {
         ? 'info'
         : 'success';
   const updateStatusLabel = errorMessage
-    ? t('titlebar.translationFailed')
+    ? t('about.update.statusError')
     : hasUpdate
       ? t('sidebar.updateAvailable')
       : t('common.enabled');
@@ -180,18 +222,24 @@ export default function About() {
         key: 'discord',
         label: t('about.project.contactDiscord'),
         value: contact.discordUrl.replace(/^https?:\/\//, ''),
+        hint: t('about.project.contactDiscordHint'),
+        actionLabel: t('about.project.contactActionOpen'),
         action: () => openContactLink(contact.discordUrl, t),
       },
       {
         key: 'qq-group',
         label: t('about.project.contactQqGroup'),
         value: contact.qqGroup,
+        hint: t('about.project.contactQqHint'),
+        actionLabel: t('about.project.contactActionCopy'),
         action: () => copyContactValue(contact.qqGroup, t),
       },
       {
         key: 'email',
         label: t('about.project.contactEmail'),
         value: contact.email,
+        hint: t('about.project.contactEmailHint'),
+        actionLabel: t('about.project.contactActionOpen'),
         action: () => openContactLink(`mailto:${contact.email}`, t),
       },
     ];
@@ -242,13 +290,13 @@ export default function About() {
 
           <div className='mt-4 space-y-3'>
             {!supportsUpdater ? (
-              <div className='about-callout rounded-2xl p-4 text-sm'>
+              <div className='about-callout rounded-2xl border border-[rgba(205,216,230,0.94)] bg-[rgba(248,250,253,0.9)] p-4 text-sm text-zinc-600'>
                 {t('about.update.previewOnly')}
               </div>
             ) : null}
 
             {hasUpdate ? (
-              <div className='about-callout about-callout--warning rounded-2xl p-4 text-sm'>
+              <div className='about-callout about-callout--warning rounded-2xl border border-[rgba(252,202,212,0.94)] bg-[rgba(255,241,245,0.96)] p-4 text-sm text-red-600'>
                 {manualUpdateRequired
                   ? t('about.update.manualUpdateFound', { version: latestVersionLabel })
                   : t('about.update.updateFound', { version: latestVersionLabel })}
@@ -258,7 +306,7 @@ export default function About() {
             {shouldShowReleaseNotes ? (
               <div className='tool-subcard min-w-0 p-4'>
                 <div className='tool-caption'>{t('about.update.releaseNotes')}</div>
-                <div className='about-release-notes mt-3 whitespace-pre-line break-words'>
+                <div className='mt-3 whitespace-pre-line break-words text-[15px] leading-[1.78] text-[#5a6b84]'>
                   {releaseNotesBody}
                 </div>
               </div>
@@ -266,18 +314,18 @@ export default function About() {
 
             {downloading ? (
               <div className='tool-subcard p-4'>
-                <div className='about-progress__meta flex items-center justify-between text-xs font-semibold'>
+                <div className='flex items-center justify-between text-xs font-semibold text-blue-700'>
                   <span>{t('about.update.downloadProgress')}</span>
                   <span>{progressPercent}%</span>
                 </div>
-                <div className='about-progress__track mt-3 h-2 rounded-full'>
-                  <div className='about-progress__bar h-2 rounded-full transition-all' style={{ width: `${progressPercent}%` }} />
+                <div className='mt-3 h-2 rounded-full bg-blue-100'>
+                  <div className='h-2 rounded-full bg-blue-600 transition-all' style={{ width: `${progressPercent}%` }} />
                 </div>
               </div>
             ) : null}
 
             {errorMessage ? (
-              <div className='about-callout about-callout--warning rounded-2xl p-4 text-sm break-words'>
+              <div className='about-callout about-callout--warning rounded-2xl border border-[rgba(252,202,212,0.94)] bg-[rgba(255,241,245,0.96)] p-4 text-sm text-red-600 break-words'>
                 {errorMessage}
               </div>
             ) : null}
@@ -291,7 +339,7 @@ export default function About() {
           icon={<CircleInfo className='h-5 w-5 stroke-current' />}
           title={t('about.project.title')}
           description={t('about.project.summary')}>
-          <div className='tool-subcard mt-4 p-4'>
+          <div className='mt-4 rounded-2xl border border-[rgba(205,218,237,0.96)] bg-[rgba(248,251,255,0.9)] p-4 shadow-[0_10px_24px_rgba(27,42,72,0.04)]'>
             <div className='flex items-center gap-2'>
               <span className='tool-inline-icon-shell' aria-hidden='true'>
                 <ChatBubbleMessage className='h-3.5 w-3.5 stroke-zinc-500' />
@@ -306,9 +354,13 @@ export default function About() {
                   onClick={() => {
                     void item.action();
                   }}
-                  className='about-contact-card min-w-[220px] flex-1 rounded-2xl px-4 py-3 text-left transition-all duration-150 hover:-translate-y-[1px]'>
-                  <div className='about-contact-card__label'>{item.label}</div>
-                  <div className='about-contact-card__value mt-1'>{item.value}</div>
+                  className='about-contact-card min-w-[220px] flex-1 rounded-2xl border border-[rgba(196,210,233,0.96)] bg-[rgba(255,255,255,0.94)] px-4 py-3 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition-all duration-150 hover:-translate-y-[1px] hover:border-[rgba(157,181,229,0.98)] hover:bg-[rgba(252,254,255,0.98)]'>
+                  <div className='text-[11px] font-extrabold uppercase tracking-[0.12em] text-[#7a89a1]'>{item.label}</div>
+                  <div className='mt-1 text-[14px] font-semibold text-[#2d3d59]'>{item.value}</div>
+                  <div className='mt-3 flex items-center justify-between gap-3'>
+                    <div className='text-[12px] leading-5 text-[#6f8099]'>{item.hint}</div>
+                    <StatusChip label={item.actionLabel} tone='neutral' className='shrink-0' />
+                  </div>
                 </button>
               ))}
             </div>

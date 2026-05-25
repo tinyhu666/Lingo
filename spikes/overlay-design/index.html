@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Lingo · Incoming Overlay · Design Variants</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background:
+      radial-gradient(ellipse at top, rgba(80, 100, 160, 0.35), transparent 60%),
+      radial-gradient(ellipse at bottom right, rgba(140, 80, 80, 0.30), transparent 55%),
+      linear-gradient(135deg, #14152a, #060810);
+    min-height: 100vh;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+      "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
+    padding: 36px 32px 60px;
+    color: #fff;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1 {
+    max-width: 1340px;
+    margin: 0 auto 8px;
+    font-size: 20px;
+    font-weight: 600;
+    letter-spacing: 0.2px;
+  }
+  .subtitle {
+    max-width: 1340px;
+    margin: 0 auto 28px;
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.55);
+    line-height: 1.55;
+  }
+
+  .lab {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 28px;
+    max-width: 1340px;
+    margin: 0 auto;
+  }
+
+  .variant-title {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.55);
+    margin-bottom: 14px;
+    font-weight: 700;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+  }
+  .variant-title .pill {
+    margin-left: 8px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: rgba(95, 182, 255, 0.2);
+    color: #5fb6ff;
+    font-size: 10px;
+    letter-spacing: 0.4px;
+  }
+
+  .panel-host {
+    width: 380px;
+  }
+
+  .variant-note {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.5);
+    margin-top: 14px;
+    line-height: 1.55;
+    width: 380px;
+  }
+  .variant-note strong { color: rgba(255, 255, 255, 0.8); font-weight: 600; }
+
+  /* ============================================
+     VARIANT A — Minimal Stack
+     One semi-transparent panel, lines stacked tight.
+     ============================================ */
+
+  .va {
+    background: rgba(12, 14, 20, 0.78);
+    border-radius: 12px;
+    padding: 12px 14px 11px;
+    backdrop-filter: blur(14px) saturate(140%);
+    -webkit-backdrop-filter: blur(14px) saturate(140%);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+  }
+  .va-row { margin-bottom: 9px; }
+  .va-row:last-child { margin-bottom: 0; }
+  .va-translated {
+    font-size: 14px;
+    line-height: 1.45;
+    color: rgba(255, 255, 255, 0.96);
+  }
+  .va-scope {
+    font-size: 11px;
+    font-weight: 600;
+    margin-right: 4px;
+    opacity: 0.55;
+  }
+  .va-scope.team { color: #8ab9ff; }
+  .va-scope.all { color: #f5d04a; }
+  .va-sender {
+    color: #ffffff;
+    font-weight: 600;
+    margin-right: 2px;
+  }
+  .va-sender.team { color: #8ab9ff; }
+  .va-sender.all { color: #ffd968; }
+  .va-original {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.42);
+    line-height: 1.35;
+    margin-top: 1px;
+  }
+
+  /* ============================================
+     VARIANT B — Card Stack (Recommended)
+     One card per message, colored left border by scope.
+     ============================================ */
+
+  .vb-card {
+    background: rgba(12, 14, 20, 0.82);
+    border-radius: 10px;
+    padding: 9px 12px 10px;
+    margin-bottom: 7px;
+    border-left: 3px solid #5fb6ff;
+    box-shadow: 0 2px 14px rgba(0, 0, 0, 0.22);
+    backdrop-filter: blur(12px) saturate(140%);
+    -webkit-backdrop-filter: blur(12px) saturate(140%);
+  }
+  .vb-card:last-child { margin-bottom: 0; }
+  .vb-card.team { border-left-color: #5fb6ff; }
+  .vb-card.all { border-left-color: #f5d04a; }
+  .vb-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 3px;
+  }
+  .vb-sender {
+    color: #fff;
+    font-weight: 600;
+    font-size: 12px;
+  }
+  .vb-scope {
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-size: 9px;
+    margin-left: 6px;
+    background: rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.65);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    font-weight: 600;
+  }
+  .vb-scope.all {
+    background: rgba(245, 208, 74, 0.18);
+    color: #f5d04a;
+  }
+  .vb-scope.team {
+    background: rgba(95, 182, 255, 0.18);
+    color: #5fb6ff;
+  }
+  .vb-lang {
+    margin-left: auto;
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.32);
+    font-weight: 500;
+  }
+  .vb-translated {
+    font-size: 14px;
+    line-height: 1.42;
+    color: rgba(255, 255, 255, 0.96);
+  }
+  .vb-original {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.42);
+    margin-top: 3px;
+    font-style: italic;
+    line-height: 1.35;
+  }
+
+  /* ============================================
+     VARIANT C — Speech Bubble
+     Avatar circle + sender row + bubble.
+     ============================================ */
+
+  .vc-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 9px;
+    align-items: flex-start;
+  }
+  .vc-row:last-child { margin-bottom: 0; }
+  .vc-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 14px;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  }
+  .vc-avatar.a1 { background: linear-gradient(135deg, #4f8aef, #36cfc9); }
+  .vc-avatar.a2 { background: linear-gradient(135deg, #ff7e5f, #feb47b); }
+  .vc-avatar.a3 { background: linear-gradient(135deg, #b06ab3, #4568dc); }
+  .vc-avatar.a4 { background: linear-gradient(135deg, #02aab0, #00cdac); }
+  .vc-avatar.a5 { background: linear-gradient(135deg, #f7971e, #ffd200); color: #1f1500; }
+  .vc-avatar.a6 { background: linear-gradient(135deg, #e74c3c, #f39c12); }
+  .vc-bubble {
+    background: rgba(12, 14, 20, 0.85);
+    border-radius: 10px;
+    padding: 8px 12px 9px;
+    flex: 1;
+    backdrop-filter: blur(12px) saturate(140%);
+    -webkit-backdrop-filter: blur(12px) saturate(140%);
+  }
+  .vc-meta {
+    display: flex;
+    align-items: center;
+    margin-bottom: 2px;
+    gap: 6px;
+  }
+  .vc-sender {
+    font-size: 12px;
+    font-weight: 600;
+    color: #fff;
+  }
+  .vc-pill {
+    font-size: 9px;
+    padding: 1px 5px;
+    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.6);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    font-weight: 600;
+  }
+  .vc-pill.all { background: rgba(245, 208, 74, 0.18); color: #f5d04a; }
+  .vc-time { margin-left: auto; font-size: 10px; color: rgba(255, 255, 255, 0.32); }
+  .vc-translated {
+    font-size: 14px;
+    line-height: 1.42;
+    color: rgba(255, 255, 255, 0.96);
+  }
+  .vc-original {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.42);
+    line-height: 1.35;
+    margin-top: 2px;
+  }
+
+  footer {
+    max-width: 1340px;
+    margin: 48px auto 0;
+    padding-top: 24px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.5);
+    line-height: 1.7;
+  }
+  footer code {
+    background: rgba(255, 255, 255, 0.08);
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-size: 11px;
+    font-family: "SF Mono", Monaco, Consolas, monospace;
+  }
+
+  @media (max-width: 1180px) {
+    .lab { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<h1>Lingo · Incoming Overlay · Design Variants</h1>
+<p class="subtitle">
+  Same 6 incoming messages rendered three ways. All variants assume a 380px-wide
+  overlay panel anchored top-left or bottom-left, semi-transparent, pinned over the game.
+  Background gradient simulates "game in progress" — not a Lingo asset.
+</p>
+
+<div class="lab">
+
+  <!-- ============ VARIANT A ============ -->
+  <div>
+    <div class="variant-title">A · Minimal Stack</div>
+    <div class="panel-host">
+      <div class="va">
+        <div class="va-row">
+          <div class="va-translated">
+            <span class="va-scope team">[队]</span>
+            <span class="va-sender team">Pudge:</span>
+            干得漂亮
+          </div>
+          <div class="va-original">orig · Pudge: gg wp</div>
+        </div>
+        <div class="va-row">
+          <div class="va-translated">
+            <span class="va-scope all">[全]</span>
+            <span class="va-sender all">AntiMage:</span>
+            中路丢人，小心
+          </div>
+          <div class="va-original">orig · AntiMage: mid miss, beware</div>
+        </div>
+        <div class="va-row">
+          <div class="va-translated">
+            <span class="va-scope team">[队]</span>
+            <span class="va-sender team">Sven:</span>
+            抱团烟雾偷下路
+          </div>
+          <div class="va-original">orig · Sven: smoke and gank bot</div>
+        </div>
+        <div class="va-row">
+          <div class="va-translated">
+            <span class="va-scope all">[全]</span>
+            <span class="va-sender all">Lion:</span>
+            去打野，我在补刀
+          </div>
+          <div class="va-original">orig · Lion: Иди в лес, я фармлю</div>
+        </div>
+        <div class="va-row">
+          <div class="va-translated">
+            <span class="va-scope team">[队]</span>
+            <span class="va-sender team">Templar:</span>
+            敌方核心没买活
+          </div>
+          <div class="va-original">orig · Templar: no buyback on enemy carry</div>
+        </div>
+        <div class="va-row">
+          <div class="va-translated">
+            <span class="va-scope team">[队]</span>
+            <span class="va-sender team">Phantom:</span>
+            等我大招再推
+          </div>
+          <div class="va-original">orig · Phantom: wait my ult then push</div>
+        </div>
+      </div>
+    </div>
+    <div class="variant-note">
+      <strong>Densest, closest to in-game chat.</strong> One rounded panel,
+      tight rows. Sender colored by scope. Original prefixed with "orig · "
+      in faded grey.<br>
+      <strong>Pros:</strong> scans like native chat, least screen space, lightest GPU.<br>
+      <strong>Cons:</strong> wall-of-text in team fights, color is the only
+      scope cue (a11y risk).
+    </div>
+  </div>
+
+  <!-- ============ VARIANT B ============ -->
+  <div>
+    <div class="variant-title">B · Card Stack <span class="pill">推荐</span></div>
+    <div class="panel-host">
+      <div class="vb-card team">
+        <div class="vb-header">
+          <span class="vb-sender">Pudge</span>
+          <span class="vb-scope team">team</span>
+          <span class="vb-lang">EN → ZH</span>
+        </div>
+        <div class="vb-translated">干得漂亮</div>
+        <div class="vb-original">gg wp</div>
+      </div>
+      <div class="vb-card all">
+        <div class="vb-header">
+          <span class="vb-sender">AntiMage</span>
+          <span class="vb-scope all">all</span>
+          <span class="vb-lang">EN → ZH</span>
+        </div>
+        <div class="vb-translated">中路丢人，小心</div>
+        <div class="vb-original">mid miss, beware</div>
+      </div>
+      <div class="vb-card team">
+        <div class="vb-header">
+          <span class="vb-sender">Sven</span>
+          <span class="vb-scope team">team</span>
+          <span class="vb-lang">EN → ZH</span>
+        </div>
+        <div class="vb-translated">抱团烟雾偷下路</div>
+        <div class="vb-original">smoke and gank bot</div>
+      </div>
+      <div class="vb-card all">
+        <div class="vb-header">
+          <span class="vb-sender">Lion</span>
+          <span class="vb-scope all">all</span>
+          <span class="vb-lang">RU → ZH</span>
+        </div>
+        <div class="vb-translated">去打野，我在补刀</div>
+        <div class="vb-original">Иди в лес, я фармлю</div>
+      </div>
+      <div class="vb-card team">
+        <div class="vb-header">
+          <span class="vb-sender">Templar</span>
+          <span class="vb-scope team">team</span>
+          <span class="vb-lang">EN → ZH</span>
+        </div>
+        <div class="vb-translated">敌方核心没买活</div>
+        <div class="vb-original">no buyback on enemy carry</div>
+      </div>
+      <div class="vb-card team">
+        <div class="vb-header">
+          <span class="vb-sender">Phantom</span>
+          <span class="vb-scope team">team</span>
+          <span class="vb-lang">EN → ZH</span>
+        </div>
+        <div class="vb-translated">等我大招再推</div>
+        <div class="vb-original">wait my ult then push</div>
+      </div>
+    </div>
+    <div class="variant-note">
+      <strong>Card per message, colored left border by scope.</strong> Sender +
+      scope chip + lang pair above; translation prominent, original italic below.
+      Scope conveyed by border color <em>and</em> chip label.<br>
+      <strong>Pros:</strong> clear boundaries, easy scroll tracking, a11y-safe.<br>
+      <strong>Cons:</strong> ~25% more vertical space than A.
+    </div>
+  </div>
+
+  <!-- ============ VARIANT C ============ -->
+  <div>
+    <div class="variant-title">C · Speech Bubble</div>
+    <div class="panel-host">
+      <div class="vc-row">
+        <div class="vc-avatar a1">PU</div>
+        <div class="vc-bubble">
+          <div class="vc-meta">
+            <span class="vc-sender">Pudge</span>
+            <span class="vc-pill">team</span>
+            <span class="vc-time">10:42</span>
+          </div>
+          <div class="vc-translated">干得漂亮</div>
+          <div class="vc-original">gg wp</div>
+        </div>
+      </div>
+      <div class="vc-row">
+        <div class="vc-avatar a2">AM</div>
+        <div class="vc-bubble">
+          <div class="vc-meta">
+            <span class="vc-sender">AntiMage</span>
+            <span class="vc-pill all">all</span>
+            <span class="vc-time">10:42</span>
+          </div>
+          <div class="vc-translated">中路丢人，小心</div>
+          <div class="vc-original">mid miss, beware</div>
+        </div>
+      </div>
+      <div class="vc-row">
+        <div class="vc-avatar a3">SV</div>
+        <div class="vc-bubble">
+          <div class="vc-meta">
+            <span class="vc-sender">Sven</span>
+            <span class="vc-pill">team</span>
+            <span class="vc-time">10:43</span>
+          </div>
+          <div class="vc-translated">抱团烟雾偷下路</div>
+          <div class="vc-original">smoke and gank bot</div>
+        </div>
+      </div>
+      <div class="vc-row">
+        <div class="vc-avatar a4">LN</div>
+        <div class="vc-bubble">
+          <div class="vc-meta">
+            <span class="vc-sender">Lion</span>
+            <span class="vc-pill all">all</span>
+            <span class="vc-time">10:43</span>
+          </div>
+          <div class="vc-translated">去打野，我在补刀</div>
+          <div class="vc-original">Иди в лес, я фармлю</div>
+        </div>
+      </div>
+      <div class="vc-row">
+        <div class="vc-avatar a5">TA</div>
+        <div class="vc-bubble">
+          <div class="vc-meta">
+            <span class="vc-sender">Templar</span>
+            <span class="vc-pill">team</span>
+            <span class="vc-time">10:44</span>
+          </div>
+          <div class="vc-translated">敌方核心没买活</div>
+          <div class="vc-original">no buyback on enemy carry</div>
+        </div>
+      </div>
+      <div class="vc-row">
+        <div class="vc-avatar a6">PA</div>
+        <div class="vc-bubble">
+          <div class="vc-meta">
+            <span class="vc-sender">Phantom</span>
+            <span class="vc-pill">team</span>
+            <span class="vc-time">10:44</span>
+          </div>
+          <div class="vc-translated">等我大招再推</div>
+          <div class="vc-original">wait my ult then push</div>
+        </div>
+      </div>
+    </div>
+    <div class="variant-note">
+      <strong>Discord-style row.</strong> Avatar circle (gradient by sender hash)
+      + sender + scope pill + timestamp + bubble.<br>
+      <strong>Pros:</strong> very readable, conversational feel,
+      sender identity is unmistakable.<br>
+      <strong>Cons:</strong> heaviest visual, ~50% more pixels than A,
+      avatars may feel gimmicky for a hotkey utility.
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  <p>
+    Open this file directly in a browser:
+    <code>open spikes/overlay-design/index.html</code>.
+    Mock data uses 6 incoming messages with EN, RU originals translated to ZH.
+    All variants share identical data so layout differences are directly comparable.
+  </p>
+  <p style="margin-top: 8px;">
+    Final overlay window will be: always-on-top, click-through (not focusable),
+    fade-out after 8s per message, max 6 visible rows, draggable header.
+    Width 380px is the recommended default.
+  </p>
+</footer>
+
+</body>
+</html>

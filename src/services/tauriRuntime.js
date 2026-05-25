@@ -11,7 +11,7 @@ export const hasTauriRuntime = () => {
 
 export const invokeCommand = async (command, payload = {}) => {
   if (!hasTauriRuntime() || typeof tauriInvoke !== 'function') {
-    throw new Error('当前环境不支持 Tauri 命令');
+    throw new Error('Tauri runtime not available in this environment');
   }
 
   return tauriInvoke(command, payload);

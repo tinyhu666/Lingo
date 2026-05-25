@@ -1,6 +1,7 @@
 ﻿import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { check } from '@tauri-apps/plugin-updater';
 import { relaunch } from '@tauri-apps/plugin-process';
+import { listen } from '@tauri-apps/api/event';
 import { hasTauriRuntime, invokeCommand } from '../services/tauriRuntime';
 import { showError, showSuccess } from '../utils/toast';
 import {
@@ -454,14 +455,14 @@ export function UpdateProvider({ children }) {
     try {
       await update.downloadAndInstall((event) => {
         if (event.event === 'Started') {
-          totalBytes = event.data.contentLength || 0;
+          totalBytes = Number(event.data?.contentLength) || 0;
           downloadedBytes = 0;
           patchState({ progressPercent: 1 });
           return;
         }
 
         if (event.event === 'Progress') {
-          downloadedBytes += event.data.chunkLength;
+          downloadedBytes += Number(event.data?.chunkLength) || 0;
           if (totalBytes > 0) {
             const percent = Math.max(1, Math.min(100, Math.round((downloadedBytes / totalBytes) * 100)));
             patchState({ progressPercent: percent });
@@ -504,21 +505,46 @@ export function UpdateProvider({ children }) {
     }
   }, [checkForUpdates, closePreviousUpdateHandle, patchState, t]);
 
+  const loadCurrentVersionRef = useRef(loadCurrentVersion);
+  const checkForUpdatesRef = useRef(checkForUpdates);
+  const closePreviousUpdateHandleRef = useRef(closePreviousUpdateHandle);
+
+  useEffect(() => {
+    loadCurrentVersionRef.current = loadCurrentVersion;
+    checkForUpdatesRef.current = checkForUpdates;
+    closePreviousUpdateHandleRef.current = closePreviousUpdateHandle;
+  }, [checkForUpdates, closePreviousUpdateHandle, loadCurrentVersion]);
+
   useEffect(() => {
     let mounted = true;
     let checkTimer = null;
+    let unlistenTray = null;
 
     const initialize = async () => {
       if (!mounted) {
         return;
       }
-      await loadCurrentVersion();
+      await loadCurrentVersionRef.current();
       if (mounted) {
         checkTimer = window.setTimeout(() => {
           if (mounted) {
-            void checkForUpdates({ silent: true });
+            void checkForUpdatesRef.current({ silent: true });
           }
         }, 1200);
+      }
+
+      if (hasTauriRuntime()) {
+        try {
+          unlistenTray = await listen('tray:check_update', () => {
+            void checkForUpdatesRef.current({ silent: false });
+          });
+          if (!mounted && typeof unlistenTray === 'function') {
+            unlistenTray();
+            unlistenTray = null;
+          }
+        } catch (error) {
+          console.error('Failed to bind tray check_update listener', error);
+        }
       }
     };
 
@@ -529,9 +555,12 @@ export function UpdateProvider({ children }) {
       if (checkTimer) {
         window.clearTimeout(checkTimer);
       }
-      void closePreviousUpdateHandle();
+      if (typeof unlistenTray === 'function') {
+        unlistenTray();
+      }
+      void closePreviousUpdateHandleRef.current();
     };
-  }, [checkForUpdates, closePreviousUpdateHandle, loadCurrentVersion]);
+  }, []);
 
   const value = useMemo(
     () => ({

@@ -84,7 +84,7 @@ export default function Translate() {
               initial={{ opacity: 0, y: 18 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.05 * (idx + 1) }}>
-              <div className='mode-card__top-row'>
+              <div className='mode-card__rail'>
                 <div className={`workspace-header__icon mode-card__icon-shell h-11 w-11 min-w-[44px] ${isActive ? 'mode-card__icon-shell--active' : ''}`}>
                   <Icon className='h-5 w-5 stroke-current' />
                 </div>
@@ -95,13 +95,13 @@ export default function Translate() {
                 />
               </div>
 
-              <div className='mt-5'>
+              <div className='mode-card__content'>
                 <div className='tool-card-title'>{t(`translate.mode.${mode.id}.title`)}</div>
                 <div className='tool-caption mt-2'>{isActive ? t('translate.activeNow') : t('translate.clickToSwitch')}</div>
+                <p className='tool-body mode-card__desc mt-4'>{t(`translate.mode.${mode.id}.desc`)}</p>
               </div>
 
-              <p className='tool-body mode-card__desc mt-5'>{t(`translate.mode.${mode.id}.desc`)}</p>
-              <div className='tool-subcard mode-card__hint mt-6 p-4'>
+              <div className='tool-subcard mode-card__hint p-4'>
                 <div className='flex items-center gap-2'>
                   <Sparkles className='h-4 w-4 stroke-zinc-500' />
                   <span className='tool-caption'>{t('common.hint')}</span>

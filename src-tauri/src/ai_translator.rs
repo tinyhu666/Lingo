@@ -614,6 +614,84 @@ pub async fn translate_with_gpt(original: &str, settings: &AppSettings) -> Resul
     Err(anyhow!("翻译服务暂时不可用，请稍后重试"))
 }
 
+/// Translate a single chat line we OCR'd from another player. Routes to
+/// the proxy's incoming lane (which forces the fast DeepSeek-V4-Flash
+/// model and an incoming-specific system prompt).
+///
+/// One-shot — no retry. The pipeline runs at 1-3 Hz, so a transient
+/// failure means we just try again on the next OCR cycle.
+pub async fn translate_incoming(
+    text: &str,
+    target_lang: &str,
+    game_scene: &str,
+) -> Result<String> {
+    let trimmed = text.trim();
+    if trimmed.is_empty() {
+        return Ok(String::new());
+    }
+
+    let backend = backend_config()?;
+    let endpoint = if backend.base_url.ends_with("/translate") {
+        backend.base_url.clone()
+    } else {
+        format!("{}/translate", backend.base_url)
+    };
+
+    let payload = json!({
+        "text": trimmed,
+        // We don't know what language the OCR'd line is in until the
+        // model identifies it; tell the proxy to auto-detect.
+        "translation_from": "auto",
+        "translation_to": target_lang,
+        "game_scene": game_scene,
+        "direction": "incoming",
+    });
+
+    let client = shared_http_client();
+    let mut request = client
+        .post(&endpoint)
+        .header("Content-Type", "application/json")
+        .json(&payload);
+    if let Some(api_key) = &backend.api_key {
+        request = request
+            .header("apikey", api_key)
+            .header("Authorization", format!("Bearer {}", api_key));
+    }
+
+    let response = request
+        .send()
+        .await
+        .map_err(|error| anyhow!("incoming translate request failed: {}", error))?;
+    let status = response.status();
+    let body_text = response
+        .text()
+        .await
+        .map_err(|error| anyhow!("incoming translate response read failed: {}", error))?;
+
+    if !status.is_success() {
+        let summary = summarize_body(&body_text);
+        return Err(anyhow!(
+            "incoming translate HTTP {}: {}",
+            status.as_u16(),
+            summary
+        ));
+    }
+
+    let json: Value = serde_json::from_str(&body_text)
+        .map_err(|error| anyhow!("incoming translate non-JSON body: {}", error))?;
+
+    let translated = json
+        .get("translated_text")
+        .and_then(|value| value.as_str())
+        .ok_or_else(|| anyhow!("incoming translate response missing translated_text"))?;
+
+    let cleaned = cleanup_text(translated);
+    if cleaned.trim().is_empty() {
+        return Err(anyhow!("incoming translate returned empty string"));
+    }
+    Ok(cleaned)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

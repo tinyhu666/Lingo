@@ -1,10 +1,13 @@
 import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
 const host = process.env.TAURI_DEV_HOST;
 const packageJson = JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8"));
 const appVersion = packageJson.version;
+const projectRoot = fileURLToPath(new URL("./", import.meta.url));
 
 // https://vitejs.dev/config/
 export default defineConfig(async () => ({
@@ -36,6 +39,11 @@ export default defineConfig(async () => ({
   },
   build: {
     rollupOptions: {
+      input: {
+        main: resolve(projectRoot, "index.html"),
+        overlay: resolve(projectRoot, "overlay.html"),
+        regionPicker: resolve(projectRoot, "region-picker.html"),
+      },
       output: {
         manualChunks(id) {
           if (!id.includes("node_modules")) {

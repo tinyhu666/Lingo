@@ -55,6 +55,11 @@ function LayoutShell({ children, activeItem, setActiveItem }) {
     }
   };
 
+  const translatorRef = useRef(t);
+  useEffect(() => {
+    translatorRef.current = t;
+  }, [t]);
+
   useEffect(() => {
     if (!hasTauriRuntime()) {
       return undefined;
@@ -67,10 +72,11 @@ function LayoutShell({ children, activeItem, setActiveItem }) {
       try {
         const [unlistenFailed, unlistenBusy] = await Promise.all([
           listen('translation_failed', (event) => {
+            const translate = translatorRef.current;
             const message =
               typeof event.payload === 'string' && event.payload.trim()
                 ? event.payload
-                : t('titlebar.translationFailed');
+                : translate('titlebar.translationFailed');
             showError(message);
           }),
           listen('translation_busy', (event) => {
@@ -80,10 +86,11 @@ function LayoutShell({ children, activeItem, setActiveItem }) {
             }
 
             busyToastAtRef.current = now;
+            const translate = translatorRef.current;
             const message =
               typeof event.payload === 'string' && event.payload.trim() && event.payload !== 'busy'
                 ? event.payload
-                : t('titlebar.translationBusy');
+                : translate('titlebar.translationBusy');
             showInfo(message);
           }),
         ]);
@@ -108,7 +115,7 @@ function LayoutShell({ children, activeItem, setActiveItem }) {
         cleanup();
       }
     };
-  }, [t]);
+  }, []);
 
   return (
     <div className='lingo-app-shell'>

@@ -116,7 +116,42 @@ const STYLE_PROFILES = {
 };
 const translationCache = new Map();
 const translationInflight = new Map();
+/// Hard cap on simultaneous in-flight translation requests. Beyond this
+/// new requests return 503; a slow upstream can otherwise pin promises
+/// at MAX_BODY_BYTES (128 KB) each.
+const TRANSLATION_INFLIGHT_MAX = 512;
 const fastLaneCircuit = new Map();
+const ANALYTICS_PUBLIC_CACHE_TTL_MS = 30_000;
+const ANALYTICS_PUBLIC_CACHE_MAX_ENTRIES = 64;
+const analyticsPublicCache = new Map();
+
+const ENV_PLACEHOLDER_VALUES = new Set([
+  'replace-with-a-long-random-token',
+  'replace-with-a-public-client-key',
+]);
+
+const isPlaceholderEnvValue = (value) => ENV_PLACEHOLDER_VALUES.has(String(value || '').trim());
+
+const cachedAnalyticsResponse = (key, builder) => {
+  const now = Date.now();
+  const hit = analyticsPublicCache.get(key);
+  if (hit && hit.expiresAt > now) {
+    // LRU touch.
+    analyticsPublicCache.delete(key);
+    analyticsPublicCache.set(key, hit);
+    return hit.value;
+  }
+  const value = builder();
+  if (analyticsPublicCache.size >= ANALYTICS_PUBLIC_CACHE_MAX_ENTRIES) {
+    // Map iteration is insertion-order, so the first key is the oldest.
+    const oldest = analyticsPublicCache.keys().next().value;
+    if (oldest !== undefined) {
+      analyticsPublicCache.delete(oldest);
+    }
+  }
+  analyticsPublicCache.set(key, { value, expiresAt: now + ANALYTICS_PUBLIC_CACHE_TTL_MS });
+  return value;
+};
 const currentDir = dirname(fileURLToPath(import.meta.url));
 const analyticsDashboardHtml = readFileSync(
   join(currentDir, '..', 'public', 'analytics-dashboard.html'),
@@ -232,6 +267,13 @@ const shouldOpenFastLaneCircuit = (error) => {
   return [400, 401, 403, 404, 405, 422].includes(status);
 };
 
+const normalizeDirection = (value) => {
+  const lowered = String(value || 'outgoing').trim().toLowerCase();
+  return lowered === 'incoming' ? 'incoming' : 'outgoing';
+};
+
+const isIncomingDirection = (payload) => normalizeDirection(payload?.direction) === 'incoming';
+
 const buildTranslationCacheKey = ({ routeConfig, routeName, tuning, payload, text }) =>
   JSON.stringify({
     route_name: routeName,
@@ -245,6 +287,7 @@ const buildTranslationCacheKey = ({ routeConfig, routeName, tuning, payload, tex
     translation_mode: normalizeTranslationMode(payload?.translation_mode),
     game_scene: normalizeGameScene(payload?.game_scene),
     daily_mode: Boolean(payload?.daily_mode),
+    direction: normalizeDirection(payload?.direction),
     text,
   });
 
@@ -329,6 +372,20 @@ const buildSystemPrompt = (payload) => {
     ? 'Daily mode:on. Keep it conversational and send-ready.'
     : 'Daily mode:off. Keep it concise and paced for in-game chat.';
 
+  // Incoming chat: the user is READING what another player typed, not
+  // composing their own message. Style / send-ready instructions become
+  // counter-productive (we must NOT rewrite). Hand-tuned prompt below.
+  if (isIncomingDirection(payload)) {
+    return [
+      `Translate an in-game chat message FROM another player from ${sourceLabel} to ${targetLabel}.`,
+      `Game:${gameSceneProfile.label}. ${gameSceneProfile.promptInstruction}`,
+      'The user is reading this to understand teammates or opponents.',
+      'Preserve player nicknames, hero/ability/item names, callouts, and tactical abbreviations.',
+      'Do not paraphrase, do not soften tone (even toxic content), do not add commentary.',
+      'Output only the translated line. No notes. No quotes. No labels.',
+    ].join(' ');
+  }
+
   if (isRewrite) {
     return [
       `Rewrite in-game chat in ${targetLabel}.`,
@@ -396,6 +453,21 @@ const canUseFastLane = ({ config, payload, text, promptVariant }) => {
   const fastLane = config.fast_lane;
   if (!fastLane?.enabled || !fastLane.model_name) {
     return false;
+  }
+
+  // Incoming chat is high-volume and quality-sensitive only in the
+  // "did the user understand it" sense. The fast lane (now also DeepSeek
+  // V4-Flash by default) is the right home for it: short prompts, short
+  // outputs, lower latency. We skip the style/profile checks that exist
+  // to guard outgoing-translation quality, but still respect the
+  // length cap — a freakishly long OCR line (>max_text_length) deserves
+  // the primary lane's larger token budget so it doesn't get truncated.
+  if (isIncomingDirection(payload)) {
+    const textLength = Array.from(String(text || '').trim()).length;
+    if (textLength > fastLane.max_text_length) {
+      return false;
+    }
+    return getFastLaneCircuitExpiresAt(fastLane) === 0;
   }
 
   const styleProfile = STYLE_PROFILES[normalizeTranslationMode(payload?.translation_mode)];
@@ -499,7 +571,7 @@ const requestModelOnce = async ({
 }) => {
   const startedAt = Date.now();
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(new Error('MODEL_TIMEOUT')), config.timeout_ms);
+  const timer = setTimeout(() => controller.abort(), config.timeout_ms);
 
   try {
     if (config.provider === 'anthropic') {
@@ -527,6 +599,7 @@ const requestModelOnce = async ({
             `Anthropic request failed (HTTP ${response.status}): ${summarizeText(raw)}`,
         );
         error.status = response.status;
+        error.fromUpstream = true;
         throw error;
       }
 
@@ -543,6 +616,7 @@ const requestModelOnce = async ({
         );
         const error = new Error('Empty model response');
         error.status = 502;
+        error.fromUpstream = true;
         throw error;
       }
 
@@ -577,6 +651,7 @@ const requestModelOnce = async ({
           `Model request failed (HTTP ${response.status}): ${summarizeText(raw)}`,
       );
       error.status = response.status;
+      error.fromUpstream = true;
       throw error;
     }
 
@@ -683,6 +758,16 @@ const requestTranslatedText = async ({ cacheKey, load }) => {
       attemptCount: 0,
       modelLatencyMs: 0,
     };
+  }
+
+  // Soft cap on in-flight distinct translation jobs. Coalescing already
+  // handles the common case of many clients translating the same line;
+  // this protects against many clients translating MANY different lines
+  // while the upstream is hanging.
+  if (translationInflight.size >= TRANSLATION_INFLIGHT_MAX) {
+    const error = new Error('Translation service is over capacity, please retry shortly');
+    error.status = 503;
+    throw error;
   }
 
   const requestPromise = load().then((result) => {
@@ -823,8 +908,21 @@ const routeTranslate = async (req, res, traceId) => {
       const runPrimaryModel = async (modelRouteName) => {
         const primaryApiKey = resolveApiKey(process.env, config);
         if (!primaryApiKey) {
-          const error = new Error(`Missing API key env: ${config.api_key_env_name}`);
-          error.status = 500;
+          // Don't leak the env var name to clients. Log it server-side
+          // so operators can diagnose, but mask it through the standard
+          // upstream-error envelope so it surfaces as a generic
+          // "Upstream service error" with status 502.
+          console.error(
+            JSON.stringify({
+              trace_id: traceId,
+              level: 'fatal',
+              message: 'Missing API key env',
+              api_key_env_name: config.api_key_env_name,
+            }),
+          );
+          const error = new Error('Server is missing translation backend credentials');
+          error.status = 502;
+          error.fromUpstream = true;
           throw error;
         }
 
@@ -909,6 +1007,7 @@ const routeTranslate = async (req, res, traceId) => {
 
   const latencyMs = Date.now() - startedAt;
   const proxyOverheadMs = Math.max(0, latencyMs - modelLatencyMs);
+  const direction = normalizeDirection(payload?.direction);
   console.log(
     JSON.stringify({
       trace_id: traceId,
@@ -926,6 +1025,7 @@ const routeTranslate = async (req, res, traceId) => {
       effective_max_tokens: effectiveMaxTokens,
       effective_temperature: effectiveTemperature,
       text_length: text.length,
+      direction,
     }),
   );
 
@@ -977,15 +1077,17 @@ const routeAnalyticsEvents = async (req, res, traceId) => {
 };
 
 const routeAnalyticsPublicOverview = (res, traceId) => {
+  const payload = cachedAnalyticsResponse('overview', queryAnalyticsOverview);
   return jsonResponse(res, 200, {
-    ...queryAnalyticsOverview(),
+    ...payload,
     trace_id: traceId,
   });
 };
 
 const routeAnalyticsPublicDistributions = (res, traceId) => {
+  const payload = cachedAnalyticsResponse('distributions', queryAnalyticsDistributions);
   return jsonResponse(res, 200, {
-    ...queryAnalyticsDistributions(),
+    ...payload,
     trace_id: traceId,
   });
 };
@@ -994,8 +1096,12 @@ const routeAnalyticsPublicDaily = (url, res, traceId) => {
   const from = url.searchParams.get('from');
   const to = url.searchParams.get('to');
 
+  const payload = cachedAnalyticsResponse(`daily:${from || ''}:${to || ''}`, () =>
+    queryAnalyticsDaily({ from, to }),
+  );
+
   return jsonResponse(res, 200, {
-    ...queryAnalyticsDaily({ from, to }),
+    ...payload,
     trace_id: traceId,
   });
 };
@@ -1048,6 +1154,23 @@ const server = createServer(async (req, res) => {
     }
 
     if (url.pathname === '/analytics/dashboard') {
+      const configuredAdmin = String(process.env.ADMIN_TOKEN || '').trim();
+      if (!configuredAdmin || isPlaceholderEnvValue(configuredAdmin)) {
+        jsonResponse(res, 503, {
+          message: 'ADMIN_TOKEN is not configured',
+          trace_id: traceId,
+        });
+        return;
+      }
+      const providedToken =
+        readBearerToken(req.headers.authorization) || url.searchParams.get('token') || '';
+      if (providedToken !== configuredAdmin) {
+        jsonResponse(res, 401, {
+          message: 'Unauthorized',
+          trace_id: traceId,
+        });
+        return;
+      }
       htmlResponse(res, 200, analyticsDashboardHtml);
       return;
     }
@@ -1062,29 +1185,91 @@ const server = createServer(async (req, res) => {
       trace_id: traceId,
     });
   } catch (error) {
-    const status = Number.isInteger(error?.status) ? Number(error.status) : 500;
-    const isTimeout =
-      error?.name === 'AbortError' || String(error?.message || '').includes('MODEL_TIMEOUT');
-    const message = isTimeout ? 'Model request timed out' : error?.message || 'Internal error';
+    const rawStatus = Number.isInteger(error?.status) ? Number(error.status) : 500;
+    const status = Math.min(599, Math.max(400, rawStatus));
+    const isTimeout = error?.name === 'AbortError';
+    const internalMessage = isTimeout
+      ? 'Model request timed out'
+      : error?.message || 'Internal error';
+    const clientMessage = error?.fromUpstream
+      ? `Upstream service error (HTTP ${status})`
+      : internalMessage;
 
     console.error(
       JSON.stringify({
         trace_id: traceId,
         status,
-        message,
+        message: internalMessage,
+        from_upstream: Boolean(error?.fromUpstream),
       }),
     );
 
     jsonResponse(res, isTimeout ? 504 : status, {
-      message,
+      message: clientMessage,
       trace_id: traceId,
     });
   }
 });
 
-const port = Number.parseInt(process.env.PORT || '8787', 10);
+const parsedPort = Number.parseInt(process.env.PORT || '8787', 10);
+if (!Number.isInteger(parsedPort) || parsedPort <= 0 || parsedPort > 65535) {
+  console.error(`[translate-proxy] invalid PORT value: ${process.env.PORT}`);
+  process.exit(1);
+}
+const port = parsedPort;
+
+const warnAboutCredentialsAtStartup = () => {
+  const backendKey = String(process.env.BACKEND_PUBLIC_KEY || '').trim();
+  if (!backendKey) {
+    console.warn(
+      '[translate-proxy] WARNING: BACKEND_PUBLIC_KEY is not set — /translate and /analytics/events accept any caller. Set BACKEND_PUBLIC_KEY in your environment for production.',
+    );
+  } else if (isPlaceholderEnvValue(backendKey)) {
+    console.warn(
+      '[translate-proxy] WARNING: BACKEND_PUBLIC_KEY still uses the .env.example placeholder. Replace it with a real secret before deploying.',
+    );
+  }
+
+  const adminToken = String(process.env.ADMIN_TOKEN || '').trim();
+  if (!adminToken) {
+    console.warn(
+      '[translate-proxy] WARNING: ADMIN_TOKEN is not set — /admin/* and /analytics/dashboard will respond 503.',
+    );
+  } else if (isPlaceholderEnvValue(adminToken)) {
+    console.warn(
+      '[translate-proxy] WARNING: ADMIN_TOKEN still uses the .env.example placeholder. Replace it with a real secret before deploying.',
+    );
+  }
+};
+
+// Last-resort process-level handlers. Node 20+ defaults to
+// `--unhandled-rejections=throw`, which surfaces these as a crash; we
+// want to at least log structured JSON before exiting so operators can
+// see what happened in `kubectl logs` / `journalctl` after the fact.
+process.on('unhandledRejection', (reason) => {
+  console.error(
+    JSON.stringify({
+      level: 'fatal',
+      kind: 'unhandledRejection',
+      message: String(reason && reason.message ? reason.message : reason),
+    }),
+  );
+});
+process.on('uncaughtException', (error) => {
+  console.error(
+    JSON.stringify({
+      level: 'fatal',
+      kind: 'uncaughtException',
+      message: String(error?.message || error),
+    }),
+  );
+  // Defer to default behaviour (terminate) — the catch is purely for the
+  // structured-log breadcrumb.
+  process.exitCode = 1;
+});
 
 server.listen(port, '0.0.0.0', async () => {
+  warnAboutCredentialsAtStartup();
   const config = await loadRuntimeConfig(process.env);
   console.log(
     `[translate-proxy] listening on :${port} provider=${config.provider} model=${config.model_name} source=${config.source}`,

@@ -215,8 +215,7 @@ try {
     const suffix = `iter-${iteration}-${Date.now()}`;
 
     for (const scenario of baseScenarios) {
-      const scenarioSuffix = scenario.name === 'rewrite_pro_other' ? suffix : suffix;
-      const payload = scenario.buildPayload(scenarioSuffix);
+      const payload = scenario.buildPayload(suffix);
       const result = await requestScenario({
         name: scenario.name,
         payload,
