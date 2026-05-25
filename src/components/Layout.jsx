@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Toaster } from 'react-hot-toast';
 import { listen } from '@tauri-apps/api/event';
 import Sidebar from './Sidebar';
@@ -118,29 +118,30 @@ function LayoutShell({ children, activeItem, setActiveItem }) {
   }, []);
 
   return (
-    <div className='lingo-app-shell'>
-      <header className='lingo-titlebar'>
-        <div className='lingo-titlebar__brand' data-tauri-drag-region>
-          <img src={appIcon} alt='Lingo' className='lingo-titlebar__icon' />
-          <span className='lingo-titlebar__title'>Lingo</span>
+    <div className='lg-win'>
+      <header className='lg-titlebar'>
+        <div className='lg-titlebar__brand' data-tauri-drag-region>
+          <div
+            className='lg-titlebar__icon'
+            style={{ background: 'transparent', boxShadow: 'none' }}>
+            <img src={appIcon} alt='Lingo' style={{ width: 18, height: 18 }} />
+          </div>
+          <span className='lg-titlebar__title'>Lingo</span>
         </div>
 
-        <div className='lingo-titlebar__drag-fill' data-tauri-drag-region />
+        <div className='lg-titlebar__drag' data-tauri-drag-region />
 
-        <div className='lingo-titlebar__controls'>
-          <div className='lingo-titlebar__locale' ref={localeTriggerRef}>
+        <div className='lg-titlebar__controls'>
+          <div ref={localeTriggerRef} style={{ position: 'relative' }}>
             <button
               type='button'
-              className={`lingo-titlebar__locale-trigger ${showLocaleMenu ? 'lingo-titlebar__locale-trigger--active' : ''}`}
+              className='lg-locale'
               aria-label={t('locale.label')}
               title={t('locale.label')}
               onClick={() => setShowLocaleMenu((current) => !current)}>
-              <Globe className='lingo-titlebar__locale-icon' aria-hidden='true' />
-              <span className='lingo-titlebar__locale-label'>{currentLocaleLabel}</span>
-              <ChevronRight
-                className={`lingo-titlebar__locale-caret ${showLocaleMenu ? 'lingo-titlebar__locale-caret--open' : ''}`}
-                aria-hidden='true'
-              />
+              <Globe aria-hidden='true' />
+              <span>{currentLocaleLabel}</span>
+              <ChevronRight aria-hidden='true' />
             </button>
             <DropdownMenu
               show={showLocaleMenu}
@@ -154,29 +155,28 @@ function LayoutShell({ children, activeItem, setActiveItem }) {
               anchorPosition='right-0'
               direction='down'
               anchorRef={localeTriggerRef}
-              className='lingo-titlebar__locale-menu'
             />
           </div>
 
           <button
             type='button'
-            className='lingo-titlebar__btn'
+            className='lg-winbtn'
             aria-label={t('titlebar.minimizeAria')}
             title={t('titlebar.minimizeTitle')}
             onClick={() => {
               void handleWindowAction('minimize');
             }}>
-            <Minus className='lingo-titlebar__btn-icon lingo-titlebar__btn-minimize-icon' aria-hidden='true' />
+            <Minus aria-hidden='true' />
           </button>
           <button
             type='button'
-            className='lingo-titlebar__btn lingo-titlebar__btn--close'
+            className='lg-winbtn lg-winbtn--close'
             aria-label={t('titlebar.closeAria')}
             title={t('titlebar.closeTitle')}
             onClick={() => {
               void handleWindowAction('close');
             }}>
-            <XClose className='lingo-titlebar__btn-icon lingo-titlebar__btn-close-icon' aria-hidden='true' />
+            <XClose aria-hidden='true' />
           </button>
         </div>
       </header>
@@ -189,14 +189,9 @@ function LayoutShell({ children, activeItem, setActiveItem }) {
         }}
       />
 
-      <div className='lingo-shell'>
-        <aside className='lingo-shell__sidebar'>
-          <Sidebar activeItem={activeItem} setActiveItem={setActiveItem} />
-        </aside>
-
-        <section className='lingo-shell__workspace'>
-          <div className='workspace-content'>{children}</div>
-        </section>
+      <div className='lg-shell'>
+        <Sidebar activeItem={activeItem} setActiveItem={setActiveItem} />
+        <section className='lg-workspace'>{children}</section>
       </div>
     </div>
   );

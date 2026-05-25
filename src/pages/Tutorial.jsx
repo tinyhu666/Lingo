@@ -1,103 +1,199 @@
-import { motion } from 'framer-motion';
-import { BookOpen, CircleInfo, KeyboardAlt, Sparkles } from '../icons';
 import { useI18n } from '../i18n/I18nProvider';
-import PageHeader from '../components/PageHeader';
-import PanelCard from '../components/PanelCard';
-import StatusChip from '../components/StatusChip';
+import { Chip, Kbd, PageHead } from '../components/lg';
+import { IArrowR, IShield } from '../icons';
+import { defaultTranslatorHotkeyLabel } from '../constants/hotkeys';
+
+function Mock({ children, accent }) {
+  return (
+    <div
+      style={{
+        background: '#0b1430',
+        color: '#dfe6f5',
+        padding: '8px 10px',
+        borderRadius: 8,
+        fontFamily: 'var(--lg-mono)',
+        fontSize: 12,
+        border: `1px solid ${accent || 'rgba(97,235,255,.22)'}`,
+      }}>
+      {children}
+    </div>
+  );
+}
 
 export default function Tutorial() {
   const { t } = useI18n();
 
+  const hotkeyLabel = defaultTranslatorHotkeyLabel();
+  const hotkeyKeys = hotkeyLabel.split('+');
+
   const steps = [
     {
-      id: '01',
-      title: t('tutorial.guide.step1Title'),
-      desc: t('tutorial.guide.step1Desc'),
+      n: '01',
+      title: t('tutorial.step1Title'),
+      desc: t('tutorial.step1Desc'),
+      mock: (
+        <Mock>
+          <span style={{ color: '#61ebff' }}>{t('tutorial.step1MockChannel')} </span>
+          {t('tutorial.step1MockText')}
+          <span
+            style={{
+              borderLeft: '2px solid #61ebff',
+              marginLeft: 1,
+              animation: 'lg-pulse-ring 1s steps(2) infinite',
+            }}>
+            &nbsp;
+          </span>
+        </Mock>
+      ),
     },
     {
-      id: '02',
-      title: t('tutorial.guide.step2Title'),
-      desc: t('tutorial.guide.step2Desc'),
+      n: '02',
+      title: t('tutorial.step2Title'),
+      desc: t('tutorial.step2Desc'),
+      mock: (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            padding: '8px 10px',
+            background: 'var(--lg-surf-2)',
+            borderRadius: 8,
+          }}>
+          <Kbd keys={hotkeyKeys} />
+          <IArrowR style={{ color: 'var(--lg-ink-4)', width: 14, height: 14 }} />
+          <span style={{ fontSize: 11.5, color: 'var(--lg-ink-2)' }}>{t('tutorial.step2InProgress')}</span>
+          <div
+            style={{
+              marginLeft: 'auto',
+              width: 28,
+              height: 4,
+              borderRadius: 2,
+              background: 'var(--lg-surf-3)',
+              overflow: 'hidden',
+            }}>
+            <div style={{ width: '60%', height: '100%', background: 'var(--lg-brand-grad)' }} />
+          </div>
+        </div>
+      ),
     },
     {
-      id: '03',
-      title: t('tutorial.guide.step3Title'),
-      desc: t('tutorial.guide.step3Desc'),
+      n: '03',
+      title: t('tutorial.step3Title'),
+      desc: t('tutorial.step3Desc'),
+      mock: (
+        <Mock accent='rgba(22,163,107,.35)'>
+          <span style={{ color: '#61ebff' }}>{t('tutorial.step3MockChannel')} </span>
+          {t('tutorial.step3MockText')}
+          <span style={{ color: 'rgba(255,255,255,.4)' }}> ⏎</span>
+        </Mock>
+      ),
     },
   ];
 
   return (
-    <div className='tutorial-page flex min-h-full flex-col gap-6'>
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-        <PageHeader
-          icon={<BookOpen className='h-5 w-5 stroke-current' />}
-          title={t('tutorial.title')}
-          description={t('tutorial.summary')}
-        />
-      </motion.div>
-
-      <div className='tutorial-layout-grid'>
-        <motion.div
-          initial={{ opacity: 0, y: 18 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.06 }}>
-          <PanelCard
-            className='tutorial-layout-grid__guide home-panel tool-rise'
-            icon={<CircleInfo className='tool-section-head__icon' />}
-            title={t('tutorial.guide.title')}
-            description={t('tutorial.guide.summary')}>
-
-            <div className='tutorial-step-grid'>
-              {steps.map((step) => (
-                <article key={step.id} className='tutorial-step tool-subcard tool-rise'>
-                  <div className='tutorial-step__number'>{step.id}</div>
-                  <div className='tutorial-step__copy'>
-                    <h3 className='tool-card-title mt-2'>{step.title}</h3>
-                    <p className='tool-body'>{step.desc}</p>
-                  </div>
-                </article>
-              ))}
+    <>
+      <PageHead
+        title={t('tutorial.pageTitle')}
+        sub={t('tutorial.pageSub')}
+        right={<Chip tone='info'>{t('tutorial.pageRightChip')}</Chip>}
+      />
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
+        {steps.map((s, i) => (
+          <div key={s.n} className='lg-card' style={{ padding: 18, position: 'relative' }}>
+            <div
+              style={{
+                position: 'absolute',
+                top: 14,
+                right: 14,
+                fontSize: 28,
+                fontWeight: 800,
+                color: 'var(--lg-line-2)',
+                fontFamily: 'var(--lg-mono)',
+                letterSpacing: '-0.03em',
+              }}>
+              {s.n}
             </div>
-          </PanelCard>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 18 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}>
-          <PanelCard
-            className='tutorial-layout-grid__demo home-panel tool-rise'
-            icon={<CircleInfo className='tool-section-head__icon' />}
-            title={t('tutorial.demo.title')}
-            description={t('tutorial.demo.summary')}
-            actions={<StatusChip label={t('tutorial.demo.badge')} tone='info' />}>
-
-            <div className='tutorial-demo-stack'>
-              <div className='tool-subcard tutorial-demo-block p-4'>
-                <div className='flex items-center gap-2 text-zinc-800'>
-                  <KeyboardAlt className='h-4 w-4 stroke-zinc-500' />
-                  <span className='tool-caption'>{t('tutorial.demo.sourceLabel')}</span>
-                </div>
-                <div className='mt-3 text-[17px] font-semibold leading-7 text-zinc-900'>{t('tutorial.demo.sourceText')}</div>
-              </div>
-
-              <div className='tutorial-demo-connector flex items-center gap-3 px-1'>
-                <div className='h-px flex-1 bg-[rgba(214,224,236,0.86)]' />
-                <StatusChip label={t('tutorial.demo.resultBadge')} tone='success' />
-                <div className='h-px flex-1 bg-[rgba(214,224,236,0.86)]' />
-              </div>
-
-              <div className='tool-subcard tutorial-demo-block tutorial-demo-block--accent p-4'>
-                <div className='flex items-center gap-2 text-zinc-800'>
-                  <Sparkles className='h-4 w-4 stroke-zinc-500' />
-                  <span className='tool-caption'>{t('tutorial.demo.resultLabel')}</span>
-                </div>
-                <div className='mt-3 text-[17px] font-semibold leading-7 text-zinc-900'>{t('tutorial.demo.resultText')}</div>
-              </div>
+            <div
+              style={{
+                width: 28,
+                height: 28,
+                borderRadius: 8,
+                background: 'var(--lg-brand-grad)',
+                color: '#fff',
+                display: 'grid',
+                placeItems: 'center',
+                fontWeight: 700,
+                fontSize: 12,
+              }}>
+              {i + 1}
             </div>
-          </PanelCard>
-        </motion.div>
+            <div
+              style={{
+                fontSize: 15,
+                fontWeight: 700,
+                color: 'var(--lg-ink-0)',
+                marginTop: 12,
+              }}>
+              {s.title}
+            </div>
+            <p
+              style={{
+                fontSize: 12.5,
+                color: 'var(--lg-ink-2)',
+                lineHeight: 1.55,
+                marginTop: 6,
+                marginBottom: 14,
+              }}>
+              {s.desc}
+            </p>
+            {s.mock}
+            {i < steps.length - 1 ? (
+              <div
+                style={{
+                  position: 'absolute',
+                  right: -14,
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  width: 28,
+                  height: 28,
+                  borderRadius: '50%',
+                  background: '#fff',
+                  border: '1px solid var(--lg-line-1)',
+                  display: 'grid',
+                  placeItems: 'center',
+                  color: 'var(--lg-ink-3)',
+                  boxShadow: 'var(--lg-sh-card)',
+                  zIndex: 2,
+                }}>
+                <IArrowR style={{ width: 14, height: 14 }} />
+              </div>
+            ) : null}
+          </div>
+        ))}
       </div>
-    </div>
+
+      <div
+        className='lg-card lg-card--inset'
+        style={{ marginTop: 18, display: 'flex', gap: 16, alignItems: 'center' }}>
+        <div className='lg-card__icon' style={{ flex: '0 0 32px' }}>
+          <IShield />
+        </div>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--lg-ink-0)' }}>
+            {t('tutorial.safetyTitle')}
+          </div>
+          <div
+            style={{
+              fontSize: 12,
+              color: 'var(--lg-ink-2)',
+              lineHeight: 1.55,
+              marginTop: 4,
+            }}>
+            {t('tutorial.safetyDesc')}
+          </div>
+        </div>
+      </div>
+    </>
   );
 }

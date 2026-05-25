@@ -1,15 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
-import { motion } from 'framer-motion';
 import { useStore } from '../components/StoreProvider';
-import PageHeader from '../components/PageHeader';
-import PanelCard from '../components/PanelCard';
-import StatusChip from '../components/StatusChip';
-import KeycapGroup from '../components/KeycapGroup';
+import { useI18n } from '../i18n/I18nProvider';
+import { Chip, Kbd, PageHead } from '../components/lg';
+import { IDots, IGrip, IPlus, ITrash } from '../icons';
 import { defaultPhraseModifier, defaultPhraseModifierLabel } from '../constants/hotkeys';
 import { invokeCommand, hasTauriRuntime } from '../services/tauriRuntime';
 import { showError, showSuccess } from '../utils/toast';
 import { toErrorMessage } from '../utils/error';
-import { useI18n } from '../i18n/I18nProvider';
 
 const MAX_PHRASE_COUNT = 20;
 const MAX_PHRASE_LENGTH = 120;
@@ -17,37 +14,26 @@ const MODIFIER_CODE = defaultPhraseModifier();
 const MODIFIER_LABEL = defaultPhraseModifierLabel();
 
 const KEY_OPTIONS = [
-  ...Array.from({ length: 10 }).map((_, index) => ({
-    code: `Digit${index}`,
-    label: String(index),
-  })),
-  ...Array.from({ length: 26 }).map((_, index) => {
-    const letter = String.fromCharCode(65 + index);
-    return {
-      code: `Key${letter}`,
-      label: letter,
-    };
+  ...Array.from({ length: 10 }).map((_, i) => ({ code: `Digit${i}`, label: String(i) })),
+  ...Array.from({ length: 26 }).map((_, i) => {
+    const letter = String.fromCharCode(65 + i);
+    return { code: `Key${letter}`, label: letter };
   }),
-  ...Array.from({ length: 12 }).map((_, index) => ({
-    code: `F${index + 1}`,
-    label: `F${index + 1}`,
-  })),
+  ...Array.from({ length: 12 }).map((_, i) => ({ code: `F${i + 1}`, label: `F${i + 1}` })),
 ];
 
-const normalizeModifier = (value = '') => value.replace('Left', '').replace('Right', '');
+const normalizeMod = (value = '') => value.replace('Left', '').replace('Right', '');
 const rowSignature = (keyCode) => `${MODIFIER_CODE}+${keyCode}`;
-
 const formatShortcutLabel = (keyCode) => {
-  if (!keyCode) {
-    return `${MODIFIER_LABEL}+?`;
-  }
-  if (keyCode.startsWith('Digit')) {
-    return `${MODIFIER_LABEL}+${keyCode.slice(5)}`;
-  }
-  if (keyCode.startsWith('Key')) {
-    return `${MODIFIER_LABEL}+${keyCode.slice(3)}`;
-  }
+  if (!keyCode) return `${MODIFIER_LABEL}+?`;
+  if (keyCode.startsWith('Digit')) return `${MODIFIER_LABEL}+${keyCode.slice(5)}`;
+  if (keyCode.startsWith('Key')) return `${MODIFIER_LABEL}+${keyCode.slice(3)}`;
   return `${MODIFIER_LABEL}+${keyCode}`;
+};
+
+const phraseHotkeyKeys = (keyCode) => {
+  const option = KEY_OPTIONS.find((o) => o.code === keyCode);
+  return [MODIFIER_LABEL, option?.label || '?'];
 };
 
 const createRow = (id, phrase = '', keyCode = `Digit${Math.min(id, 9)}`) => ({
@@ -68,7 +54,6 @@ export default function Phrases() {
       setRows([]);
       return;
     }
-
     const claimed = new Set();
     const mapped = source.map((item, index) => {
       const existing = item?.hotkey?.key;
@@ -82,30 +67,20 @@ export default function Phrases() {
       claimed.add(keyCode);
       return createRow(index + 1, item?.phrase || '', keyCode);
     });
-
     setRows(mapped);
   }, [settings?.phrases]);
 
   const translatorSignature = useMemo(() => {
     const hotkey = settings?.trans_hotkey;
-    if (!hotkey?.key) {
-      return '';
-    }
-
-    const modifiers = [...(hotkey.modifiers || [])]
-      .map(normalizeModifier)
-      .sort()
-      .join('+');
-
+    if (!hotkey?.key) return '';
+    const modifiers = [...(hotkey.modifiers || [])].map(normalizeMod).sort().join('+');
     return `${modifiers}+${hotkey.key}`;
   }, [settings?.trans_hotkey]);
 
   const usedSignatures = useMemo(() => {
     const signatures = new Set();
     rows.forEach((row) => {
-      if (row.keyCode) {
-        signatures.add(rowSignature(row.keyCode));
-      }
+      if (row.keyCode) signatures.add(rowSignature(row.keyCode));
     });
     return signatures;
   }, [rows]);
@@ -119,12 +94,10 @@ export default function Phrases() {
       showError(t('phrases.errors.maxCount', { max: MAX_PHRASE_COUNT }));
       return;
     }
-
     const nextId = rows.length + 1;
     const available = KEY_OPTIONS.find((item) => !usedSignatures.has(rowSignature(item.code)));
     const fallback = `F${Math.min(nextId, 12)}`;
     const keyCode = available?.code || fallback;
-
     setRows((prev) => [...prev, createRow(nextId, '', keyCode)]);
   };
 
@@ -132,41 +105,25 @@ export default function Phrases() {
     setRows((prev) =>
       prev
         .filter((row) => row.id !== id)
-        .map((row, index) => ({
-          ...row,
-          id: index + 1,
-        })),
+        .map((row, index) => ({ ...row, id: index + 1 })),
     );
   };
 
   const validateRows = () => {
     const signatures = new Set();
-
     for (let index = 0; index < rows.length; index += 1) {
       const row = rows[index];
       const text = row.phrase.trim();
-
-      if (!text) {
-        return t('phrases.errors.rowEmpty', { index: index + 1 });
-      }
-      if (text.length > MAX_PHRASE_LENGTH) {
+      if (!text) return t('phrases.errors.rowEmpty', { index: index + 1 });
+      if (text.length > MAX_PHRASE_LENGTH)
         return t('phrases.errors.rowTooLong', { index: index + 1, max: MAX_PHRASE_LENGTH });
-      }
-      if (!row.keyCode) {
-        return t('phrases.errors.rowHotkeyMissing', { index: index + 1 });
-      }
-
+      if (!row.keyCode) return t('phrases.errors.rowHotkeyMissing', { index: index + 1 });
       const signature = rowSignature(row.keyCode);
-      if (signature === translatorSignature) {
+      if (signature === translatorSignature)
         return t('phrases.errors.conflictTranslator', { index: index + 1 });
-      }
-      if (signatures.has(signature)) {
-        return t('phrases.errors.duplicateHotkey', { index: index + 1 });
-      }
-
+      if (signatures.has(signature)) return t('phrases.errors.duplicateHotkey', { index: index + 1 });
       signatures.add(signature);
     }
-
     return null;
   };
 
@@ -187,10 +144,8 @@ export default function Phrases() {
       showError(errorMessage);
       return;
     }
-
     const payload = buildPayload();
     setSaving(true);
-
     try {
       if (hasTauriRuntime()) {
         const latest = await invokeCommand('update_phrases', { phrases: payload });
@@ -198,7 +153,9 @@ export default function Phrases() {
         showSuccess(t(payload.length === 0 ? 'phrases.toasts.cleared' : 'phrases.toasts.saved'));
       } else {
         await updateSettings({ phrases: payload });
-        showSuccess(t(payload.length === 0 ? 'phrases.toasts.previewCleared' : 'phrases.toasts.previewSaved'));
+        showSuccess(
+          t(payload.length === 0 ? 'phrases.toasts.previewCleared' : 'phrases.toasts.previewSaved'),
+        );
       }
     } catch (error) {
       showError(t('phrases.errors.saveFailed', { error: toErrorMessage(error) }));
@@ -207,99 +164,149 @@ export default function Phrases() {
     }
   };
 
+  const GRID_COLS = '24px 1.6fr 1fr 0.6fr 80px';
+
   return (
-    <div className='phrases-page flex min-h-full flex-col gap-6'>
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-        <PageHeader
-          title={t('phrases.title')}
-          description={t('phrases.summary')}
-          actions={
-            <>
-              <StatusChip label={`${rows.length}/${MAX_PHRASE_COUNT}`} tone='neutral' />
-              <button type='button' onClick={addRow} className='desktop-tight-button tool-btn min-w-[120px] whitespace-nowrap px-4'>
-                {t('phrases.add')}
-              </button>
-              <button
-                type='button'
-                onClick={saveRows}
-                disabled={saving}
-                className={`desktop-tight-button tool-btn-primary min-w-[104px] whitespace-nowrap px-4 ${saving ? 'opacity-70 cursor-not-allowed' : ''}`}>
-                {saving ? t('phrases.saving') : t('phrases.save')}
-              </button>
-            </>
-          }
-        />
-      </motion.div>
+    <>
+      <PageHead
+        title={t('phrases.pageTitle')}
+        sub={t('phrases.pageSub', { max: MAX_PHRASE_COUNT })}
+        right={
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <Chip dot tone='info'>
+              {t('phrases.pageQuotaChip', { used: rows.length, max: MAX_PHRASE_COUNT })}
+            </Chip>
+            <button
+              type='button'
+              className='lg-btn lg-btn--sm'
+              onClick={saveRows}
+              disabled={saving}>
+              {saving ? t('phrases.saving') : t('phrases.save')}
+            </button>
+            <button
+              type='button'
+              className='lg-btn lg-btn--sm lg-btn--primary'
+              onClick={addRow}>
+              <IPlus /> {t('phrases.add')}
+            </button>
+          </div>
+        }
+      />
+      <div className='lg-card' style={{ padding: 0 }}>
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: GRID_COLS,
+            gap: 0,
+            padding: '10px 16px',
+            fontSize: 10.5,
+            fontWeight: 700,
+            color: 'var(--lg-ink-3)',
+            letterSpacing: '.14em',
+            textTransform: 'uppercase',
+            borderBottom: '1px solid var(--lg-line-3)',
+            background: 'var(--lg-surf-2)',
+          }}>
+          <span />
+          <span>{t('phrases.table.content')}</span>
+          <span>{t('phrases.table.hotkey')}</span>
+          <span>{t('phrases.table.usage')}</span>
+          <span style={{ textAlign: 'right' }}>{t('phrases.table.action')}</span>
+        </div>
 
-      <motion.div className='flex-1' initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.06 }}>
-        <PanelCard className='phrases-panel tool-rise flex-1'>
-          {rows.length === 0 ? (
-            <div className='flex min-h-[280px] flex-col items-center justify-center rounded-[28px] border border-dashed border-[rgba(201,214,234,0.96)] bg-[rgba(249,252,255,0.9)] px-6 py-10 text-center'>
-              <div className='tool-card-title'>{t('phrases.empty.title')}</div>
-              <p className='tool-body mt-3 max-w-[420px]'>{t('phrases.empty.summary')}</p>
-              <button type='button' onClick={addRow} className='tool-btn mt-5 px-4'>
-                {t('phrases.add')}
-              </button>
+        {rows.length === 0 ? (
+          <div
+            style={{
+              padding: '36px 16px',
+              textAlign: 'center',
+              color: 'var(--lg-ink-3)',
+              fontSize: 13,
+            }}>
+            <div style={{ fontWeight: 700, color: 'var(--lg-ink-1)', marginBottom: 6 }}>
+              {t('phrases.empty.title')}
             </div>
-          ) : (
-            <div className='phrases-table-shell'>
-              <table className='phrases-table min-w-full border-separate border-spacing-0'>
-                <thead className='phrases-table__head sticky top-0 z-10'>
-                  <tr>
-                    <th className='px-5 py-4 text-left tool-caption w-[64px]'>{t('phrases.table.index')}</th>
-                    <th className='px-4 py-4 text-left tool-caption'>{t('phrases.table.content')}</th>
-                    <th className='px-4 py-4 text-left tool-caption w-[210px]'>{t('phrases.table.hotkey')}</th>
-                    <th className='px-5 py-4 text-left tool-caption w-[92px]'>{t('phrases.table.action')}</th>
-                  </tr>
-                </thead>
-
-                <tbody>
-                  {rows.map((row) => (
-                    <tr key={row.id} className='phrases-table__row border-t border-[rgba(226,233,243,0.8)]'>
-                      <td className='px-5 py-4 align-top text-sm font-semibold text-zinc-500'>{row.id}</td>
-
-                      <td className='px-4 py-4'>
-                        <input
-                          value={row.phrase}
-                          onChange={(event) => patchRow(row.id, { phrase: event.target.value })}
-                          className='tool-input'
-                          placeholder={t('phrases.contentPlaceholder')}
-                          maxLength={MAX_PHRASE_LENGTH}
-                        />
-                      </td>
-
-                      <td className='px-4 py-4'>
-                        <div className='phrases-hotkey-editor'>
-                          <KeycapGroup keys={[MODIFIER_LABEL]} size='sm' />
-                          <select
-                            value={row.keyCode}
-                            onChange={(event) => patchRow(row.id, { keyCode: event.target.value })}
-                            className='tool-input'>
-                            {KEY_OPTIONS.map((option) => (
-                              <option key={option.code} value={option.code}>
-                                {option.label}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                      </td>
-
-                      <td className='px-5 py-4 align-top'>
-                        <button
-                          type='button'
-                          onClick={() => removeRow(row.id)}
-                          className='tool-btn tool-btn-danger min-w-[72px] px-3 text-sm'>
-                          {t('common.remove')}
-                        </button>
-                      </td>
-                    </tr>
+            <div style={{ fontSize: 12 }}>{t('phrases.empty.summary')}</div>
+          </div>
+        ) : (
+          rows.map((row, i) => (
+            <div
+              key={row.id}
+              style={{
+                display: 'grid',
+                gridTemplateColumns: GRID_COLS,
+                alignItems: 'center',
+                gap: 0,
+                padding: '8px 16px',
+                borderBottom: i === rows.length - 1 ? 'none' : '1px solid var(--lg-line-3)',
+              }}>
+              <span
+                style={{
+                  color: 'var(--lg-ink-4)',
+                  cursor: 'grab',
+                  display: 'grid',
+                  placeItems: 'center',
+                }}
+                aria-label='reorder'>
+                <IGrip style={{ width: 16, height: 16 }} />
+              </span>
+              <input
+                className='lg-input'
+                value={row.phrase}
+                onChange={(event) => patchRow(row.id, { phrase: event.target.value })}
+                placeholder={t('phrases.contentPlaceholder')}
+                maxLength={MAX_PHRASE_LENGTH}
+                style={{ width: '92%' }}
+              />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Kbd keys={phraseHotkeyKeys(row.keyCode)} />
+                <select
+                  value={row.keyCode}
+                  onChange={(event) => patchRow(row.id, { keyCode: event.target.value })}
+                  className='lg-input'
+                  style={{ width: 64, padding: '0 6px', height: 26 }}>
+                  {KEY_OPTIONS.map((option) => (
+                    <option key={option.code} value={option.code}>
+                      {option.label}
+                    </option>
                   ))}
-                </tbody>
-              </table>
+                </select>
+              </div>
+              <span style={{ fontSize: 12, color: 'var(--lg-ink-2)', fontFamily: 'var(--lg-mono)' }}>
+                —
+              </span>
+              <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
+                <button
+                  type='button'
+                  className='lg-btn lg-btn--sm lg-btn--ghost'
+                  aria-label='more'>
+                  <IDots />
+                </button>
+                <button
+                  type='button'
+                  className='lg-btn lg-btn--sm lg-btn--ghost'
+                  style={{ color: 'var(--lg-danger-ink)' }}
+                  onClick={() => removeRow(row.id)}
+                  aria-label={t('common.remove')}>
+                  <ITrash />
+                </button>
+              </div>
             </div>
-          )}
-        </PanelCard>
-      </motion.div>
-    </div>
+          ))
+        )}
+
+        <div
+          style={{
+            padding: '12px 16px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            background: 'var(--lg-surf-2)',
+            borderTop: '1px solid var(--lg-line-3)',
+          }}>
+          <span style={{ fontSize: 11, color: 'var(--lg-ink-3)' }}>{t('phrases.footerHint')}</span>
+          <span style={{ fontSize: 12, color: 'var(--lg-ink-2)' }}>{t('phrases.footerBody')}</span>
+        </div>
+      </div>
+    </>
   );
 }

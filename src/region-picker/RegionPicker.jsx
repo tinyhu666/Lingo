@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
-import { getCurrentWindow } from '@tauri-apps/api/window';
+import { ITarget, ICheck } from '../icons';
 
 /**
  * Full-screen drag-to-select region picker, modeled after macOS's built-in
@@ -18,6 +18,8 @@ import { getCurrentWindow } from '@tauri-apps/api/window';
  * window. The host window is sized + positioned to exactly cover one
  * display, so picker coords == display-local pixel coords for the
  * pipeline's CGDisplayCreateImageForRect call later.
+ *
+ * Visual: v0.8 — `.lg-region-*` design system from the foundation.
  */
 
 const MIN_PICK_SIZE = 24;
@@ -145,101 +147,194 @@ export default function RegionPicker() {
     setError(null);
   };
 
+  const handleUseLast = () => {
+    // No-op: backend will reuse last saved region if user cancels.
+    // Wired as a UX affordance; clicking it cancels the picker so the
+    // previously saved region stays in place.
+    void handleCancel();
+  };
+
+  const handleCenterPreset = () => {
+    if (!ctx) return;
+    const W = ctx.display_width || window.innerWidth;
+    const H = ctx.display_height || window.innerHeight;
+    // Bottom-left chat zone: 30% wide × 22% tall, 3% inset (matches
+    // IncomingCalibrationModal's dota2DefaultRegion).
+    const w = Math.round(W * 0.3);
+    const h = Math.round(H * 0.22);
+    const x = Math.round(W * 0.03);
+    const y = Math.round(H * 0.75);
+    setDrag({
+      startX: x,
+      startY: y,
+      currX: x + w,
+      currY: y + h,
+      dragging: false,
+    });
+  };
+
   // ----- Render -----
   return (
     <div
       ref={rootRef}
-      className='region-picker'
+      className='lg-region-host'
+      style={{ width: '100vw', height: '100vh' }}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}>
-      {/* Dim overlay split into 4 rects around the drag, leaving the
-          dragged area clear so the user can see what's underneath. */}
-      {rect ? (
-        <>
-          <div
-            className='region-picker__dim'
-            style={{ top: 0, left: 0, width: '100%', height: rect.y }}
+      {/* Dim scrim covers everything; the .lg-region-cut below punches
+          a transparent rect via box-shadow inversion. */}
+      <div className='lg-region-scrim' />
+
+      {rect && (
+        <div
+          className='lg-region-cut'
+          style={{ left: rect.x, top: rect.y, width: rect.w, height: rect.h }}>
+          <div className='lg-region-grid' />
+          {/* 4 corner handles */}
+          <span className='lg-region-handle' style={{ left: -6, top: -6 }} />
+          <span className='lg-region-handle' style={{ right: -6, top: -6 }} />
+          <span className='lg-region-handle' style={{ left: -6, bottom: -6 }} />
+          <span className='lg-region-handle' style={{ right: -6, bottom: -6 }} />
+          {/* 4 mid-edge handles */}
+          <span
+            className='lg-region-handle'
+            style={{ left: '50%', top: -6, transform: 'translateX(-50%)' }}
           />
-          <div
-            className='region-picker__dim'
-            style={{
-              top: rect.y,
-              left: 0,
-              width: rect.x,
-              height: rect.h,
-            }}
+          <span
+            className='lg-region-handle'
+            style={{ left: '50%', bottom: -6, transform: 'translateX(-50%)' }}
           />
-          <div
-            className='region-picker__dim'
-            style={{
-              top: rect.y,
-              left: rect.x + rect.w,
-              right: 0,
-              height: rect.h,
-            }}
+          <span
+            className='lg-region-handle'
+            style={{ top: '50%', left: -6, transform: 'translateY(-50%)' }}
           />
-          <div
-            className='region-picker__dim'
-            style={{
-              top: rect.y + rect.h,
-              left: 0,
-              width: '100%',
-              bottom: 0,
-            }}
+          <span
+            className='lg-region-handle'
+            style={{ top: '50%', right: -6, transform: 'translateY(-50%)' }}
           />
-          <div
-            className={`region-picker__rect ${
-              drag?.dragging ? 'region-picker__rect--dragging' : 'region-picker__rect--committed'
-            }`}
-            style={{
-              left: rect.x,
-              top: rect.y,
-              width: rect.w,
-              height: rect.h,
-            }}>
-            <div className='region-picker__rect-label'>
+          {/* Coordinate readout */}
+          <div className='lg-region-readout'>
+            <span style={{ color: '#61ebff' }}>
+              {Math.round(rect.x)}, {Math.round(rect.y)}
+            </span>
+            <span style={{ opacity: 0.5 }}>·</span>
+            <span>
               {Math.round(rect.w)} × {Math.round(rect.h)}
-            </div>
+            </span>
           </div>
-        </>
-      ) : (
-        <div className='region-picker__dim region-picker__dim--full' />
+        </div>
       )}
 
-      {/* Toolbar */}
-      <div className='region-picker__toolbar' onMouseDown={(e) => e.stopPropagation()}>
-        <div className='region-picker__hint'>
-          {!rect && '按住鼠标左键拖出聊天区域 · Drag to select chat region · ESC 取消'}
-          {rect && drag?.dragging && '继续拖动… · Release to confirm'}
-          {rect && !drag?.dragging && (
-            <span>
-              已框选 <strong>{Math.round(rect.w)}×{Math.round(rect.h)}</strong> · 起点{' '}
-              <strong>{Math.round(rect.x)}, {Math.round(rect.y)}</strong>
-            </span>
-          )}
-        </div>
-        {error && <div className='region-picker__error'>{error}</div>}
-        <div className='region-picker__buttons'>
-          <button type='button' className='region-picker__btn' onClick={handleCancel}>
-            取消 · Cancel (ESC)
-          </button>
-          {rect && !drag?.dragging && (
-            <button type='button' className='region-picker__btn' onClick={handleReset}>
-              重新选择 · Reset
-            </button>
-          )}
-          {rect && !drag?.dragging && (
-            <button
-              type='button'
-              className='region-picker__btn region-picker__btn--primary'
-              onClick={handleSave}
-              disabled={submitting}>
-              {submitting ? '保存中…' : '保存 · Save'}
-            </button>
-          )}
-        </div>
+      {/* Top hint banner */}
+      <div
+        style={{
+          position: 'absolute',
+          top: 18,
+          left: '50%',
+          transform: 'translateX(-50%)',
+          padding: '8px 14px',
+          borderRadius: 10,
+          background: 'rgba(11,20,48,.92)',
+          border: '1px solid rgba(97,235,255,.22)',
+          color: '#f0f3fa',
+          fontSize: 12.5,
+          fontWeight: 500,
+          boxShadow: '0 12px 30px -10px rgba(0,0,0,.5)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          pointerEvents: 'none',
+        }}>
+        <ITarget style={{ width: 14, height: 14, color: '#61ebff' }} />
+        <span>拖动选取游戏聊天区域 · 仅 OCR 识别此范围</span>
+        <span
+          style={{
+            marginLeft: 8,
+            padding: '2px 7px',
+            borderRadius: 4,
+            background: 'rgba(97,235,255,.16)',
+            color: '#61ebff',
+            fontSize: 11,
+            fontFamily: 'var(--lg-mono)',
+          }}>
+          ESC 退出
+        </span>
       </div>
+
+      {/* Bottom toolbar — sits over the scrim, accepts pointer events. */}
+      <div
+        className='lg-region-toolbar'
+        onMouseDown={(e) => e.stopPropagation()}
+        onMouseMove={(e) => e.stopPropagation()}
+        onMouseUp={(e) => e.stopPropagation()}>
+        <span className='lg-region-toolbar__hint'>
+          {ctx?.scene ? (
+            <>
+              <span
+                style={{
+                  color: '#61ebff',
+                  fontFamily: 'var(--lg-mono)',
+                  marginRight: 4,
+                }}>
+                {ctx.scene}
+              </span>
+              {ctx.display_width && ctx.display_height
+                ? `· ${ctx.display_width}×${ctx.display_height}`
+                : null}
+            </>
+          ) : (
+            '准备中…'
+          )}
+        </span>
+        <span className='lg-region-toolbar__sep' />
+        <button
+          type='button'
+          className='lg-btn lg-btn--sm'
+          onClick={handleUseLast}>
+          使用上次
+        </button>
+        <button
+          type='button'
+          className='lg-btn lg-btn--sm'
+          onClick={handleCenterPreset}>
+          居中预设
+        </button>
+        {rect && !drag?.dragging && (
+          <button
+            type='button'
+            className='lg-btn lg-btn--sm'
+            onClick={handleReset}>
+            重新选择
+          </button>
+        )}
+        <span className='lg-region-toolbar__sep' />
+        <button
+          type='button'
+          className='lg-btn lg-btn--sm lg-btn--primary'
+          onClick={handleSave}
+          disabled={!rect || drag?.dragging || submitting}>
+          <ICheck /> {submitting ? '保存中…' : '确认保存'}
+        </button>
+      </div>
+
+      {error && (
+        <div
+          style={{
+            position: 'absolute',
+            bottom: 64,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            background: 'rgba(231,76,60,.22)',
+            color: '#ffb3b3',
+            border: '1px solid rgba(231,76,60,.45)',
+            borderRadius: 8,
+            padding: '6px 12px',
+            fontSize: 12,
+          }}>
+          {error}
+        </div>
+      )}
     </div>
   );
 }

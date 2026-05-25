@@ -73,6 +73,25 @@ pub struct OverlayPreferences {
     /// through to the game underneath. The user toggles this from the main
     /// window since once enabled the overlay itself becomes uninteractable.
     pub click_through: bool,
+    /// v0.8 — which screen edge the side-edge ticker anchors to.
+    /// One of: `"right" | "left" | "top" | "bottom"`. Default `right`.
+    #[serde(default = "default_overlay_anchor")]
+    pub anchor: String,
+    /// v0.8 — how source-text shows in each message.
+    /// One of: `"always" | "hover" | "never"`. Default `always`.
+    #[serde(default = "default_show_original_mode")]
+    pub show_original_mode: String,
+    /// v0.8 — colour ally/enemy messages differently when true.
+    #[serde(default = "default_true")]
+    pub team_color: bool,
+}
+
+fn default_overlay_anchor() -> String {
+    "right".to_string()
+}
+
+fn default_show_original_mode() -> String {
+    "always".to_string()
 }
 
 impl Default for OverlayPreferences {
@@ -88,6 +107,9 @@ impl Default for OverlayPreferences {
             fade_ms: 8000,
             max_lines: 6,
             click_through: false,
+            anchor: default_overlay_anchor(),
+            show_original_mode: default_show_original_mode(),
+            team_color: true,
         }
     }
 }
@@ -282,7 +304,7 @@ fn normalize_settings(settings: &mut AppSettings) {
     }
 
     let ov = &mut settings.incoming_overlay;
-    ov.opacity = ov.opacity.clamp(0.4, 1.0);
+    ov.opacity = ov.opacity.clamp(0.2, 1.0);
     if !ov.opacity.is_finite() {
         ov.opacity = 0.85;
     }
@@ -291,6 +313,12 @@ fn normalize_settings(settings: &mut AppSettings) {
     ov.max_lines = ov.max_lines.clamp(1, 20);
     ov.w = ov.w.clamp(220, 1200);
     ov.h = ov.h.clamp(120, 1200);
+    if !matches!(ov.anchor.as_str(), "right" | "left" | "top" | "bottom") {
+        ov.anchor = default_overlay_anchor();
+    }
+    if !matches!(ov.show_original_mode.as_str(), "always" | "hover" | "never") {
+        ov.show_original_mode = default_show_original_mode();
+    }
 }
 
 const SETTINGS_BACKUP_KEY: &str = "settings_corrupted_backup";

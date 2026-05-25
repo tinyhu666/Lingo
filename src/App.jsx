@@ -21,8 +21,8 @@ function PageFallback() {
   const { t } = useI18n();
 
   return (
-    <div className='dota-card flex h-full items-center justify-center p-6'>
-      <span className='tool-body'>{t('app.pageLoading')}</span>
+    <div className='lg-card flex h-full items-center justify-center p-6'>
+      <span style={{ color: 'var(--lg-ink-3)', fontSize: 13 }}>{t('app.pageLoading')}</span>
     </div>
   );
 }
