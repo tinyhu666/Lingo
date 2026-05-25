@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
 import { useCallback, useEffect, useState } from 'react';
+import { listen } from '@tauri-apps/api/event';
 import { useStore } from '../../../components/StoreProvider';
 import PanelCard from '../../../components/PanelCard';
 import StatusChip from '../../../components/StatusChip';
@@ -17,6 +18,14 @@ import {
 import { showError, showInfo, showSuccess } from '../../../utils/toast';
 import { toErrorMessage } from '../../../utils/error';
 import { useI18n } from '../../../i18n/I18nProvider';
+
+const STATUS_NOTE_EVENTS = [
+  'incoming:permission_required',
+  'incoming:region_required',
+  'incoming:capture_error',
+  'incoming:ocr_error',
+  'incoming:fatal',
+];
 
 export default function IncomingStatusCard() {
   const { settings, syncSettings } = useStore();
@@ -49,6 +58,49 @@ export default function IncomingStatusCard() {
   useEffect(() => {
     void refreshStatus();
   }, [refreshStatus, persistedEnabled, gameScene, hasRegion]);
+
+  // The pipeline emits status events when it can't run (no region, permission
+  // denied, capture failure). Without listening for them the home card would
+  // silently sit on "Ready" while nothing actually translates — exactly the
+  // class of "Windows doesn't show any translation" feedback we got. Surface
+  // them as toasts so the user sees the cause.
+  useEffect(() => {
+    if (!hasTauriRuntime()) return undefined;
+    let cancelled = false;
+    const unlisteners = [];
+    (async () => {
+      for (const eventName of STATUS_NOTE_EVENTS) {
+        try {
+          const unlisten = await listen(eventName, (event) => {
+            if (cancelled) return;
+            const payload = event.payload;
+            const message = typeof payload === 'string' && payload.trim()
+              ? payload
+              : t('home.incoming.statusNote', { event: eventName });
+            showError(message);
+            void refreshStatus();
+          });
+          if (cancelled) {
+            unlisten();
+          } else {
+            unlisteners.push(unlisten);
+          }
+        } catch (error) {
+          console.warn(`failed to listen for ${eventName}`, error);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+      for (const u of unlisteners) {
+        try {
+          u();
+        } catch (e) {
+          // ignore
+        }
+      }
+    };
+  }, [refreshStatus, t]);
 
   const permission = status?.permission || PERMISSION_STATES.UNKNOWN;
   const permissionMissing = permission === PERMISSION_STATES.DENIED;

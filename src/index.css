@@ -808,9 +808,10 @@
   }
 
   .status-chip--warning {
-    color: #b45309;
-    background: rgba(255, 247, 237, 0.98);
-    border-color: rgba(245, 158, 11, 0.18);
+    color: #7c2d12;
+    background: rgba(254, 215, 170, 0.85);
+    border-color: rgba(234, 88, 12, 0.55);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
   }
 
   .status-chip--info {

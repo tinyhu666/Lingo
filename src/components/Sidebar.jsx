@@ -72,11 +72,6 @@ export default function Sidebar({ activeItem, setActiveItem }) {
         </div>
         <StatusChip label={isEnabled ? t('common.enabled') : t('common.paused')} tone={isEnabled ? 'success' : 'warning'} />
       </div>
-
-      <div className='sidebar-footer'>
-        <div className='sidebar-footer__version'>{APP_VERSION_LABEL}</div>
-        <div className='sidebar-footer__meta'>{t('common.poweredBy')}</div>
-      </div>
     </div>
   );
 }
