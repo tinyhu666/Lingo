@@ -78,3 +78,30 @@ windows-sys = { version = "0.61", features = [
   "Win32_Graphics_Gdi",
   "Win32_UI_WindowsAndMessaging",
 ] }
+# High-level WinRT-projecting crate for the v0.7.0 incoming-translation
+# feature. Used by `incoming::ocr::windows` (Windows.Media.Ocr) and
+# `incoming::capture::windows` (Windows.Graphics.Capture). Coexists with
+# `windows-sys` above; they target different layers (WinRT vs raw Win32)
+# and don't conflict. Pinned to match the spike crate so the COM ABI is
+# guaranteed identical.
+# Reference: spikes/ocr-vision/SPIKE_B_WINDOWS.md.
+windows = { version = "=0.61.3", features = [
+  "Foundation",
+  "Foundation_Collections",
+  "Globalization",
+  "Graphics_Capture",
+  "Graphics_DirectX",
+  "Graphics_DirectX_Direct3D11",
+  "Graphics_Imaging",
+  "Media_Ocr",
+  "Storage_Streams",
+  "Win32_Foundation",
+  "Win32_Graphics_Direct3D",
+  "Win32_Graphics_Direct3D11",
+  "Win32_Graphics_Dxgi",
+  "Win32_Graphics_Dxgi_Common",
+  "Win32_Graphics_Gdi",
+  "Win32_System_WinRT",
+  "Win32_System_WinRT_Direct3D11",
+  "Win32_System_WinRT_Graphics_Capture",
+] }

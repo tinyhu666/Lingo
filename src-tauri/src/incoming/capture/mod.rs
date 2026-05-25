@@ -80,36 +80,26 @@ pub fn default_capture_source() -> Result<Box<dyn CaptureSource>, CaptureError> 
 pub mod macos;
 
 #[cfg(target_os = "windows")]
-mod windows {
-    use super::*;
-
-    pub fn create() -> Result<Box<dyn CaptureSource>, CaptureError> {
-        Err(CaptureError::Unimplemented)
-    }
-}
+pub mod windows;
 
 /// Platform-specific permission state for Screen Recording.
 #[cfg(target_os = "macos")]
 pub use macos::{list_displays, permission_state, request_permission};
 
-#[cfg(not(target_os = "macos"))]
+#[cfg(target_os = "windows")]
+pub use windows::{list_displays, permission_state, request_permission};
+
+#[cfg(not(any(target_os = "macos", target_os = "windows")))]
 pub fn permission_state() -> crate::incoming::PermissionState {
-    #[cfg(target_os = "windows")]
-    {
-        crate::incoming::PermissionState::NotApplicable
-    }
-    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
-    {
-        crate::incoming::PermissionState::Unknown
-    }
+    crate::incoming::PermissionState::Unknown
 }
 
-#[cfg(not(target_os = "macos"))]
+#[cfg(not(any(target_os = "macos", target_os = "windows")))]
 pub fn request_permission() -> crate::incoming::PermissionState {
     permission_state()
 }
 
-#[cfg(not(target_os = "macos"))]
+#[cfg(not(any(target_os = "macos", target_os = "windows")))]
 pub fn list_displays() -> Vec<crate::incoming::DisplayInfo> {
     crate::incoming::list_displays_stub()
 }

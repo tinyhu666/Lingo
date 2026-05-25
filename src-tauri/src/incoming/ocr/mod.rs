@@ -116,12 +116,4 @@ pub fn default_ocr_engine() -> Result<Box<dyn OcrEngine>, OcrError> {
 mod macos;
 
 #[cfg(target_os = "windows")]
-mod windows {
-    use super::*;
-
-    /// Will wrap `Windows.Media.Ocr.OcrEngine`. Needs Spike B accuracy
-    /// numbers before locking in the language-selection strategy.
-    pub fn create() -> Result<Box<dyn OcrEngine>, OcrError> {
-        Err(OcrError::Unimplemented)
-    }
-}
+mod windows;
