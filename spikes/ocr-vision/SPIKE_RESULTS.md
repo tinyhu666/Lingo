@@ -126,8 +126,11 @@ The Rust port lives at `src-tauri/src/incoming/ocr/macos.rs`.
       can fail CI when an engine update degrades accuracy.
 - [ ] LoL chat screenshots (font is different).
 - [ ] Overwatch / WoW screenshots (text overlays game world directly).
-- [ ] Spike B: Windows.Media.Ocr equivalent on the same corpus, once a
-      Windows test box is available.
+- [x] Spike B: Windows.Media.Ocr equivalent on the same corpus, once a
+      Windows test box is available. → see `SPIKE_B_WINDOWS.md`.
+      TL;DR: ~92% accuracy on CN/EN/mixed with threshold:180 preprocessing,
+      1.6–8.5 ms latency (10× faster than Vision), but no auto-detect (needs
+      explicit two-pass with en-US + zh-Hans-CN engines).
 
 ## Rust port checklist
 
