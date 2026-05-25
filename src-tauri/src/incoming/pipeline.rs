@@ -30,12 +30,12 @@ use crate::incoming::tracker::{LineTracker, NewMessage};
 use crate::incoming::{IncomingTranslation, PermissionState};
 use crate::store;
 use serde::Serialize;
-use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::Mutex;
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tauri::async_runtime::JoinHandle;
 use tauri::{AppHandle, Emitter};
-use tokio::sync::oneshot;
+use tokio::sync::{oneshot, Semaphore};
 
 const MIN_TICK_MS: u64 = 200;
 const MAX_TICK_MS: u64 = 4_000;
@@ -43,6 +43,11 @@ const MAX_TICK_MS: u64 = 4_000;
 /// down to avoid spamming logs while still recovering quickly when the
 /// blocking condition lifts.
 const BACKOFF_TICK_MS: u64 = 2_500;
+/// Cap on in-flight translate-proxy POSTs. The pipeline fires translation
+/// requests off as detached tokio tasks so the OCR tick keeps cadence; this
+/// semaphore prevents an unresponsive proxy from causing requests to pile
+/// up indefinitely (~10s timeout × 1.5 Hz × N users = a lot of memory).
+const MAX_CONCURRENT_TRANSLATES: usize = 4;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct StartOptions {
@@ -52,16 +57,29 @@ pub struct StartOptions {
     pub show_original: bool,
 }
 
-#[derive(Default)]
 pub struct IncomingPipeline {
     inner: Mutex<PipelineState>,
+    /// Lives outside the mutex so the run loop itself can clear it on any
+    /// exit path (including the fatal-early-return paths). Without this,
+    /// a capture/OCR init failure left `running=true` in the inner state
+    /// and the user couldn't restart without explicitly toggling off
+    /// first.
+    running: Arc<AtomicBool>,
+}
+
+impl Default for IncomingPipeline {
+    fn default() -> Self {
+        Self {
+            inner: Mutex::new(PipelineState::default()),
+            running: Arc::new(AtomicBool::new(false)),
+        }
+    }
 }
 
 #[derive(Default)]
 struct PipelineState {
     handle: Option<JoinHandle<()>>,
     cancel: Option<oneshot::Sender<()>>,
-    running: bool,
 }
 
 impl IncomingPipeline {
@@ -71,39 +89,60 @@ impl IncomingPipeline {
 
     /// Returns true if the pipeline's background task is currently running.
     pub fn is_running(&self) -> bool {
-        self.inner.lock().map(|s| s.running).unwrap_or(false)
+        self.running.load(Ordering::Acquire)
     }
 
-    /// Spawns the run loop. Idempotent: a second call while already running
-    /// is a no-op rather than an error.
+    /// Spawns the run loop. Defensively aborts any lingering prior handle
+    /// (which can happen if the user mashes the toggle within a frame)
+    /// before swapping in a new one. Idempotent when already running.
     pub fn start(&self, app: AppHandle, _opts: StartOptions) -> Result<(), String> {
         let mut state = self
             .inner
             .lock()
             .map_err(|e| format!("pipeline mutex poisoned: {e}"))?;
-        if state.running {
+        if self.running.load(Ordering::Acquire) {
             return Ok(());
         }
+        // Belt-and-braces: if a previous run is still being torn down (start →
+        // stop → start in quick succession), abort its task and drop its
+        // cancel sender now so we don't accumulate run loops.
+        if let Some(prev) = state.handle.take() {
+            prev.abort();
+        }
+        state.cancel = None;
+
         let (cancel_tx, cancel_rx) = oneshot::channel();
-        let handle = tauri::async_runtime::spawn(run_loop(app, cancel_rx));
+        let running = Arc::clone(&self.running);
+        running.store(true, Ordering::Release);
+        let handle = tauri::async_runtime::spawn(async move {
+            run_loop(app, cancel_rx).await;
+            // Any exit path — clean cancel, fatal-early-return, or panic
+            // unwinding through the await — flips `running` back so the
+            // next start() doesn't see a stale `true`.
+            running.store(false, Ordering::Release);
+        });
         state.handle = Some(handle);
         state.cancel = Some(cancel_tx);
-        state.running = true;
         Ok(())
     }
 
-    /// Cancels the run loop. Safe to call when already stopped.
+    /// Cancels the run loop. Safe to call when already stopped. Returns
+    /// immediately; the actual task teardown happens asynchronously.
     pub fn stop(&self) {
         let (cancel, handle) = {
             let Ok(mut state) = self.inner.lock() else {
                 return;
             };
-            state.running = false;
             (state.cancel.take(), state.handle.take())
         };
         if let Some(tx) = cancel {
             let _ = tx.send(());
         }
+        // Flag goes false here so callers reading `is_running()` see the
+        // intent immediately, even before the spawned task has a chance
+        // to drain. The store inside the spawn closure (above) is a
+        // backstop for the early-return case.
+        self.running.store(false, Ordering::Release);
         if let Some(handle) = handle {
             handle.abort();
         }
@@ -136,7 +175,12 @@ async fn run_loop(app: AppHandle, mut cancel: oneshot::Receiver<()>) {
     };
 
     let mut tracker = LineTracker::default();
-    let id_counter = std::sync::Arc::new(AtomicU64::new(1));
+    let id_counter = Arc::new(AtomicU64::new(1));
+    // Bound translate-proxy concurrency. Each new line is translated on a
+    // detached tokio task so the OCR cadence doesn't depend on proxy
+    // latency; the semaphore prevents runaway queueing when the proxy
+    // stalls (each acquire returns immediately under normal load).
+    let translate_permits = Arc::new(Semaphore::new(MAX_CONCURRENT_TRANSLATES));
 
     let mut last_note: Option<&'static str> = None;
     let mut backoff_active = false;
@@ -252,14 +296,16 @@ async fn run_loop(app: AppHandle, mut cancel: oneshot::Receiver<()>) {
             continue;
         }
 
-        // ---- Per-line translate (fire-and-forget) ----------------------
+        // ---- Per-line translate (fire-and-forget, bounded concurrency) -
         for msg in new_msgs {
             let app_for_task = app.clone();
             let target_lang = settings.translation_to.clone();
             let game_scene = settings.game_scene.clone();
             let counter = id_counter.clone();
+            let permits = translate_permits.clone();
             tauri::async_runtime::spawn(async move {
-                translate_and_emit(app_for_task, msg, target_lang, game_scene, counter).await;
+                translate_and_emit(app_for_task, msg, target_lang, game_scene, counter, permits)
+                    .await;
             });
         }
     }
@@ -283,7 +329,8 @@ async fn translate_and_emit(
     msg: NewMessage,
     target_lang: String,
     game_scene: String,
-    counter: std::sync::Arc<AtomicU64>,
+    counter: Arc<AtomicU64>,
+    permits: Arc<Semaphore>,
 ) {
     // Skip lines that are already in the user's native language. The
     // proxy would noop them, but we save a round-trip and avoid the
@@ -292,6 +339,21 @@ async fn translate_and_emit(
         return;
     }
 
+    // Cap in-flight translation requests so a stalled proxy can't make us
+    // grow unbounded under bursty chat. If we can't acquire within a
+    // bounded window, drop the line rather than queue it — by the time
+    // the proxy recovers the line is stale anyway.
+    let permit = match tokio::time::timeout(Duration::from_secs(2), permits.acquire_owned()).await {
+        Ok(Ok(p)) => p,
+        Ok(Err(_)) | Err(_) => {
+            eprintln!(
+                "[incoming] dropping line (translate queue full): {:?}",
+                msg.sender
+            );
+            return;
+        }
+    };
+
     let translated = match translate_incoming(&msg.text, &target_lang, &game_scene).await {
         Ok(text) => text,
         Err(error) => {
@@ -299,9 +361,11 @@ async fn translate_and_emit(
                 "[incoming] translate failed for {:?} → {}: {}",
                 msg.sender, target_lang, error
             );
+            drop(permit);
             return;
         }
     };
+    drop(permit);
 
     if translated.trim().is_empty() {
         return;

@@ -116,8 +116,13 @@ const STYLE_PROFILES = {
 };
 const translationCache = new Map();
 const translationInflight = new Map();
+/// Hard cap on simultaneous in-flight translation requests. Beyond this
+/// new requests return 503; a slow upstream can otherwise pin promises
+/// at MAX_BODY_BYTES (128 KB) each.
+const TRANSLATION_INFLIGHT_MAX = 512;
 const fastLaneCircuit = new Map();
 const ANALYTICS_PUBLIC_CACHE_TTL_MS = 30_000;
+const ANALYTICS_PUBLIC_CACHE_MAX_ENTRIES = 64;
 const analyticsPublicCache = new Map();
 
 const ENV_PLACEHOLDER_VALUES = new Set([
@@ -131,9 +136,19 @@ const cachedAnalyticsResponse = (key, builder) => {
   const now = Date.now();
   const hit = analyticsPublicCache.get(key);
   if (hit && hit.expiresAt > now) {
+    // LRU touch.
+    analyticsPublicCache.delete(key);
+    analyticsPublicCache.set(key, hit);
     return hit.value;
   }
   const value = builder();
+  if (analyticsPublicCache.size >= ANALYTICS_PUBLIC_CACHE_MAX_ENTRIES) {
+    // Map iteration is insertion-order, so the first key is the oldest.
+    const oldest = analyticsPublicCache.keys().next().value;
+    if (oldest !== undefined) {
+      analyticsPublicCache.delete(oldest);
+    }
+  }
   analyticsPublicCache.set(key, { value, expiresAt: now + ANALYTICS_PUBLIC_CACHE_TTL_MS });
   return value;
 };
@@ -444,9 +459,14 @@ const canUseFastLane = ({ config, payload, text, promptVariant }) => {
   // "did the user understand it" sense. The fast lane (now also DeepSeek
   // V4-Flash by default) is the right home for it: short prompts, short
   // outputs, lower latency. We skip the style/profile checks that exist
-  // to guard outgoing-translation quality, but still respect the circuit
-  // breaker so a failing fast lane can drain.
+  // to guard outgoing-translation quality, but still respect the
+  // length cap — a freakishly long OCR line (>max_text_length) deserves
+  // the primary lane's larger token budget so it doesn't get truncated.
   if (isIncomingDirection(payload)) {
+    const textLength = Array.from(String(text || '').trim()).length;
+    if (textLength > fastLane.max_text_length) {
+      return false;
+    }
     return getFastLaneCircuitExpiresAt(fastLane) === 0;
   }
 
@@ -596,6 +616,7 @@ const requestModelOnce = async ({
         );
         const error = new Error('Empty model response');
         error.status = 502;
+        error.fromUpstream = true;
         throw error;
       }
 
@@ -739,6 +760,16 @@ const requestTranslatedText = async ({ cacheKey, load }) => {
     };
   }
 
+  // Soft cap on in-flight distinct translation jobs. Coalescing already
+  // handles the common case of many clients translating the same line;
+  // this protects against many clients translating MANY different lines
+  // while the upstream is hanging.
+  if (translationInflight.size >= TRANSLATION_INFLIGHT_MAX) {
+    const error = new Error('Translation service is over capacity, please retry shortly');
+    error.status = 503;
+    throw error;
+  }
+
   const requestPromise = load().then((result) => {
     const { cacheable = true, ...cacheValue } = result;
     if (cacheable) {
@@ -877,8 +908,21 @@ const routeTranslate = async (req, res, traceId) => {
       const runPrimaryModel = async (modelRouteName) => {
         const primaryApiKey = resolveApiKey(process.env, config);
         if (!primaryApiKey) {
-          const error = new Error(`Missing API key env: ${config.api_key_env_name}`);
-          error.status = 500;
+          // Don't leak the env var name to clients. Log it server-side
+          // so operators can diagnose, but mask it through the standard
+          // upstream-error envelope so it surfaces as a generic
+          // "Upstream service error" with status 502.
+          console.error(
+            JSON.stringify({
+              trace_id: traceId,
+              level: 'fatal',
+              message: 'Missing API key env',
+              api_key_env_name: config.api_key_env_name,
+            }),
+          );
+          const error = new Error('Server is missing translation backend credentials');
+          error.status = 502;
+          error.fromUpstream = true;
           throw error;
         }
 
@@ -1197,6 +1241,32 @@ const warnAboutCredentialsAtStartup = () => {
     );
   }
 };
+
+// Last-resort process-level handlers. Node 20+ defaults to
+// `--unhandled-rejections=throw`, which surfaces these as a crash; we
+// want to at least log structured JSON before exiting so operators can
+// see what happened in `kubectl logs` / `journalctl` after the fact.
+process.on('unhandledRejection', (reason) => {
+  console.error(
+    JSON.stringify({
+      level: 'fatal',
+      kind: 'unhandledRejection',
+      message: String(reason && reason.message ? reason.message : reason),
+    }),
+  );
+});
+process.on('uncaughtException', (error) => {
+  console.error(
+    JSON.stringify({
+      level: 'fatal',
+      kind: 'uncaughtException',
+      message: String(error?.message || error),
+    }),
+  );
+  // Defer to default behaviour (terminate) — the catch is purely for the
+  // structured-log breadcrumb.
+  process.exitCode = 1;
+});
 
 server.listen(port, '0.0.0.0', async () => {
   warnAboutCredentialsAtStartup();

@@ -1,0 +1,14 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "incoming-windows",
+  "description": "Minimal window permissions for the two helper windows the v0.7 incoming-translation feature owns. The default capability is scoped to the main app window only; without this block, calls like getCurrentWindow().hide() from the overlay or region-picker JSX would be rejected by Tauri's ACL at runtime.",
+  "windows": [
+    "incoming-overlay",
+    "region-picker"
+  ],
+  "permissions": [
+    "core:window:allow-hide",
+    "core:window:allow-close",
+    "core:window:allow-start-dragging"
+  ]
+}
