@@ -14,9 +14,9 @@ use windows::Win32::Foundation::{HANDLE, HWND, LPARAM, RECT, TRUE};
 use windows::Win32::Graphics::Gdi::{
     GetMonitorInfoW, MonitorFromWindow, HMONITOR, MONITORINFOEXW, MONITOR_DEFAULTTONEAREST,
 };
-use windows::Win32::System::ProcessStatus::GetModuleFileNameExW;
 use windows::Win32::System::Threading::{
-    OpenProcess, PROCESS_QUERY_LIMITED_INFORMATION, PROCESS_VM_READ,
+    OpenProcess, QueryFullProcessImageNameW, PROCESS_NAME_FORMAT,
+    PROCESS_QUERY_LIMITED_INFORMATION,
 };
 use windows::Win32::UI::WindowsAndMessaging::{
     EnumWindows, GetClassNameW, GetWindowRect, GetWindowTextW, GetWindowThreadProcessId, IsIconic,
@@ -40,6 +40,57 @@ pub fn detect_current() -> Option<GameWindow> {
         return Some(active.clone());
     }
     acc.into_iter().next()
+}
+
+/// Debug-only: dump every visible top-level window the detector sees
+/// along with its class / title / process name, plus whether any
+/// `SIGNATURES` row matched. Surfaced as a tauri command so DevTools
+/// can call it when detection silently fails — `await window.__TAURI__
+/// .core.invoke('incoming_debug_enumerate_windows')`.
+///
+/// Only visible windows with non-empty titles are returned; otherwise
+/// the output is swamped by DWM cloaked helpers.
+pub fn enumerate_all_for_debug() -> Vec<super::DebugWindowEntry> {
+    let mut acc: Vec<super::DebugWindowEntry> = Vec::new();
+    let ptr: *mut Vec<super::DebugWindowEntry> = &mut acc;
+    unsafe {
+        let _ = EnumWindows(Some(enum_proc_debug), LPARAM(ptr as isize));
+    }
+    acc
+}
+
+unsafe extern "system" fn enum_proc_debug(hwnd: HWND, lparam: LPARAM) -> BOOL {
+    let acc = unsafe { &mut *(lparam.0 as *mut Vec<super::DebugWindowEntry>) };
+
+    // Filter the same way detect_current does, so the dump matches
+    // what the production detector actually walks.
+    if !unsafe { IsWindowVisible(hwnd) }.as_bool() {
+        return TRUE;
+    }
+    let title = read_window_text(hwnd);
+    // Skip truly empty rows — every Windows session has a hundred of
+    // them (DWM helpers, tray hosts, etc.) and they swamp the output.
+    if title.is_empty() {
+        return TRUE;
+    }
+    let class = read_class_name(hwnd);
+    let process_name = process_name_for(hwnd);
+    let process_name_lc = process_name.to_lowercase();
+
+    let matched_game_id = SIGNATURES
+        .iter()
+        .find(|s| matches_signature(s, &process_name_lc, &class, &title))
+        .map(|s| s.game_id);
+
+    acc.push(super::DebugWindowEntry {
+        hwnd: hwnd.0 as isize,
+        class,
+        title,
+        process_name,
+        process_name_lc,
+        matched_game_id,
+    });
+    TRUE
 }
 
 unsafe extern "system" fn enum_proc(hwnd: HWND, lparam: LPARAM) -> BOOL {
@@ -147,8 +198,16 @@ fn read_class_name(hwnd: HWND) -> String {
 
 /// Best-effort lookup of the host process's executable file name (no
 /// path). Returns `""` if we can't open the process or read the module
-/// name — that's normal for system processes our token can't query, and
-/// the caller will just skip the signature match.
+/// name — that's normal for anti-cheat / system-protected processes,
+/// and after v0.9.0-rc.2 the matcher tolerates empty process names.
+///
+/// Uses `QueryFullProcessImageNameW` which requires only
+/// `PROCESS_QUERY_LIMITED_INFORMATION` — the most permissive access
+/// rights available for cross-trust-level introspection on Win 7+.
+/// The old `GetModuleFileNameExW` + `PROCESS_VM_READ` combo would
+/// fail for VAC-protected processes (Dota 2 under EAC/VAC); the new
+/// pairing works for everything except deeply protected system
+/// processes.
 fn process_name_for(hwnd: HWND) -> String {
     let mut pid: u32 = 0;
     let _ = unsafe { GetWindowThreadProcessId(hwnd, Some(&mut pid as *mut u32)) };
@@ -156,28 +215,32 @@ fn process_name_for(hwnd: HWND) -> String {
         return String::new();
     }
 
-    // Open with the minimum access rights that work for
-    // GetModuleFileNameExW: PROCESS_QUERY_LIMITED_INFORMATION |
-    // PROCESS_VM_READ. The QUERY_LIMITED flavour avoids needing elevated
-    // privileges for most user processes.
-    let access = PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_VM_READ;
-    let handle: HANDLE = match unsafe { OpenProcess(access, false, pid) } {
-        Ok(h) => h,
-        Err(_) => return String::new(),
-    };
+    let handle: HANDLE =
+        match unsafe { OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid) } {
+            Ok(h) => h,
+            Err(_) => return String::new(),
+        };
     if handle.is_invalid() {
         return String::new();
     }
 
     let mut buf = [0u16; 1024];
-    let n = unsafe { GetModuleFileNameExW(Some(handle), None, &mut buf) };
+    let mut size: u32 = buf.len() as u32;
+    let result = unsafe {
+        QueryFullProcessImageNameW(
+            handle,
+            PROCESS_NAME_FORMAT(0), // PROCESS_NAME_WIN32 = friendly Win32 path
+            windows::core::PWSTR(buf.as_mut_ptr()),
+            &mut size as *mut u32,
+        )
+    };
     unsafe {
         let _ = windows::Win32::Foundation::CloseHandle(handle);
     }
-    if n == 0 {
+    if result.is_err() || size == 0 {
         return String::new();
     }
-    let path = String::from_utf16_lossy(&buf[..(n as usize)]);
+    let path = String::from_utf16_lossy(&buf[..(size as usize)]);
     // Return the basename only. We compare lowercase against
     // signatures like `dota2.exe`.
     path.rsplit(['\\', '/']).next().unwrap_or("").to_string()

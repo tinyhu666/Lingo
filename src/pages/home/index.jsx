@@ -246,6 +246,40 @@ function IncomingHero() {
     }
   };
 
+  // v0.9.0-rc.2: emergency diagnostic. When auto-detect fails in the field,
+  // the user clicks "诊断检测" and we copy the full window enumeration
+  // (class + title + process + matched-game-id for every visible window)
+  // to clipboard so they can paste it to support. No DevTools required.
+  const handleDiagnoseDetection = async () => {
+    if (!hasTauriRuntime()) {
+      showError('诊断功能仅在客户端可用');
+      return;
+    }
+    try {
+      const rows = await invokeCommand('incoming_debug_enumerate_windows');
+      const summary = {
+        timestamp: new Date().toISOString(),
+        detectedGame: detectedGame || null,
+        platform: navigator.platform,
+        userAgent: navigator.userAgent.slice(0, 200),
+        windowCount: Array.isArray(rows) ? rows.length : 0,
+        windows: rows,
+      };
+      const text = JSON.stringify(summary, null, 2);
+      try {
+        await navigator.clipboard.writeText(text);
+        showSuccess(`诊断信息已复制到剪贴板（${summary.windowCount} 个窗口），请发给开发者`);
+      } catch (clipErr) {
+        // Fallback when clipboard API isn't available (older webviews).
+        // eslint-disable-next-line no-console
+        console.log('lingo-diagnose-detection', text);
+        showInfo('诊断信息已打印到 console。控制台不可见时请联系开发者');
+      }
+    } catch (error) {
+      showError(`诊断失败: ${toErrorMessage(error)}`);
+    }
+  };
+
   const handleClickThroughToggle = async () => {
     if (clickPending) return;
     const next = !clickThrough;
@@ -388,7 +422,10 @@ function IncomingHero() {
 
           {/* v0.9.0 auto-detect: passive status, not a button. The drag-
               to-select calibration was removed; chat region is computed
-              from the detected game window's bounds. */}
+              from the detected game window's bounds. v0.9.0-rc.2 added
+              a small `诊断` link for cases where detection silently
+              misses — clicking it copies the window enumeration to
+              clipboard so the user can hand it to support. */}
           <div style={{ ...heroBtnStyle(Boolean(detectedGame)), cursor: 'default' }}>
             <IGamepad
               style={{
@@ -411,6 +448,24 @@ function IncomingHero() {
                 {detectedGameMeta}
               </div>
             </div>
+            <button
+              type='button'
+              onClick={(e) => {
+                e.stopPropagation();
+                void handleDiagnoseDetection();
+              }}
+              title='复制当前所有可见窗口的诊断信息到剪贴板（识别失败时给开发者）'
+              style={{
+                background: 'transparent',
+                border: '1px solid var(--lg-line-1)',
+                borderRadius: 6,
+                padding: '4px 8px',
+                fontSize: 10.5,
+                color: 'var(--lg-ink-3)',
+                cursor: 'pointer',
+              }}>
+              诊断
+            </button>
           </div>
 
           {/* Action: click-through / lock */}

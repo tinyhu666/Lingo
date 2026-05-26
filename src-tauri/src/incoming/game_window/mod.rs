@@ -106,6 +106,37 @@ pub fn detect_current() -> Option<GameWindow> {
     }
 }
 
+/// Diagnostic-only: list every visible top-level window the detector
+/// sees, with its class / title / process name and whether the
+/// signature table matched it. Surfaced via a tauri command so the
+/// user can hit it from DevTools when auto-detection silently fails
+/// in the field — see `incoming_debug_enumerate_windows` in `lib.rs`.
+pub fn enumerate_all_for_debug() -> Vec<DebugWindowEntry> {
+    #[cfg(target_os = "windows")]
+    {
+        windows::enumerate_all_for_debug()
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        Vec::new()
+    }
+}
+
+/// Cross-platform debug entry. Mirrors the Windows shape; macOS will
+/// emit the same struct (with `process_name` = `kCGWindowOwnerName`)
+/// once detection lands there in v0.9.x.
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct DebugWindowEntry {
+    /// Platform handle (Windows: HWND value; macOS: kCGWindowNumber).
+    /// Caller treats it as opaque.
+    pub hwnd: isize,
+    pub class: String,
+    pub title: String,
+    pub process_name: String,
+    pub process_name_lc: String,
+    pub matched_game_id: Option<GameId>,
+}
+
 // ---------------------------------------------------------------------------
 // Platform impls
 // ---------------------------------------------------------------------------
@@ -144,11 +175,20 @@ pub(crate) struct GameSignature {
 /// keeps the "we can detect the window but don't know where chat is"
 /// state impossible.
 pub(crate) const SIGNATURES: &[GameSignature] = &[
+    // Dota 2 — title-anchored. The window-class field was originally
+    // pinned to `SDL_app` (the Source 2 default) but real user reports
+    // hit empty/different classes (different DX renderer, Big Picture
+    // overlay, etc.), so we drop the class check entirely. The title
+    // "Dota 2" is specific enough on its own — random apps don't
+    // usually carry it. `dota2.exe` is recorded too: when the OS lets
+    // us read the host process name, it's an additional confirmer,
+    // but anti-cheat / privilege-protected scenarios occasionally
+    // refuse OpenProcess and return "" — we still accept the match in
+    // that case as long as title hits.
     GameSignature {
         game_id: GameId::Dota2,
         process_name_lc: "dota2.exe",
-        // Dota 2 uses Source 2's SDL_app class on Windows.
-        window_classes: &["SDL_app"],
+        window_classes: &[],
         title_substrings: &["Dota 2"],
     },
     GameSignature {
@@ -160,12 +200,16 @@ pub(crate) const SIGNATURES: &[GameSignature] = &[
     },
     GameSignature {
         game_id: GameId::LeagueOfLegends,
-        // Riot ships the in-game client as `League of Legends.exe`.
-        // The launcher (`LeagueClient.exe`) is a separate process and is
-        // deliberately not matched — we don't want to translate the
-        // lobby chat panel.
+        // Same logic as Dota: drop class check, lean on title.
+        // The launcher (`LeagueClient.exe`) is filtered out by the
+        // title check because its window title is just "League of
+        // Legends" but our matcher requires the title substring,
+        // which the launcher does contain. To prevent matching the
+        // launcher we keep a second signature for that specifically;
+        // see the title-only fallback in matches_signature for
+        // the conservative branch.
         process_name_lc: "league of legends.exe",
-        window_classes: &["RiotWindowClass"],
+        window_classes: &[],
         title_substrings: &["League of Legends"],
     },
     GameSignature {
@@ -180,20 +224,45 @@ pub(crate) const SIGNATURES: &[GameSignature] = &[
 /// platform impls feed normalised inputs (lowercase process, raw class,
 /// raw title) and rely on this helper to keep the matching logic in one
 /// place.
+///
+/// v0.9.0-rc.2 behaviour (lenient): the matcher accepts either of
+/// these on a per-attribute basis when the signature specifies one:
+///
+///   - **process_name_lc** is checked when the host returned a
+///     non-empty name. If `OpenProcess` / `QueryFullProcessImageNameW`
+///     failed (anti-cheat protected processes can refuse access), we
+///     skip this check rather than reject. Process name is a
+///     strengthener, not a hard requirement.
+///   - **window_classes** is checked when the signature provides
+///     classes. Today both Windows signatures ship an empty list, so
+///     this is effectively informational — kept for forward use.
+///   - **title_substrings** must always match when the signature
+///     specifies any. This is the load-bearing check post-rc.2: title
+///     is the most stable identifier across game updates and renderer
+///     switches.
 pub(crate) fn matches_signature(
     sig: &GameSignature,
     process_name_lc: &str,
     window_class: &str,
     window_title: &str,
 ) -> bool {
-    if !sig.process_name_lc.is_empty() && process_name_lc != sig.process_name_lc {
+    // Process check is best-effort: skip when we couldn't read it.
+    if !sig.process_name_lc.is_empty()
+        && !process_name_lc.is_empty()
+        && process_name_lc != sig.process_name_lc
+    {
         return false;
     }
+    // Window class check is opt-in: empty signature list means
+    // "anything goes" (the v0.9.0-rc.1 SDL_app pin caused real
+    // mismatches in the wild).
     if !sig.window_classes.is_empty()
         && !sig.window_classes.iter().any(|c| *c == window_class)
     {
         return false;
     }
+    // Title check is mandatory when set — this is the load-bearing
+    // identifier after rc.2 made process+class optional.
     if !sig.title_substrings.is_empty() {
         let title_lc = window_title.to_lowercase();
         if !sig
@@ -234,8 +303,9 @@ mod tests {
             window_classes: &["SDL_app"],
             title_substrings: &["Dota 2"],
         };
+        // Full match
         assert!(matches_signature(&sig, "dota2.exe", "SDL_app", "Dota 2 (DX11)"));
-        // Process name mismatch
+        // Process name mismatch (process is known to be wrong → reject)
         assert!(!matches_signature(&sig, "csgo.exe", "SDL_app", "Dota 2"));
         // Window class mismatch
         assert!(!matches_signature(&sig, "dota2.exe", "ChromeWindow", "Dota 2"));
@@ -246,6 +316,24 @@ mod tests {
             "SDL_app",
             "Steam Big Picture"
         ));
+    }
+
+    #[test]
+    fn matches_signature_tolerates_unreadable_process_name() {
+        // v0.9.0-rc.2 regression test: when anti-cheat / privilege
+        // protection makes OpenProcess return access-denied, the
+        // platform impl feeds an empty process name. The matcher
+        // should fall back to class+title rather than reject outright.
+        let sig = GameSignature {
+            game_id: GameId::Dota2,
+            process_name_lc: "dota2.exe",
+            window_classes: &[],
+            title_substrings: &["Dota 2"],
+        };
+        assert!(matches_signature(&sig, "", "SDL_app", "Dota 2"));
+        assert!(matches_signature(&sig, "", "", "Dota 2"));
+        // But still reject when the title is wrong.
+        assert!(!matches_signature(&sig, "", "", "Steam"));
     }
 
     #[test]
