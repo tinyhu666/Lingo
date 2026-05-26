@@ -24,6 +24,8 @@
 //! the only platform-agnostic part of the pipeline.
 
 pub mod capture;
+pub mod game_profiles;
+pub mod game_window;
 pub mod ocr;
 pub mod permission;
 pub mod pipeline;
