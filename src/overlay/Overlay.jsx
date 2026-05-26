@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useReducer, useRef } from 'react';
 import { listen } from '@tauri-apps/api/event';
 import { invoke } from '@tauri-apps/api/core';
-import { getCurrentWindow } from '@tauri-apps/api/window';
+import { getCurrentWindow, PhysicalPosition } from '@tauri-apps/api/window';
 import { IAnchorR, IAnchorL, IAnchorT, IAnchorB } from '../icons';
 
 /**
@@ -154,6 +154,96 @@ export default function Overlay() {
       if (typeof unlistenPrefs === 'function') unlistenPrefs();
       if (typeof unlistenClear === 'function') unlistenClear();
       if (typeof unlistenPaused === 'function') unlistenPaused();
+    };
+  }, []);
+
+  // ---- v0.9.0 auto-detect: anchor overlay to detected game window --------
+  //
+  // The pipeline emits `incoming:game_window_changed` whenever the game's
+  // bounds move (or a different game becomes foreground). We snap the
+  // overlay to the LEFT of the game window — like Hearthstone Helper /
+  // 直播伴侣弹幕助手 — so the user doesn't have to position the window
+  // themselves. When the game closes / minimises we hide the overlay.
+  useEffect(() => {
+    let unlistenChanged = null;
+    let unlistenClosed = null;
+    let unlistenNoGame = null;
+    let cancelled = false;
+    const OVERLAY_GAP_PX = 12; // breathing room between overlay and game
+
+    const reposition = async (gameWindow) => {
+      try {
+        const win = getCurrentWindow();
+        const bounds = gameWindow?.bounds;
+        if (!bounds || !Number.isFinite(bounds.x) || !Number.isFinite(bounds.y)) {
+          return;
+        }
+        // Get current overlay size so we can place ourselves cleanly to
+        // the left. PhysicalSize on the way out; subtract from game.x.
+        let overlayWidth = 360;
+        try {
+          const size = await win.outerSize();
+          if (size && size.width) overlayWidth = size.width;
+        } catch (_) {
+          /* keep default */
+        }
+        let x = bounds.x - overlayWidth - OVERLAY_GAP_PX;
+        const y = bounds.y;
+        // If the game window is hard against the left of the screen
+        // there's no room to the left — fall back to overlaying the
+        // game's left edge with a small inset.
+        if (x < 0) {
+          x = Math.max(0, bounds.x + OVERLAY_GAP_PX);
+        }
+        await win.setPosition(new PhysicalPosition(Math.round(x), Math.round(y)));
+        // Ensure visible. The pipeline only emits `game_window_changed`
+        // when the feature is enabled, so this is safe.
+        if (typeof win.show === 'function') {
+          await win.show();
+        }
+      } catch (error) {
+        // eslint-disable-next-line no-console
+        console.warn('overlay reposition failed', error);
+      }
+    };
+
+    const hide = async () => {
+      try {
+        const win = getCurrentWindow();
+        if (typeof win.hide === 'function') {
+          await win.hide();
+        }
+      } catch (error) {
+        // eslint-disable-next-line no-console
+        console.warn('overlay hide failed', error);
+      }
+    };
+
+    (async () => {
+      try {
+        unlistenChanged = await listen('incoming:game_window_changed', (event) => {
+          if (cancelled) return;
+          reposition(event.payload).catch(() => {});
+        });
+        unlistenClosed = await listen('incoming:game_closed', () => {
+          if (cancelled) return;
+          hide().catch(() => {});
+        });
+        unlistenNoGame = await listen('incoming:no_game_detected', () => {
+          if (cancelled) return;
+          hide().catch(() => {});
+        });
+      } catch (error) {
+        // eslint-disable-next-line no-console
+        console.error('failed to subscribe to game-window events', error);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      if (typeof unlistenChanged === 'function') unlistenChanged();
+      if (typeof unlistenClosed === 'function') unlistenClosed();
+      if (typeof unlistenNoGame === 'function') unlistenNoGame();
     };
   }, []);
 
