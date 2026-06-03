@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
-import { XClose } from '../icons';
+import { XClose, ICalibrate, ITarget } from '../icons';
 import { useI18n } from '../i18n/I18nProvider';
 import {
   listDisplays,
@@ -14,25 +14,13 @@ import { showError, showSuccess } from '../utils/toast';
 import { toErrorMessage } from '../utils/error';
 
 /**
- * Region calibration modal — v0.7.0-rc.2 redesign.
+ * Region calibration modal — v0.8 .lg-modal repaint.
  *
- * The rc.1 version asked users to pick from three hardcoded resolution
- * presets (1080p/1440p/4K) and edit four numeric inputs. On HiDPI Macs
- * the displays report logical sizes like 1470×956 and none of the
- * presets fit. Painful.
- *
- * This version:
- * 1. **Drag-to-select fullscreen picker.** Primary CTA. Clicking it
- *    opens a transparent always-on-top window that covers the chosen
- *    display; the user drags a rectangle on the actual screen with a
- *    Cmd+Shift+5-style dim. Mouseup -> Save in the picker -> region
- *    persists -> picker hides -> this modal updates.
- * 2. **Auto-scaled DotA default** that's computed from the actual
- *    detected display dimensions, not hardcoded pixel coords. Works on
- *    any resolution, including the scaled HiDPI configs Apple ships by
- *    default.
- * 3. **Manual x/y/w/h inputs** retained as a power-user fallback for
- *    folks who already know the exact coords.
+ * Logic kept intact from the v0.7.0-rc.2 drag-to-pick rewrite:
+ *  1. Primary CTA opens the transparent always-on-top region picker
+ *     window; mouseup-to-save persists + auto-closes this modal.
+ *  2. Auto-default region scaled to the current display dimensions.
+ *  3. Manual x/y/w/h numeric inputs retained as a fallback.
  */
 
 const DEFAULT_DISPLAY = {
@@ -46,15 +34,6 @@ const DEFAULT_DISPLAY = {
   is_primary: true,
 };
 
-/**
- * Compute a sensible default chat region for DotA 2 as a function of
- * the display size, in the same units the rest of the pipeline uses
- * (logical points on macOS, pixels on Windows).
- *
- * Anchors: bottom-left of the screen, ~30% wide, ~22% tall, with a 3%
- * inset from the screen edges. Tuned against DotA 2's default UI scale
- * across 1080p / 1440p / 4K and the M1 Air's 1470×956 logical mode.
- */
 function dota2DefaultRegion(displayW, displayH) {
   const w = Math.round(displayW * 0.3);
   const h = Math.round(displayH * 0.22);
@@ -74,10 +53,9 @@ export default function IncomingCalibrationModal({
 
   const [displays, setDisplays] = useState([DEFAULT_DISPLAY]);
   const [displayId, setDisplayId] = useState(DEFAULT_DISPLAY.id);
-  const [region, setRegion] = useState(dota2DefaultRegion(
-    DEFAULT_DISPLAY.width,
-    DEFAULT_DISPLAY.height,
-  ));
+  const [region, setRegion] = useState(
+    dota2DefaultRegion(DEFAULT_DISPLAY.width, DEFAULT_DISPLAY.height),
+  );
   const [saving, setSaving] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
 
@@ -91,7 +69,8 @@ export default function IncomingCalibrationModal({
       const next = list.length > 0 ? list : [DEFAULT_DISPLAY];
       setDisplays(next);
       const initialDisplayId =
-        currentRegion?.display_id != null && next.some((d) => d.id === currentRegion.display_id)
+        currentRegion?.display_id != null &&
+        next.some((d) => d.id === currentRegion.display_id)
           ? currentRegion.display_id
           : next[0].id;
       setDisplayId(initialDisplayId);
@@ -146,14 +125,18 @@ export default function IncomingCalibrationModal({
   }, [open, onSaved, t]);
 
   const activeDisplay = useMemo(
-    () => displays.find((d) => d.id === displayId) || displays[0] || DEFAULT_DISPLAY,
+    () =>
+      displays.find((d) => d.id === displayId) || displays[0] || DEFAULT_DISPLAY,
     [displays, displayId],
   );
 
   const updateField = (field) => (event) => {
     const raw = event.target.value;
     const parsed = Number.parseInt(raw, 10);
-    setRegion((prev) => ({ ...prev, [field]: Number.isFinite(parsed) ? parsed : 0 }));
+    setRegion((prev) => ({
+      ...prev,
+      [field]: Number.isFinite(parsed) ? parsed : 0,
+    }));
   };
 
   const isValid =
@@ -181,7 +164,11 @@ export default function IncomingCalibrationModal({
       });
     } catch (error) {
       setPickerOpen(false);
-      showError(t('home.incoming.calibration.pickerFailed', { error: toErrorMessage(error) }));
+      showError(
+        t('home.incoming.calibration.pickerFailed', {
+          error: toErrorMessage(error),
+        }),
+      );
     }
   };
 
@@ -193,7 +180,11 @@ export default function IncomingCalibrationModal({
       onSaved?.();
       onClose?.();
     } catch (error) {
-      showError(t('home.incoming.calibration.saveFailed', { error: toErrorMessage(error) }));
+      showError(
+        t('home.incoming.calibration.saveFailed', {
+          error: toErrorMessage(error),
+        }),
+      );
     } finally {
       setSaving(false);
     }
@@ -216,217 +207,285 @@ export default function IncomingCalibrationModal({
       onSaved?.();
       onClose?.();
     } catch (error) {
-      showError(t('home.incoming.calibration.saveFailed', { error: toErrorMessage(error) }));
+      showError(
+        t('home.incoming.calibration.saveFailed', {
+          error: toErrorMessage(error),
+        }),
+      );
     } finally {
       setSaving(false);
     }
   }, [activeDisplay.id, gameScene, isValid, onClose, onSaved, region, t]);
 
-  // ---- Preview SVG ----
-  const previewW = 360;
-  const scaleX = previewW / activeDisplay.width;
-  const previewH = Math.max(160, Math.round(activeDisplay.height * scaleX));
-  const rectX = region.x * scaleX;
-  const rectY = region.y * scaleX;
-  const rectW = region.w * scaleX;
-  const rectH = region.h * scaleX;
-  const rectFits = isValid;
-
   return (
     <AnimatePresence>
       {open && (
         <motion.div
-          className='lingo-calibration-backdrop'
+          className='lg-modal-host'
           initial={{ opacity: 0 }}
           animate={{ opacity: pickerOpen ? 0 : 1 }}
           exit={{ opacity: 0 }}
           onClick={onClose}>
           <motion.div
-            className='lingo-calibration-dialog'
+            className='lg-modal'
+            style={{ width: 520 }}
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 24 }}
             transition={{ type: 'spring', damping: 22, stiffness: 220 }}
             onClick={(e) => e.stopPropagation()}>
-            <header className='lingo-calibration-dialog__header'>
-              <div>
-                <div className='tool-pill'>{t('home.incoming.calibration.titleBadge')}</div>
-                <h2 className='tool-page-title mt-2'>
+            <div className='lg-modal__head'>
+              <div className='lg-card__icon'>
+                <ICalibrate />
+              </div>
+              <div style={{ flex: 1 }}>
+                <div className='lg-modal__title'>
                   {t('home.incoming.calibration.title', { scene: gameScene })}
-                </h2>
+                </div>
+                <div
+                  style={{
+                    fontSize: 12,
+                    color: 'var(--lg-ink-3)',
+                    marginTop: 2,
+                  }}>
+                  {t('home.incoming.calibration.displayLine', {
+                    scene: gameScene,
+                    w: activeDisplay.width,
+                    h: activeDisplay.height,
+                  })}
+                </div>
               </div>
               <button
                 type='button'
-                className='lingo-calibration-dialog__close'
+                className='lg-btn lg-btn--ghost lg-btn--sm'
                 onClick={onClose}
                 aria-label={t('home.incoming.calibration.close')}>
-                <XClose className='h-4 w-4' />
-              </button>
-            </header>
-
-            <p className='tool-body lingo-calibration-dialog__intro'>
-              {t('home.incoming.calibration.intro')}
-            </p>
-
-            {/* ---------------- Primary CTA: drag-to-pick ---------------- */}
-            <div className='lingo-calibration-primary'>
-              <button
-                type='button'
-                className='lingo-calibration-primary__btn'
-                onClick={handleOpenPicker}>
-                <span className='lingo-calibration-primary__btn-title'>
-                  {t('home.incoming.calibration.pickerCta')}
-                </span>
-                <span className='lingo-calibration-primary__btn-hint'>
-                  {t('home.incoming.calibration.pickerHint')}
-                </span>
+                <XClose style={{ width: 14, height: 14 }} />
               </button>
             </div>
 
-            <div className='lingo-calibration-divider'>
-              <span>{t('home.incoming.calibration.or')}</span>
-            </div>
+            <div className='lg-modal__body'>
+              <p
+                style={{
+                  fontSize: 13,
+                  color: 'var(--lg-ink-2)',
+                  lineHeight: 1.6,
+                  margin: 0,
+                }}>
+                {t('home.incoming.calibration.intro')}
+              </p>
 
-            {/* ---------------- Auto-default + manual coords ------------- */}
-            <div className='lingo-calibration-dialog__grid'>
-              <div className='lingo-calibration-form'>
-                <label className='tool-caption' htmlFor='calib-display'>
+              {/* Preview block — small display thumbnail with current
+                  region highlighted. */}
+              <CalibrationPreview
+                activeDisplay={activeDisplay}
+                region={region}
+                isValid={isValid}
+                t={t}
+              />
+
+              {/* Display selector */}
+              <div className='lg-field'>
+                <label className='lg-field__label' htmlFor='calib-display'>
                   {t('home.incoming.calibration.display')}
                 </label>
                 <select
                   id='calib-display'
-                  className='tool-input'
+                  className='lg-input'
                   value={displayId}
                   onChange={(e) => {
                     const nextId = Number(e.target.value);
                     setDisplayId(nextId);
                     const nextDisplay =
-                      displays.find((d) => d.id === nextId) || displays[0] || DEFAULT_DISPLAY;
-                    setRegion(dota2DefaultRegion(nextDisplay.width, nextDisplay.height));
+                      displays.find((d) => d.id === nextId) ||
+                      displays[0] ||
+                      DEFAULT_DISPLAY;
+                    setRegion(
+                      dota2DefaultRegion(nextDisplay.width, nextDisplay.height),
+                    );
                   }}>
                   {displays.map((d) => (
                     <option key={d.id} value={d.id}>
                       {d.name}
-                      {d.is_primary ? ` · ${t('home.incoming.calibration.primary')}` : ''}
+                      {d.is_primary
+                        ? ` · ${t('home.incoming.calibration.primary')}`
+                        : ''}
                     </option>
                   ))}
                 </select>
+              </div>
 
-                <button
-                  type='button'
-                  className='lingo-calibration-form__preset-btn lingo-calibration-form__preset-btn--wide'
-                  onClick={handleApplyAutoDefault}>
-                  {t('home.incoming.calibration.autoDefaultCta', {
-                    w: activeDisplay.width,
-                    h: activeDisplay.height,
-                  })}
-                </button>
+              {/* Resolution adapt segmented */}
+              <div className='lg-field'>
+                <label className='lg-field__label'>
+                  {t('home.incoming.calibration.resolutionAdapt')}
+                </label>
+                <div className='lg-seg'>
+                  <button
+                    type='button'
+                    className='lg-seg__item lg-seg__item--active'
+                    onClick={handleApplyAutoDefault}>
+                    {t('home.incoming.calibration.autoDetect')}
+                  </button>
+                  <button type='button' className='lg-seg__item'>
+                    {t('home.incoming.calibration.manualCoords')}
+                  </button>
+                </div>
+              </div>
 
-                <div className='lingo-calibration-form__coords'>
+              {/* Manual coords */}
+              <div className='lg-field'>
+                <label className='lg-field__label'>
+                  {t('home.incoming.calibration.coordsLabel')}
+                </label>
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(4, 1fr)',
+                    gap: 8,
+                  }}>
                   {[
                     { key: 'x', label: 'X' },
                     { key: 'y', label: 'Y' },
                     { key: 'w', label: 'W' },
                     { key: 'h', label: 'H' },
                   ].map((field) => (
-                    <label key={field.key} className='lingo-calibration-form__coord-field'>
-                      <span className='tool-caption'>{field.label}</span>
+                    <label
+                      key={field.key}
+                      style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 4,
+                      }}>
+                      <span
+                        style={{
+                          fontSize: 10.5,
+                          fontWeight: 600,
+                          color: 'var(--lg-ink-3)',
+                          letterSpacing: '0.04em',
+                        }}>
+                        {field.label}
+                      </span>
                       <input
                         type='number'
                         min={0}
-                        className='tool-input'
+                        className='lg-input'
                         value={region[field.key]}
                         onChange={updateField(field.key)}
                       />
                     </label>
                   ))}
                 </div>
-
-                <p className='lingo-calibration-form__hint'>
+                <p
+                  style={{
+                    fontSize: 11,
+                    color: 'var(--lg-ink-3)',
+                    margin: 0,
+                  }}>
                   {t('home.incoming.calibration.coordsHint')}
                 </p>
               </div>
-
-              <div className='lingo-calibration-preview'>
-                <span className='tool-caption'>{t('home.incoming.calibration.preview')}</span>
-                <svg
-                  className='lingo-calibration-preview__svg'
-                  viewBox={`0 0 ${previewW} ${previewH}`}
-                  width={previewW}
-                  height={previewH}>
-                  <defs>
-                    <pattern id='calib-grid' width='20' height='20' patternUnits='userSpaceOnUse'>
-                      <path d='M 20 0 L 0 0 0 20' fill='none' stroke='rgba(255,255,255,0.06)' strokeWidth='1' />
-                    </pattern>
-                  </defs>
-                  <rect x='0' y='0' width={previewW} height={previewH} fill='rgba(20,22,32,0.85)' rx='8' />
-                  <rect x='0' y='0' width={previewW} height={previewH} fill='url(#calib-grid)' />
-                  {rectFits ? (
-                    <rect
-                      x={rectX}
-                      y={rectY}
-                      width={rectW}
-                      height={rectH}
-                      fill='rgba(95, 182, 255, 0.22)'
-                      stroke='#5fb6ff'
-                      strokeWidth='1.5'
-                      rx='3'
-                    />
-                  ) : (
-                    <rect
-                      x={Math.max(0, Math.min(rectX, previewW - 1))}
-                      y={Math.max(0, Math.min(rectY, previewH - 1))}
-                      width={Math.max(1, Math.min(rectW, previewW))}
-                      height={Math.max(1, Math.min(rectH, previewH))}
-                      fill='rgba(255, 99, 99, 0.18)'
-                      stroke='#ff8080'
-                      strokeDasharray='4 3'
-                      strokeWidth='1.5'
-                      rx='3'
-                    />
-                  )}
-                  <text
-                    x={previewW - 8}
-                    y={previewH - 10}
-                    textAnchor='end'
-                    fill='rgba(255,255,255,0.4)'
-                    fontSize='11'
-                    fontFamily='sans-serif'>
-                    {activeDisplay.width}×{activeDisplay.height}
-                  </text>
-                </svg>
-                {!rectFits && (
-                  <p className='lingo-calibration-preview__warning'>
-                    {t('home.incoming.calibration.outOfBounds')}
-                  </p>
-                )}
-              </div>
             </div>
 
-            <footer className='lingo-calibration-dialog__footer'>
+            <div className='lg-modal__foot'>
               <button
                 type='button'
-                className='tool-btn'
+                className='lg-btn'
                 onClick={handleClear}
                 disabled={saving || !currentRegion}>
                 {t('home.incoming.calibration.clear')}
               </button>
-              <div className='lingo-calibration-dialog__footer-right'>
-                <button type='button' className='tool-btn' onClick={onClose} disabled={saving}>
-                  {t('home.incoming.calibration.cancel')}
-                </button>
-                <button
-                  type='button'
-                  className='tool-btn-primary'
-                  onClick={handleSave}
-                  disabled={saving || !isValid}>
-                  {saving ? t('home.incoming.calibration.saving') : t('home.incoming.calibration.save')}
-                </button>
-              </div>
-            </footer>
+              <button
+                type='button'
+                className='lg-btn'
+                onClick={onClose}
+                disabled={saving}>
+                {t('home.incoming.calibration.cancel')}
+              </button>
+              <button
+                type='button'
+                className='lg-btn lg-btn--primary'
+                onClick={handleOpenPicker}>
+                <ITarget />
+                {t('home.incoming.calibration.pickerCta')}
+              </button>
+              <button
+                type='button'
+                className='lg-btn lg-btn--primary'
+                onClick={handleSave}
+                disabled={saving || !isValid}>
+                {saving
+                  ? t('home.incoming.calibration.saving')
+                  : t('home.incoming.calibration.save')}
+              </button>
+            </div>
           </motion.div>
         </motion.div>
       )}
     </AnimatePresence>
+  );
+}
+
+function CalibrationPreview({ activeDisplay, region, isValid, t }) {
+  const previewW = 140;
+  const aspect = activeDisplay.height / activeDisplay.width;
+  const previewH = Math.max(60, Math.round(previewW * aspect));
+  const scale = previewW / activeDisplay.width;
+  return (
+    <div
+      style={{
+        padding: 12,
+        background: 'var(--lg-surf-2)',
+        border: '1px solid var(--lg-line-1)',
+        borderRadius: 10,
+        display: 'flex',
+        alignItems: 'center',
+        gap: 12,
+      }}>
+      <div
+        style={{
+          flex: `0 0 ${previewW}px`,
+          height: previewH,
+          borderRadius: 8,
+          background: '#0b1430',
+          position: 'relative',
+          overflow: 'hidden',
+        }}>
+        <div
+          style={{
+            position: 'absolute',
+            left: region.x * scale,
+            top: region.y * scale,
+            width: Math.max(2, region.w * scale),
+            height: Math.max(2, region.h * scale),
+            border: `1.5px solid ${isValid ? '#61ebff' : '#ff8080'}`,
+            borderRadius: 2,
+            boxShadow: isValid ? '0 0 12px rgba(97,235,255,.4)' : 'none',
+          }}
+        />
+      </div>
+      <div style={{ flex: 1, fontSize: 12, color: 'var(--lg-ink-2)' }}>
+        <div
+          style={{ fontWeight: 700, color: 'var(--lg-ink-0)', fontSize: 13 }}>
+          {t('home.incoming.calibration.preview')}
+        </div>
+        <div style={{ fontFamily: 'var(--lg-mono)', marginTop: 4 }}>
+          x={region.x} y={region.y}
+        </div>
+        <div style={{ fontFamily: 'var(--lg-mono)' }}>
+          {region.w} × {region.h} px
+        </div>
+        {!isValid && (
+          <div
+            style={{
+              marginTop: 4,
+              fontSize: 11,
+              color: 'var(--lg-danger-ink, #c1442e)',
+            }}>
+            {t('home.incoming.calibration.outOfBounds')}
+          </div>
+        )}
+      </div>
+    </div>
   );
 }

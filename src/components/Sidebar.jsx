@@ -1,11 +1,9 @@
-﻿import { motion } from 'framer-motion';
-import { twMerge } from 'tailwind-merge';
 import { NAV_ITEMS } from '../constants/navigation';
 import { APP_VERSION_LABEL } from '../constants/version';
 import { useUpdater } from './UpdateProvider';
 import { useI18n } from '../i18n/I18nProvider';
-import StatusChip from './StatusChip';
 import { useStore } from './StoreProvider';
+import appIcon from '../assets/app-icon.png';
 
 export default function Sidebar({ activeItem, setActiveItem }) {
   const { hasUpdate } = useUpdater();
@@ -14,64 +12,60 @@ export default function Sidebar({ activeItem, setActiveItem }) {
   const isEnabled = settings?.app_enabled ?? true;
 
   return (
-    <div className='sidebar-panel'>
-      <div className='sidebar-brand' aria-label={t('common.appName')}>
-        <div>
-          <div className='sidebar-brand__eyebrow'>{t('sidebar.controlDeck')}</div>
-          <div className='sidebar-brand__name'>{t('common.appName')}</div>
+    <aside className='lg-sidebar'>
+      <div className='lg-side-brand' aria-label={t('common.appName')}>
+        <div
+          className='lg-side-brand__icon'
+          style={{ background: 'transparent', boxShadow: 'none' }}>
+          <img src={appIcon} alt='Lingo' style={{ width: 28, height: 28 }} />
         </div>
-        <div className='sidebar-brand__version'>{APP_VERSION_LABEL}</div>
+        <div>
+          <div className='lg-side-brand__name'>{t('common.appName')}</div>
+          <div className='lg-side-brand__ver'>{APP_VERSION_LABEL}</div>
+        </div>
       </div>
 
-      <div className='sidebar-section'>
-        <nav className='sidebar-nav'>
-          {NAV_ITEMS.map((item) => {
-            const isActive = activeItem === item.id;
-            const Icon = item.icon;
+      <div className='lg-side-eyebrow'>{t('sidebar.controlDeck')}</div>
+      <nav className='lg-nav'>
+        {NAV_ITEMS.map((item) => {
+          const isActive = activeItem === item.id;
+          const Icon = item.icon;
 
-            return (
-              <button
-                key={item.id}
-                type='button'
-                onClick={() => setActiveItem(item.id)}
-                className={twMerge('sidebar-nav__item', isActive && 'sidebar-nav__item--active')}>
-                {isActive ? (
-                  <motion.span
-                    layoutId='sidebar-active-pill'
-                    className='sidebar-nav__active-glow'
-                    transition={{ type: 'spring', stiffness: 480, damping: 38 }}
-                  />
-                ) : null}
-
-                <span className='sidebar-nav__icon-wrap'>
-                  <Icon className='sidebar-nav__icon' />
+          return (
+            <button
+              key={item.id}
+              type='button'
+              onClick={() => setActiveItem(item.id)}
+              className={`lg-nav__item ${isActive ? 'lg-nav__item--active' : ''}`}>
+              <span className='lg-nav__icon'>
+                <Icon />
+              </span>
+              <span className='lg-nav__text'>{t(item.labelKey)}</span>
+              {item.id === 'about' && hasUpdate ? (
+                <span className='lg-chip lg-chip--warn-strong lg-nav__badge'>
+                  {t('sidebar.updateBadge')}
                 </span>
-                <span className='sidebar-nav__text'>{t(item.labelKey)}</span>
+              ) : null}
+            </button>
+          );
+        })}
+      </nav>
 
-                {item.id === 'about' && hasUpdate ? (
-                  <StatusChip label={t('sidebar.updateAvailable')} tone='warning' className='sidebar-nav__badge' />
-                ) : null}
-              </button>
-            );
-          })}
-        </nav>
-      </div>
-
-      <div className='sidebar-status-card'>
+      <div className='lg-side-status'>
         <span
-          className={`sidebar-status-card__dot ${
-            isEnabled ? 'sidebar-status-card__dot--enabled' : 'sidebar-status-card__dot--paused'
-          }`}
+          className={`lg-side-status__dot ${isEnabled ? '' : 'lg-side-status__dot--paused'}`}
           aria-hidden='true'
         />
-        <div className='sidebar-status-card__copy'>
-          <div className='sidebar-status-card__title'>
+        <div className='lg-side-status__copy'>
+          <div className='lg-side-status__title'>
             {isEnabled ? t('sidebar.serviceRunning') : t('sidebar.servicePaused')}
           </div>
-          <div className='sidebar-status-card__meta'>{t('sidebar.hotkeyReady')}</div>
+          <div className='lg-side-status__meta'>{t('sidebar.hotkeyReady')}</div>
         </div>
-        <StatusChip label={isEnabled ? t('common.enabled') : t('common.paused')} tone={isEnabled ? 'success' : 'warning'} />
+        <span className={`lg-chip ${isEnabled ? 'lg-chip--success' : 'lg-chip--warn'}`}>
+          {isEnabled ? t('common.enabled') : t('common.paused')}
+        </span>
       </div>
-    </div>
+    </aside>
   );
 }

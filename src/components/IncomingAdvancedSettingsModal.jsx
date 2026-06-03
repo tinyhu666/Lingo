@@ -1,6 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { XClose, KeyboardAlt, Spinner } from '../icons';
+import {
+  XClose,
+  KeyboardAlt,
+  Spinner,
+  ISliders,
+  ICheck,
+  IAnchorR,
+  IAnchorL,
+  IAnchorT,
+  IAnchorB,
+} from '../icons';
 import {
   buildHotkeyFromKeyCodes,
   defaultTranslatorHotkeyLabel,
@@ -21,37 +31,59 @@ import { toErrorMessage } from '../utils/error';
 import { useI18n } from '../i18n/I18nProvider';
 
 /**
- * Power-user settings dialog reachable via the "高级设置" / "Advanced"
- * button on `IncomingStatusCard`. Three sections — hotkey rebind,
- * overlay appearance, capture rate — sharing one save model where each
- * change persists immediately and pushes a live update to the overlay
- * via the `incoming:prefs` Tauri event.
+ * Power-user settings dialog — v0.8 .lg-modal repaint.
  *
- * The overlay listens for that event and applies font / opacity /
- * max-lines / fade changes without a restart, so the user gets
- * real-time visual feedback while dragging sliders.
+ * Keeps the persisted prefs intact (opacity / font_size / max_lines /
+ * fade_ms / show_original / click_through) and stores three new aux
+ * settings — anchor edge, team-color toggle, source-text display mode —
+ * as part of the same payload. The backend tolerates unknown keys via
+ * `#[serde(default)]` so the persisted blob is forward-compatible.
  */
 
-const FADE_OPTIONS = [
-  { value: 3000, key: 'fade3s' },
-  { value: 5000, key: 'fade5s' },
-  { value: 8000, key: 'fade8s' },
-  { value: 12000, key: 'fade12s' },
-  { value: 20000, key: 'fade20s' },
+const ANCHORS = [
+  { id: 'right', Icon: IAnchorR, labelKey: 'anchorRight' },
+  { id: 'left', Icon: IAnchorL, labelKey: 'anchorLeft' },
+  { id: 'top', Icon: IAnchorT, labelKey: 'anchorTop' },
+  { id: 'bottom', Icon: IAnchorB, labelKey: 'anchorBottom' },
 ];
 
-const CAPTURE_RATE_OPTIONS = [
-  { value: 0.75, key: 'capture0_75' },
-  { value: 1.0, key: 'capture1' },
-  { value: 1.5, key: 'capture1_5' },
-  { value: 2.0, key: 'capture2' },
-  { value: 3.0, key: 'capture3' },
+const SOURCE_MODES = [
+  { id: 'always', labelKey: 'sourceAlways' },
+  { id: 'hover', labelKey: 'sourceHover' },
+  { id: 'never', labelKey: 'sourceNever' },
 ];
 
-export default function IncomingAdvancedSettingsModal({ open, onClose, settings, onChange }) {
+const DEFAULTS = {
+  anchor: 'right',
+  opacity: 0.78,
+  fade_ms: 8000,
+  show_original_mode: 'always',
+  team_color: true,
+};
+
+function readPrefs(overlayPrefs) {
+  return {
+    anchor: overlayPrefs.anchor || DEFAULTS.anchor,
+    opacity: overlayPrefs.opacity ?? DEFAULTS.opacity,
+    fade_ms: overlayPrefs.fade_ms ?? DEFAULTS.fade_ms,
+    show_original_mode:
+      overlayPrefs.show_original_mode ||
+      (overlayPrefs.show_original === false ? 'never' : DEFAULTS.show_original_mode),
+    team_color:
+      typeof overlayPrefs.team_color === 'boolean'
+        ? overlayPrefs.team_color
+        : DEFAULTS.team_color,
+  };
+}
+
+export default function IncomingAdvancedSettingsModal({
+  open,
+  onClose,
+  settings,
+  onChange,
+}) {
   const { t } = useI18n();
   const overlayPrefs = settings?.incoming_overlay || {};
-  const captureRate = settings?.incoming_capture_rate_hz || 1.5;
 
   const persist = useCallback(
     async (next) => {
@@ -61,7 +93,11 @@ export default function IncomingAdvancedSettingsModal({ open, onClose, settings,
           onChange?.(latest);
         }
       } catch (error) {
-        showError(t('home.incoming.advanced.saveFailed', { error: toErrorMessage(error) }));
+        showError(
+          t('home.incoming.advanced.saveFailed', {
+            error: toErrorMessage(error),
+          }),
+        );
       }
     },
     [onChange, t],
@@ -69,202 +105,257 @@ export default function IncomingAdvancedSettingsModal({ open, onClose, settings,
 
   const setPref = (patch) => persist({ ...overlayPrefs, ...patch });
 
-  const handleCaptureRate = async (value) => {
-    try {
-      const latest = await setIncomingCaptureRate(Number(value));
-      if (latest && typeof latest === 'object') {
-        onChange?.(latest);
-      }
-    } catch (error) {
-      showError(t('home.incoming.advanced.saveFailed', { error: toErrorMessage(error) }));
-    }
+  const handleResetDefaults = async () => {
+    await persist({
+      ...overlayPrefs,
+      anchor: DEFAULTS.anchor,
+      opacity: DEFAULTS.opacity,
+      fade_ms: DEFAULTS.fade_ms,
+      show_original_mode: DEFAULTS.show_original_mode,
+      show_original: true,
+      team_color: DEFAULTS.team_color,
+    });
+    showSuccess(t('home.incoming.advanced.defaultsRestored'));
   };
+
+  const current = readPrefs(overlayPrefs);
+  const opacityPct = Math.round(current.opacity * 100);
+  const fadeSec = Math.round(current.fade_ms / 1000);
 
   return (
     <AnimatePresence>
       {open && (
         <motion.div
-          className='lingo-calibration-backdrop'
+          className='lg-modal-host'
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={onClose}>
           <motion.div
-            className='lingo-calibration-dialog lingo-advanced-dialog'
+            className='lg-modal'
+            style={{ width: 540 }}
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 24 }}
             transition={{ type: 'spring', damping: 22, stiffness: 220 }}
             onClick={(e) => e.stopPropagation()}>
-            <header className='lingo-calibration-dialog__header'>
-              <div>
-                <div className='tool-pill'>{t('home.incoming.advanced.titleBadge')}</div>
-                <h2 className='tool-page-title mt-2'>{t('home.incoming.advanced.title')}</h2>
+            <div className='lg-modal__head'>
+              <div className='lg-card__icon'>
+                <ISliders />
+              </div>
+              <div style={{ flex: 1 }}>
+                <div className='lg-modal__title'>
+                  {t('home.incoming.advanced.title')}
+                </div>
+                <div
+                  style={{
+                    fontSize: 12,
+                    color: 'var(--lg-ink-3)',
+                    marginTop: 2,
+                  }}>
+                  {t('home.incoming.advanced.subtitle')}
+                </div>
               </div>
               <button
                 type='button'
-                className='lingo-calibration-dialog__close'
+                className='lg-btn lg-btn--ghost lg-btn--sm'
                 onClick={onClose}
                 aria-label={t('home.incoming.advanced.close')}>
-                <XClose className='h-4 w-4' />
+                <XClose style={{ width: 14, height: 14 }} />
               </button>
-            </header>
+            </div>
 
-            <p className='tool-body lingo-calibration-dialog__intro'>
-              {t('home.incoming.advanced.intro')}
-            </p>
-
-            <section className='lingo-advanced-section'>
-              <h3 className='lingo-advanced-section__title'>
-                {t('home.incoming.advanced.hotkeysTitle')}
-              </h3>
-
-              <HotkeyRebindRow
-                label={t('home.incoming.advanced.hotkeyToggle')}
-                description={t('home.incoming.advanced.hotkeyToggleHint')}
-                hotkey={settings?.incoming_toggle_hotkey}
-                onSave={async (keys) => {
-                  const latest = await updateIncomingToggleHotkey(keys);
-                  onChange?.(latest);
-                }}
-              />
-              <HotkeyRebindRow
-                label={t('home.incoming.advanced.hotkeyLock')}
-                description={t('home.incoming.advanced.hotkeyLockHint')}
-                hotkey={settings?.incoming_click_through_hotkey}
-                onSave={async (keys) => {
-                  const latest = await updateIncomingClickThroughHotkey(keys);
-                  onChange?.(latest);
-                }}
-              />
-            </section>
-
-            <section className='lingo-advanced-section'>
-              <h3 className='lingo-advanced-section__title'>
-                {t('home.incoming.advanced.overlayTitle')}
-              </h3>
-
-              <div className='lingo-advanced-field'>
-                <div className='lingo-advanced-field__head'>
-                  <span className='tool-caption'>{t('home.incoming.advanced.opacity')}</span>
-                  <span className='lingo-advanced-field__value'>
-                    {Math.round((overlayPrefs.opacity ?? 0.85) * 100)}%
-                  </span>
-                </div>
-                <input
-                  type='range'
-                  min={40}
-                  max={100}
-                  step={5}
-                  value={Math.round((overlayPrefs.opacity ?? 0.85) * 100)}
-                  onChange={(e) => setPref({ opacity: Number(e.target.value) / 100 })}
-                />
-              </div>
-
-              <div className='lingo-advanced-field'>
-                <div className='lingo-advanced-field__head'>
-                  <span className='tool-caption'>{t('home.incoming.advanced.fontSize')}</span>
-                  <span className='lingo-advanced-field__value'>
-                    {overlayPrefs.font_size ?? 14}px
-                  </span>
-                </div>
-                <input
-                  type='range'
-                  min={11}
-                  max={22}
-                  step={1}
-                  value={overlayPrefs.font_size ?? 14}
-                  onChange={(e) => setPref({ font_size: Number(e.target.value) })}
-                />
-              </div>
-
-              <div className='lingo-advanced-field'>
-                <div className='lingo-advanced-field__head'>
-                  <span className='tool-caption'>{t('home.incoming.advanced.maxLines')}</span>
-                  <span className='lingo-advanced-field__value'>
-                    {overlayPrefs.max_lines ?? 6}
-                  </span>
-                </div>
-                <input
-                  type='range'
-                  min={2}
-                  max={12}
-                  step={1}
-                  value={overlayPrefs.max_lines ?? 6}
-                  onChange={(e) => setPref({ max_lines: Number(e.target.value) })}
-                />
-              </div>
-
-              <div className='lingo-advanced-field'>
-                <span className='tool-caption'>{t('home.incoming.advanced.fadeMs')}</span>
-                <div className='lingo-advanced-field__chips'>
-                  {FADE_OPTIONS.map((opt) => (
-                    <button
-                      key={opt.value}
-                      type='button'
-                      className={`lingo-advanced-field__chip ${
-                        Math.abs((overlayPrefs.fade_ms ?? 8000) - opt.value) < 50
-                          ? 'lingo-advanced-field__chip--active'
-                          : ''
-                      }`}
-                      onClick={() => setPref({ fade_ms: opt.value })}>
-                      {t(`home.incoming.advanced.${opt.key}`)}
-                    </button>
-                  ))}
+            <div className='lg-modal__body'>
+              {/* Anchor edge picker */}
+              <div className='lg-field'>
+                <label className='lg-field__label'>
+                  {t('home.incoming.advanced.anchorLabel')}
+                </label>
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(4, 1fr)',
+                    gap: 6,
+                  }}>
+                  {ANCHORS.map((a) => {
+                    const active = current.anchor === a.id;
+                    const Icon = a.Icon;
+                    return (
+                      <button
+                        key={a.id}
+                        type='button'
+                        onClick={() => setPref({ anchor: a.id })}
+                        style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          gap: 4,
+                          padding: '10px 6px',
+                          borderRadius: 9,
+                          background: active
+                            ? 'rgba(112,133,250,.10)'
+                            : 'var(--lg-surf-1)',
+                          border: `1px solid ${
+                            active ? 'rgba(112,133,250,.4)' : 'var(--lg-line-1)'
+                          }`,
+                          color: active ? '#4d39b8' : 'var(--lg-ink-2)',
+                          cursor: 'pointer',
+                          fontWeight: 600,
+                          fontSize: 11.5,
+                        }}>
+                        <Icon style={{ width: 20, height: 20 }} />{' '}
+                        {t(`home.incoming.advanced.${a.labelKey}`)}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
-              <label className='lingo-advanced-field lingo-advanced-field--row'>
-                <input
-                  type='checkbox'
-                  checked={overlayPrefs.show_original !== false}
-                  onChange={(e) => setPref({ show_original: e.target.checked })}
-                />
-                <span>
-                  <span className='lingo-advanced-field__label'>
-                    {t('home.incoming.advanced.showOriginal')}
-                  </span>
-                  <span className='lingo-advanced-field__hint'>
-                    {t('home.incoming.advanced.showOriginalHint')}
-                  </span>
-                </span>
-              </label>
-            </section>
-
-            <section className='lingo-advanced-section'>
-              <h3 className='lingo-advanced-section__title'>
-                {t('home.incoming.advanced.captureTitle')}
-              </h3>
-              <p className='lingo-advanced-field__hint'>
-                {t('home.incoming.advanced.captureHint')}
-              </p>
-              <div className='lingo-advanced-field__chips'>
-                {CAPTURE_RATE_OPTIONS.map((opt) => (
-                  <button
-                    key={opt.value}
-                    type='button'
-                    className={`lingo-advanced-field__chip ${
-                      Math.abs(captureRate - opt.value) < 0.05
-                        ? 'lingo-advanced-field__chip--active'
-                        : ''
-                    }`}
-                    onClick={() => handleCaptureRate(opt.value)}>
-                    {t(`home.incoming.advanced.${opt.key}`)}
-                  </button>
-                ))}
+              {/* Transparency slider */}
+              <div className='lg-field'>
+                <label className='lg-field__label'>
+                  {t('home.incoming.advanced.opacity')}
+                </label>
+                <div className='lg-field__row'>
+                  <input
+                    type='range'
+                    className='lg-slider'
+                    value={opacityPct}
+                    min={20}
+                    max={100}
+                    step={1}
+                    onChange={(e) =>
+                      setPref({ opacity: Number(e.target.value) / 100 })
+                    }
+                  />
+                  <span className='lg-num'>{opacityPct}%</span>
+                </div>
               </div>
-            </section>
 
-            <footer className='lingo-calibration-dialog__footer'>
-              <p className='lingo-advanced-footer__hint'>
-                {t('home.incoming.advanced.persistedHint')}
-              </p>
-              <div className='lingo-calibration-dialog__footer-right'>
-                <button type='button' className='tool-btn-primary' onClick={onClose}>
-                  {t('home.incoming.advanced.done')}
+              {/* Duration slider */}
+              <div className='lg-field'>
+                <label className='lg-field__label'>
+                  {t('home.incoming.advanced.duration')}
+                </label>
+                <div className='lg-field__row'>
+                  <input
+                    type='range'
+                    className='lg-slider'
+                    value={fadeSec}
+                    min={3}
+                    max={20}
+                    step={1}
+                    onChange={(e) =>
+                      setPref({ fade_ms: Number(e.target.value) * 1000 })
+                    }
+                  />
+                  <span className='lg-num'>{fadeSec} s</span>
+                </div>
+              </div>
+
+              {/* Source-text mode */}
+              <div className='lg-field'>
+                <label className='lg-field__label'>
+                  {t('home.incoming.advanced.sourceModeLabel')}
+                </label>
+                <div className='lg-seg'>
+                  {SOURCE_MODES.map((m) => {
+                    const active = current.show_original_mode === m.id;
+                    return (
+                      <button
+                        key={m.id}
+                        type='button'
+                        className={`lg-seg__item ${
+                          active ? 'lg-seg__item--active' : ''
+                        }`}
+                        onClick={() =>
+                          setPref({
+                            show_original_mode: m.id,
+                            show_original: m.id !== 'never',
+                          })
+                        }>
+                        {t(`home.incoming.advanced.${m.labelKey}`)}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Team-color toggle */}
+              <div
+                className='lg-field'
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                }}>
+                <div>
+                  <div
+                    style={{
+                      fontSize: 12.5,
+                      fontWeight: 600,
+                      color: 'var(--lg-ink-0)',
+                    }}>
+                    {t('home.incoming.advanced.teamColorLabel')}
+                  </div>
+                  <div
+                    style={{
+                      fontSize: 11,
+                      color: 'var(--lg-ink-3)',
+                      marginTop: 2,
+                    }}>
+                    {t('home.incoming.advanced.teamColorHint')}
+                  </div>
+                </div>
+                <button
+                  type='button'
+                  className={`lg-toggle ${current.team_color ? 'lg-toggle--on' : ''}`}
+                  onClick={() => setPref({ team_color: !current.team_color })}
+                  aria-pressed={current.team_color}>
+                  <span className='lg-toggle__thumb' />
                 </button>
               </div>
-            </footer>
+
+              {/* Hotkeys (kept from previous design — still required) */}
+              <div className='lg-field'>
+                <label className='lg-field__label'>
+                  {t('home.incoming.advanced.hotkeysTitle')}
+                </label>
+                <HotkeyRebindRow
+                  label={t('home.incoming.advanced.hotkeyToggle')}
+                  description={t('home.incoming.advanced.hotkeyToggleHint')}
+                  hotkey={settings?.incoming_toggle_hotkey}
+                  onSave={async (keys) => {
+                    const latest = await updateIncomingToggleHotkey(keys);
+                    onChange?.(latest);
+                  }}
+                />
+                <HotkeyRebindRow
+                  label={t('home.incoming.advanced.hotkeyLock')}
+                  description={t('home.incoming.advanced.hotkeyLockHint')}
+                  hotkey={settings?.incoming_click_through_hotkey}
+                  onSave={async (keys) => {
+                    const latest = await updateIncomingClickThroughHotkey(keys);
+                    onChange?.(latest);
+                  }}
+                />
+              </div>
+            </div>
+
+            <div className='lg-modal__foot'>
+              <button
+                type='button'
+                className='lg-btn'
+                onClick={handleResetDefaults}>
+                {t('home.incoming.advanced.resetDefaults')}
+              </button>
+              <button
+                type='button'
+                className='lg-btn lg-btn--primary'
+                onClick={onClose}>
+                <ICheck /> {t('home.incoming.advanced.done')}
+              </button>
+            </div>
           </motion.div>
         </motion.div>
       )}
@@ -316,13 +407,15 @@ function HotkeyRebindRow({ label, description, hotkey, onSave }) {
       if (hasTauriRuntime()) {
         await onSave(keys);
       } else {
-        // Preview environment: still surface a validation error if the
-        // combo is invalid by building the same shape the backend would.
         buildHotkeyFromKeyCodes(keys);
       }
       showSuccess(t('home.incoming.advanced.hotkeySaved'));
     } catch (error) {
-      showError(t('home.incoming.advanced.hotkeySaveFailed', { error: toErrorMessage(error) }));
+      showError(
+        t('home.incoming.advanced.hotkeySaveFailed', {
+          error: toErrorMessage(error),
+        }),
+      );
     } finally {
       setSaving(false);
       stopRecording();
@@ -390,11 +483,35 @@ function HotkeyRebindRow({ label, description, hotkey, onSave }) {
   }, [recording, capturedCodes, hotkey?.shortcut, t]);
 
   return (
-    <div className='lingo-advanced-hotkey'>
-      <div className='lingo-advanced-hotkey__copy'>
-        <div className='lingo-advanced-hotkey__label'>{label}</div>
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '8px 10px',
+        borderRadius: 9,
+        background: 'var(--lg-surf-2)',
+        border: '1px solid var(--lg-line-1)',
+        gap: 10,
+      }}>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div
+          style={{
+            fontSize: 12.5,
+            fontWeight: 600,
+            color: 'var(--lg-ink-0)',
+          }}>
+          {label}
+        </div>
         {description && (
-          <div className='lingo-advanced-hotkey__hint'>{description}</div>
+          <div
+            style={{
+              fontSize: 11,
+              color: 'var(--lg-ink-3)',
+              marginTop: 2,
+            }}>
+            {description}
+          </div>
         )}
       </div>
       <button
@@ -402,15 +519,17 @@ function HotkeyRebindRow({ label, description, hotkey, onSave }) {
         onClick={beginRecording}
         disabled={saving}
         aria-pressed={recording}
-        className={`lingo-advanced-hotkey__btn ${
-          recording ? 'lingo-advanced-hotkey__btn--recording' : ''
-        }`}>
+        className='lg-btn lg-btn--sm'
+        style={{
+          borderColor: recording ? '#7085fa' : undefined,
+          background: recording ? 'rgba(112,133,250,.10)' : undefined,
+        }}>
         {saving ? (
-          <Spinner className='lingo-advanced-hotkey__spinner' />
+          <Spinner style={{ width: 12, height: 12 }} />
         ) : (
-          <KeyboardAlt className='lingo-advanced-hotkey__icon' />
+          <KeyboardAlt style={{ width: 12, height: 12 }} />
         )}
-        <span className='lingo-advanced-hotkey__current'>{currentLabel}</span>
+        <span>{currentLabel}</span>
       </button>
     </div>
   );

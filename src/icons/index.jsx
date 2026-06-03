@@ -677,3 +677,269 @@ export function PowerToggle(props) {
     </svg>
   );
 }
+
+/* ------------------------------------------------------------------ */
+/* v0.8 — Lingo aux-window icon set (stroke 1.7, 24×24)                */
+/* ------------------------------------------------------------------ */
+
+const LG_SVG_BASE = {
+  xmlns: 'http://www.w3.org/2000/svg',
+  viewBox: '0 0 24 24',
+  width: 24,
+  height: 24,
+  fill: 'none',
+  stroke: 'currentColor',
+  strokeWidth: 1.7,
+  strokeLinecap: 'round',
+  strokeLinejoin: 'round',
+};
+
+export function IAnchorR(props) {
+  return (
+    <svg {...LG_SVG_BASE} {...props}>
+      <rect x='3' y='6' width='13' height='12' rx='1.5' />
+      <rect x='17.5' y='4' width='3' height='16' rx='1' fill='currentColor' stroke='none' />
+    </svg>
+  );
+}
+
+export function IAnchorL(props) {
+  return (
+    <svg {...LG_SVG_BASE} {...props}>
+      <rect x='8' y='6' width='13' height='12' rx='1.5' />
+      <rect x='3.5' y='4' width='3' height='16' rx='1' fill='currentColor' stroke='none' />
+    </svg>
+  );
+}
+
+export function IAnchorT(props) {
+  return (
+    <svg {...LG_SVG_BASE} {...props}>
+      <rect x='3' y='8' width='18' height='12' rx='1.5' />
+      <rect x='3' y='3.5' width='18' height='3' rx='1' fill='currentColor' stroke='none' />
+    </svg>
+  );
+}
+
+export function IAnchorB(props) {
+  return (
+    <svg {...LG_SVG_BASE} {...props}>
+      <rect x='3' y='4' width='18' height='12' rx='1.5' />
+      <rect x='3' y='17.5' width='18' height='3' rx='1' fill='currentColor' stroke='none' />
+    </svg>
+  );
+}
+
+export function IBubbles(props) {
+  return (
+    <svg {...LG_SVG_BASE} {...props}>
+      <path d='M3.5 7a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-4l-2.5 2.5V13H5.5a2 2 0 0 1-2-2V7Z' />
+      <path d='M10 16.5a2 2 0 0 0 2 2h4l2.5 2.5V18.5h.5a2 2 0 0 0 2-2v-4a2 2 0 0 0-2-2H17' />
+    </svg>
+  );
+}
+
+export function ITarget(props) {
+  return (
+    <svg {...LG_SVG_BASE} {...props}>
+      <circle cx='12' cy='12' r='8.5' />
+      <circle cx='12' cy='12' r='4.5' />
+      <circle cx='12' cy='12' r='1' fill='currentColor' />
+    </svg>
+  );
+}
+
+export function ISliders(props) {
+  return (
+    <svg {...LG_SVG_BASE} {...props}>
+      <path d='M5 7h14' />
+      <path d='M5 17h14' />
+      <circle cx='9' cy='7' r='2' />
+      <circle cx='15' cy='17' r='2' />
+    </svg>
+  );
+}
+
+export function ICalibrate(props) {
+  return (
+    <svg {...LG_SVG_BASE} {...props}>
+      <path d='M4 4h6v6H4z' />
+      <path d='M14 14h6v6h-6z' />
+      <path d='M14 4l6 6' />
+      <path d='M4 14l6 6' />
+    </svg>
+  );
+}
+
+export function ICheck(props) {
+  return (
+    <svg {...LG_SVG_BASE} {...props}>
+      <path d='M5 12.5 10 17l9-9' />
+    </svg>
+  );
+}
+
+export function IDownload(props) {
+  return (
+    <svg {...LG_SVG_BASE} {...props}>
+      <path d='M12 4v11' />
+      <path d='M7 11l5 5 5-5' />
+      <path d='M5 20h14' />
+    </svg>
+  );
+}
+
+export function IRefresh(props) {
+  return (
+    <svg {...LG_SVG_BASE} {...props}>
+      <path d='M4 12a8 8 0 0 1 14-5.3L20 5' />
+      <path d='M20 5v4h-4' />
+      <path d='M20 12a8 8 0 0 1-14 5.3L4 19' />
+      <path d='M4 19v-4h4' />
+    </svg>
+  );
+}
+
+export function ILock(props) {
+  return (
+    <svg {...LG_SVG_BASE} {...props}>
+      <rect x='5.5' y='11' width='13' height='9' rx='2' />
+      <path d='M8.5 11V8a3.5 3.5 0 0 1 7 0v3' />
+    </svg>
+  );
+}
+
+export function IUnlock(props) {
+  return (
+    <svg {...LG_SVG_BASE} {...props}>
+      <rect x='5.5' y='11' width='13' height='9' rx='2' />
+      <path d='M8.5 11V8a3.5 3.5 0 0 1 6.6-1.6' />
+    </svg>
+  );
+}
+
+export function IPower(props) {
+  return (
+    <svg {...LG_SVG_BASE} {...props}>
+      <path d='M12 3v8' />
+      <path d='M7.5 6A8 8 0 1 0 16.5 6' />
+    </svg>
+  );
+}
+
+export function IGamepad(props) {
+  return (
+    <svg {...LG_SVG_BASE} {...props}>
+      <path d='M3 11.7A6.7 6.7 0 0 1 9.7 5h4.6A6.7 6.7 0 0 1 21 11.7v3.6a3 3 0 0 1-5.7 1.3l-.1-.3A3.6 3.6 0 0 0 12 14H12a3.6 3.6 0 0 0-3.2 2.3l-.1.3A3 3 0 0 1 3 15.3v-3.6Z' />
+      <path d='M7.5 11v-2M6.5 10h2' />
+      <circle cx='15.5' cy='10' r='0.6' fill='currentColor' />
+      <circle cx='17' cy='11.5' r='0.6' fill='currentColor' />
+    </svg>
+  );
+}
+
+export function IBolt(props) {
+  return (
+    <svg {...LG_SVG_BASE} {...props}>
+      <path d='M13 3 5 14h6l-1 7 8-11h-6l1-7Z' />
+    </svg>
+  );
+}
+
+export function ISwap(props) {
+  return (
+    <svg {...LG_SVG_BASE} {...props}>
+      <path d='M4 8h13' />
+      <path d='m13 4 4 4-4 4' />
+      <path d='M20 16H7' />
+      <path d='m11 20-4-4 4-4' />
+    </svg>
+  );
+}
+
+export function IGrip(props) {
+  return (
+    <svg {...LG_SVG_BASE} {...props}>
+      <circle cx='9' cy='6' r='1.2' fill='currentColor' stroke='none' />
+      <circle cx='15' cy='6' r='1.2' fill='currentColor' stroke='none' />
+      <circle cx='9' cy='12' r='1.2' fill='currentColor' stroke='none' />
+      <circle cx='15' cy='12' r='1.2' fill='currentColor' stroke='none' />
+      <circle cx='9' cy='18' r='1.2' fill='currentColor' stroke='none' />
+      <circle cx='15' cy='18' r='1.2' fill='currentColor' stroke='none' />
+    </svg>
+  );
+}
+
+export function IPlus(props) {
+  return (
+    <svg {...LG_SVG_BASE} {...props}>
+      <path d='M12 5v14' />
+      <path d='M5 12h14' />
+    </svg>
+  );
+}
+
+export function ITrash(props) {
+  return (
+    <svg {...LG_SVG_BASE} {...props}>
+      <path d='M4 7h16' />
+      <path d='M10 11v6M14 11v6' />
+      <path d='M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12' />
+      <path d='M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3' />
+    </svg>
+  );
+}
+
+export function IDots(props) {
+  return (
+    <svg {...LG_SVG_BASE} {...props}>
+      <circle cx='6' cy='12' r='1.4' fill='currentColor' stroke='none' />
+      <circle cx='12' cy='12' r='1.4' fill='currentColor' stroke='none' />
+      <circle cx='18' cy='12' r='1.4' fill='currentColor' stroke='none' />
+    </svg>
+  );
+}
+
+export function IShield(props) {
+  return (
+    <svg {...LG_SVG_BASE} {...props}>
+      <path d='M12 3 5 6v6c0 4.5 3 7.5 7 9 4-1.5 7-4.5 7-9V6l-7-3Z' />
+      <path d='m9 12 2 2 4-4' />
+    </svg>
+  );
+}
+
+export function IChevDown(props) {
+  return (
+    <svg {...LG_SVG_BASE} {...props}>
+      <path d='m6 9 6 6 6-6' />
+    </svg>
+  );
+}
+
+export function IChat(props) {
+  return (
+    <svg {...LG_SVG_BASE} {...props}>
+      <path d='M4 6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-7l-4 4v-4H6a2 2 0 0 1-2-2V6Z' />
+    </svg>
+  );
+}
+
+export function IInfo(props) {
+  return (
+    <svg {...LG_SVG_BASE} {...props}>
+      <circle cx='12' cy='12' r='8.5' />
+      <path d='M12 11v5' />
+      <circle cx='12' cy='8' r='0.8' fill='currentColor' stroke='none' />
+    </svg>
+  );
+}
+
+export function IArrowR(props) {
+  return (
+    <svg {...LG_SVG_BASE} {...props}>
+      <path d='M5 12h14' />
+      <path d='m13 6 6 6-6 6' />
+    </svg>
+  );
+}
