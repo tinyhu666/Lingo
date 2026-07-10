@@ -28,8 +28,8 @@ use objc2::runtime::AnyObject;
 use objc2::AllocAnyThread;
 use objc2_core_foundation::CFRetained;
 use objc2_core_graphics::{
-    CGBitmapInfo, CGColorRenderingIntent, CGColorSpace, CGDataProvider, CGImage,
-    CGImageAlphaInfo, CGImageByteOrderInfo,
+    CGBitmapInfo, CGColorRenderingIntent, CGColorSpace, CGDataProvider, CGImage, CGImageAlphaInfo,
+    CGImageByteOrderInfo,
 };
 use objc2_foundation::{NSArray, NSDictionary, NSString};
 use objc2_vision::{
@@ -127,14 +127,13 @@ fn frame_to_cg_image(frame: &OcrFrame) -> Result<CFRetained<CGImage>, OcrError> 
     let size = owned.len();
     let info_ptr = Box::into_raw(owned) as *mut c_void;
 
-    let provider = unsafe {
-        CGDataProvider::with_data(info_ptr, data_ptr, size, Some(release_owned_bytes))
-    }
-    .ok_or_else(|| {
-        // Recover the Box so we don't leak when the OS rejects us.
-        unsafe { drop(Box::from_raw(info_ptr as *mut Vec<u8>)) };
-        OcrError::EngineInit("CGDataProviderCreateWithData returned null".into())
-    })?;
+    let provider =
+        unsafe { CGDataProvider::with_data(info_ptr, data_ptr, size, Some(release_owned_bytes)) }
+            .ok_or_else(|| {
+            // Recover the Box so we don't leak when the OS rejects us.
+            unsafe { drop(Box::from_raw(info_ptr as *mut Vec<u8>)) };
+            OcrError::EngineInit("CGDataProviderCreateWithData returned null".into())
+        })?;
 
     let color_space = CGColorSpace::new_device_rgb()
         .ok_or_else(|| OcrError::EngineInit("CGColorSpaceCreateDeviceRGB failed".into()))?;
@@ -190,9 +189,7 @@ fn run_vision(
     frame_w: f32,
     frame_h: f32,
 ) -> Result<Vec<TextLine>, OcrError> {
-    let request = unsafe {
-        VNRecognizeTextRequest::init(VNRecognizeTextRequest::alloc())
-    };
+    let request = unsafe { VNRecognizeTextRequest::init(VNRecognizeTextRequest::alloc()) };
 
     request.setRecognitionLevel(match opts.level {
         RecognitionLevel::Accurate => VNRequestTextRecognitionLevel::Accurate,
@@ -257,7 +254,7 @@ fn run_vision(
         );
         out.push(TextLine {
             text: s,
-            confidence: text.confidence() as f32,
+            confidence: text.confidence(),
             bbox: pixel_rect,
         });
     }

@@ -48,18 +48,12 @@ fn shared_http_client() -> &'static Client {
 }
 
 fn detect_text_script(text: &str) -> &'static str {
-    let has_kana = text
-        .chars()
-        .any(|c| matches!(c, '\u{3040}'..='\u{30FF}'));
-    let has_hangul = text
-        .chars()
-        .any(|c| matches!(c, '\u{AC00}'..='\u{D7AF}'));
+    let has_kana = text.chars().any(|c| matches!(c, '\u{3040}'..='\u{30FF}'));
+    let has_hangul = text.chars().any(|c| matches!(c, '\u{AC00}'..='\u{D7AF}'));
     let has_cjk = text
         .chars()
         .any(|c| matches!(c, '\u{4E00}'..='\u{9FFF}' | '\u{3400}'..='\u{4DBF}'));
-    let has_cyrillic = text
-        .chars()
-        .any(|c| matches!(c, '\u{0400}'..='\u{04FF}'));
+    let has_cyrillic = text.chars().any(|c| matches!(c, '\u{0400}'..='\u{04FF}'));
 
     if has_kana {
         return "kana";
@@ -351,7 +345,12 @@ pub async fn warm_translation_backend() -> Result<()> {
         .header("Accept", "application/json")
         .send()
         .await
-        .map_err(|error| anyhow!("预热翻译代理失败: {}", request_error_message(&backend, &error)))?;
+        .map_err(|error| {
+            anyhow!(
+                "预热翻译代理失败: {}",
+                request_error_message(&backend, &error)
+            )
+        })?;
 
     let status = response.status();
     let body_text = response
@@ -414,11 +413,8 @@ pub async fn translate_with_gpt(original: &str, settings: &AppSettings) -> Resul
         backend.source, endpoint
     );
 
-    let (effective_from, effective_to) = resolve_translation_direction(
-        text,
-        &settings.translation_from,
-        &settings.translation_to,
-    );
+    let (effective_from, effective_to) =
+        resolve_translation_direction(text, &settings.translation_from, &settings.translation_to);
     println!(
         "[translate] direction from={} to={} (configured from={} to={})",
         effective_from, effective_to, settings.translation_from, settings.translation_to
@@ -620,11 +616,7 @@ pub async fn translate_with_gpt(original: &str, settings: &AppSettings) -> Resul
 ///
 /// One-shot — no retry. The pipeline runs at 1-3 Hz, so a transient
 /// failure means we just try again on the next OCR cycle.
-pub async fn translate_incoming(
-    text: &str,
-    target_lang: &str,
-    game_scene: &str,
-) -> Result<String> {
+pub async fn translate_incoming(text: &str, target_lang: &str, game_scene: &str) -> Result<String> {
     let trimmed = text.trim();
     if trimmed.is_empty() {
         return Ok(String::new());
@@ -754,7 +746,9 @@ mod tests {
         String::from_utf8_lossy(&buffer[..bytes_read]).into_owned()
     }
 
-    fn start_mock_translate_server(response_body: &'static str) -> (String, thread::JoinHandle<()>) {
+    fn start_mock_translate_server(
+        response_body: &'static str,
+    ) -> (String, thread::JoinHandle<()>) {
         let listener = TcpListener::bind("127.0.0.1:0").expect("bind mock translate server");
         let address = format!("http://{}", listener.local_addr().expect("mock local addr"));
 
@@ -805,7 +799,9 @@ mod tests {
         })
         .expect("translate should succeed");
 
-        handle.join().expect("mock translate server should exit cleanly");
+        handle
+            .join()
+            .expect("mock translate server should exit cleanly");
         assert_eq!(translated, "Hello team");
     }
 

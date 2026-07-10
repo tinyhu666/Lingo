@@ -76,16 +76,20 @@ impl LineTracker {
     }
 
     fn is_fresh(&self, hash: u64, now: Instant) -> bool {
-        !self.history.iter().any(|entry| {
-            entry.hash == hash && now.duration_since(entry.last_seen) < self.cooldown
-        })
+        !self
+            .history
+            .iter()
+            .any(|entry| entry.hash == hash && now.duration_since(entry.last_seen) < self.cooldown)
     }
 
     fn remember(&mut self, hash: u64, now: Instant) {
         if self.history.len() >= self.capacity {
             self.history.pop_front();
         }
-        self.history.push_back(Recent { hash, last_seen: now });
+        self.history.push_back(Recent {
+            hash,
+            last_seen: now,
+        });
     }
 
     fn evict_expired(&mut self, now: Instant) {
@@ -172,10 +176,7 @@ fn strip_leading_bracket(s: &str) -> Option<(&str, &str)> {
 /// localisations and ignoring case. Returns `None` if the tag is
 /// unrecognizable — the line will still ship without a scope hint.
 fn detect_scope(tag: &str) -> Option<MessageScope> {
-    let lower: String = tag
-        .chars()
-        .flat_map(char::to_lowercase)
-        .collect();
+    let lower: String = tag.chars().flat_map(char::to_lowercase).collect();
 
     // Chinese: 全部 = All, 队伍 = Team (and 队 alone often survives garbling).
     if tag.contains('全') {
@@ -222,8 +223,21 @@ fn normalize_text(s: &str) -> String {
 fn is_strip_punct(c: char) -> bool {
     matches!(
         c,
-        '.' | ',' | '!' | '?' | ';' | '\'' | '"' | '。' | '，' | '！' | '？' | '；'
-            | '\u{201C}' | '\u{201D}' | '\u{2018}' | '\u{2019}'
+        '.' | ','
+            | '!'
+            | '?'
+            | ';'
+            | '\''
+            | '"'
+            | '。'
+            | '，'
+            | '！'
+            | '？'
+            | '；'
+            | '\u{201C}'
+            | '\u{201D}'
+            | '\u{2018}'
+            | '\u{2019}'
     )
 }
 
@@ -236,7 +250,12 @@ mod tests {
         TextLine {
             text: text.to_string(),
             confidence: 0.5,
-            bbox: Rect { x: 0, y: 0, w: 100, h: 20 },
+            bbox: Rect {
+                x: 0,
+                y: 0,
+                w: 100,
+                h: 20,
+            },
         }
     }
 
@@ -303,7 +322,10 @@ mod tests {
         let first = t.ingest(&[line("[All] Lion: GG!")]);
         let second = t.ingest(&[line("[All] Lion: gg")]);
         assert_eq!(first.len(), 1);
-        assert!(second.is_empty(), "case + punctuation should collapse to same hash");
+        assert!(
+            second.is_empty(),
+            "case + punctuation should collapse to same hash"
+        );
     }
 
     #[test]

@@ -12,8 +12,8 @@ use windows_sys::Win32::Foundation::{COLORREF, HWND};
 
 #[cfg(target_os = "windows")]
 use windows_sys::Win32::Graphics::Dwm::{
-    DwmSetWindowAttribute, DWMWA_BORDER_COLOR, DWMWA_COLOR_NONE,
-    DWMWA_WINDOW_CORNER_PREFERENCE, DWMWCP_DONOTROUND,
+    DwmSetWindowAttribute, DWMWA_BORDER_COLOR, DWMWA_COLOR_NONE, DWMWA_WINDOW_CORNER_PREFERENCE,
+    DWMWCP_DONOTROUND,
 };
 
 #[cfg(target_os = "windows")]
@@ -433,6 +433,7 @@ async fn get_incoming_status(
         active: pipeline.is_running(),
         permission: incoming::current_permission_state(),
         current_game_scene: Some(scene),
+        current_game: incoming::game_window::detect_current(),
         has_region_for_current_scene: has_region,
         capture_rate_hz: settings.incoming_capture_rate_hz,
         last_error: None,
@@ -578,7 +579,9 @@ async fn save_incoming_chat_region(
     }
 
     store::update_settings_field(&app_handle, |settings| {
-        settings.incoming_regions.insert(scene.clone(), region.clone());
+        settings
+            .incoming_regions
+            .insert(scene.clone(), region.clone());
     })
     .map_err(|e| e.to_string())?;
     store::get_settings(&app_handle).map_err(|e| e.to_string())
@@ -645,7 +648,7 @@ async fn set_incoming_capture_rate(
     app_handle: tauri::AppHandle,
     rate_hz: f32,
 ) -> Result<store::AppSettings, String> {
-    if !rate_hz.is_finite() || rate_hz < 0.5 || rate_hz > 4.0 {
+    if !rate_hz.is_finite() || !(0.5..=4.0).contains(&rate_hz) {
         return Err(format!(
             "capture rate must be a finite number in [0.5, 4.0], got {rate_hz}"
         ));
@@ -696,7 +699,10 @@ async fn open_region_picker(
     };
 
     window
-        .set_size(LogicalSize::new(display.width as f64, display.height as f64))
+        .set_size(LogicalSize::new(
+            display.width as f64,
+            display.height as f64,
+        ))
         .map_err(|e| e.to_string())?;
     window
         .set_position(LogicalPosition::new(
@@ -765,7 +771,9 @@ async fn save_picked_region(
     };
 
     store::update_settings_field(&app_handle, |settings| {
-        settings.incoming_regions.insert(scene.clone(), region.clone());
+        settings
+            .incoming_regions
+            .insert(scene.clone(), region.clone());
     })
     .map_err(|e| e.to_string())?;
 

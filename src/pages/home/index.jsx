@@ -66,15 +66,16 @@ const MENU_HEIGHT_PX = 276;
 const heroBtnStyle = (active = false) => ({
   display: 'flex',
   alignItems: 'center',
-  gap: 10,
-  padding: '12px 14px',
+  gap: 8,
+  padding: '8px 10px',
   border: `1px solid ${active ? 'rgba(22,163,107,.30)' : 'var(--lg-line-1)'}`,
   background: active ? 'rgba(230,246,238,.6)' : 'var(--lg-surf-1)',
   borderRadius: 12,
   cursor: 'pointer',
   textAlign: 'left',
-  minHeight: 92,
+  minHeight: 68,
   transition: 'all var(--lg-dur) var(--lg-ease)',
+  minWidth: 0,
 });
 
 function IncomingHero() {
@@ -101,6 +102,7 @@ function IncomingHero() {
     try {
       const next = await getIncomingStatus();
       setStatus(next);
+      setDetectedGame(next?.current_game || null);
     } catch (error) {
       console.warn('failed to load incoming status', error);
     }
@@ -134,6 +136,11 @@ function IncomingHero() {
           setDetectedGame(null);
         });
         unlisteners.push(u3);
+        const u4 = await listen('incoming:game_minimised', () => {
+          if (cancelled) return;
+          void refreshStatus();
+        });
+        unlisteners.push(u4);
       } catch (error) {
         console.warn('failed to subscribe to game-window events', error);
       }
@@ -148,7 +155,7 @@ function IncomingHero() {
         }
       }
     };
-  }, []);
+  }, [refreshStatus]);
 
   // Load-bearing: the Windows incoming-translation flow emits status events
   // when capture/OCR can't run. Surface them as toasts; otherwise the card
@@ -195,7 +202,9 @@ function IncomingHero() {
   const permission = status?.permission || PERMISSION_STATES.UNKNOWN;
   const permissionMissing = permission === PERMISSION_STATES.DENIED;
   const needsPermission = persistedEnabled && permissionMissing;
-  const waitingForGame = persistedEnabled && !detectedGame;
+  const effectiveDetectedGame = detectedGame || status?.current_game || null;
+  const gameMinimised = Boolean(effectiveDetectedGame?.minimised);
+  const waitingForGame = persistedEnabled && !effectiveDetectedGame;
 
   const chipInfo = useMemo(() => {
     if (!persistedEnabled) {
@@ -210,8 +219,11 @@ function IncomingHero() {
       // success automatically.
       return { tone: 'default', text: t('home.incoming.statusWaitingGame'), dot: true };
     }
+    if (gameMinimised) {
+      return { tone: 'warn', text: t('common.paused'), dot: true };
+    }
     return { tone: 'success', text: t('home.incoming.statusActive'), dot: true };
-  }, [persistedEnabled, needsPermission, waitingForGame, t]);
+  }, [persistedEnabled, needsPermission, waitingForGame, gameMinimised, t]);
 
   const handleToggle = async () => {
     if (pending) return;
@@ -259,7 +271,7 @@ function IncomingHero() {
       const rows = await invokeCommand('incoming_debug_enumerate_windows');
       const summary = {
         timestamp: new Date().toISOString(),
-        detectedGame: detectedGame || null,
+        detectedGame: effectiveDetectedGame || null,
         platform: navigator.platform,
         userAgent: navigator.userAgent.slice(0, 200),
         windowCount: Array.isArray(rows) ? rows.length : 0,
@@ -317,12 +329,15 @@ function IncomingHero() {
   }, [refreshStatus, t]);
 
   const clickThroughShortcut = settings?.incoming_click_through_hotkey?.shortcut || '';
+  const detectedGameBounds = effectiveDetectedGame?.bounds;
 
-  const detectedGameMeta = detectedGame
-    ? `${detectedGame.bounds?.x ?? 0},${detectedGame.bounds?.y ?? 0} · ${detectedGame.bounds?.w ?? 0}×${detectedGame.bounds?.h ?? 0}`
+  const detectedGameMeta = effectiveDetectedGame
+    ? detectedGameBounds
+      ? `${detectedGameBounds.x ?? 0},${detectedGameBounds.y ?? 0} · ${detectedGameBounds.w ?? 0}×${detectedGameBounds.h ?? 0}`
+      : t('home.incoming.statusActive')
     : t('home.incoming.waitingGameHint');
-  const detectedGameLabel = detectedGame
-    ? getGameSceneLabel(detectedGame.game_id)
+  const detectedGameLabel = effectiveDetectedGame
+    ? getGameSceneLabel(effectiveDetectedGame.game_id)
     : t('home.incoming.statusWaitingGame');
 
   return (
@@ -355,22 +370,22 @@ function IncomingHero() {
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: '1.4fr 1fr 1fr 1fr',
-            gap: 10,
+            gridTemplateColumns: '1.25fr repeat(3, minmax(0, 1fr))',
+            gap: 8,
             marginTop: 4,
           }}>
           {/* Preview strip */}
           <div
             style={{
               gridRow: 'span 1',
-              padding: '10px 12px',
+              padding: '8px 10px',
               background: 'linear-gradient(120deg, rgba(11,20,48,.92), rgba(45,40,90,.92))',
               borderRadius: 12,
               color: '#f0f3fa',
               display: 'flex',
               flexDirection: 'column',
-              gap: 4,
-              minHeight: 92,
+              gap: 3,
+              minHeight: 68,
               overflow: 'hidden',
               position: 'relative',
             }}>
@@ -388,7 +403,7 @@ function IncomingHero() {
               <span className='lg-ticker__live' />
               {t('home.heroPreviewLabel')}
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               <div style={{ display: 'flex', gap: 6, alignItems: 'baseline' }}>
                 <span style={{ fontSize: 10.5, fontWeight: 700, color: '#61ebff' }}>
                   {t('home.heroPreviewAllyTeam')}
@@ -426,15 +441,15 @@ function IncomingHero() {
               a small `诊断` link for cases where detection silently
               misses — clicking it copies the window enumeration to
               clipboard so the user can hand it to support. */}
-          <div style={{ ...heroBtnStyle(Boolean(detectedGame)), cursor: 'default' }}>
+          <div style={{ ...heroBtnStyle(Boolean(effectiveDetectedGame)), cursor: 'default' }}>
             <IGamepad
               style={{
-                color: detectedGame ? '#16a36b' : 'var(--lg-ink-3)',
+                color: effectiveDetectedGame ? '#16a36b' : 'var(--lg-ink-3)',
                 width: 20,
                 height: 20,
               }}
             />
-            <div style={{ flex: 1 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontWeight: 700, fontSize: 12.5, color: 'var(--lg-ink-0)' }}>
                 {detectedGameLabel}
               </div>
@@ -444,6 +459,9 @@ function IncomingHero() {
                   color: 'var(--lg-ink-3)',
                   marginTop: 2,
                   fontFamily: 'var(--lg-mono)',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
                 }}>
                 {detectedGameMeta}
               </div>
@@ -459,12 +477,13 @@ function IncomingHero() {
                 background: 'transparent',
                 border: '1px solid var(--lg-line-1)',
                 borderRadius: 6,
-                padding: '4px 8px',
+                padding: '4px 7px',
                 fontSize: 10.5,
                 color: 'var(--lg-ink-3)',
                 cursor: 'pointer',
+                flexShrink: 0,
               }}>
-              诊断
+              {t('home.incoming.diagnoseDetection')}
             </button>
           </div>
 
@@ -480,7 +499,7 @@ function IncomingHero() {
             ) : (
               <IUnlock style={{ color: 'var(--lg-ink-2)', width: 20, height: 20 }} />
             )}
-            <div style={{ flex: 1 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontWeight: 700, fontSize: 12.5, color: 'var(--lg-ink-0)' }}>
                 {clickThrough ? t('home.incoming.clickThroughOn') : t('home.incoming.clickThroughOff')}
               </div>
@@ -492,8 +511,11 @@ function IncomingHero() {
                   display: 'flex',
                   alignItems: 'center',
                   gap: 6,
+                  minWidth: 0,
                 }}>
-                {t('home.incoming.hotkeyLockLabel')}
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {t('home.incoming.hotkeyLockLabel')}
+                </span>
                 {clickThroughShortcut ? <span>{clickThroughShortcut}</span> : null}
               </div>
             </div>
@@ -505,11 +527,19 @@ function IncomingHero() {
             style={heroBtnStyle()}
             onClick={() => setAdvancedOpen(true)}>
             <ISliders style={{ color: 'var(--lg-ink-2)', width: 20, height: 20 }} />
-            <div style={{ flex: 1 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontWeight: 700, fontSize: 12.5, color: 'var(--lg-ink-0)' }}>
                 {t('home.incoming.advancedSettings')}
               </div>
-              <div style={{ fontSize: 10.5, color: 'var(--lg-ink-3)', marginTop: 2 }}>
+              <div
+                style={{
+                  fontSize: 10.5,
+                  color: 'var(--lg-ink-3)',
+                  marginTop: 2,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}>
                 {t('home.heroBtnAdvancedHint')}
               </div>
             </div>
@@ -800,7 +830,7 @@ function GameCard() {
               type='button'
               onClick={() => handleSelect(g.id)}
               style={{
-                padding: '10px 8px',
+                padding: '8px 6px',
                 border: `1px solid ${active ? 'rgba(112,133,250,.4)' : 'var(--lg-line-1)'}`,
                 background: active ? 'rgba(112,133,250,.06)' : 'var(--lg-surf-1)',
                 borderRadius: 10,
@@ -1035,7 +1065,7 @@ function HotkeyCard() {
               display: 'flex',
               alignItems: 'center',
               gap: 12,
-              padding: '8px 0',
+              padding: '5px 0',
               borderTop: i === 0 ? 'none' : '1px solid var(--lg-line-3)',
               cursor: r.onClick ? 'pointer' : 'default',
             }}
@@ -1090,10 +1120,11 @@ export default function Home() {
         }
       />
       <div
+        className='home-main-grid'
         style={{
           display: 'grid',
           gridTemplateColumns: '1fr 1fr',
-          gap: 14,
+          gap: 12,
         }}>
         <IncomingHero />
         <DirectionCard />

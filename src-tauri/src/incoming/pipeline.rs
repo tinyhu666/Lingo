@@ -267,6 +267,7 @@ async fn run_loop(app: AppHandle, mut cancel: oneshot::Receiver<()>) {
                 continue;
             }
             Some(g) if g.minimised => {
+                last_game = Some(g.clone());
                 if last_note != Some("game_minimised") {
                     let _ = app.emit(
                         "incoming:game_minimised",
@@ -290,6 +291,7 @@ async fn run_loop(app: AppHandle, mut cancel: oneshot::Receiver<()>) {
                 prev.game_id != game.game_id
                     || prev.display_id != game.display_id
                     || prev.bounds != game.bounds
+                    || prev.minimised != game.minimised
             }
             None => true,
         };

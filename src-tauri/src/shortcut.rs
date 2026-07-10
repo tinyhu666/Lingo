@@ -187,11 +187,9 @@ fn create_incoming_toggle_handler(
             let next = !current.incoming_enabled;
             let pipeline_state =
                 app_clone.state::<std::sync::Arc<crate::incoming::IncomingPipeline>>();
-            if let Err(error) = crate::apply_incoming_enabled(
-                app_clone.as_ref(),
-                pipeline_state.inner(),
-                next,
-            ) {
+            if let Err(error) =
+                crate::apply_incoming_enabled(app_clone.as_ref(), pipeline_state.inner(), next)
+            {
                 eprintln!("incoming toggle hotkey: apply failed: {error}");
             }
         });
@@ -259,7 +257,10 @@ fn rebind_all_shortcuts(
         &settings.trans_hotkey.key,
         create_trans_handler(app.clone()),
     )?;
-    used_signatures.insert(shortcut_signature(&trans_modifiers, &settings.trans_hotkey.key));
+    used_signatures.insert(shortcut_signature(
+        &trans_modifiers,
+        &settings.trans_hotkey.key,
+    ));
 
     register_phrase_shortcuts(app, &settings.phrases)?;
     for phrase in &settings.phrases {
@@ -340,10 +341,7 @@ fn build_hotkey_from_keys(keys: &[String]) -> Result<HotkeyConfig, String> {
         return Err("快捷键只能包含一个主键(Control/Alt/Shift/Command 之外的按键)".to_string());
     }
 
-    let key = main_keys
-        .first()
-        .map(|k| (*k).clone())
-        .unwrap_or_default();
+    let key = main_keys.first().map(|k| (*k).clone()).unwrap_or_default();
 
     if modifiers.is_empty() || key.is_empty() {
         return Err(
@@ -425,10 +423,7 @@ pub fn update_translator_shortcut(app: &AppHandle, keys: Vec<String>) -> Result<
     rebind_all_shortcuts(app, &new_settings)
 }
 
-pub fn update_incoming_toggle_shortcut(
-    app: &AppHandle,
-    keys: Vec<String>,
-) -> Result<(), String> {
+pub fn update_incoming_toggle_shortcut(app: &AppHandle, keys: Vec<String>) -> Result<(), String> {
     let new_hotkey = build_hotkey_from_keys(&keys)?;
     let settings = get_settings(app).map_err(|e| e.to_string())?;
     let candidate = shortcut_signature(&new_hotkey.modifiers, &new_hotkey.key);

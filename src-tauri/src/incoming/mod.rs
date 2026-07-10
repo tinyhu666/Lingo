@@ -48,6 +48,7 @@ pub struct IncomingStatus {
     pub active: bool,
     pub permission: PermissionState,
     pub current_game_scene: Option<String>,
+    pub current_game: Option<game_window::GameWindow>,
     pub has_region_for_current_scene: bool,
     pub capture_rate_hz: f32,
     pub last_error: Option<String>,

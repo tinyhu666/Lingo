@@ -101,7 +101,10 @@ pub async fn has_text_selection(app: &AppHandle) -> Result<bool> {
     let result = async {
         simulate_keyboard_shortcuts(app, copy_shortcut_keys(true)).await?;
         let selected_text = read_copied_text(app, &clipboard_probe).await?;
-        Ok(is_meaningful_clipboard_text(&selected_text, &clipboard_probe))
+        Ok(is_meaningful_clipboard_text(
+            &selected_text,
+            &clipboard_probe,
+        ))
     }
     .await;
 
@@ -179,11 +182,19 @@ async fn simulate_keyboard_shortcuts(app: &AppHandle, keys: &[&str]) -> Result<(
 }
 
 fn copy_shortcut_keys(daily_mode: bool) -> &'static [&'static str] {
-    if daily_mode { &["c"] } else { &["a", "c"] }
+    if daily_mode {
+        &["c"]
+    } else {
+        &["a", "c"]
+    }
 }
 
 fn paste_shortcut_keys(daily_mode: bool) -> &'static [&'static str] {
-    if daily_mode { &["v"] } else { &["a", "v"] }
+    if daily_mode {
+        &["v"]
+    } else {
+        &["a", "v"]
+    }
 }
 
 pub async fn send_phrase(app: &AppHandle, phrase: &str) -> Result<()> {
@@ -332,9 +343,18 @@ mod tests {
     #[test]
     fn meaningful_clipboard_text_ignores_probe_and_empty_values() {
         assert!(!is_meaningful_clipboard_text("", "__LINGO_COPY_PROBE__1"));
-        assert!(!is_meaningful_clipboard_text("   ", "__LINGO_COPY_PROBE__1"));
-        assert!(!is_meaningful_clipboard_text("__LINGO_COPY_PROBE__1", "__LINGO_COPY_PROBE__1"));
-        assert!(is_meaningful_clipboard_text(" hello ", "__LINGO_COPY_PROBE__1"));
+        assert!(!is_meaningful_clipboard_text(
+            "   ",
+            "__LINGO_COPY_PROBE__1"
+        ));
+        assert!(!is_meaningful_clipboard_text(
+            "__LINGO_COPY_PROBE__1",
+            "__LINGO_COPY_PROBE__1"
+        ));
+        assert!(is_meaningful_clipboard_text(
+            " hello ",
+            "__LINGO_COPY_PROBE__1"
+        ));
     }
 
     #[test]

@@ -60,7 +60,7 @@ use windows::Win32::System::WinRT::Graphics::Capture::IGraphicsCaptureItemIntero
 const MONITORINFOF_PRIMARY_FLAG: u32 = 1;
 
 use super::{CaptureError, CaptureSource, OcrFrame, PixelFormat};
-use crate::incoming::region::ChatRegion;
+use crate::incoming::region::{clamp_rect_to_surface, ChatRegion, SurfaceRect};
 use crate::incoming::{DisplayInfo, PermissionState};
 
 // ---------------------------------------------------------------------------
@@ -203,11 +203,14 @@ fn humanize_device_name(device_name: &str) -> String {
     // getting it would require IDXGIOutput6 or DisplayConfig APIs which
     // is overkill for v0.7.0. The user can still distinguish "Primary"
     // vs "DISPLAY2" from the flag.
-    device_name.strip_prefix(r"\\.\").unwrap_or(device_name).to_string()
+    device_name
+        .strip_prefix(r"\\.\")
+        .unwrap_or(device_name)
+        .to_string()
 }
 
-fn resolve_hmonitor(id: u64) -> Option<HMONITOR> {
-    enumerate_monitors().into_iter().find(|m| m.id == id).map(|m| m.hmonitor)
+fn resolve_monitor(id: u64) -> Option<MonitorEntry> {
+    enumerate_monitors().into_iter().find(|m| m.id == id)
 }
 
 // ---------------------------------------------------------------------------
@@ -223,7 +226,9 @@ struct WindowsCaptureSource {
 
 impl WindowsCaptureSource {
     fn new() -> Self {
-        Self { _serializer: Mutex::new(()) }
+        Self {
+            _serializer: Mutex::new(()),
+        }
     }
 }
 
@@ -236,7 +241,7 @@ impl CaptureSource for WindowsCaptureSource {
         }
         let _g = self._serializer.lock().unwrap_or_else(|p| p.into_inner());
 
-        let hmonitor = resolve_hmonitor(region.display_id)
+        let monitor = resolve_monitor(region.display_id)
             .ok_or(CaptureError::DisplayNotFound(region.display_id))?;
 
         // ----- D3D11 device ------------------------------------------------
@@ -250,22 +255,17 @@ impl CaptureSource for WindowsCaptureSource {
             })?;
         let direct3d_device: windows::Graphics::DirectX::Direct3D11::IDirect3DDevice =
             direct3d_device.cast().map_err(|e| {
-                CaptureError::Platform(format!(
-                    "IInspectable::cast<IDirect3DDevice>: {e}"
-                ))
+                CaptureError::Platform(format!("IInspectable::cast<IDirect3DDevice>: {e}"))
             })?;
 
         // ----- GraphicsCaptureItem -----------------------------------------
         let interop: IGraphicsCaptureItemInterop =
-            windows::core::factory::<GraphicsCaptureItem, IGraphicsCaptureItemInterop>()
-                .map_err(|e| {
-                    CaptureError::Platform(format!(
-                        "factory<IGraphicsCaptureItemInterop>: {e}"
-                    ))
-                })?;
+            windows::core::factory::<GraphicsCaptureItem, IGraphicsCaptureItemInterop>().map_err(
+                |e| CaptureError::Platform(format!("factory<IGraphicsCaptureItemInterop>: {e}")),
+            )?;
         let item: GraphicsCaptureItem = unsafe {
             interop
-                .CreateForMonitor(hmonitor)
+                .CreateForMonitor(monitor.hmonitor)
                 .map_err(|e| CaptureError::Platform(format!("CreateForMonitor: {e}")))?
         };
         let item_size = item
@@ -301,8 +301,9 @@ impl CaptureSource for WindowsCaptureSource {
         let dxgi_access: IDirect3DDxgiInterfaceAccess = surface
             .cast()
             .map_err(|e| CaptureError::Platform(format!("Surface::cast: {e}")))?;
-        let frame_tex: ID3D11Texture2D = unsafe { dxgi_access.GetInterface() }
-            .map_err(|e| CaptureError::Platform(format!("DxgiInterfaceAccess::GetInterface: {e}")))?;
+        let frame_tex: ID3D11Texture2D = unsafe { dxgi_access.GetInterface() }.map_err(|e| {
+            CaptureError::Platform(format!("DxgiInterfaceAccess::GetInterface: {e}"))
+        })?;
 
         // Tear down capture as soon as we have the texture — the staging
         // copy below doesn't need the pool/session alive.
@@ -311,7 +312,7 @@ impl CaptureSource for WindowsCaptureSource {
 
         // ----- Crop into a CPU staging texture -----------------------------
         let (mw, mh) = monitor_pixel_size(item_size);
-        let cb = clamp_rect(region, mw, mh)?;
+        let cb = clamp_rect(region, monitor.rect, mw, mh)?;
         let staging = create_staging_texture(&d3d_device, cb.w, cb.h)?;
         let src_box = D3D11_BOX {
             left: cb.x,
@@ -322,16 +323,7 @@ impl CaptureSource for WindowsCaptureSource {
             back: 1,
         };
         unsafe {
-            context.CopySubresourceRegion(
-                &staging,
-                0,
-                0,
-                0,
-                0,
-                &frame_tex,
-                0,
-                Some(&src_box),
-            );
+            context.CopySubresourceRegion(&staging, 0, 0, 0, 0, &frame_tex, 0, Some(&src_box));
         }
 
         // ----- Map staging and copy bytes out ------------------------------
@@ -386,8 +378,12 @@ fn create_d3d11_device() -> Result<(ID3D11Device, ID3D11DeviceContext), CaptureE
     }
     .map_err(|e| CaptureError::Platform(format!("D3D11CreateDevice: {e}")))?;
     Ok((
-        device.ok_or_else(|| CaptureError::Platform("D3D11CreateDevice returned null device".into()))?,
-        context.ok_or_else(|| CaptureError::Platform("D3D11CreateDevice returned null context".into()))?,
+        device.ok_or_else(|| {
+            CaptureError::Platform("D3D11CreateDevice returned null device".into())
+        })?,
+        context.ok_or_else(|| {
+            CaptureError::Platform("D3D11CreateDevice returned null context".into())
+        })?,
     ))
 }
 
@@ -402,7 +398,10 @@ fn create_staging_texture(
         MipLevels: 1,
         ArraySize: 1,
         Format: DXGI_FORMAT_B8G8R8A8_UNORM,
-        SampleDesc: DXGI_SAMPLE_DESC { Count: 1, Quality: 0 },
+        SampleDesc: DXGI_SAMPLE_DESC {
+            Count: 1,
+            Quality: 0,
+        },
         Usage: D3D11_USAGE_STAGING,
         BindFlags: 0,
         CPUAccessFlags: D3D11_CPU_ACCESS_READ.0 as u32,
@@ -451,37 +450,30 @@ fn poll_first_frame(
 // Region clamping
 // ---------------------------------------------------------------------------
 
-#[derive(Debug)]
-struct ClampedRect {
-    x: u32,
-    y: u32,
-    w: u32,
-    h: u32,
-}
-
 fn monitor_pixel_size(size: windows::Graphics::SizeInt32) -> (u32, u32) {
     (size.Width.max(0) as u32, size.Height.max(0) as u32)
 }
 
-fn clamp_rect(region: &ChatRegion, mw: u32, mh: u32) -> Result<ClampedRect, CaptureError> {
-    // `ChatRegion.bounds` is in physical pixels relative to the *monitor*,
-    // not the global virtual desktop (the front-end picker subtracts the
-    // monitor origin before saving). Reject regions that don't fit.
-    let x = region.bounds.x.max(0) as u32;
-    let y = region.bounds.y.max(0) as u32;
-    if x >= mw || y >= mh {
-        return Err(CaptureError::Platform(format!(
-            "region origin ({x},{y}) outside monitor {mw}x{mh}"
-        )));
-    }
-    let w = region.bounds.w.min(mw - x);
-    let h = region.bounds.h.min(mh - y);
-    if w == 0 || h == 0 {
-        return Err(CaptureError::Platform(
-            "region clamped to zero width or height".to_string(),
-        ));
-    }
-    Ok(ClampedRect { x, y, w, h })
+fn clamp_rect(
+    region: &ChatRegion,
+    monitor_rect: RECT,
+    mw: u32,
+    mh: u32,
+) -> Result<SurfaceRect, CaptureError> {
+    // Auto-detected game windows use global virtual-desktop coordinates.
+    // WGC monitor textures use monitor-local coordinates, so subtract the
+    // selected monitor origin before building D3D11_BOX. A local fallback
+    // preserves older manually-picked regions that were already saved
+    // relative to the monitor.
+    let crop = clamp_rect_to_surface(region.bounds, monitor_rect.left, monitor_rect.top, mw, mh)
+        .or_else(|| clamp_rect_to_surface(region.bounds, 0, 0, mw, mh))
+        .ok_or_else(|| {
+            CaptureError::Platform(format!(
+                "region {:?} does not intersect monitor ({}, {}) {}x{}",
+                region.bounds, monitor_rect.left, monitor_rect.top, mw, mh
+            ))
+        })?;
+    Ok(crop)
 }
 
 #[allow(dead_code)]
@@ -528,10 +520,26 @@ mod tests {
     fn clamp_rect_caps_overflow() {
         let r = ChatRegion {
             display_id: 0,
-            bounds: Rect { x: 50, y: 50, w: 1000, h: 1000 },
+            bounds: Rect {
+                x: 50,
+                y: 50,
+                w: 1000,
+                h: 1000,
+            },
             languages: vec![],
         };
-        let c = clamp_rect(&r, 800, 600).expect("should clamp");
+        let c = clamp_rect(
+            &r,
+            RECT {
+                left: 0,
+                top: 0,
+                right: 800,
+                bottom: 600,
+            },
+            800,
+            600,
+        )
+        .expect("should clamp");
         assert_eq!(c.x, 50);
         assert_eq!(c.y, 50);
         assert_eq!(c.w, 750); // 800 - 50
@@ -542,10 +550,86 @@ mod tests {
     fn clamp_rect_rejects_origin_outside_monitor() {
         let r = ChatRegion {
             display_id: 0,
-            bounds: Rect { x: 2000, y: 0, w: 100, h: 100 },
+            bounds: Rect {
+                x: 2000,
+                y: 0,
+                w: 100,
+                h: 100,
+            },
             languages: vec![],
         };
-        assert!(clamp_rect(&r, 1920, 1080).is_err());
+        assert!(clamp_rect(
+            &r,
+            RECT {
+                left: 0,
+                top: 0,
+                right: 1920,
+                bottom: 1080,
+            },
+            1920,
+            1080,
+        )
+        .is_err());
+    }
+
+    #[test]
+    fn clamp_rect_converts_global_secondary_monitor_coordinates() {
+        let r = ChatRegion {
+            display_id: 0,
+            bounds: Rect {
+                x: 2000,
+                y: 140,
+                w: 300,
+                h: 90,
+            },
+            languages: vec![],
+        };
+        let c = clamp_rect(
+            &r,
+            RECT {
+                left: 1920,
+                top: 100,
+                right: 3840,
+                bottom: 1180,
+            },
+            1920,
+            1080,
+        )
+        .expect("global rect should map into monitor-local crop");
+        assert_eq!(c.x, 80);
+        assert_eq!(c.y, 40);
+        assert_eq!(c.w, 300);
+        assert_eq!(c.h, 90);
+    }
+
+    #[test]
+    fn clamp_rect_converts_global_negative_monitor_coordinates() {
+        let r = ChatRegion {
+            display_id: 0,
+            bounds: Rect {
+                x: -1850,
+                y: 50,
+                w: 220,
+                h: 80,
+            },
+            languages: vec![],
+        };
+        let c = clamp_rect(
+            &r,
+            RECT {
+                left: -1920,
+                top: 0,
+                right: 0,
+                bottom: 1080,
+            },
+            1920,
+            1080,
+        )
+        .expect("negative global rect should map into monitor-local crop");
+        assert_eq!(c.x, 70);
+        assert_eq!(c.y, 50);
+        assert_eq!(c.w, 220);
+        assert_eq!(c.h, 80);
     }
 
     #[test]

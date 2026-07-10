@@ -68,7 +68,7 @@ impl GameId {
 }
 
 /// What we know about the currently-foreground game.
-#[derive(Debug, Clone, serde::Serialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct GameWindow {
     pub game_id: GameId,
     /// Window bounds in the global desktop coordinate space (physical
@@ -116,15 +116,18 @@ pub fn enumerate_all_for_debug() -> Vec<DebugWindowEntry> {
     {
         windows::enumerate_all_for_debug()
     }
-    #[cfg(not(target_os = "windows"))]
+    #[cfg(target_os = "macos")]
+    {
+        macos::enumerate_all_for_debug()
+    }
+    #[cfg(not(any(target_os = "windows", target_os = "macos")))]
     {
         Vec::new()
     }
 }
 
-/// Cross-platform debug entry. Mirrors the Windows shape; macOS will
-/// emit the same struct (with `process_name` = `kCGWindowOwnerName`)
-/// once detection lands there in v0.9.x.
+/// Cross-platform debug entry. Mirrors the Windows shape; macOS emits
+/// `process_name` from `kCGWindowOwnerName`.
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct DebugWindowEntry {
     /// Platform handle (Windows: HWND value; macOS: kCGWindowNumber).
@@ -256,9 +259,7 @@ pub(crate) fn matches_signature(
     // Window class check is opt-in: empty signature list means
     // "anything goes" (the v0.9.0-rc.1 SDL_app pin caused real
     // mismatches in the wild).
-    if !sig.window_classes.is_empty()
-        && !sig.window_classes.iter().any(|c| *c == window_class)
-    {
+    if !sig.window_classes.is_empty() && !sig.window_classes.contains(&window_class) {
         return false;
     }
     // Title check is mandatory when set — this is the load-bearing
@@ -304,11 +305,21 @@ mod tests {
             title_substrings: &["Dota 2"],
         };
         // Full match
-        assert!(matches_signature(&sig, "dota2.exe", "SDL_app", "Dota 2 (DX11)"));
+        assert!(matches_signature(
+            &sig,
+            "dota2.exe",
+            "SDL_app",
+            "Dota 2 (DX11)"
+        ));
         // Process name mismatch (process is known to be wrong → reject)
         assert!(!matches_signature(&sig, "csgo.exe", "SDL_app", "Dota 2"));
         // Window class mismatch
-        assert!(!matches_signature(&sig, "dota2.exe", "ChromeWindow", "Dota 2"));
+        assert!(!matches_signature(
+            &sig,
+            "dota2.exe",
+            "ChromeWindow",
+            "Dota 2"
+        ));
         // Title mismatch
         assert!(!matches_signature(
             &sig,

@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useReducer, useRef } from 'react';
+import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 import { listen } from '@tauri-apps/api/event';
 import { invoke } from '@tauri-apps/api/core';
-import { getCurrentWindow, PhysicalPosition } from '@tauri-apps/api/window';
+import { getCurrentWindow, LogicalPosition, PhysicalPosition } from '@tauri-apps/api/window';
 import { IAnchorR, IAnchorL, IAnchorT, IAnchorB } from '../icons';
+import { useI18n } from '../i18n/I18nProvider';
 
 /**
  * Lingo Incoming overlay — v0.8 side-edge ticker.
@@ -31,6 +32,90 @@ const initialState = {
   paused: false,
   clickThrough: true,
 };
+
+const OVERLAY_GAP = 12;
+
+async function positionOverlayNearGame(gameWindow, anchor = 'right') {
+  const win = getCurrentWindow();
+  const bounds = gameWindow?.bounds;
+  if (
+    !bounds ||
+    !Number.isFinite(bounds.x) ||
+    !Number.isFinite(bounds.y) ||
+    !Number.isFinite(bounds.w) ||
+    !Number.isFinite(bounds.h)
+  ) {
+    return;
+  }
+
+  let display = null;
+  try {
+    const displays = await invoke('list_displays');
+    display = Array.isArray(displays)
+      ? displays.find((item) => String(item.id) === String(gameWindow.display_id)) || null
+      : null;
+  } catch (_) {
+    /* positioning still works without display-edge clamping */
+  }
+
+  const scaleFactor = Math.max(1, Number(display?.scale_factor) || 1);
+  let overlayWidth = 360;
+  let overlayHeight = 600;
+  try {
+    const size = await win.outerSize();
+    if (size?.width) overlayWidth = size.width / scaleFactor;
+    if (size?.height) overlayHeight = size.height / scaleFactor;
+  } catch (_) {
+    /* keep defaults */
+  }
+
+  let x = bounds.x;
+  let y = bounds.y;
+  if (anchor === 'left') {
+    x = bounds.x - overlayWidth - OVERLAY_GAP;
+    y = bounds.y;
+  } else if (anchor === 'top') {
+    x = bounds.x;
+    y = bounds.y - overlayHeight - OVERLAY_GAP;
+  } else if (anchor === 'bottom') {
+    x = bounds.x;
+    y = bounds.y + bounds.h + OVERLAY_GAP;
+  } else {
+    x = bounds.x + bounds.w + OVERLAY_GAP;
+    y = bounds.y;
+  }
+
+  if (display) {
+    const displayLeft = Number(display.origin_x) || 0;
+    const displayTop = Number(display.origin_y) || 0;
+    const displayRight = displayLeft + Number(display.width || 0);
+    const displayBottom = displayTop + Number(display.height || 0);
+
+    if (anchor === 'left' && x < displayLeft) {
+      x = bounds.x + OVERLAY_GAP;
+    } else if (anchor === 'right' && x + overlayWidth > displayRight) {
+      x = bounds.x + bounds.w - overlayWidth - OVERLAY_GAP;
+    } else if (anchor === 'top' && y < displayTop) {
+      y = bounds.y + OVERLAY_GAP;
+    } else if (anchor === 'bottom' && y + overlayHeight > displayBottom) {
+      y = bounds.y + bounds.h - overlayHeight - OVERLAY_GAP;
+    }
+
+    const maxX = Math.max(displayLeft, displayRight - overlayWidth);
+    const maxY = Math.max(displayTop, displayBottom - overlayHeight);
+    x = Math.min(Math.max(x, displayLeft), maxX);
+    y = Math.min(Math.max(y, displayTop), maxY);
+  }
+
+  const position =
+    scaleFactor === 1
+      ? new PhysicalPosition(Math.round(x), Math.round(y))
+      : new LogicalPosition(Math.round(x), Math.round(y));
+  await win.setPosition(position);
+  if (typeof win.show === 'function') {
+    await win.show();
+  }
+}
 
 /**
  * Map the backend MessageScope (`"team" | "all" | null`) to the ticker
@@ -94,8 +179,43 @@ const reducer = (state, action) => {
 };
 
 export default function Overlay() {
+  const { t } = useI18n();
   const [state, dispatch] = useReducer(reducer, initialState);
+  const [hydrated, setHydrated] = useState(false);
+  const [shortcutLabel, setShortcutLabel] = useState(() =>
+    /Mac/i.test(navigator.platform || navigator.userAgent) ? '⌥L' : 'Alt+L',
+  );
   const fadeTimersRef = useRef(new Map()); // id -> { fade, expire }
+  const lastGameWindowRef = useRef(null);
+
+  // Hydrate before applying click-through. Otherwise the initial reducer
+  // default would overwrite a persisted `click_through: false` on startup.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const settings = await invoke('get_settings');
+        if (cancelled) return;
+        const prefs = settings?.incoming_overlay || {};
+        dispatch({ type: 'set_prefs', prefs });
+        if (typeof prefs.click_through === 'boolean') {
+          dispatch({ type: 'click_through', value: prefs.click_through });
+        }
+        const savedShortcut = settings?.incoming_click_through_hotkey?.shortcut;
+        if (typeof savedShortcut === 'string' && savedShortcut.trim()) {
+          setShortcutLabel(savedShortcut.trim());
+        }
+      } catch (error) {
+        // eslint-disable-next-line no-console
+        console.warn('failed to hydrate overlay settings', error);
+      } finally {
+        if (!cancelled) setHydrated(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // ---- Subscribe to incoming events ---------------------------------------
   useEffect(() => {
@@ -160,55 +280,19 @@ export default function Overlay() {
   // ---- v0.9.0 auto-detect: anchor overlay to detected game window --------
   //
   // The pipeline emits `incoming:game_window_changed` whenever the game's
-  // bounds move (or a different game becomes foreground). We snap the
-  // overlay to the LEFT of the game window — like Hearthstone Helper /
-  // 直播伴侣弹幕助手 — so the user doesn't have to position the window
-  // themselves. When the game closes / minimises we hide the overlay.
+  // bounds move (or a different game becomes foreground). Position the
+  // overlay next to the configured anchor edge so the advanced settings
+  // preview is not just decorative.
   useEffect(() => {
     let unlistenChanged = null;
     let unlistenClosed = null;
     let unlistenNoGame = null;
+    let unlistenMinimised = null;
     let cancelled = false;
-    const OVERLAY_GAP_PX = 12; // breathing room between overlay and game
-
-    const reposition = async (gameWindow) => {
-      try {
-        const win = getCurrentWindow();
-        const bounds = gameWindow?.bounds;
-        if (!bounds || !Number.isFinite(bounds.x) || !Number.isFinite(bounds.y)) {
-          return;
-        }
-        // Get current overlay size so we can place ourselves cleanly to
-        // the left. PhysicalSize on the way out; subtract from game.x.
-        let overlayWidth = 360;
-        try {
-          const size = await win.outerSize();
-          if (size && size.width) overlayWidth = size.width;
-        } catch (_) {
-          /* keep default */
-        }
-        let x = bounds.x - overlayWidth - OVERLAY_GAP_PX;
-        const y = bounds.y;
-        // If the game window is hard against the left of the screen
-        // there's no room to the left — fall back to overlaying the
-        // game's left edge with a small inset.
-        if (x < 0) {
-          x = Math.max(0, bounds.x + OVERLAY_GAP_PX);
-        }
-        await win.setPosition(new PhysicalPosition(Math.round(x), Math.round(y)));
-        // Ensure visible. The pipeline only emits `game_window_changed`
-        // when the feature is enabled, so this is safe.
-        if (typeof win.show === 'function') {
-          await win.show();
-        }
-      } catch (error) {
-        // eslint-disable-next-line no-console
-        console.warn('overlay reposition failed', error);
-      }
-    };
 
     const hide = async () => {
       try {
+        lastGameWindowRef.current = null;
         const win = getCurrentWindow();
         if (typeof win.hide === 'function') {
           await win.hide();
@@ -223,7 +307,11 @@ export default function Overlay() {
       try {
         unlistenChanged = await listen('incoming:game_window_changed', (event) => {
           if (cancelled) return;
-          reposition(event.payload).catch(() => {});
+          lastGameWindowRef.current = event.payload || null;
+          positionOverlayNearGame(event.payload, state.prefs.anchor).catch((error) => {
+            // eslint-disable-next-line no-console
+            console.warn('overlay reposition failed', error);
+          });
         });
         unlistenClosed = await listen('incoming:game_closed', () => {
           if (cancelled) return;
@@ -233,6 +321,19 @@ export default function Overlay() {
           if (cancelled) return;
           hide().catch(() => {});
         });
+        unlistenMinimised = await listen('incoming:game_minimised', () => {
+          if (cancelled) return;
+          hide().catch(() => {});
+        });
+
+        const status = await invoke('get_incoming_status');
+        if (cancelled) return;
+        if (status?.active && status?.current_game && !status.current_game.minimised) {
+          lastGameWindowRef.current = status.current_game;
+          await positionOverlayNearGame(status.current_game, state.prefs.anchor);
+        } else {
+          await hide();
+        }
       } catch (error) {
         // eslint-disable-next-line no-console
         console.error('failed to subscribe to game-window events', error);
@@ -244,11 +345,23 @@ export default function Overlay() {
       if (typeof unlistenChanged === 'function') unlistenChanged();
       if (typeof unlistenClosed === 'function') unlistenClosed();
       if (typeof unlistenNoGame === 'function') unlistenNoGame();
+      if (typeof unlistenMinimised === 'function') unlistenMinimised();
     };
-  }, []);
+  }, [state.prefs.anchor]);
+
+  useEffect(() => {
+    if (!lastGameWindowRef.current) {
+      return;
+    }
+    positionOverlayNearGame(lastGameWindowRef.current, state.prefs.anchor).catch((error) => {
+      // eslint-disable-next-line no-console
+      console.warn('overlay anchor reposition failed', error);
+    });
+  }, [state.prefs.anchor]);
 
   // ---- Apply click-through to the host window -----------------------------
   useEffect(() => {
+    if (!hydrated) return undefined;
     let cancelled = false;
     (async () => {
       try {
@@ -269,7 +382,7 @@ export default function Overlay() {
     return () => {
       cancelled = true;
     };
-  }, [state.clickThrough]);
+  }, [hydrated, state.clickThrough]);
 
   // ---- Schedule fade + expiry per message ---------------------------------
   useEffect(() => {
@@ -387,7 +500,7 @@ export default function Overlay() {
               textAlign: 'center',
               lineHeight: 1.5,
             }}>
-            等待聊天 · Waiting for chat…
+            {t('overlay.waiting')}
           </div>
         )}
         {state.messages.map((msg, idx) => {
@@ -433,7 +546,7 @@ export default function Overlay() {
             width: '100%',
           }}>
           <span className='lg-ticker__handle-chip'>⌥ L</span>
-          <span>已穿透 · 点击此处恢复</span>
+          <span>{t('overlay.clickThroughHint', { shortcut: shortcutLabel })}</span>
           <span
             style={{
               marginLeft: 'auto',

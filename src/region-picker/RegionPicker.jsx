@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { ITarget, ICheck } from '../icons';
+import { useI18n } from '../i18n/I18nProvider';
 
 /**
  * Full-screen drag-to-select region picker, modeled after macOS's built-in
@@ -25,6 +26,7 @@ import { ITarget, ICheck } from '../icons';
 const MIN_PICK_SIZE = 24;
 
 export default function RegionPicker() {
+  const { t } = useI18n();
   const [ctx, setCtx] = useState(null); // { display_id, scene, display_width, display_height }
   const [drag, setDrag] = useState(null); // { startX, startY, currX, currY, dragging }
   const [error, setError] = useState(null);
@@ -107,7 +109,7 @@ export default function RegionPicker() {
     const h = Math.abs(drag.currY - drag.startY);
     if (w < MIN_PICK_SIZE || h < MIN_PICK_SIZE) {
       setDrag(null);
-      setError('框选区域太小，请按住鼠标拖出更大的矩形');
+      setError(t('regionPicker.tooSmall'));
       return;
     }
     setDrag((prev) => (prev ? { ...prev, dragging: false } : prev));
@@ -247,7 +249,7 @@ export default function RegionPicker() {
           pointerEvents: 'none',
         }}>
         <ITarget style={{ width: 14, height: 14, color: '#61ebff' }} />
-        <span>拖动选取游戏聊天区域 · 仅 OCR 识别此范围</span>
+        <span>{t('regionPicker.instructions')}</span>
         <span
           style={{
             marginLeft: 8,
@@ -258,7 +260,7 @@ export default function RegionPicker() {
             fontSize: 11,
             fontFamily: 'var(--lg-mono)',
           }}>
-          ESC 退出
+          {t('regionPicker.exit')}
         </span>
       </div>
 
@@ -284,7 +286,7 @@ export default function RegionPicker() {
                 : null}
             </>
           ) : (
-            '准备中…'
+            t('regionPicker.preparing')
           )}
         </span>
         <span className='lg-region-toolbar__sep' />
@@ -292,20 +294,20 @@ export default function RegionPicker() {
           type='button'
           className='lg-btn lg-btn--sm'
           onClick={handleUseLast}>
-          使用上次
+          {t('regionPicker.usePrevious')}
         </button>
         <button
           type='button'
           className='lg-btn lg-btn--sm'
           onClick={handleCenterPreset}>
-          居中预设
+          {t('regionPicker.preset')}
         </button>
         {rect && !drag?.dragging && (
           <button
             type='button'
             className='lg-btn lg-btn--sm'
             onClick={handleReset}>
-            重新选择
+            {t('regionPicker.reselect')}
           </button>
         )}
         <span className='lg-region-toolbar__sep' />
@@ -314,7 +316,7 @@ export default function RegionPicker() {
           className='lg-btn lg-btn--sm lg-btn--primary'
           onClick={handleSave}
           disabled={!rect || drag?.dragging || submitting}>
-          <ICheck /> {submitting ? '保存中…' : '确认保存'}
+          <ICheck /> {submitting ? t('regionPicker.saving') : t('regionPicker.confirm')}
         </button>
       </div>
 

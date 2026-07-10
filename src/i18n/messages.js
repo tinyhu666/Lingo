@@ -26,6 +26,21 @@ export const messages = {
       enabled: '已启用',
       paused: '已暂停',
     },
+    overlay: {
+      waiting: '等待聊天…',
+      clickThroughHint: '已穿透 · 按 {{shortcut}} 恢复',
+    },
+    regionPicker: {
+      instructions: '拖动选取游戏聊天区域 · 仅 OCR 识别此范围',
+      exit: 'ESC 退出',
+      tooSmall: '框选区域太小，请拖出更大的矩形',
+      preparing: '准备中…',
+      usePrevious: '使用上次',
+      preset: '聊天区预设',
+      reselect: '重新选择',
+      saving: '保存中…',
+      confirm: '确认保存',
+    },
     locale: {
       label: '界面语言',
     },
@@ -139,6 +154,7 @@ export const messages = {
         hotkeyToggleLabel: '切换入向翻译',
         hotkeyLockLabel: '锁定到游戏',
         advancedSettings: '高级设置',
+        diagnoseDetection: '诊断',
         advanced: {
           titleBadge: '高级设置',
           title: '入向翻译·高级设置',
@@ -469,6 +485,21 @@ export const messages = {
       enabled: 'Enabled',
       paused: 'Paused',
     },
+    overlay: {
+      waiting: 'Waiting for chat…',
+      clickThroughHint: 'Click-through on · press {{shortcut}} to restore',
+    },
+    regionPicker: {
+      instructions: 'Drag to select the game chat area · OCR reads only this region',
+      exit: 'ESC Exit',
+      tooSmall: 'The selection is too small. Drag a larger rectangle.',
+      preparing: 'Preparing…',
+      usePrevious: 'Use previous',
+      preset: 'Chat preset',
+      reselect: 'Select again',
+      saving: 'Saving…',
+      confirm: 'Save region',
+    },
     locale: {
       label: 'UI Language',
     },
@@ -582,6 +613,7 @@ export const messages = {
         hotkeyToggleLabel: 'Toggle incoming',
         hotkeyLockLabel: 'Lock to game',
         advancedSettings: 'Advanced settings',
+        diagnoseDetection: 'Diagnose',
         advanced: {
           titleBadge: 'Advanced',
           title: 'Incoming translation · Advanced',
@@ -912,6 +944,21 @@ export const messages = {
       enabled: 'Включено',
       paused: 'Пауза',
     },
+    overlay: {
+      waiting: 'Ожидание сообщений…',
+      clickThroughHint: 'Пропуск кликов · {{shortcut}} — вернуть',
+    },
+    regionPicker: {
+      instructions: 'Выделите область игрового чата · OCR распознаёт только её',
+      exit: 'ESC Выход',
+      tooSmall: 'Область слишком мала. Выделите прямоугольник большего размера.',
+      preparing: 'Подготовка…',
+      usePrevious: 'Предыдущая',
+      preset: 'Шаблон чата',
+      reselect: 'Выбрать заново',
+      saving: 'Сохранение…',
+      confirm: 'Сохранить',
+    },
     locale: {
       label: 'Язык интерфейса',
     },
@@ -1025,6 +1072,7 @@ export const messages = {
         hotkeyToggleLabel: 'Вкл/выкл перевод',
         hotkeyLockLabel: 'Заблокировать к игре',
         advancedSettings: 'Расширенные настройки',
+        diagnoseDetection: 'Диагностика',
         advanced: {
           titleBadge: 'Дополнительно',
           title: 'Перевод входящего · Дополнительно',

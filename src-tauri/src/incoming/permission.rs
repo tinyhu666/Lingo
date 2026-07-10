@@ -27,8 +27,7 @@ mod macos {
     type CGAccessFn = unsafe extern "C" fn() -> bool;
 
     const RTLD_LAZY: c_int = 1;
-    const CG_FRAMEWORK: &CStr =
-        c"/System/Library/Frameworks/CoreGraphics.framework/CoreGraphics";
+    const CG_FRAMEWORK: &CStr = c"/System/Library/Frameworks/CoreGraphics.framework/CoreGraphics";
 
     extern "C" {
         fn dlopen(filename: *const c_char, flag: c_int) -> *mut c_void;

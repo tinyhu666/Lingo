@@ -22,6 +22,7 @@ const DEFAULT_STATUS = Object.freeze({
   active: false,
   permission: PERMISSION_STATES.UNKNOWN,
   current_game_scene: null,
+  current_game: null,
   has_region_for_current_scene: false,
   capture_rate_hz: 1.5,
   last_error: null,

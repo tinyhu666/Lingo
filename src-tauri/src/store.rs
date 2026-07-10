@@ -118,7 +118,10 @@ fn default_incoming_toggle_hotkey() -> HotkeyConfig {
     // Lingo's outgoing translator already owns plain `Cmd/Alt + T`. Use the
     // same main key + Shift so the two halves stay mentally paired.
     #[cfg(target_os = "macos")]
-    let (modifiers, symbol) = (vec!["Meta".to_string(), "Shift".to_string()], "\u{2318}+\u{21E7}");
+    let (modifiers, symbol) = (
+        vec!["Meta".to_string(), "Shift".to_string()],
+        "\u{2318}+\u{21E7}",
+    );
     #[cfg(not(target_os = "macos"))]
     let (modifiers, symbol) = (vec!["Alt".to_string(), "Shift".to_string()], "Alt+\u{21E7}");
 
@@ -139,10 +142,7 @@ fn default_incoming_click_through_hotkey() -> HotkeyConfig {
         "\u{2318}+\u{2325}",
     );
     #[cfg(not(target_os = "macos"))]
-    let (modifiers, symbol) = (
-        vec!["Control".to_string(), "Alt".to_string()],
-        "Ctrl+Alt",
-    );
+    let (modifiers, symbol) = (vec!["Control".to_string(), "Alt".to_string()], "Ctrl+Alt");
 
     HotkeyConfig {
         modifiers,

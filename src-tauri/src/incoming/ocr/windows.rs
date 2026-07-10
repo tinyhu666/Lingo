@@ -85,15 +85,13 @@ impl WindowsOcrEngine {
         for tag in PASS_LANGS {
             let lang = Language::CreateLanguage(&HSTRING::from(*tag))
                 .map_err(|e| OcrError::EngineInit(format!("Language({tag}): {e}")))?;
-            let supported = WinOcrEngine::IsLanguageSupported(&lang).map_err(|e| {
-                OcrError::EngineInit(format!("IsLanguageSupported({tag}): {e}"))
-            })?;
+            let supported = WinOcrEngine::IsLanguageSupported(&lang)
+                .map_err(|e| OcrError::EngineInit(format!("IsLanguageSupported({tag}): {e}")))?;
             if !supported {
                 continue;
             }
-            let engine = WinOcrEngine::TryCreateFromLanguage(&lang).map_err(|e| {
-                OcrError::EngineInit(format!("TryCreateFromLanguage({tag}): {e}"))
-            })?;
+            let engine = WinOcrEngine::TryCreateFromLanguage(&lang)
+                .map_err(|e| OcrError::EngineInit(format!("TryCreateFromLanguage({tag}): {e}")))?;
             engines.push(((*tag).to_string(), engine));
         }
         if engines.is_empty() {
@@ -327,7 +325,12 @@ fn line_bbox(line: &OcrLine) -> Result<Rect, OcrError> {
         max_y = max_y.max(y + hh);
     }
     if !any {
-        return Ok(Rect { x: 0, y: 0, w: 0, h: 0 });
+        return Ok(Rect {
+            x: 0,
+            y: 0,
+            w: 0,
+            h: 0,
+        });
     }
     Ok(Rect {
         x: min_x.max(0.0).round() as i32,
@@ -406,10 +409,8 @@ pub(crate) fn merge_passes(passes: Vec<(String, Vec<TextLine>)>) -> Vec<TextLine
                     // hallucinates inside English text aren't enough on
                     // their own to keep the spine — they get out-voted
                     // by Rule 2 when the en pass is meaningfully longer.
-                    let other_self =
-                        native_script_count(other_tag, &other_line.text);
-                    let spine_self =
-                        native_script_count(other_tag, &output[idx].text);
+                    let other_self = native_script_count(other_tag, &other_line.text);
+                    let spine_self = native_script_count(other_tag, &output[idx].text);
                     let other_content = non_ws_count(&other_line.text);
                     let spine_content = non_ws_count(&output[idx].text);
                     if other_self > spine_self && other_content >= spine_content {
@@ -470,11 +471,7 @@ pub(crate) fn strip_inter_cjk_spaces(s: &str) -> String {
     let mut i = 0;
     while i < n {
         let c = chars[i];
-        let skip = c == ' '
-            && i > 0
-            && i + 1 < n
-            && is_cjk(chars[i - 1])
-            && is_cjk(chars[i + 1]);
+        let skip = c == ' ' && i > 0 && i + 1 < n && is_cjk(chars[i - 1]) && is_cjk(chars[i + 1]);
         if !skip {
             out.push(c);
         }
@@ -608,10 +605,7 @@ mod tests {
         // got it right.
         let zh = vec![line("mok 皂 up", 100, 30)];
         let en = vec![line("smoke up rosh", 100, 30)];
-        let out = merge_passes(vec![
-            ("zh-Hans-CN".into(), zh),
-            ("en-US".into(), en),
-        ]);
+        let out = merge_passes(vec![("zh-Hans-CN".into(), zh), ("en-US".into(), en)]);
         assert_eq!(out.len(), 1);
         assert_eq!(out[0].text, "smoke up rosh");
     }
@@ -623,10 +617,7 @@ mod tests {
         // already covers both scripts and is more complete, so keep it.
         let zh = vec![line("gankmid 五人抱团", 100, 30)];
         let en = vec![line("gank mid", 100, 30)];
-        let out = merge_passes(vec![
-            ("zh-Hans-CN".into(), zh),
-            ("en-US".into(), en),
-        ]);
+        let out = merge_passes(vec![("zh-Hans-CN".into(), zh), ("en-US".into(), en)]);
         assert_eq!(out.len(), 1);
         assert_eq!(out[0].text, "gankmid 五人抱团");
     }
@@ -636,10 +627,7 @@ mod tests {
         // zh pass returned nothing for a Russian-only row. ru pass found it.
         let zh: Vec<TextLine> = vec![];
         let ru = vec![line("иди в лес", 100, 30)];
-        let out = merge_passes(vec![
-            ("zh-Hans-CN".into(), zh),
-            ("ru-RU".into(), ru),
-        ]);
+        let out = merge_passes(vec![("zh-Hans-CN".into(), zh), ("ru-RU".into(), ru)]);
         assert_eq!(out.len(), 1);
         assert_eq!(out[0].text, "иди в лес");
     }
@@ -651,10 +639,7 @@ mod tests {
         // spine's correct Chinese.
         let zh = vec![line("推中路", 100, 30)];
         let en = vec![line(",,.", 100, 30)];
-        let out = merge_passes(vec![
-            ("zh-Hans-CN".into(), zh),
-            ("en-US".into(), en),
-        ]);
+        let out = merge_passes(vec![("zh-Hans-CN".into(), zh), ("en-US".into(), en)]);
         assert_eq!(out.len(), 1);
         assert_eq!(out[0].text, "推中路");
     }
@@ -663,10 +648,7 @@ mod tests {
     fn merge_sorts_output_by_y() {
         let zh = vec![line("第二行", 200, 30)];
         let en = vec![line("first line", 100, 30)];
-        let out = merge_passes(vec![
-            ("zh-Hans-CN".into(), zh),
-            ("en-US".into(), en),
-        ]);
+        let out = merge_passes(vec![("zh-Hans-CN".into(), zh), ("en-US".into(), en)]);
         assert_eq!(out.len(), 2);
         assert_eq!(out[0].bbox.y, 100);
         assert_eq!(out[1].bbox.y, 200);

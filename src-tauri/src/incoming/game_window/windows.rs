@@ -15,8 +15,7 @@ use windows::Win32::Graphics::Gdi::{
     GetMonitorInfoW, MonitorFromWindow, HMONITOR, MONITORINFOEXW, MONITOR_DEFAULTTONEAREST,
 };
 use windows::Win32::System::Threading::{
-    OpenProcess, QueryFullProcessImageNameW, PROCESS_NAME_FORMAT,
-    PROCESS_QUERY_LIMITED_INFORMATION,
+    OpenProcess, QueryFullProcessImageNameW, PROCESS_NAME_FORMAT, PROCESS_QUERY_LIMITED_INFORMATION,
 };
 use windows::Win32::UI::WindowsAndMessaging::{
     EnumWindows, GetClassNameW, GetWindowRect, GetWindowTextW, GetWindowThreadProcessId, IsIconic,
@@ -152,8 +151,7 @@ fn build_game_window(hwnd: HWND, sig: &GameSignature) -> Option<GameWindow> {
 /// reports — the hash of `\\.\DISPLAY<n>`. This keeps `GameWindow.display_id`
 /// and `DisplayInfo.id` in the same id space.
 fn monitor_id_for(hwnd: HWND) -> Option<u64> {
-    let hmonitor: HMONITOR =
-        unsafe { MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST) };
+    let hmonitor: HMONITOR = unsafe { MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST) };
     if hmonitor.0.is_null() {
         return None;
     }
@@ -215,11 +213,11 @@ fn process_name_for(hwnd: HWND) -> String {
         return String::new();
     }
 
-    let handle: HANDLE =
-        match unsafe { OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid) } {
-            Ok(h) => h,
-            Err(_) => return String::new(),
-        };
+    let handle: HANDLE = match unsafe { OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid) }
+    {
+        Ok(h) => h,
+        Err(_) => return String::new(),
+    };
     if handle.is_invalid() {
         return String::new();
     }

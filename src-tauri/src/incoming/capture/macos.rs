@@ -28,15 +28,15 @@ use core::ffi::c_void;
 
 use objc2_core_foundation::{CGPoint, CGRect, CGSize};
 use objc2_core_graphics::{
-    CGBitmapContextCreate, CGBitmapContextGetBytesPerRow, CGBitmapContextGetData, CGContextDrawImage,
-    CGDirectDisplayID, CGDisplayBounds, CGDisplayCreateImageForRect, CGDisplayPixelsHigh,
-    CGDisplayPixelsWide, CGGetActiveDisplayList, CGImage, CGImageAlphaInfo, CGImageByteOrderInfo,
-    CGMainDisplayID,
+    CGBitmapContextCreate, CGBitmapContextGetBytesPerRow, CGBitmapContextGetData,
+    CGContextDrawImage, CGDirectDisplayID, CGDisplayBounds, CGDisplayCopyDisplayMode,
+    CGDisplayCreateImageForRect, CGDisplayMode, CGDisplayPixelsHigh, CGDisplayPixelsWide,
+    CGGetActiveDisplayList, CGImage, CGImageAlphaInfo, CGImageByteOrderInfo, CGMainDisplayID,
 };
 
 use super::{CaptureError, CaptureSource, OcrFrame, PixelFormat};
 use crate::incoming::permission;
-use crate::incoming::region::ChatRegion;
+use crate::incoming::region::{clamp_rect_to_surface, ChatRegion};
 use crate::incoming::{DisplayInfo, PermissionState};
 
 // ---------------------------------------------------------------------------
@@ -68,9 +68,8 @@ pub fn list_displays() -> Vec<DisplayInfo> {
     let mut ids = [0u32; MAX_DISPLAYS as usize];
     let mut count: u32 = 0;
 
-    let status = unsafe {
-        CGGetActiveDisplayList(MAX_DISPLAYS, ids.as_mut_ptr(), &mut count as *mut u32)
-    };
+    let status =
+        unsafe { CGGetActiveDisplayList(MAX_DISPLAYS, ids.as_mut_ptr(), &mut count as *mut u32) };
     if status.0 != 0 {
         return crate::incoming::list_displays_stub();
     }
@@ -85,13 +84,13 @@ pub fn list_displays() -> Vec<DisplayInfo> {
             continue;
         }
         let bounds = CGDisplayBounds(id);
-        // CGDisplayBounds is in points; CGDisplayPixelsWide/High is in
-        // pixels. The ratio gives us the backing-scale factor.
-        let scale_factor = if bounds.size.width > 0.0 {
-            width as f32 / bounds.size.width as f32
-        } else {
-            1.0
-        };
+        // CGDisplayPixelsWide follows the logical display mode on HiDPI
+        // screens. The mode's pixel width is the backing size we need when
+        // converting Tauri's physical window size to CoreGraphics points.
+        let backing_width = CGDisplayCopyDisplayMode(id)
+            .map(|mode| CGDisplayMode::pixel_width(Some(&mode)) as u32)
+            .unwrap_or(width);
+        let scale_factor = display_scale_factor(bounds.size.width, backing_width);
         // The DisplayInfo dimensions we expose to the front-end are in
         // *logical points*, which is what Tauri windows and CSS pixels
         // both use on macOS. The region-picker window needs to size +
@@ -122,6 +121,13 @@ pub fn list_displays() -> Vec<DisplayInfo> {
     }
 }
 
+fn display_scale_factor(logical_width: f64, backing_width: u32) -> f32 {
+    if logical_width <= 0.0 || backing_width == 0 {
+        return 1.0;
+    }
+    (backing_width as f64 / logical_width).max(1.0) as f32
+}
+
 // ---------------------------------------------------------------------------
 // CaptureSource impl
 // ---------------------------------------------------------------------------
@@ -148,7 +154,8 @@ impl CaptureSource for MacOsCaptureSource {
             }
             PermissionState::Unknown => {
                 return Err(CaptureError::PermissionDenied(
-                    "Screen Recording permission status is not available on this macOS version.".to_string(),
+                    "Screen Recording permission status is not available on this macOS version."
+                        .to_string(),
                 ));
             }
         }
@@ -165,14 +172,40 @@ impl CaptureSource for MacOsCaptureSource {
             return Err(CaptureError::DisplayNotFound(region.display_id));
         }
 
+        let display_bounds = CGDisplayBounds(display_id);
+        let display_width = display_bounds.size.width.max(0.0).round() as u32;
+        let display_height = display_bounds.size.height.max(0.0).round() as u32;
+        let crop = clamp_rect_to_surface(
+            region.bounds,
+            display_bounds.origin.x.round() as i32,
+            display_bounds.origin.y.round() as i32,
+            display_width,
+            display_height,
+        )
+        .or_else(|| {
+            // Regions saved by the legacy picker are already display-local.
+            clamp_rect_to_surface(region.bounds, 0, 0, display_width, display_height)
+        })
+        .ok_or_else(|| {
+            CaptureError::Platform(format!(
+                "region {:?} does not intersect display {} at ({}, {}) {}x{}",
+                region.bounds,
+                region.display_id,
+                display_bounds.origin.x,
+                display_bounds.origin.y,
+                display_width,
+                display_height,
+            ))
+        })?;
+
         let rect = CGRect {
             origin: CGPoint {
-                x: region.bounds.x as f64,
-                y: region.bounds.y as f64,
+                x: crop.x as f64,
+                y: crop.y as f64,
             },
             size: CGSize {
-                width: region.bounds.w as f64,
-                height: region.bounds.h as f64,
+                width: crop.w as f64,
+                height: crop.h as f64,
             },
         };
         let cg_image = CGDisplayCreateImageForRect(display_id, rect).ok_or_else(|| {
@@ -277,6 +310,13 @@ mod tests {
     use super::*;
 
     #[test]
+    fn display_scale_factor_uses_backing_pixels_for_retina() {
+        assert_eq!(display_scale_factor(1_470.0, 2_940), 2.0);
+        assert_eq!(display_scale_factor(1_920.0, 1_920), 1.0);
+        assert_eq!(display_scale_factor(0.0, 2_940), 1.0);
+    }
+
+    #[test]
     fn list_displays_returns_at_least_one_entry_on_macos() {
         // CI Macs are headless but `CGGetActiveDisplayList` still reports
         // a virtual display. If it ever doesn't, our function falls back
@@ -319,8 +359,7 @@ mod tests {
         }
         .expect("test bitmap context");
 
-        let img = objc2_core_graphics::CGBitmapContextCreateImage(Some(&ctx))
-            .expect("test image");
+        let img = objc2_core_graphics::CGBitmapContextCreateImage(Some(&ctx)).expect("test image");
         drop(ctx);
 
         let frame = cg_image_to_bgra_frame(&img).expect("frame conversion");

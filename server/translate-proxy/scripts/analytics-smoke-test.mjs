@@ -56,6 +56,13 @@ const analyticsDbPath = path.join(tempDir, 'analytics.sqlite');
 const port = 9897;
 const baseUrl = `http://127.0.0.1:${port}`;
 const proxyRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const analyticsDay = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'Asia/Shanghai',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+}).format(new Date());
+const duplicateOccurredAt = `${analyticsDay}T04:00:00.000Z`;
 
 const child = spawn(process.execPath, ['src/server.mjs'], {
   cwd: proxyRoot,
@@ -77,14 +84,13 @@ child.stderr.on('data', (chunk) => process.stderr.write(chunk));
 try {
   await waitForServer(baseUrl);
 
-  const duplicateOccurredAt = '2026-03-28T12:00:00.000Z';
   const firstBatch = await postEvents(baseUrl, [
     {
       installation_id: 'install-1',
       event_name: 'install_registered',
       occurred_at: duplicateOccurredAt,
       session_id: 'session-1',
-      analytics_day: '2026-03-28',
+      analytics_day: analyticsDay,
       platform: 'windows',
       app_version: '0.6.2',
       ui_locale: 'zh-CN',
@@ -95,7 +101,7 @@ try {
       event_name: 'app_launch',
       occurred_at: duplicateOccurredAt,
       session_id: 'session-1',
-      analytics_day: '2026-03-28',
+      analytics_day: analyticsDay,
       platform: 'windows',
       app_version: '0.6.2',
       ui_locale: 'zh-CN',
@@ -106,7 +112,7 @@ try {
       event_name: 'app_active_ping',
       occurred_at: duplicateOccurredAt,
       session_id: 'session-1',
-      analytics_day: '2026-03-28',
+      analytics_day: analyticsDay,
       platform: 'windows',
       app_version: '0.6.2',
       ui_locale: 'zh-CN',
@@ -125,7 +131,7 @@ try {
       event_name: 'app_launch',
       occurred_at: duplicateOccurredAt,
       session_id: 'session-1',
-      analytics_day: '2026-03-28',
+      analytics_day: analyticsDay,
       platform: 'windows',
       app_version: '0.6.2',
       ui_locale: 'zh-CN',
@@ -134,9 +140,9 @@ try {
     {
       installation_id: 'install-2',
       event_name: 'app_active_ping',
-      occurred_at: '2026-03-28T13:00:00.000Z',
+      occurred_at: `${analyticsDay}T05:00:00.000Z`,
       session_id: 'session-2',
-      analytics_day: '2026-03-28',
+      analytics_day: analyticsDay,
       platform: 'macos',
       app_version: '0.6.2',
       ui_locale: 'en-US',
@@ -149,7 +155,9 @@ try {
   expect(secondBatch.json.inserted === 1, 'second analytics batch should insert only one new event');
   expect(secondBatch.json.duplicates === 1, 'second analytics batch should report one duplicate');
 
-  const daily = await fetchJson(`${baseUrl}/analytics/public/daily?from=2026-03-28&to=2026-03-28`);
+  const daily = await fetchJson(
+    `${baseUrl}/analytics/public/daily?from=${analyticsDay}&to=${analyticsDay}`,
+  );
   expect(daily.ok, 'daily analytics endpoint should succeed');
   expect(daily.json.timezone === 'Asia/Shanghai', 'daily analytics should report Asia/Shanghai timezone');
   expect(Array.isArray(daily.json.days) && daily.json.days.length === 1, 'daily analytics should return one row');
@@ -162,7 +170,12 @@ try {
   expect(overview.json.metrics.installations_total === 2, 'overview should count two installations total');
   expect(overview.json.metrics.active_installations_30d === 2, 'overview should count two active installations');
 
-  const dashboardResponse = await fetch(`${baseUrl}/analytics/dashboard`);
+  const unauthorizedDashboard = await fetch(`${baseUrl}/analytics/dashboard`);
+  expect(unauthorizedDashboard.status === 401, 'dashboard page should require admin auth');
+
+  const dashboardResponse = await fetch(`${baseUrl}/analytics/dashboard`, {
+    headers: { Authorization: 'Bearer test-admin-token' },
+  });
   const dashboardHtml = await dashboardResponse.text();
   expect(dashboardResponse.ok, 'dashboard page should succeed');
   expect(dashboardHtml.includes('Lingo Analytics'), 'dashboard page should contain the analytics title');
