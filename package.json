@@ -1,12 +1,13 @@
 {
   "name": "lingo",
   "private": true,
-  "version": "0.9.2",
+  "version": "0.9.3",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "dev:desktop": "node scripts/dev-desktop.mjs",
     "build": "vite build",
+    "test:client": "node --test src/services/analyticsUtils.test.mjs scripts/verify-updater-signing-key.test.mjs",
     "preview": "vite preview",
     "tauri": "tauri",
     "proxy:dev": "node server/translate-proxy/src/server.mjs",
@@ -43,6 +44,6 @@
     "@vitejs/plugin-react": "^6.0.0",
     "postcss": "^8.5.12",
     "tailwindcss": "^4.2.1",
-    "vite": "^8.0.10"
+    "vite": "^8.1.4"
   }
 }

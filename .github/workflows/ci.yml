@@ -83,7 +83,7 @@ jobs:
         run: npm run build
 
       - name: Test Frontend Utilities
-        run: node --test src/services/analyticsUtils.test.mjs
+        run: npm run test:client
 
       - name: Lint Rust
         run: cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings

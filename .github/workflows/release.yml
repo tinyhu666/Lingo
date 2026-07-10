@@ -59,6 +59,16 @@ jobs:
       - name: Verify Release Configuration
         run: npm run verify:release-config
 
+      - name: Verify Release Tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          EXPECTED_TAG="v$(node -p "JSON.parse(require('node:fs').readFileSync('package.json', 'utf8')).version")"
+          if [ "$GITHUB_REF_NAME" != "$EXPECTED_TAG" ]; then
+            echo "Release tag $GITHUB_REF_NAME does not match package version $EXPECTED_TAG."
+            exit 1
+          fi
+
       - name: Prepare Release Notes
         id: release_notes
         shell: bash
@@ -262,6 +272,28 @@ jobs:
             echo "TAURI_SIGNING_PRIVATE_KEY=$NORMALIZED_KEY_B64"
             echo "TAURI_SIGNING_PRIVATE_KEY_PASSWORD=$NORMALIZED_PASSWORD"
           } >> "$GITHUB_ENV"
+
+      - name: Verify Updater Signing Key Identity
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          PROBE_PATH="$RUNNER_TEMP/lingo-updater-key-probe"
+          printf 'Lingo updater signing key identity probe\n' > "$PROBE_PATH"
+          ./node_modules/.bin/tauri signer sign "$PROBE_PATH" >/dev/null
+
+          if [ "$GITHUB_REF_NAME" = "v0.9.3" ]; then
+            EXPECTED_PUBLIC_KEY=".github/updater/updater-legacy.key.pub"
+            EXPECTED_KEY_ID="F8A6813CC106A04E"
+          else
+            EXPECTED_PUBLIC_KEY=".github/updater/updater.key.pub"
+            EXPECTED_KEY_ID="56B21F223CBD21D5"
+          fi
+
+          node ./scripts/verify-updater-signing-key.mjs \
+            "$PROBE_PATH.sig" \
+            "$EXPECTED_PUBLIC_KEY" \
+            "$EXPECTED_KEY_ID"
 
       - name: Resolve Translation Backend Defaults
         shell: bash
