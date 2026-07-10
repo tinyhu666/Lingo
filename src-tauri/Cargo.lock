@@ -4,7 +4,7 @@ version = 4
 
 [[package]]
 name = "Lingo"
-version = "0.9.0-rc.2"
+version = "0.9.1"
 dependencies = [
  "anyhow",
  "objc2",
