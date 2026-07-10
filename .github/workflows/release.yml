@@ -282,7 +282,8 @@ jobs:
           printf 'Lingo updater signing key identity probe\n' > "$PROBE_PATH"
           ./node_modules/.bin/tauri signer sign "$PROBE_PATH" >/dev/null
 
-          if [ "$GITHUB_REF_NAME" = "v0.9.3" ]; then
+          # v0.9.4 is the one-time bridge from the legacy client trust key.
+          if [ "$GITHUB_REF_NAME" = "v0.9.4" ]; then
             EXPECTED_PUBLIC_KEY=".github/updater/updater-legacy.key.pub"
             EXPECTED_KEY_ID="F8A6813CC106A04E"
           else

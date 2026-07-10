@@ -17,7 +17,7 @@ const legacyPublicKey = readFileSync(
 
 const cargoVersion = cargoToml.match(/^version\s*=\s*"([^"]+)"/m)?.[1];
 const cargoLockVersion = cargoLock.match(
-  /\[\[package\]\]\nname = "Lingo"\nversion = "([^"]+)"/,
+  /\[\[package\]\]\r?\nname = "Lingo"\r?\nversion = "([^"]+)"/,
 )?.[1];
 const versions = {
   'package-lock.json': packageLock.version,
