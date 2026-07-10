@@ -200,19 +200,8 @@ jobs:
         run: |
           set -euo pipefail
 
-          REPO_KEY_FILE=".github/updater/updater.key"
           SIGNING_KEY="${RAW_UPDATER_KEY:-}"
           SIGNING_PASSWORD="${RAW_UPDATER_PASSWORD:-}"
-
-          # Keep updater key stable so historical clients can verify new signatures.
-          if [ -f "$REPO_KEY_FILE" ]; then
-            REPO_KEY="$(tr -d '\r\n' < "$REPO_KEY_FILE")"
-            if [ -n "$REPO_KEY" ]; then
-              SIGNING_KEY="$REPO_KEY"
-              SIGNING_PASSWORD="autogg-v013-updater"
-              echo "Using updater signing key from repository key file."
-            fi
-          fi
 
           if [ -z "${SIGNING_KEY:-}" ]; then
             echo "TAURI_SIGNING_PRIVATE_KEY secret is empty."
@@ -261,6 +250,10 @@ jobs:
 
           # Trim CR from password to avoid accidental Windows line endings in secrets.
           NORMALIZED_PASSWORD="${SIGNING_PASSWORD//$'\r'/}"
+
+          # Derived values written to GITHUB_ENV are not masked automatically.
+          echo "::add-mask::$NORMALIZED_KEY_B64"
+          echo "::add-mask::$NORMALIZED_PASSWORD"
 
           {
             echo "TAURI_SIGNING_PRIVATE_KEY=$NORMALIZED_KEY_B64"

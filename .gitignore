@@ -38,6 +38,7 @@ assets/previews/
 .playwright-cli/
 output/
 .mirror-cos/
+.github/updater/*.key
 server/translate-proxy/data/runtime-config.json
 server/translate-proxy/data/*.sqlite
 server/translate-proxy/data/*.sqlite-shm

@@ -17,6 +17,26 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  repository-safety:
+    name: Repository Safety
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Reject Tracked Updater Private Keys
+        shell: bash
+        run: |
+          set -euo pipefail
+          tracked_keys="$(git ls-files '.github/updater/*.key')"
+          if [ -n "$tracked_keys" ]; then
+            echo "Updater private keys must be stored in GitHub Secrets, not in the repository."
+            echo "$tracked_keys"
+            exit 1
+          fi
+
   client:
     name: Client (${{ matrix.label }})
     runs-on: ${{ matrix.os }}
