@@ -657,6 +657,18 @@ async fn set_incoming_capture_rate(
     store::get_settings(&app_handle).map_err(|e| e.to_string())
 }
 
+/// v0.9.0 diagnostic. Returns every visible top-level window with its
+/// class + title + process name and whether any GameSignature matched.
+/// Wired only so the user can call it from DevTools when auto-detect
+/// silently fails on their host:
+///
+///   await window.__TAURI__.core.invoke('incoming_debug_enumerate_windows')
+#[tauri::command]
+async fn incoming_debug_enumerate_windows(
+) -> Result<Vec<incoming::game_window::DebugWindowEntry>, String> {
+    Ok(incoming::game_window::enumerate_all_for_debug())
+}
+
 #[tauri::command]
 async fn list_displays() -> Result<Vec<incoming::DisplayInfo>, String> {
     // macOS: CGGetActiveDisplayList. Windows: still stub until
@@ -895,6 +907,8 @@ pub fn run() {
             open_region_picker,
             cancel_region_picker,
             save_picked_region,
+            // v0.9.0 auto-detect
+            incoming_debug_enumerate_windows,
         ]);
 
     #[cfg(not(target_os = "windows"))]

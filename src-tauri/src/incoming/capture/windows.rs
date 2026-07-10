@@ -189,6 +189,14 @@ fn intern_device_name(name: &str) -> u64 {
     hasher.finish() & 0x7FFF_FFFF_FFFF_FFFF
 }
 
+/// Public alias for [`intern_device_name`] so the `game_window::windows`
+/// detector can build display ids that match `list_displays()` output —
+/// the pipeline relies on both id spaces being identical to source the
+/// right `CaptureSource` frame for the detected game's monitor.
+pub fn intern_device_name_pub(name: &str) -> u64 {
+    intern_device_name(name)
+}
+
 fn humanize_device_name(device_name: &str) -> String {
     // `\\.\DISPLAY1` -> "DISPLAY1", `\\.\DISPLAY2` -> "DISPLAY2". The
     // GetMonitorInfo struct doesn't carry the EDID-derived friendly name;

@@ -39,7 +39,6 @@ import {
   normalizeModifier,
 } from '../../constants/hotkeys';
 import DropdownMenu from '../../components/DropdownMenu';
-import IncomingCalibrationModal from '../../components/IncomingCalibrationModal';
 import IncomingAdvancedSettingsModal from '../../components/IncomingAdvancedSettingsModal';
 import {
   PERMISSION_STATES,
@@ -84,13 +83,14 @@ function IncomingHero() {
   const [status, setStatus] = useState(null);
   const [pending, setPending] = useState(false);
   const [clickPending, setClickPending] = useState(false);
-  const [calibrationOpen, setCalibrationOpen] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  // v0.9.0 auto-detect: tracks the currently-detected game (pipeline emits
+  // incoming:game_window_changed when one appears, and incoming:game_closed
+  // / incoming:no_game_detected when it goes away). null = no detection.
+  const [detectedGame, setDetectedGame] = useState(null);
 
   const persistedEnabled = Boolean(settings?.incoming_enabled);
   const gameScene = settings?.game_scene || DEFAULT_GAME_SCENE;
-  const region = settings?.incoming_regions?.[gameScene] || null;
-  const hasRegion = Boolean(region);
   const clickThrough = Boolean(settings?.incoming_overlay?.click_through);
 
   const refreshStatus = useCallback(async () => {
@@ -108,7 +108,47 @@ function IncomingHero() {
 
   useEffect(() => {
     void refreshStatus();
-  }, [refreshStatus, persistedEnabled, gameScene, hasRegion]);
+  }, [refreshStatus, persistedEnabled, gameScene]);
+
+  // v0.9.0 auto-detect events. Pipeline emits these on every tick when the
+  // foreground game window changes (or vanishes); we mirror the state here
+  // so the home card can show "Dota 2 已检测到" vs "正在等待游戏...".
+  useEffect(() => {
+    if (!hasTauriRuntime()) return undefined;
+    let cancelled = false;
+    const unlisteners = [];
+    (async () => {
+      try {
+        const u1 = await listen('incoming:game_window_changed', (event) => {
+          if (cancelled) return;
+          setDetectedGame(event.payload || null);
+        });
+        unlisteners.push(u1);
+        const u2 = await listen('incoming:game_closed', () => {
+          if (cancelled) return;
+          setDetectedGame(null);
+        });
+        unlisteners.push(u2);
+        const u3 = await listen('incoming:no_game_detected', () => {
+          if (cancelled) return;
+          setDetectedGame(null);
+        });
+        unlisteners.push(u3);
+      } catch (error) {
+        console.warn('failed to subscribe to game-window events', error);
+      }
+    })();
+    return () => {
+      cancelled = true;
+      for (const u of unlisteners) {
+        try {
+          u();
+        } catch (_) {
+          // ignore
+        }
+      }
+    };
+  }, []);
 
   // Load-bearing: the Windows incoming-translation flow emits status events
   // when capture/OCR can't run. Surface them as toasts; otherwise the card
@@ -154,8 +194,8 @@ function IncomingHero() {
 
   const permission = status?.permission || PERMISSION_STATES.UNKNOWN;
   const permissionMissing = permission === PERMISSION_STATES.DENIED;
-  const needsRegion = persistedEnabled && !hasRegion;
   const needsPermission = persistedEnabled && permissionMissing;
+  const waitingForGame = persistedEnabled && !detectedGame;
 
   const chipInfo = useMemo(() => {
     if (!persistedEnabled) {
@@ -164,11 +204,14 @@ function IncomingHero() {
     if (needsPermission) {
       return { tone: 'warn', text: t('home.incoming.statusPermission'), dot: true };
     }
-    if (needsRegion) {
-      return { tone: 'warn', text: t('home.incoming.statusNeedsRegion'), dot: true };
+    if (waitingForGame) {
+      // v0.9.0: dormant-but-listening state. The pipeline polls every
+      // 2.5s for a supported game window; when found the chip flips to
+      // success automatically.
+      return { tone: 'default', text: t('home.incoming.statusWaitingGame'), dot: true };
     }
     return { tone: 'success', text: t('home.incoming.statusActive'), dot: true };
-  }, [persistedEnabled, needsPermission, needsRegion, t]);
+  }, [persistedEnabled, needsPermission, waitingForGame, t]);
 
   const handleToggle = async () => {
     if (pending) return;
@@ -186,9 +229,9 @@ function IncomingHero() {
 
       if (nextEnabled) {
         showSuccess(t('home.incoming.toggleEnabledSuccess'));
-        if (!hasRegion) {
-          showInfo(t('home.incoming.regionHintToast', { scene: gameScene }));
-        } else if (permissionMissing) {
+        // v0.9.0: no more region calibration to nag about. The only
+        // pre-flight hint left is the macOS Screen Recording permission.
+        if (permissionMissing) {
           showInfo(t('home.incoming.permissionHintToast'));
         }
       } else {
@@ -200,6 +243,40 @@ function IncomingHero() {
       showError(t('home.incoming.toggleFailed', { error: toErrorMessage(error) }));
     } finally {
       setPending(false);
+    }
+  };
+
+  // v0.9.0-rc.2: emergency diagnostic. When auto-detect fails in the field,
+  // the user clicks "诊断检测" and we copy the full window enumeration
+  // (class + title + process + matched-game-id for every visible window)
+  // to clipboard so they can paste it to support. No DevTools required.
+  const handleDiagnoseDetection = async () => {
+    if (!hasTauriRuntime()) {
+      showError('诊断功能仅在客户端可用');
+      return;
+    }
+    try {
+      const rows = await invokeCommand('incoming_debug_enumerate_windows');
+      const summary = {
+        timestamp: new Date().toISOString(),
+        detectedGame: detectedGame || null,
+        platform: navigator.platform,
+        userAgent: navigator.userAgent.slice(0, 200),
+        windowCount: Array.isArray(rows) ? rows.length : 0,
+        windows: rows,
+      };
+      const text = JSON.stringify(summary, null, 2);
+      try {
+        await navigator.clipboard.writeText(text);
+        showSuccess(`诊断信息已复制到剪贴板（${summary.windowCount} 个窗口），请发给开发者`);
+      } catch (clipErr) {
+        // Fallback when clipboard API isn't available (older webviews).
+        // eslint-disable-next-line no-console
+        console.log('lingo-diagnose-detection', text);
+        showInfo('诊断信息已打印到 console。控制台不可见时请联系开发者');
+      }
+    } catch (error) {
+      showError(`诊断失败: ${toErrorMessage(error)}`);
     }
   };
 
@@ -241,9 +318,12 @@ function IncomingHero() {
 
   const clickThroughShortcut = settings?.incoming_click_through_hotkey?.shortcut || '';
 
-  const regionMeta = hasRegion
-    ? `${region.bounds?.x ?? 0},${region.bounds?.y ?? 0} · ${region.bounds?.w ?? 0}×${region.bounds?.h ?? 0}`
-    : t('home.incoming.calibrateRegion');
+  const detectedGameMeta = detectedGame
+    ? `${detectedGame.bounds?.x ?? 0},${detectedGame.bounds?.y ?? 0} · ${detectedGame.bounds?.w ?? 0}×${detectedGame.bounds?.h ?? 0}`
+    : t('home.incoming.waitingGameHint');
+  const detectedGameLabel = detectedGame
+    ? getGameSceneLabel(detectedGame.game_id)
+    : t('home.incoming.statusWaitingGame');
 
   return (
     <>
@@ -340,15 +420,23 @@ function IncomingHero() {
             </div>
           </div>
 
-          {/* Action: calibrate */}
-          <button
-            type='button'
-            style={heroBtnStyle()}
-            onClick={() => setCalibrationOpen(true)}>
-            <ICalibrate style={{ color: '#4d70f5', width: 20, height: 20 }} />
+          {/* v0.9.0 auto-detect: passive status, not a button. The drag-
+              to-select calibration was removed; chat region is computed
+              from the detected game window's bounds. v0.9.0-rc.2 added
+              a small `诊断` link for cases where detection silently
+              misses — clicking it copies the window enumeration to
+              clipboard so the user can hand it to support. */}
+          <div style={{ ...heroBtnStyle(Boolean(detectedGame)), cursor: 'default' }}>
+            <IGamepad
+              style={{
+                color: detectedGame ? '#16a36b' : 'var(--lg-ink-3)',
+                width: 20,
+                height: 20,
+              }}
+            />
             <div style={{ flex: 1 }}>
               <div style={{ fontWeight: 700, fontSize: 12.5, color: 'var(--lg-ink-0)' }}>
-                {t('home.incoming.calibrateRegion')}
+                {detectedGameLabel}
               </div>
               <div
                 style={{
@@ -357,10 +445,28 @@ function IncomingHero() {
                   marginTop: 2,
                   fontFamily: 'var(--lg-mono)',
                 }}>
-                {regionMeta}
+                {detectedGameMeta}
               </div>
             </div>
-          </button>
+            <button
+              type='button'
+              onClick={(e) => {
+                e.stopPropagation();
+                void handleDiagnoseDetection();
+              }}
+              title='复制当前所有可见窗口的诊断信息到剪贴板（识别失败时给开发者）'
+              style={{
+                background: 'transparent',
+                border: '1px solid var(--lg-line-1)',
+                borderRadius: 6,
+                padding: '4px 8px',
+                fontSize: 10.5,
+                color: 'var(--lg-ink-3)',
+                cursor: 'pointer',
+              }}>
+              诊断
+            </button>
+          </div>
 
           {/* Action: click-through / lock */}
           <button
@@ -421,14 +527,6 @@ function IncomingHero() {
           </div>
         ) : null}
       </div>
-
-      <IncomingCalibrationModal
-        open={calibrationOpen}
-        onClose={() => setCalibrationOpen(false)}
-        gameScene={gameScene}
-        currentRegion={region}
-        onSaved={refreshStatus}
-      />
 
       <IncomingAdvancedSettingsModal
         open={advancedOpen}

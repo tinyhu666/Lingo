@@ -25,7 +25,10 @@
 
 use crate::ai_translator::translate_incoming;
 use crate::incoming::capture::{default_capture_source, CaptureSource};
+use crate::incoming::game_profiles::chat_region_for;
+use crate::incoming::game_window::{self, GameWindow};
 use crate::incoming::ocr::{default_ocr_engine, OcrEngine, OcrOptions};
+use crate::incoming::region::ChatRegion;
 use crate::incoming::tracker::{LineTracker, NewMessage};
 use crate::incoming::{IncomingTranslation, PermissionState};
 use crate::store;
@@ -184,6 +187,12 @@ async fn run_loop(app: AppHandle, mut cancel: oneshot::Receiver<()>) {
 
     let mut last_note: Option<&'static str> = None;
     let mut backoff_active = false;
+    // v0.9.0 auto-detect: cache the previously-detected game window so we
+    // only re-emit `incoming:game_window_changed` when bounds / display /
+    // game-id actually move. The overlay front-end uses this event to
+    // reposition itself; spamming on every tick would cause needless
+    // setPosition calls.
+    let mut last_game: Option<GameWindow> = None;
 
     loop {
         // Wait for the next tick or cancel signal.
@@ -235,23 +244,68 @@ async fn run_loop(app: AppHandle, mut cancel: oneshot::Receiver<()>) {
             }
         }
 
-        // ---- Region lookup --------------------------------------------
-        let region = match settings.incoming_regions.get(&settings.game_scene) {
-            Some(r) => r.clone(),
+        // ---- Game window detection (v0.9.0 auto-detect) ----------------
+        // Replaces the v0.7-v0.8 drag-to-select calibration: instead of
+        // reading a user-saved `ChatRegion` from settings, we find the
+        // foreground game by enumerating top-level windows and matching
+        // process name + window class + title. The chat region is then
+        // computed from per-game fractional offsets (game_profiles.rs).
+        let game = match game_window::detect_current() {
             None => {
-                if last_note != Some("region_missing") {
+                if last_game.is_some() {
+                    let _ = app.emit("incoming:game_closed", ());
+                    last_game = None;
+                }
+                if last_note != Some("no_game") {
                     let _ = app.emit(
-                        "incoming:region_required",
-                        format!(
-                            "No chat region calibrated for game scene '{}'. Open the Advanced settings on the home card to calibrate.",
-                            settings.game_scene
-                        ),
+                        "incoming:no_game_detected",
+                        "未检测到支持的游戏（目前支持 Dota 2 / League of Legends）。打开游戏后翻译会自动启动。",
                     );
-                    last_note = Some("region_missing");
+                    last_note = Some("no_game");
                 }
                 backoff_active = true;
                 continue;
             }
+            Some(g) if g.minimised => {
+                if last_note != Some("game_minimised") {
+                    let _ = app.emit(
+                        "incoming:game_minimised",
+                        format!("{} 已最小化，翻译已暂停。", g.game_id.display_name()),
+                    );
+                    last_note = Some("game_minimised");
+                }
+                backoff_active = true;
+                continue;
+            }
+            Some(g) => g,
+        };
+
+        // Emit the change event only on transitions (game id, display, or
+        // bounds moved). The overlay window listens for this to anchor
+        // itself to the game's left edge — re-firing every tick would
+        // cause noticeable jitter as `WebviewWindow.setPosition` is
+        // ~ms-latency on Windows.
+        let bounds_changed = match &last_game {
+            Some(prev) => {
+                prev.game_id != game.game_id
+                    || prev.display_id != game.display_id
+                    || prev.bounds != game.bounds
+            }
+            None => true,
+        };
+        if bounds_changed {
+            let _ = app.emit("incoming:game_window_changed", &game);
+        }
+        last_game = Some(game.clone());
+
+        // Materialise the auto-computed chat region. `languages: vec![]`
+        // — auto_detect_language defaults still apply downstream in OCR
+        // options; the per-region language hint was a vestigial v0.7
+        // field that the OCR pipeline never read.
+        let region = ChatRegion {
+            display_id: game.display_id,
+            bounds: chat_region_for(game.game_id, game.bounds),
+            languages: Vec::new(),
         };
 
         // ---- Capture ---------------------------------------------------
@@ -300,7 +354,14 @@ async fn run_loop(app: AppHandle, mut cancel: oneshot::Receiver<()>) {
         for msg in new_msgs {
             let app_for_task = app.clone();
             let target_lang = settings.translation_to.clone();
-            let game_scene = settings.game_scene.clone();
+            // v0.9.0: drive the translate-proxy `game_scene` prompt
+            // context off the *detected* game, not the user setting.
+            // If the user set scene="lol" but we detect Dota running,
+            // the LoL terminology hint would degrade translation
+            // quality on Dota chat. Detected game is always the
+            // ground truth here because we only translate when we
+            // have a captured frame from that game.
+            let game_scene = game.game_id.scene_tag().to_string();
             let counter = id_counter.clone();
             let permits = translate_permits.clone();
             tauri::async_runtime::spawn(async move {
