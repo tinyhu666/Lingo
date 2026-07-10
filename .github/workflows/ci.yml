@@ -26,6 +26,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 'lts/*'
+
       - name: Reject Tracked Updater Private Keys
         shell: bash
         run: |
@@ -36,6 +41,9 @@ jobs:
             echo "$tracked_keys"
             exit 1
           fi
+
+      - name: Verify Release Configuration
+        run: npm run verify:release-config
 
   client:
     name: Client (${{ matrix.label }})
