@@ -218,7 +218,7 @@ fn process_name_for(hwnd: HWND) -> String {
         Ok(h) => h,
         Err(_) => return String::new(),
     };
-    if handle.is_invalid() {
+    if handle.0.is_null() {
         return String::new();
     }
 
@@ -242,17 +242,6 @@ fn process_name_for(hwnd: HWND) -> String {
     // Return the basename only. We compare lowercase against
     // signatures like `dota2.exe`.
     path.rsplit(['\\', '/']).next().unwrap_or("").to_string()
-}
-
-// CloseHandle returns BOOL but we deliberately ignore failures here —
-// the handle was opened by us and we don't reuse the variable.
-trait HandleExt {
-    fn is_invalid(self) -> bool;
-}
-impl HandleExt for HANDLE {
-    fn is_invalid(self) -> bool {
-        self.0.is_null()
-    }
 }
 
 #[cfg(test)]
