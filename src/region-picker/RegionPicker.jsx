@@ -186,7 +186,7 @@ export default function RegionPicker() {
       onMouseUp={handleMouseUp}>
       {/* Dim scrim covers everything; the .lg-region-cut below punches
           a transparent rect via box-shadow inversion. */}
-      <div className='lg-region-scrim' />
+      {!rect && <div className='lg-region-scrim' />}
 
       {rect && (
         <div

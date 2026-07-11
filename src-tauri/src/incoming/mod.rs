@@ -1,6 +1,6 @@
-//! Incoming-chat translation subsystem (v0.7.0 work in progress).
+//! Incoming-chat translation subsystem.
 //!
-//! Pipeline (final shape):
+//! Production pipeline:
 //!
 //! ```text
 //!   ┌─────────┐   ┌─────┐   ┌─────────┐   ┌──────────────┐   ┌────────┐
@@ -9,19 +9,9 @@
 //!   └─────────┘   └─────┘   └─────────┘   └──────────────┘   └────────┘
 //! ```
 //!
-//! Current state: **scaffolding only**. The traits + types are real and shape
-//! the architecture, but the platform-specific `capture` and `ocr`
-//! implementations return [`CaptureError::Unimplemented`] /
-//! [`OcrError::Unimplemented`].
-//!
-//! Reference implementations:
-//! - macOS Apple Vision OCR — see `spikes/ocr-vision/spike.swift` and the
-//!   accompanying `SPIKE_RESULTS.md`. The Rust port will live in
-//!   `ocr::macos` once `objc2-vision` is wired in.
-//! - Overlay visual variants — see `spikes/overlay-design/index.html`.
-//!
-//! The [`tracker`] module is already fully implemented and unit tested; it is
-//! the only platform-agnostic part of the pipeline.
+//! Capture and OCR have native macOS and Windows implementations. Game-window
+//! discovery selects a built-in chat-region profile, then [`tracker`] filters
+//! and deduplicates recognized chat before translation and overlay delivery.
 
 pub mod capture;
 pub mod game_profiles;

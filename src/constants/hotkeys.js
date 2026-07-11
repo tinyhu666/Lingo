@@ -28,6 +28,12 @@ export const formatMainKeyLabel = (keyCode = '') => {
 
 export const defaultTranslatorHotkeyLabel = () => (detectMac() ? '⌘+T' : 'Alt+T');
 
+export const defaultIncomingToggleHotkeyLabel = () =>
+  detectMac() ? '⌘+⇧+T' : 'Alt+⇧+T';
+
+export const defaultIncomingClickThroughHotkeyLabel = () =>
+  detectMac() ? '⌘+⌥+L' : 'Ctrl+Alt+L';
+
 export const defaultPhraseModifier = () => (detectMac() ? 'Meta' : 'Alt');
 
 export const defaultPhraseModifierLabel = () => (detectMac() ? '⌘' : 'Alt');

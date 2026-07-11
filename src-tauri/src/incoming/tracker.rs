@@ -131,13 +131,26 @@ fn parse_line(raw: &str) -> Option<NewMessage> {
     if let Some((idx, colon_len)) = colon_idx {
         let sender = after_scope[..idx].trim();
         let text = after_scope[idx + colon_len..].trim();
-        if !sender.is_empty() && !text.is_empty() && sender.chars().count() <= 32 {
+        if !sender.is_empty() && is_meaningful_message(text) && sender.chars().count() <= 32 {
             return Some(NewMessage {
                 sender: Some(sender.to_string()),
                 text: text.to_string(),
                 scope,
             });
         }
+        return None;
+    }
+
+    if !is_meaningful_message(after_scope) {
+        return None;
+    }
+
+    // OCR occasionally loses the sender/scope punctuation on Cyrillic
+    // messages, so preserve that measured fallback. Other unstructured
+    // rows are usually HUD labels, combat text, or system notifications
+    // that overlap the native chat area.
+    if scope.is_none() && after_scope.chars().filter(|c| is_cyrillic(*c)).count() < 2 {
+        return None;
     }
 
     Some(NewMessage {
@@ -145,6 +158,15 @@ fn parse_line(raw: &str) -> Option<NewMessage> {
         text: after_scope.to_string(),
         scope,
     })
+}
+
+fn is_meaningful_message(text: &str) -> bool {
+    text.chars().filter(|c| c.is_alphanumeric()).count() >= 2
+}
+
+fn is_cyrillic(c: char) -> bool {
+    let code = c as u32;
+    (0x0400..=0x04FF).contains(&code) || (0x0500..=0x052F).contains(&code)
 }
 
 /// Returns `Some((remainder_after_bracket, tag_contents))` if the input
@@ -301,10 +323,10 @@ mod tests {
     }
 
     #[test]
-    fn scope_none_when_no_tag() {
+    fn unscoped_non_chat_line_is_skipped() {
         let mut t = LineTracker::default();
         let out = t.ingest(&[line("server reconnecting")]);
-        assert_eq!(out[0].scope, None);
+        assert!(out.is_empty());
     }
 
     #[test]
@@ -336,12 +358,46 @@ mod tests {
     }
 
     #[test]
-    fn line_without_colon_emits_text_only() {
+    fn unscoped_latin_line_without_colon_is_skipped() {
         let mut t = LineTracker::default();
         let out = t.ingest(&[line("server reconnecting")]);
+        assert!(out.is_empty());
+    }
+
+    #[test]
+    fn rejects_unscoped_hud_text_without_sender() {
+        let mut t = LineTracker::default();
+        let out = t.ingest(&[
+            line("赏金神符40 每人"),
+            line("好饭不怕晚303%"),
+            line("みく"),
+            line("+ 296м"),
+        ]);
+        assert!(out.is_empty());
+    }
+
+    #[test]
+    fn keeps_unscoped_cyrillic_message_without_colon() {
+        let mut t = LineTracker::default();
+        let out = t.ingest(&[line("#Нала иди влеся фармлю")]);
         assert_eq!(out.len(), 1);
-        assert!(out[0].sender.is_none());
-        assert_eq!(out[0].text, "server reconnecting");
+        assert_eq!(out[0].text, "#Нала иди влеся фармлю");
+    }
+
+    #[test]
+    fn keeps_scoped_message_when_colon_is_missed() {
+        let mut t = LineTracker::default();
+        let out = t.ingest(&[line("［队友］Gabriel正在防守下路")]);
+        assert_eq!(out.len(), 1);
+        assert_eq!(out[0].scope, Some(MessageScope::Team));
+        assert_eq!(out[0].text, "Gabriel正在防守下路");
+    }
+
+    #[test]
+    fn rejects_empty_chat_input_prompt() {
+        let mut t = LineTracker::default();
+        let out = t.ingest(&[line("对（队友）说：|")]);
+        assert!(out.is_empty());
     }
 
     #[test]

@@ -4,6 +4,11 @@ import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow, LogicalPosition, PhysicalPosition } from '@tauri-apps/api/window';
 import { IAnchorR, IAnchorL, IAnchorT, IAnchorB } from '../icons';
 import { useI18n } from '../i18n/I18nProvider';
+import {
+  defaultIncomingClickThroughHotkeyLabel,
+  detectMac,
+  normalizeModifier,
+} from '../constants/hotkeys';
 
 /**
  * Lingo Incoming overlay — v0.8 side-edge ticker.
@@ -182,9 +187,11 @@ export default function Overlay() {
   const { t } = useI18n();
   const [state, dispatch] = useReducer(reducer, initialState);
   const [hydrated, setHydrated] = useState(false);
-  const [shortcutLabel, setShortcutLabel] = useState(() =>
-    /Mac/i.test(navigator.platform || navigator.userAgent) ? '⌥L' : 'Alt+L',
-  );
+  const [shortcutLabel, setShortcutLabel] = useState(defaultIncomingClickThroughHotkeyLabel);
+  const [shortcutConfig, setShortcutConfig] = useState(() => ({
+    modifiers: detectMac() ? ['Meta', 'Alt'] : ['Control', 'Alt'],
+    key: 'KeyL',
+  }));
   const fadeTimersRef = useRef(new Map()); // id -> { fade, expire }
   const lastGameWindowRef = useRef(null);
 
@@ -201,9 +208,13 @@ export default function Overlay() {
         if (typeof prefs.click_through === 'boolean') {
           dispatch({ type: 'click_through', value: prefs.click_through });
         }
-        const savedShortcut = settings?.incoming_click_through_hotkey?.shortcut;
+        const savedHotkey = settings?.incoming_click_through_hotkey;
+        const savedShortcut = savedHotkey?.shortcut;
         if (typeof savedShortcut === 'string' && savedShortcut.trim()) {
           setShortcutLabel(savedShortcut.trim());
+        }
+        if (Array.isArray(savedHotkey?.modifiers) && savedHotkey?.key) {
+          setShortcutConfig(savedHotkey);
         }
       } catch (error) {
         // eslint-disable-next-line no-console
@@ -424,20 +435,26 @@ export default function Overlay() {
     };
   }, []);
 
-  // ---- ⌥L (Alt+L) local toggle while overlay has focus --------------------
+  // Local fallback while the overlay has focus. The global shortcut remains
+  // authoritative when click-through prevents this window receiving input.
   // Global hotkey rebinding lives on the main window via
-  // `set_incoming_overlay_click_through` / shortcut.rs. This is a local
-  // fallback so the visible handle is also reachable from the overlay.
+  // `set_incoming_overlay_click_through` / shortcut.rs.
   useEffect(() => {
     const onKey = (e) => {
-      if (e.altKey && (e.key === 'l' || e.key === 'L')) {
+      const modifiers = new Set(shortcutConfig.modifiers.map(normalizeModifier));
+      const modifiersMatch =
+        e.ctrlKey === modifiers.has('Control') &&
+        e.altKey === modifiers.has('Alt') &&
+        e.shiftKey === modifiers.has('Shift') &&
+        e.metaKey === modifiers.has('Meta');
+      if (e.code === shortcutConfig.key && modifiersMatch) {
         e.preventDefault();
         dispatch({ type: 'click_through', value: !state.clickThrough });
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [state.clickThrough]);
+  }, [shortcutConfig, state.clickThrough]);
 
   const handleRestoreClick = useCallback(() => {
     dispatch({ type: 'click_through', value: false });
@@ -545,7 +562,7 @@ export default function Overlay() {
             textAlign: 'left',
             width: '100%',
           }}>
-          <span className='lg-ticker__handle-chip'>⌥ L</span>
+          <span className='lg-ticker__handle-chip'>{shortcutLabel}</span>
           <span>{t('overlay.clickThroughHint', { shortcut: shortcutLabel })}</span>
           <span
             style={{

@@ -311,9 +311,9 @@ fn merge_passes(primary: Vec<TextLine>, cyrillic: Vec<TextLine>) -> Vec<TextLine
             continue;
         }
         // For non-Cyrillic primary rows, prefer the ru-RU pass output if
-        // it produced a Cyrillic string at roughly the same y.
+        // it produced a better candidate at roughly the same y.
         if let Some(idx) = find_overlapping_index(line, &cyrillic, &used_cyrillic) {
-            if contains_cyrillic(&cyrillic[idx].text) {
+            if should_prefer_cyrillic_candidate(line, &cyrillic[idx]) {
                 output.push(cyrillic[idx].clone());
                 used_cyrillic[idx] = true;
                 continue;
@@ -328,13 +328,76 @@ fn merge_passes(primary: Vec<TextLine>, cyrillic: Vec<TextLine>) -> Vec<TextLine
         if used_cyrillic[idx] {
             continue;
         }
-        if contains_cyrillic(&line.text) {
+        if contains_cyrillic(&line.text)
+            && !primary
+                .iter()
+                .any(|primary_line| rows_overlap(primary_line, &line))
+        {
             output.push(line);
         }
     }
 
     output.sort_by_key(|line| line.bbox.y);
     output
+}
+
+fn should_prefer_cyrillic_candidate(primary: &TextLine, candidate: &TextLine) -> bool {
+    if candidate.confidence + 0.05 < primary.confidence {
+        return false;
+    }
+
+    let primary_body = message_body(&primary.text);
+    let candidate_body = message_body(&candidate.text);
+    let primary_cjk = primary_body.chars().filter(|c| is_cjk(*c)).count();
+    let primary_ascii_letters = primary_body
+        .chars()
+        .filter(|c| c.is_ascii_alphabetic())
+        .count();
+
+    // A real Chinese or mixed-language message is stronger evidence than
+    // the forced ru-RU pass, which can hallucinate Cyrillic over CJK glyphs.
+    if primary_cjk >= 2 || (primary_cjk == 1 && primary_ascii_letters < 3) {
+        return false;
+    }
+
+    if candidate_body.chars().filter(|c| is_cyrillic(*c)).count() >= 2 {
+        return true;
+    }
+
+    // A language-specific pass can also repair short Latin game phrases
+    // while misreading only the sender. Accept that result only when it
+    // replaces digit-shaped glyphs with materially more alphabetic text.
+    let candidate_ascii_letters = candidate_body
+        .chars()
+        .filter(|c| c.is_ascii_alphabetic())
+        .count();
+    let primary_ascii_digits = primary_body.chars().filter(|c| c.is_ascii_digit()).count();
+    let candidate_ascii_digits = candidate_body
+        .chars()
+        .filter(|c| c.is_ascii_digit())
+        .count();
+
+    candidate_ascii_letters >= primary_ascii_letters + 2
+        && candidate_ascii_digits < primary_ascii_digits
+}
+
+fn message_body(text: &str) -> &str {
+    text.char_indices()
+        .find(|(_, c)| matches!(c, ':' | '：'))
+        .map(|(idx, c)| text[idx + c.len_utf8()..].trim())
+        .unwrap_or_else(|| text.trim())
+}
+
+fn is_cyrillic(c: char) -> bool {
+    let code = c as u32;
+    (0x0400..=0x04FF).contains(&code) || (0x0500..=0x052F).contains(&code)
+}
+
+fn is_cjk(c: char) -> bool {
+    let code = c as u32;
+    (0x3400..=0x4DBF).contains(&code)
+        || (0x4E00..=0x9FFF).contains(&code)
+        || (0xF900..=0xFAFF).contains(&code)
 }
 
 fn find_overlapping_index(
@@ -350,8 +413,7 @@ fn find_overlapping_index(
         }
         let cand_center = candidate.bbox.y as f32 + (candidate.bbox.h as f32) * 0.5;
         let dy = (needle_center - cand_center).abs();
-        let tolerance = (needle.bbox.h.min(candidate.bbox.h) as f32) * 0.5;
-        if dy <= tolerance {
+        if rows_overlap(needle, candidate) {
             match best {
                 None => best = Some((idx, dy)),
                 Some((_, prev_dy)) if dy < prev_dy => best = Some((idx, dy)),
@@ -362,12 +424,15 @@ fn find_overlapping_index(
     best.map(|(idx, _)| idx)
 }
 
+fn rows_overlap(left: &TextLine, right: &TextLine) -> bool {
+    let left_center = left.bbox.y as f32 + (left.bbox.h as f32) * 0.5;
+    let right_center = right.bbox.y as f32 + (right.bbox.h as f32) * 0.5;
+    let tolerance = (left.bbox.h.min(right.bbox.h) as f32) * 0.5;
+    (left_center - right_center).abs() <= tolerance
+}
+
 fn contains_cyrillic(s: &str) -> bool {
-    s.chars().any(|c| {
-        let code = c as u32;
-        (0x0400..=0x04FF).contains(&code) // Cyrillic block
-            || (0x0500..=0x052F).contains(&code) // Cyrillic Supplement
-    })
+    s.chars().any(is_cyrillic)
 }
 
 // ---------------------------------------------------------------------------
@@ -380,9 +445,13 @@ mod tests {
     use super::*;
 
     fn line(text: &str, y: i32, h: u32) -> TextLine {
+        line_with_confidence(text, y, h, 0.5)
+    }
+
+    fn line_with_confidence(text: &str, y: i32, h: u32, confidence: f32) -> TextLine {
         TextLine {
             text: text.to_string(),
-            confidence: 0.5,
+            confidence,
             bbox: Rect { x: 0, y, w: 100, h },
         }
     }
@@ -402,6 +471,77 @@ mod tests {
         let merged = merge_passes(primary, cyrillic);
         assert_eq!(merged.len(), 1);
         assert_eq!(merged[0].text, "иди в лес я фармлю");
+    }
+
+    #[test]
+    fn merge_keeps_reliable_chinese_message_body() {
+        let primary = vec![line_with_confidence(
+            "［队友］期：等我大招出来再开团，对面火枪没买活",
+            100,
+            30,
+            0.5,
+        )];
+        let cyrillic = vec![line_with_confidence(
+            "DAzJиnеолвшжила, жaхieязя",
+            102,
+            30,
+            0.3,
+        )];
+        let merged = merge_passes(primary, cyrillic);
+        assert_eq!(merged.len(), 1);
+        assert_eq!(
+            merged[0].text,
+            "［队友］期：等我大招出来再开团，对面火枪没买活"
+        );
+    }
+
+    #[test]
+    fn merge_keeps_mixed_cjk_message_body() {
+        let primary = vec![line("［队友」羽：gank mid 五人抱团", 100, 30)];
+        let cyrillic = vec![line("IENEJ basntgank mid ENEД", 102, 30)];
+        let merged = merge_passes(primary, cyrillic);
+        assert_eq!(merged.len(), 1);
+        assert_eq!(merged[0].text, "［队友」羽：gank mid 五人抱团");
+    }
+
+    #[test]
+    fn merge_recovers_short_english_body_when_fallback_is_cleaner() {
+        let primary = vec![line("頭粉：99 wP", 100, 30)];
+        let cyrillic = vec![line("HЛ: gg wp", 102, 30)];
+        let merged = merge_passes(primary, cyrillic);
+        assert_eq!(merged.len(), 1);
+        assert_eq!(merged[0].text, "HЛ: gg wp");
+    }
+
+    #[test]
+    fn merge_recovers_short_english_body_from_ascii_fallback() {
+        let primary = vec![line("頭断：99 wp", 100, 30)];
+        let cyrillic = vec![line("#Htr: gg wp", 102, 30)];
+        let merged = merge_passes(primary, cyrillic);
+        assert_eq!(merged.len(), 1);
+        assert_eq!(merged[0].text, "#Htr: gg wp");
+    }
+
+    #[test]
+    fn merge_recovers_russian_from_mixed_script_gibberish() {
+        let primary = vec![line("現新：HAHBJeCS中aPM O", 100, 30)];
+        let cyrillic = vec![line("ННЫЛ: иди в леся фармлю", 102, 30)];
+        let merged = merge_passes(primary, cyrillic);
+        assert_eq!(merged.len(), 1);
+        assert_eq!(merged[0].text, "ННЫЛ: иди в леся фармлю");
+    }
+
+    #[test]
+    fn merge_does_not_spend_russian_candidate_on_nearby_cjk_row() {
+        let primary = vec![
+            line("圣水神符", 12, 38),
+            line("ННЫЛ: иди в леся фармлю", 20, 35),
+        ];
+        let cyrillic = vec![line("ННЫЛ: иди в леся фармлю", 20, 35)];
+        let merged = merge_passes(primary, cyrillic);
+        assert_eq!(merged.len(), 2);
+        assert_eq!(merged[0].text, "圣水神符");
+        assert_eq!(merged[1].text, "ННЫЛ: иди в леся фармлю");
     }
 
     #[test]

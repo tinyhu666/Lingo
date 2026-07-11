@@ -11,7 +11,11 @@ html,
 body {
   margin: 0;
   padding: 0;
-  background: transparent;
+  /* The main-window theme sets an important page background. These
+     chromeless windows must stay transparent so the game remains visible. */
+  background: transparent !important;
+  background-image: none !important;
+  background-size: auto !important;
   overflow: hidden;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC',
     'Microsoft YaHei', 'Helvetica Neue', Arial, sans-serif;

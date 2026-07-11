@@ -13,7 +13,8 @@ import {
 } from '../icons';
 import {
   buildHotkeyFromKeyCodes,
-  defaultTranslatorHotkeyLabel,
+  defaultIncomingClickThroughHotkeyLabel,
+  defaultIncomingToggleHotkeyLabel,
   formatMainKeyLabel,
   formatModifierLabel,
   isModifierKeyCode,
@@ -325,6 +326,7 @@ export default function IncomingAdvancedSettingsModal({
                   label={t('home.incoming.advanced.hotkeyToggle')}
                   description={t('home.incoming.advanced.hotkeyToggleHint')}
                   hotkey={settings?.incoming_toggle_hotkey}
+                  fallbackLabel={defaultIncomingToggleHotkeyLabel()}
                   onSave={async (keys) => {
                     const latest = await updateIncomingToggleHotkey(keys);
                     onChange?.(latest);
@@ -334,6 +336,7 @@ export default function IncomingAdvancedSettingsModal({
                   label={t('home.incoming.advanced.hotkeyLock')}
                   description={t('home.incoming.advanced.hotkeyLockHint')}
                   hotkey={settings?.incoming_click_through_hotkey}
+                  fallbackLabel={defaultIncomingClickThroughHotkeyLabel()}
                   onSave={async (keys) => {
                     const latest = await updateIncomingClickThroughHotkey(keys);
                     onChange?.(latest);
@@ -377,7 +380,7 @@ function formatPreview(codes) {
     .join(' + ');
 }
 
-function HotkeyRebindRow({ label, description, hotkey, onSave }) {
+function HotkeyRebindRow({ label, description, hotkey, fallbackLabel, onSave }) {
   const { t } = useI18n();
   const [recording, setRecording] = useState(false);
   const [capturedCodes, setCapturedCodes] = useState([]);
@@ -479,8 +482,8 @@ function HotkeyRebindRow({ label, description, hotkey, onSave }) {
     if (recording) {
       return formatPreview(capturedCodes);
     }
-    return hotkey?.shortcut || defaultTranslatorHotkeyLabel();
-  }, [recording, capturedCodes, hotkey?.shortcut, t]);
+    return hotkey?.shortcut || fallbackLabel;
+  }, [recording, capturedCodes, hotkey?.shortcut, fallbackLabel, t]);
 
   return (
     <div

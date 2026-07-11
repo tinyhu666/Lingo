@@ -7,9 +7,10 @@
 //! - Windows: `Windows.Media.Ocr.OcrEngine` via the `windows` crate.
 //!
 //! Spike findings that drive the defaults below:
-//! - `auto_detect_language = true` beats explicit language lists on
-//!   multilingual chat (Russian was 0% accurate with explicit list,
-//!   100% accurate with auto-detect).
+//! - `auto_detect_language = true` is the strongest primary pass for
+//!   Chinese, English, and mixed chat. macOS adds a targeted `ru-RU`
+//!   fallback because real-game captures showed auto-detect mangling
+//!   Cyrillic when CJK is the dominant script.
 //! - `usesLanguageCorrection = false` because game chat is full of
 //!   slang and abbreviations the corrector mishandles.
 

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useStore } from '../components/StoreProvider';
 import { useI18n } from '../i18n/I18nProvider';
 import { Chip, Kbd, PageHead } from '../components/lg';
-import { IDots, IGrip, IPlus, ITrash } from '../icons';
+import { IPlus, ITrash } from '../icons';
 import { defaultPhraseModifier, defaultPhraseModifierLabel } from '../constants/hotkeys';
 import { invokeCommand, hasTauriRuntime } from '../services/tauriRuntime';
 import { showError, showSuccess } from '../utils/toast';
@@ -164,7 +164,7 @@ export default function Phrases() {
     }
   };
 
-  const GRID_COLS = '24px 1.6fr 1fr 0.6fr 80px';
+  const GRID_COLS = '1.6fr 1fr 0.6fr 44px';
 
   return (
     <>
@@ -207,7 +207,6 @@ export default function Phrases() {
             borderBottom: '1px solid var(--lg-line-3)',
             background: 'var(--lg-surf-2)',
           }}>
-          <span />
           <span>{t('phrases.table.content')}</span>
           <span>{t('phrases.table.hotkey')}</span>
           <span>{t('phrases.table.usage')}</span>
@@ -239,16 +238,6 @@ export default function Phrases() {
                 padding: '8px 16px',
                 borderBottom: i === rows.length - 1 ? 'none' : '1px solid var(--lg-line-3)',
               }}>
-              <span
-                style={{
-                  color: 'var(--lg-ink-4)',
-                  cursor: 'grab',
-                  display: 'grid',
-                  placeItems: 'center',
-                }}
-                aria-label='reorder'>
-                <IGrip style={{ width: 16, height: 16 }} />
-              </span>
               <input
                 className='lg-input'
                 value={row.phrase}
@@ -274,13 +263,7 @@ export default function Phrases() {
               <span style={{ fontSize: 12, color: 'var(--lg-ink-2)', fontFamily: 'var(--lg-mono)' }}>
                 —
               </span>
-              <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
-                <button
-                  type='button'
-                  className='lg-btn lg-btn--sm lg-btn--ghost'
-                  aria-label='more'>
-                  <IDots />
-                </button>
+              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                 <button
                   type='button'
                   className='lg-btn lg-btn--sm lg-btn--ghost'

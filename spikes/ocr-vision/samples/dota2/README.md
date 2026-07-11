@@ -33,8 +33,9 @@ Examples:
 - `ru-team-stack-1440p.png`
 - `mixed-mixed-teamfight.png`
 
-The eval script (lands with v0.7.0-rc.2) reads this convention to
-bucket results.
+The production fixture verifier uses the checked-in filenames and crop
+coordinates directly, so the current Chinese filenames are retained as a
+stable regression corpus.
 
 ## What to capture (the useful target: ~10 screenshots)
 
@@ -70,16 +71,18 @@ on macOS anyway.
 
 ## What we'll do with them
 
-1. Run `./spike-ocr --auto-lang --warmup 3 samples/dota2/zh-team-roshan.png`
-   for each file.
-2. Hand-grade accuracy (character-level) against ground truth that you
-   record in `samples/dota2/groundtruth.tsv` (3-column TSV: filename,
-   sender, expected-message — script will land with rc.2).
-3. Bucket by language / resolution / scope and report.
-4. If accuracy ≥ 90% on real captures → green-light Rust port.
-5. Otherwise: try image preprocessing (contrast bump, threshold) and
-   re-run. Worst case fall back to Tesseract / PaddleOCR for the
-   problem buckets.
+1. Run `npm run verify:ocr-fixtures` from the repository root.
+2. The script first runs stable hand crops through the production Rust OCR
+   engine and `LineTracker`, then repeats every screenshot with the actual
+   Dota 2 region returned by `game_profiles`.
+3. It compares hand-crop output with `groundtruth.tsv`, rejects duplicate OCR
+   rows from multilingual merging, and requires the production profile to
+   emit only the newest chat line while filtering HUD and empty scenes.
+
+The command requires `ffmpeg`, Rust, and a supported native OCR platform
+(macOS or Windows). Nicknames are recorded for context but are not asserted:
+the stylized game font makes them unreliable, while the translated message
+body is the product-critical output.
 
 ## Privacy note
 

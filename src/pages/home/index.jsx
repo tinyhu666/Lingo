@@ -32,6 +32,8 @@ import {
 } from '../../constants/gameScenes';
 import {
   buildHotkeyFromKeyCodes,
+  defaultIncomingClickThroughHotkeyLabel,
+  defaultIncomingToggleHotkeyLabel,
   defaultTranslatorHotkeyLabel,
   formatMainKeyLabel,
   formatModifierLabel,
@@ -1017,10 +1019,12 @@ function HotkeyCard() {
     return defaultTranslatorHotkeyLabel().split('+');
   }, [recording, capturedCodes, settings?.trans_hotkey]);
 
-  const incomingShortcut = settings?.incoming_toggle_hotkey?.shortcut || '';
-  const incomingKeys = incomingShortcut ? incomingShortcut.split('+') : ['⌘', '⇧', 'T'];
-  const lockShortcut = settings?.incoming_click_through_hotkey?.shortcut || '';
-  const lockKeys = lockShortcut ? lockShortcut.split('+') : ['⌥', 'L'];
+  const incomingShortcut =
+    settings?.incoming_toggle_hotkey?.shortcut || defaultIncomingToggleHotkeyLabel();
+  const incomingKeys = incomingShortcut.split('+');
+  const lockShortcut =
+    settings?.incoming_click_through_hotkey?.shortcut || defaultIncomingClickThroughHotkeyLabel();
+  const lockKeys = lockShortcut.split('+');
 
   const rows = [
     {

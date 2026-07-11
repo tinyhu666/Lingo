@@ -122,8 +122,8 @@ The Rust port lives at `src-tauri/src/incoming/ocr/macos.rs`.
 
 ## Open follow-ups
 
-- [ ] Ground-truth TSV for the 10-image corpus so a regression script
-      can fail CI when an engine update degrades accuracy.
+- [x] Ground-truth TSV and `npm run verify:ocr-fixtures` regression for the
+      10-image corpus, including the real Dota profile and HUD false positives.
 - [ ] LoL chat screenshots (font is different).
 - [ ] Overwatch / WoW screenshots (text overlays game world directly).
 - [x] Spike B: Windows.Media.Ocr equivalent on the same corpus, once a

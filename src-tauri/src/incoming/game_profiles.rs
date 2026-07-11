@@ -78,16 +78,16 @@ pub fn chat_region_for(game: GameId, window: Rect) -> Rect {
 
 fn profile_for(game: GameId) -> ChatRegionProfile {
     match game {
-        // DotA 2: the floating chat-line notification appears at
-        // roughly y = 67..78% from top, x = 7..75% from left at native
-        // 2940×1912 (see spikes/ocr-vision/samples/dota2/*). Generous
-        // bounds: y = 65..82, x = 4..78. Width includes the [scope]
-        // tag + player avatar + message column.
+        // DotA 2: new chat notifications enter in one stable bottom slot.
+        // Capturing the full history also captures bounty notices, the chat
+        // input prompt, and world-space player labels, while making Vision
+        // less accurate. These fractions map to 200,1280 1700x120 in the
+        // checked-in 2940x1912 corpus and follow the newest-message slot.
         GameId::Dota2 => ChatRegionProfile {
-            x_frac: 0.04,
-            y_frac: 0.65,
-            w_frac: 0.74,
-            h_frac: 0.17,
+            x_frac: 0.068,
+            y_frac: 0.6695,
+            w_frac: 0.57825,
+            h_frac: 0.06275,
         },
         // League of Legends: in-game chat history floats from the
         // bottom-left during play. Riot's chat panel anchors at the
@@ -119,10 +119,10 @@ mod tests {
         // Within 1px tolerance for f32 rounding.
         assert!(r.x >= 0 && (r.x as u32) + r.w <= 1920, "{r:?}");
         assert!(r.y >= 0 && (r.y as u32) + r.h <= 1080, "{r:?}");
-        // Plausible size — at 1920×1080 the chat band should be
-        // ~1420 wide × ~184 tall.
+        // Plausible size — at 1920×1080 the newest-message slot is
+        // roughly 1110 wide × 68 tall.
         assert!(r.w > 1000 && r.w < 1700);
-        assert!(r.h > 100 && r.h < 300);
+        assert!(r.h > 45 && r.h < 120);
     }
 
     #[test]
@@ -130,6 +130,15 @@ mod tests {
         // The spike corpus dimensions.
         let w = window(0, 0, 2940, 1912);
         let r = chat_region_for(GameId::Dota2, w);
+        assert_eq!(
+            r,
+            Rect {
+                x: 200,
+                y: 1280,
+                w: 1700,
+                h: 120
+            }
+        );
         assert!(r.x >= 0 && (r.x as u32) + r.w <= 2940);
         assert!(r.y >= 0 && (r.y as u32) + r.h <= 1912);
     }
