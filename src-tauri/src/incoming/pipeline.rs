@@ -68,6 +68,9 @@ pub struct IncomingPipeline {
     /// and the user couldn't restart without explicitly toggling off
     /// first.
     running: Arc<AtomicBool>,
+    /// Message ids must stay unique across stop/start cycles because the
+    /// overlay can outlive an individual pipeline run.
+    next_message_id: Arc<AtomicU64>,
 }
 
 impl Default for IncomingPipeline {
@@ -75,6 +78,7 @@ impl Default for IncomingPipeline {
         Self {
             inner: Mutex::new(PipelineState::default()),
             running: Arc::new(AtomicBool::new(false)),
+            next_message_id: Arc::new(AtomicU64::new(1)),
         }
     }
 }
@@ -83,6 +87,22 @@ impl Default for IncomingPipeline {
 struct PipelineState {
     handle: Option<JoinHandle<()>>,
     cancel: Option<oneshot::Sender<()>>,
+    active_run: Option<Arc<AtomicBool>>,
+}
+
+struct PipelineRunGuard {
+    active: Arc<AtomicBool>,
+    running: Arc<AtomicBool>,
+}
+
+impl Drop for PipelineRunGuard {
+    fn drop(&mut self) {
+        // A stopped run may finish after a replacement has started. Only the
+        // currently-active run is allowed to clear the shared running flag.
+        if self.active.swap(false, Ordering::AcqRel) {
+            self.running.store(false, Ordering::Release);
+        }
+    }
 }
 
 impl IncomingPipeline {
@@ -113,31 +133,45 @@ impl IncomingPipeline {
             prev.abort();
         }
         state.cancel = None;
+        if let Some(previous_run) = state.active_run.take() {
+            previous_run.store(false, Ordering::Release);
+        }
 
         let (cancel_tx, cancel_rx) = oneshot::channel();
         let running = Arc::clone(&self.running);
+        let active_run = Arc::new(AtomicBool::new(true));
+        let active_for_loop = Arc::clone(&active_run);
+        let next_message_id = Arc::clone(&self.next_message_id);
         running.store(true, Ordering::Release);
         let handle = tauri::async_runtime::spawn(async move {
-            run_loop(app, cancel_rx).await;
-            // Any exit path — clean cancel, fatal-early-return, or panic
-            // unwinding through the await — flips `running` back so the
-            // next start() doesn't see a stale `true`.
-            running.store(false, Ordering::Release);
+            let _guard = PipelineRunGuard {
+                active: Arc::clone(&active_for_loop),
+                running,
+            };
+            run_loop(app, cancel_rx, active_for_loop, next_message_id).await;
         });
         state.handle = Some(handle);
         state.cancel = Some(cancel_tx);
+        state.active_run = Some(active_run);
         Ok(())
     }
 
     /// Cancels the run loop. Safe to call when already stopped. Returns
     /// immediately; the actual task teardown happens asynchronously.
     pub fn stop(&self) {
-        let (cancel, handle) = {
+        let (cancel, handle, active_run) = {
             let Ok(mut state) = self.inner.lock() else {
                 return;
             };
-            (state.cancel.take(), state.handle.take())
+            (
+                state.cancel.take(),
+                state.handle.take(),
+                state.active_run.take(),
+            )
         };
+        if let Some(active_run) = active_run {
+            active_run.store(false, Ordering::Release);
+        }
         if let Some(tx) = cancel {
             let _ = tx.send(());
         }
@@ -156,7 +190,12 @@ impl IncomingPipeline {
 // Run loop
 // ---------------------------------------------------------------------------
 
-async fn run_loop(app: AppHandle, mut cancel: oneshot::Receiver<()>) {
+async fn run_loop(
+    app: AppHandle,
+    mut cancel: oneshot::Receiver<()>,
+    active_run: Arc<AtomicBool>,
+    id_counter: Arc<AtomicU64>,
+) {
     let capture: Box<dyn CaptureSource> = match default_capture_source() {
         Ok(c) => c,
         Err(error) => {
@@ -178,7 +217,6 @@ async fn run_loop(app: AppHandle, mut cancel: oneshot::Receiver<()>) {
     };
 
     let mut tracker = LineTracker::default();
-    let id_counter = Arc::new(AtomicU64::new(1));
     // Bound translate-proxy concurrency. Each new line is translated on a
     // detached tokio task so the OCR cadence doesn't depend on proxy
     // latency; the semaphore prevents runaway queueing when the proxy
@@ -366,9 +404,18 @@ async fn run_loop(app: AppHandle, mut cancel: oneshot::Receiver<()>) {
             let game_scene = game.game_id.scene_tag().to_string();
             let counter = id_counter.clone();
             let permits = translate_permits.clone();
+            let active_for_task = Arc::clone(&active_run);
             tauri::async_runtime::spawn(async move {
-                translate_and_emit(app_for_task, msg, target_lang, game_scene, counter, permits)
-                    .await;
+                translate_and_emit(
+                    app_for_task,
+                    msg,
+                    target_lang,
+                    game_scene,
+                    counter,
+                    permits,
+                    active_for_task,
+                )
+                .await;
             });
         }
     }
@@ -394,7 +441,12 @@ async fn translate_and_emit(
     game_scene: String,
     counter: Arc<AtomicU64>,
     permits: Arc<Semaphore>,
+    active_run: Arc<AtomicBool>,
 ) {
+    if !active_run.load(Ordering::Acquire) {
+        return;
+    }
+
     // Skip lines that are already in the user's native language. The
     // proxy would noop them, but we save a round-trip and avoid the
     // overlay flashing the same text twice.
@@ -417,6 +469,10 @@ async fn translate_and_emit(
         }
     };
 
+    if !active_run.load(Ordering::Acquire) {
+        return;
+    }
+
     let translated = match translate_incoming(&msg.text, &target_lang, &game_scene).await {
         Ok(text) => text,
         Err(error) => {
@@ -430,7 +486,7 @@ async fn translate_and_emit(
     };
     drop(permit);
 
-    if translated.trim().is_empty() {
+    if translated.trim().is_empty() || !active_run.load(Ordering::Acquire) {
         return;
     }
 
@@ -446,6 +502,10 @@ async fn translate_and_emit(
         timestamp_ms: now_ms(),
         demo: false,
     };
+
+    if !active_run.load(Ordering::Acquire) {
+        return;
+    }
 
     if let Err(error) = app.emit("incoming:translation", &payload) {
         eprintln!("[incoming] emit failed: {error}");
@@ -531,5 +591,31 @@ mod tests {
         assert!(is_same_language_as_target("", "zh"));
         assert!(is_same_language_as_target("   ", "zh"));
         assert!(is_same_language_as_target("123 456", "zh")); // punctuation/numbers only
+    }
+
+    #[test]
+    fn active_run_guard_clears_running_state() {
+        let running = Arc::new(AtomicBool::new(true));
+        let active = Arc::new(AtomicBool::new(true));
+
+        drop(PipelineRunGuard {
+            active,
+            running: Arc::clone(&running),
+        });
+
+        assert!(!running.load(Ordering::Acquire));
+    }
+
+    #[test]
+    fn retired_run_guard_does_not_clear_replacement_state() {
+        let running = Arc::new(AtomicBool::new(true));
+        let retired = Arc::new(AtomicBool::new(false));
+
+        drop(PipelineRunGuard {
+            active: retired,
+            running: Arc::clone(&running),
+        });
+
+        assert!(running.load(Ordering::Acquire));
     }
 }

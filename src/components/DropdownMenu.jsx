@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { useCallback, useEffect, useLayoutEffect, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { CheckTick } from '../icons';
 import { twMerge } from 'tailwind-merge';
@@ -31,6 +31,25 @@ export default function DropdownMenu({
     typeof document !== 'undefined' &&
     typeof window !== 'undefined';
   const [portalStyle, setPortalStyle] = useState(null);
+  const [activeIndex, setActiveIndex] = useState(-1);
+  const optionRefs = useRef([]);
+  const optionEntries = Object.entries(options);
+
+  const focusAnchor = useCallback(() => {
+    const anchor = anchorRef?.current;
+    const trigger = anchor?.matches?.('button') ? anchor : anchor?.querySelector?.('button');
+    trigger?.focus?.();
+  }, [anchorRef]);
+
+  const focusOption = useCallback(
+    (index) => {
+      if (optionEntries.length === 0) return;
+      const nextIndex = (index + optionEntries.length) % optionEntries.length;
+      setActiveIndex(nextIndex);
+      optionRefs.current[nextIndex]?.focus();
+    },
+    [optionEntries.length],
+  );
 
   const updatePortalStyle = useCallback(() => {
     const anchorElement = anchorRef?.current;
@@ -98,13 +117,44 @@ export default function DropdownMenu({
       }
       event.preventDefault();
       onClose();
+      window.requestAnimationFrame(focusAnchor);
     };
 
     window.addEventListener('keydown', handleEscape);
     return () => {
       window.removeEventListener('keydown', handleEscape);
     };
-  }, [show, onClose]);
+  }, [show, onClose, focusAnchor]);
+
+  useEffect(() => {
+    if (!show || optionEntries.length === 0 || typeof window === 'undefined') {
+      return undefined;
+    }
+
+    const selectedIndex = optionEntries.findIndex(([value]) => value === currentValue);
+    const initialIndex = selectedIndex >= 0 ? selectedIndex : 0;
+    setActiveIndex(initialIndex);
+    const frame = window.requestAnimationFrame(() => {
+      optionRefs.current[initialIndex]?.focus();
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [show, currentValue, options, optionEntries.length]);
+
+  const handleMenuKeyDown = (event) => {
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      focusOption(activeIndex + 1);
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      focusOption(activeIndex - 1);
+    } else if (event.key === 'Home') {
+      event.preventDefault();
+      focusOption(0);
+    } else if (event.key === 'End') {
+      event.preventDefault();
+      focusOption(optionEntries.length - 1);
+    }
+  };
 
   if (!show) {
     return null;
@@ -119,26 +169,39 @@ export default function DropdownMenu({
 
   const menuBody = (
     <>
-      <div className={overlayClass} onClick={onClose} />
+      <div className={overlayClass} aria-hidden='true' onClick={onClose} />
       <motion.div
         initial={{ opacity: 0, y: startOffsetY, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: startOffsetY, scale: 0.98 }}
         style={shouldUsePortal ? portalStyle || undefined : undefined}
-        className={twMerge(menuClass, className)}>
-        {Object.entries(options).map(([value, label]) => {
+        className={twMerge(menuClass, className)}
+        role='menu'
+        aria-orientation='vertical'
+        onKeyDown={handleMenuKeyDown}>
+        {optionEntries.map(([value, label], index) => {
           const isActive = value === currentValue;
           return (
             <button
               key={value}
               type='button'
+              ref={(node) => {
+                optionRefs.current[index] = node;
+              }}
+              role='menuitemradio'
+              aria-checked={isActive}
+              tabIndex={activeIndex === index ? 0 : -1}
               className={twMerge(
                 'shell-menu__option',
                 isActive
                   ? 'shell-menu__option--active'
                   : 'shell-menu__option--idle',
               )}
-              onClick={() => onSelect(value)}>
+              onFocus={() => setActiveIndex(index)}
+              onClick={() => {
+                focusAnchor();
+                onSelect(value);
+              }}>
               {renderOption ? renderOption(value, label) : label}
               {isActive ? <CheckTick className='ml-auto h-5 w-5 stroke-zinc-900' /> : null}
             </button>

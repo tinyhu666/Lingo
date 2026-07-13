@@ -583,6 +583,8 @@
 .lg-ticker__author-name { color: #f0f3fa; }
 .lg-ticker__author-team { font-size: 10px; padding: 1px 5px; border-radius: 3px; color: rgba(240,243,250,.85); font-weight: 600; }
 .lg-ticker__src { color: rgba(240,243,250,.42); font-size: 11px; font-style: italic; }
+.lg-ticker__src--hover { display: none; }
+.lg-ticker__msg:hover .lg-ticker__src--hover { display: inline; }
 .lg-ticker__trg { color: #f8fafd; font-weight: 500; }
 .lg-ticker__msg--ally { border-left-color: #61ebff; }
 .lg-ticker__msg--enemy { border-left-color: #ff7e6b; }

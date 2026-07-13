@@ -53,13 +53,15 @@ import { hasTauriRuntime, invokeCommand } from '../../services/tauriRuntime';
 import { showError, showInfo, showSuccess } from '../../utils/toast';
 import { toErrorMessage } from '../../utils/error';
 
-const STATUS_NOTE_EVENTS = [
-  'incoming:permission_required',
-  'incoming:region_required',
-  'incoming:capture_error',
-  'incoming:ocr_error',
-  'incoming:fatal',
-];
+const STATUS_NOTE_EVENT_KEYS = {
+  'incoming:permission_required': 'home.incoming.statusPermission',
+  'incoming:region_required': 'home.incoming.statusNeedsRegion',
+  'incoming:capture_error': 'home.incoming.statusCaptureError',
+  'incoming:ocr_error': 'home.incoming.statusOcrError',
+  'incoming:fatal': 'home.incoming.statusFatal',
+};
+
+const STATUS_NOTE_EVENTS = Object.keys(STATUS_NOTE_EVENT_KEYS);
 
 const FLAG_COMPONENTS = { CN, SG, KR, US, FR, RU, ES, JP, DE };
 
@@ -172,10 +174,8 @@ function IncomingHero() {
           const unlisten = await listen(eventName, (event) => {
             if (cancelled) return;
             const payload = event.payload;
-            const message =
-              typeof payload === 'string' && payload.trim()
-                ? payload
-                : t('home.incoming.statusNote', { event: eventName });
+            const error = typeof payload === 'string' && payload.trim() ? payload : eventName;
+            const message = t(STATUS_NOTE_EVENT_KEYS[eventName], { error });
             showError(message);
             void refreshStatus();
           });
@@ -266,7 +266,7 @@ function IncomingHero() {
   // to clipboard so they can paste it to support. No DevTools required.
   const handleDiagnoseDetection = async () => {
     if (!hasTauriRuntime()) {
-      showError('诊断功能仅在客户端可用');
+      showError(t('home.incoming.diagnoseUnavailable'));
       return;
     }
     try {
@@ -282,15 +282,15 @@ function IncomingHero() {
       const text = JSON.stringify(summary, null, 2);
       try {
         await navigator.clipboard.writeText(text);
-        showSuccess(`诊断信息已复制到剪贴板（${summary.windowCount} 个窗口），请发给开发者`);
+        showSuccess(t('home.incoming.diagnoseCopied', { count: summary.windowCount }));
       } catch (clipErr) {
         // Fallback when clipboard API isn't available (older webviews).
         // eslint-disable-next-line no-console
         console.log('lingo-diagnose-detection', text);
-        showInfo('诊断信息已打印到 console。控制台不可见时请联系开发者');
+        showInfo(t('home.incoming.diagnoseConsole'));
       }
     } catch (error) {
-      showError(`诊断失败: ${toErrorMessage(error)}`);
+      showError(t('home.incoming.diagnoseFailed', { error: toErrorMessage(error) }));
     }
   };
 
@@ -474,7 +474,7 @@ function IncomingHero() {
                 e.stopPropagation();
                 void handleDiagnoseDetection();
               }}
-              title='复制当前所有可见窗口的诊断信息到剪贴板（识别失败时给开发者）'
+              title={t('home.incoming.diagnoseTitle')}
               style={{
                 background: 'transparent',
                 border: '1px solid var(--lg-line-1)',
@@ -822,14 +822,16 @@ function GameCard() {
           <div className='lg-card__sub'>{t('home.cardGameSub')}</div>
         </div>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>
-        {GAME_SCENE_OPTIONS.slice(0, 4).map((g) => {
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: 6 }}>
+        {GAME_SCENE_OPTIONS.map((g) => {
           const meta = getGameSceneMeta(g.id, locale);
           const active = g.id === currentScene;
           return (
             <button
               key={g.id}
               type='button'
+              title={meta.label}
+              aria-pressed={active}
               onClick={() => handleSelect(g.id)}
               style={{
                 padding: '8px 6px',
@@ -881,7 +883,7 @@ function GameCard() {
                   textOverflow: 'ellipsis',
                   maxWidth: '100%',
                 }}>
-                {getGameSceneLabel(g.id, locale)}
+                {meta.label}
               </div>
             </button>
           );

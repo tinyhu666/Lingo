@@ -137,6 +137,8 @@ function LayoutShell({ children, activeItem, setActiveItem }) {
               type='button'
               className='lg-locale'
               aria-label={t('locale.label')}
+              aria-haspopup='menu'
+              aria-expanded={showLocaleMenu}
               title={t('locale.label')}
               onClick={() => setShowLocaleMenu((current) => !current)}>
               <Globe aria-hidden='true' />

@@ -113,6 +113,25 @@ export function I18nProvider({ children }) {
     void writeUiLocalePreference(locale);
   }, [locale]);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return undefined;
+    }
+
+    const handleStorage = (event) => {
+      if (event.key !== UI_LOCALE_STORAGE_KEY || !event.newValue) {
+        return;
+      }
+      const normalized = resolveSupportedLocale(event.newValue);
+      if (normalized) {
+        setLocaleState((current) => (current === normalized ? current : normalized));
+      }
+    };
+
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, []);
+
   const t = useCallback(
     (key, vars) => {
       const active = messages[locale] || {};

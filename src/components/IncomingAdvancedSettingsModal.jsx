@@ -21,7 +21,6 @@ import {
   normalizeModifier,
 } from '../constants/hotkeys';
 import {
-  setIncomingCaptureRate,
   updateIncomingClickThroughHotkey,
   updateIncomingOverlayPreferences,
   updateIncomingToggleHotkey,
@@ -62,6 +61,8 @@ const DEFAULTS = {
   team_color: true,
 };
 
+const EMPTY_OVERLAY_PREFS = Object.freeze({});
+
 function readPrefs(overlayPrefs) {
   return {
     anchor: overlayPrefs.anchor || DEFAULTS.anchor,
@@ -84,31 +85,77 @@ export default function IncomingAdvancedSettingsModal({
   onChange,
 }) {
   const { t } = useI18n();
-  const overlayPrefs = settings?.incoming_overlay || {};
+  const overlayPrefs = settings?.incoming_overlay || EMPTY_OVERLAY_PREFS;
+  const [draftOverlayPrefs, setDraftOverlayPrefs] = useState(overlayPrefs);
+  const latestPrefsRef = useRef(overlayPrefs);
+  const persistedPrefsRef = useRef(overlayPrefs);
+  const pendingWritesRef = useRef(0);
+  const persistQueueRef = useRef(Promise.resolve());
+
+  useEffect(() => {
+    if (pendingWritesRef.current > 0) return;
+    latestPrefsRef.current = overlayPrefs;
+    persistedPrefsRef.current = overlayPrefs;
+    setDraftOverlayPrefs(overlayPrefs);
+  }, [overlayPrefs]);
 
   const persist = useCallback(
-    async (next) => {
-      try {
-        const latest = await updateIncomingOverlayPreferences(next);
-        if (latest && typeof latest === 'object') {
-          onChange?.(latest);
+    (next) => {
+      pendingWritesRef.current += 1;
+
+      const run = async () => {
+        let succeeded = false;
+        try {
+          const latest = await updateIncomingOverlayPreferences(next);
+          const persisted = latest?.incoming_overlay || next;
+          persistedPrefsRef.current = persisted;
+          if (latest && typeof latest === 'object') {
+            await onChange?.(latest);
+          }
+          succeeded = true;
+
+          if (pendingWritesRef.current === 1) {
+            latestPrefsRef.current = persisted;
+            setDraftOverlayPrefs(persisted);
+          }
+          return true;
+        } catch (error) {
+          showError(
+            t('home.incoming.advanced.saveFailed', {
+              error: toErrorMessage(error),
+            }),
+          );
+          return false;
+        } finally {
+          pendingWritesRef.current -= 1;
+          if (!succeeded && pendingWritesRef.current === 0) {
+            latestPrefsRef.current = persistedPrefsRef.current;
+            setDraftOverlayPrefs(persistedPrefsRef.current);
+          }
         }
-      } catch (error) {
-        showError(
-          t('home.incoming.advanced.saveFailed', {
-            error: toErrorMessage(error),
-          }),
-        );
-      }
+      };
+
+      const queued = persistQueueRef.current.then(run, run);
+      persistQueueRef.current = queued.then(
+        () => undefined,
+        () => undefined,
+      );
+      return queued;
     },
     [onChange, t],
   );
 
-  const setPref = (patch) => persist({ ...overlayPrefs, ...patch });
+  const commitPrefs = (next) => {
+    latestPrefsRef.current = next;
+    setDraftOverlayPrefs(next);
+    return persist(next);
+  };
+
+  const setPref = (patch) => commitPrefs({ ...latestPrefsRef.current, ...patch });
 
   const handleResetDefaults = async () => {
-    await persist({
-      ...overlayPrefs,
+    const saved = await commitPrefs({
+      ...latestPrefsRef.current,
       anchor: DEFAULTS.anchor,
       opacity: DEFAULTS.opacity,
       fade_ms: DEFAULTS.fade_ms,
@@ -116,12 +163,26 @@ export default function IncomingAdvancedSettingsModal({
       show_original: true,
       team_color: DEFAULTS.team_color,
     });
-    showSuccess(t('home.incoming.advanced.defaultsRestored'));
+    if (saved) {
+      showSuccess(t('home.incoming.advanced.defaultsRestored'));
+    }
   };
 
-  const current = readPrefs(overlayPrefs);
+  const current = readPrefs(draftOverlayPrefs);
   const opacityPct = Math.round(current.opacity * 100);
   const fadeSec = Math.round(current.fade_ms / 1000);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const handleEscape = (event) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [open, onClose]);
 
   return (
     <AnimatePresence>
@@ -135,6 +196,9 @@ export default function IncomingAdvancedSettingsModal({
           <motion.div
             className='lg-modal'
             style={{ width: 540 }}
+            role='dialog'
+            aria-modal='true'
+            aria-labelledby='incoming-advanced-title'
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 24 }}
@@ -145,7 +209,7 @@ export default function IncomingAdvancedSettingsModal({
                 <ISliders />
               </div>
               <div style={{ flex: 1 }}>
-                <div className='lg-modal__title'>
+                <div id='incoming-advanced-title' className='lg-modal__title'>
                   {t('home.incoming.advanced.title')}
                 </div>
                 <div
@@ -185,6 +249,7 @@ export default function IncomingAdvancedSettingsModal({
                       <button
                         key={a.id}
                         type='button'
+                        aria-pressed={active}
                         onClick={() => setPref({ anchor: a.id })}
                         style={{
                           display: 'flex',
@@ -221,6 +286,7 @@ export default function IncomingAdvancedSettingsModal({
                   <input
                     type='range'
                     className='lg-slider'
+                    aria-label={t('home.incoming.advanced.opacity')}
                     value={opacityPct}
                     min={20}
                     max={100}
@@ -242,6 +308,7 @@ export default function IncomingAdvancedSettingsModal({
                   <input
                     type='range'
                     className='lg-slider'
+                    aria-label={t('home.incoming.advanced.duration')}
                     value={fadeSec}
                     min={3}
                     max={20}
@@ -266,6 +333,7 @@ export default function IncomingAdvancedSettingsModal({
                       <button
                         key={m.id}
                         type='button'
+                        aria-pressed={active}
                         className={`lg-seg__item ${
                           active ? 'lg-seg__item--active' : ''
                         }`}

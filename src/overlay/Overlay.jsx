@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
+import { useEffect, useReducer, useRef, useState } from 'react';
 import { listen } from '@tauri-apps/api/event';
 import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow, LogicalPosition, PhysicalPosition } from '@tauri-apps/api/window';
@@ -39,6 +39,8 @@ const initialState = {
 };
 
 const OVERLAY_GAP = 12;
+const normalizeMaxLines = (value) =>
+  Math.min(20, Math.max(1, Math.round(Number(value) || DEFAULT_PREFS.max_lines)));
 
 async function positionOverlayNearGame(gameWindow, anchor = 'right') {
   const win = getCurrentWindow();
@@ -152,7 +154,9 @@ const teamAbbr = (scope) => {
 const reducer = (state, action) => {
   switch (action.type) {
     case 'push': {
-      const next = [...state.messages, action.message].slice(-state.prefs.max_lines);
+      const next = [...state.messages, action.message].slice(
+        -normalizeMaxLines(state.prefs.max_lines),
+      );
       return { ...state, messages: next };
     }
     case 'fade': {
@@ -170,7 +174,13 @@ const reducer = (state, action) => {
       return { ...state, messages: [] };
     }
     case 'set_prefs': {
-      return { ...state, prefs: { ...state.prefs, ...action.prefs } };
+      const prefs = { ...state.prefs, ...action.prefs };
+      prefs.max_lines = normalizeMaxLines(prefs.max_lines);
+      return {
+        ...state,
+        prefs,
+        messages: state.messages.slice(-prefs.max_lines),
+      };
     }
     case 'pause': {
       return { ...state, paused: action.paused };
@@ -456,11 +466,11 @@ export default function Overlay() {
     return () => window.removeEventListener('keydown', onKey);
   }, [shortcutConfig, state.clickThrough]);
 
-  const handleRestoreClick = useCallback(() => {
-    dispatch({ type: 'click_through', value: false });
-  }, []);
-
   const anchor = state.prefs.anchor || 'right';
+  const sourceMode =
+    state.prefs.show_original === false
+      ? 'never'
+      : state.prefs.show_original_mode || 'always';
   const AnchorIcon =
     anchor === 'left'
       ? IAnchorL
@@ -481,9 +491,9 @@ export default function Overlay() {
       {/* Chrome */}
       <div className='lg-ticker__chrome'>
         <span className='lg-ticker__live' />
-        <span>Lingo · Live</span>
+        <span>Lingo · {t('overlay.live')}</span>
         {state.paused && (
-          <span style={{ marginLeft: 6, color: '#ffb347' }}>· paused</span>
+          <span style={{ marginLeft: 6, color: '#ffb347' }}>· {t('overlay.paused')}</span>
         )}
         <span
           style={{
@@ -535,8 +545,13 @@ export default function Overlay() {
               }}>
               <div className='lg-ticker__author'>
                 <span className='lg-ticker__author-team'>{abbr}</span>
-                {state.prefs.show_original !== false && msg.source_text && (
-                  <span className='lg-ticker__src'>{msg.source_text}</span>
+                {sourceMode !== 'never' && msg.source_text && (
+                  <span
+                    className={`lg-ticker__src ${
+                      sourceMode === 'hover' ? 'lg-ticker__src--hover' : ''
+                    }`}>
+                    {msg.source_text}
+                  </span>
                 )}
               </div>
               <div className='lg-ticker__trg'>{msg.translated_text}</div>
@@ -545,20 +560,17 @@ export default function Overlay() {
         })}
       </div>
 
-      {/* Click-through handle — only visible when click-through is active.
-          The whole bar accepts clicks (we must temporarily allow cursor
-          events; the bar itself sits inside the overlay so the user
-          aims at this strip). */}
+      {/* Click-through status — the OS ignores all pointer events while this
+          mode is active, so restoration is intentionally hotkey-only. */}
       {state.clickThrough && (
-        <button
-          type='button'
+        <div
           className='lg-ticker__handle'
-          onClick={handleRestoreClick}
+          aria-hidden='true'
           style={{
             background: 'transparent',
             border: 0,
             color: 'rgba(240,243,250,.4)',
-            cursor: 'pointer',
+            cursor: 'default',
             textAlign: 'left',
             width: '100%',
           }}>
@@ -588,7 +600,7 @@ export default function Overlay() {
               }}
             />
           </span>
-        </button>
+        </div>
       )}
     </div>
   );

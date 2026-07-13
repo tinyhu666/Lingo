@@ -59,11 +59,7 @@ export const checkScreenRecordingPermission = async () =>
   )) || PERMISSION_STATES.UNKNOWN;
 
 export const requestScreenRecordingPermission = async () =>
-  (await invokeIfPossible(
-    'request_screen_recording_permission',
-    {},
-    PERMISSION_STATES.UNKNOWN,
-  )) || PERMISSION_STATES.UNKNOWN;
+  invokeCommand('request_screen_recording_permission');
 
 export const showIncomingOverlay = async () =>
   invokeIfPossible('show_incoming_overlay', {}, null);
@@ -72,9 +68,9 @@ export const hideIncomingOverlay = async () =>
   invokeIfPossible('hide_incoming_overlay', {}, null);
 
 export const setIncomingOverlayClickThrough = async (clickThrough) =>
-  invokeIfPossible('set_incoming_overlay_click_through', {
+  invokeCommand('set_incoming_overlay_click_through', {
     clickThrough: Boolean(clickThrough),
-  }, null);
+  });
 
 export const updateIncomingToggleHotkey = async (keys) =>
   invokeCommand('update_incoming_toggle_hotkey', { keys });

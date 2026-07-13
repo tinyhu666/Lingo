@@ -24,6 +24,11 @@ const KEY_OPTIONS = [
 
 const normalizeMod = (value = '') => value.replace('Left', '').replace('Right', '');
 const rowSignature = (keyCode) => `${MODIFIER_CODE}+${keyCode}`;
+const hotkeySignature = (hotkey) => {
+  if (!hotkey?.key) return '';
+  const modifiers = [...(hotkey.modifiers || [])].map(normalizeMod).sort().join('+');
+  return `${modifiers}+${hotkey.key}`;
+};
 const formatShortcutLabel = (keyCode) => {
   if (!keyCode) return `${MODIFIER_LABEL}+?`;
   if (keyCode.startsWith('Digit')) return `${MODIFIER_LABEL}+${keyCode.slice(5)}`;
@@ -70,12 +75,18 @@ export default function Phrases() {
     setRows(mapped);
   }, [settings?.phrases]);
 
-  const translatorSignature = useMemo(() => {
-    const hotkey = settings?.trans_hotkey;
-    if (!hotkey?.key) return '';
-    const modifiers = [...(hotkey.modifiers || [])].map(normalizeMod).sort().join('+');
-    return `${modifiers}+${hotkey.key}`;
-  }, [settings?.trans_hotkey]);
+  const translatorSignature = useMemo(
+    () => hotkeySignature(settings?.trans_hotkey),
+    [settings?.trans_hotkey],
+  );
+  const incomingToggleSignature = useMemo(
+    () => hotkeySignature(settings?.incoming_toggle_hotkey),
+    [settings?.incoming_toggle_hotkey],
+  );
+  const incomingClickThroughSignature = useMemo(
+    () => hotkeySignature(settings?.incoming_click_through_hotkey),
+    [settings?.incoming_click_through_hotkey],
+  );
 
   const usedSignatures = useMemo(() => {
     const signatures = new Set();
@@ -121,6 +132,10 @@ export default function Phrases() {
       const signature = rowSignature(row.keyCode);
       if (signature === translatorSignature)
         return t('phrases.errors.conflictTranslator', { index: index + 1 });
+      if (signature === incomingToggleSignature)
+        return t('phrases.errors.conflictIncomingToggle', { index: index + 1 });
+      if (signature === incomingClickThroughSignature)
+        return t('phrases.errors.conflictClickThrough', { index: index + 1 });
       if (signatures.has(signature)) return t('phrases.errors.duplicateHotkey', { index: index + 1 });
       signatures.add(signature);
     }

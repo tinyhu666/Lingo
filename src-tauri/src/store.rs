@@ -280,10 +280,6 @@ fn normalize_settings(settings: &mut AppSettings) {
         settings.translation_mode = "auto".to_string();
     }
 
-    if settings.phrases.is_empty() {
-        settings.phrases = default_phrases();
-    }
-
     for (idx, phrase) in settings.phrases.iter_mut().enumerate() {
         phrase.id = (idx + 1) as i32;
     }
@@ -429,6 +425,25 @@ mod tests {
             normalize_settings(&mut settings);
             assert_eq!(settings.game_scene, DEFAULT_GAME_SCENE, "legacy={legacy}");
         }
+    }
+
+    #[test]
+    fn normalize_settings_preserves_an_explicitly_empty_phrase_list() {
+        let mut settings = AppSettings {
+            phrases: Vec::new(),
+            ..AppSettings::default()
+        };
+
+        normalize_settings(&mut settings);
+
+        assert!(settings.phrases.is_empty());
+    }
+
+    #[test]
+    fn missing_phrase_field_still_uses_default_phrases() {
+        let settings: AppSettings = serde_json::from_value(serde_json::json!({})).unwrap();
+
+        assert_eq!(settings.phrases.len(), 8);
     }
 
     #[test]

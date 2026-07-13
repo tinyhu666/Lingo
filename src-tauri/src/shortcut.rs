@@ -239,10 +239,30 @@ fn register_phrase_shortcuts(app: &AppHandle, phrases: &[Phrase]) -> Result<(), 
     Ok(())
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum HotkeyOwner {
+    Translator,
+    IncomingToggle,
+    IncomingClickThrough,
+}
+
+#[derive(Default)]
+struct RebindOutcome {
+    optional_failures: Vec<(HotkeyOwner, String)>,
+}
+
+impl RebindOutcome {
+    fn failure_for(&self, owner: HotkeyOwner) -> Option<&str> {
+        self.optional_failures
+            .iter()
+            .find_map(|(failed_owner, error)| (*failed_owner == owner).then_some(error.as_str()))
+    }
+}
+
 fn rebind_all_shortcuts(
     app: &AppHandle,
     settings: &crate::store::AppSettings,
-) -> Result<(), String> {
+) -> Result<RebindOutcome, String> {
     let global_shortcut = app.global_shortcut();
     if let Err(e) = global_shortcut.unregister_all() {
         println!("清理旧快捷键失败(忽略): {}", e);
@@ -270,25 +290,36 @@ fn rebind_all_shortcuts(
         ));
     }
 
-    // Incoming hotkeys are registered last and tolerate failure so a
-    // conflict with the translator / phrases doesn't leave the user with
-    // an unusable app. We just log + skip — they can rebind in Settings.
-    try_register_optional_shortcut(
+    // Incoming hotkeys are registered last. Startup can tolerate an OS-level
+    // conflict, while update commands inspect the outcome and roll back when
+    // the binding the user just edited could not be registered.
+    let mut outcome = RebindOutcome::default();
+    if let Err(error) = try_register_optional_shortcut(
         app,
         "incoming-toggle",
         &settings.incoming_toggle_hotkey,
         &mut used_signatures,
         || create_incoming_toggle_handler(app.clone()),
-    );
-    try_register_optional_shortcut(
+    ) {
+        eprintln!("[shortcut] {error}");
+        outcome
+            .optional_failures
+            .push((HotkeyOwner::IncomingToggle, error));
+    }
+    if let Err(error) = try_register_optional_shortcut(
         app,
         "incoming-click-through",
         &settings.incoming_click_through_hotkey,
         &mut used_signatures,
         || create_click_through_handler(app.clone()),
-    );
+    ) {
+        eprintln!("[shortcut] {error}");
+        outcome
+            .optional_failures
+            .push((HotkeyOwner::IncomingClickThrough, error));
+    }
 
-    Ok(())
+    Ok(outcome)
 }
 
 fn try_register_optional_shortcut<F, H>(
@@ -297,31 +328,31 @@ fn try_register_optional_shortcut<F, H>(
     hotkey: &crate::store::HotkeyConfig,
     used_signatures: &mut HashSet<String>,
     make_handler: F,
-) where
+) -> Result<(), String>
+where
     F: FnOnce() -> H,
     H: Fn(&AppHandle, &Shortcut, ShortcutEvent) + Send + Sync + 'static,
 {
     if hotkey.key.is_empty() || hotkey.modifiers.is_empty() {
-        eprintln!("[shortcut] skipping {label}: empty key or modifiers");
-        return;
+        return Err(format!("skipping {label}: empty key or modifiers"));
     }
     let modifiers = normalize_modifiers(&hotkey.modifiers);
     let signature = shortcut_signature(&modifiers, &hotkey.key);
     if !used_signatures.insert(signature.clone()) {
-        eprintln!(
-            "[shortcut] skipping {label}: hotkey {signature} collides with an existing binding"
-        );
-        return;
+        return Err(format!(
+            "skipping {label}: hotkey {signature} collides with an existing binding"
+        ));
     }
     if let Err(error) = register_shortcut(app, &hotkey.modifiers, &hotkey.key, make_handler()) {
-        eprintln!("[shortcut] failed to register {label} ({signature}): {error}");
         used_signatures.remove(&signature);
+        return Err(format!("failed to register {label} ({signature}): {error}"));
     }
+    Ok(())
 }
 
 pub fn init_shortcuts(app: &AppHandle) -> Result<(), String> {
     let settings = get_settings(app).map_err(|e| e.to_string())?;
-    rebind_all_shortcuts(app, &settings)
+    rebind_all_shortcuts(app, &settings).map(|_| ())
 }
 
 /// Validate user-pressed keys and turn them into a normalized
@@ -401,11 +432,52 @@ fn ensure_no_signature_conflict(
     Ok(())
 }
 
-#[derive(PartialEq, Eq)]
-enum HotkeyOwner {
-    Translator,
-    IncomingToggle,
-    IncomingClickThrough,
+fn save_and_rebind<F>(
+    app: &AppHandle,
+    previous: &crate::store::AppSettings,
+    required_optional: Option<HotkeyOwner>,
+    update: F,
+) -> Result<crate::store::AppSettings, String>
+where
+    F: FnOnce(&mut crate::store::AppSettings),
+{
+    let updated = update_settings_field(app, |settings| {
+        update(settings);
+        settings.clone()
+    })
+    .map_err(|e| e.to_string())?;
+
+    let bind_error = match rebind_all_shortcuts(app, &updated) {
+        Ok(outcome) => required_optional
+            .and_then(|owner| outcome.failure_for(owner))
+            .map(str::to_string),
+        Err(error) => Some(error),
+    };
+
+    let Some(bind_error) = bind_error else {
+        return Ok(updated);
+    };
+
+    let snapshot = previous.clone();
+    update_settings_field(app, move |settings| {
+        *settings = snapshot;
+    })
+    .map_err(|error| format!("{bind_error}；恢复旧快捷键配置失败: {error}"))?;
+
+    let rollback_error = match rebind_all_shortcuts(app, previous) {
+        Ok(outcome) => required_optional
+            .and_then(|owner| outcome.failure_for(owner))
+            .map(str::to_string),
+        Err(error) => Some(error),
+    };
+
+    if let Some(rollback_error) = rollback_error {
+        return Err(format!(
+            "{bind_error}；已恢复旧配置，但旧快捷键重新注册失败: {rollback_error}"
+        ));
+    }
+
+    Err(format!("{bind_error}；已恢复原快捷键"))
 }
 
 pub fn update_translator_shortcut(app: &AppHandle, keys: Vec<String>) -> Result<(), String> {
@@ -414,13 +486,10 @@ pub fn update_translator_shortcut(app: &AppHandle, keys: Vec<String>) -> Result<
     let candidate = shortcut_signature(&new_hotkey.modifiers, &new_hotkey.key);
     ensure_no_signature_conflict(&settings, &candidate, HotkeyOwner::Translator)?;
 
-    update_settings_field(app, |settings| {
+    save_and_rebind(app, &settings, None, move |settings| {
         settings.trans_hotkey = new_hotkey;
     })
-    .map_err(|e| e.to_string())?;
-
-    let new_settings = get_settings(app).map_err(|e| e.to_string())?;
-    rebind_all_shortcuts(app, &new_settings)
+    .map(|_| ())
 }
 
 pub fn update_incoming_toggle_shortcut(app: &AppHandle, keys: Vec<String>) -> Result<(), String> {
@@ -429,13 +498,15 @@ pub fn update_incoming_toggle_shortcut(app: &AppHandle, keys: Vec<String>) -> Re
     let candidate = shortcut_signature(&new_hotkey.modifiers, &new_hotkey.key);
     ensure_no_signature_conflict(&settings, &candidate, HotkeyOwner::IncomingToggle)?;
 
-    update_settings_field(app, |settings| {
-        settings.incoming_toggle_hotkey = new_hotkey;
-    })
-    .map_err(|e| e.to_string())?;
-
-    let new_settings = get_settings(app).map_err(|e| e.to_string())?;
-    rebind_all_shortcuts(app, &new_settings)
+    save_and_rebind(
+        app,
+        &settings,
+        Some(HotkeyOwner::IncomingToggle),
+        move |settings| {
+            settings.incoming_toggle_hotkey = new_hotkey;
+        },
+    )
+    .map(|_| ())
 }
 
 pub fn update_incoming_click_through_shortcut(
@@ -447,27 +518,36 @@ pub fn update_incoming_click_through_shortcut(
     let candidate = shortcut_signature(&new_hotkey.modifiers, &new_hotkey.key);
     ensure_no_signature_conflict(&settings, &candidate, HotkeyOwner::IncomingClickThrough)?;
 
-    update_settings_field(app, |settings| {
-        settings.incoming_click_through_hotkey = new_hotkey;
-    })
-    .map_err(|e| e.to_string())?;
-
-    let new_settings = get_settings(app).map_err(|e| e.to_string())?;
-    rebind_all_shortcuts(app, &new_settings)
+    save_and_rebind(
+        app,
+        &settings,
+        Some(HotkeyOwner::IncomingClickThrough),
+        move |settings| {
+            settings.incoming_click_through_hotkey = new_hotkey;
+        },
+    )
+    .map(|_| ())
 }
 
-pub fn update_phrases(app: &AppHandle, phrases: Vec<Phrase>) -> Result<Vec<Phrase>, String> {
-    if phrases.is_empty() {
-        return Err("请至少保留一条常用语".to_string());
-    }
+fn normalize_phrases(
+    settings: &crate::store::AppSettings,
+    phrases: Vec<Phrase>,
+) -> Result<Vec<Phrase>, String> {
     if phrases.len() > 20 {
         return Err("常用语最多 20 条".to_string());
     }
 
-    let settings = get_settings(app).map_err(|e| e.to_string())?;
     let trans_sig = shortcut_signature(
         &normalize_modifiers(&settings.trans_hotkey.modifiers),
         &settings.trans_hotkey.key,
+    );
+    let incoming_toggle_sig = shortcut_signature(
+        &normalize_modifiers(&settings.incoming_toggle_hotkey.modifiers),
+        &settings.incoming_toggle_hotkey.key,
+    );
+    let incoming_click_through_sig = shortcut_signature(
+        &normalize_modifiers(&settings.incoming_click_through_hotkey.modifiers),
+        &settings.incoming_click_through_hotkey.key,
     );
 
     let mut seen_hotkeys = HashSet::new();
@@ -494,6 +574,12 @@ pub fn update_phrases(app: &AppHandle, phrases: Vec<Phrase>) -> Result<Vec<Phras
         if sig == trans_sig {
             return Err(format!("第 {} 条常用语与翻译快捷键冲突", idx + 1));
         }
+        if sig == incoming_toggle_sig {
+            return Err(format!("第 {} 条常用语与入向翻译快捷键冲突", idx + 1));
+        }
+        if sig == incoming_click_through_sig {
+            return Err(format!("第 {} 条常用语与锁定到游戏快捷键冲突", idx + 1));
+        }
         if !seen_hotkeys.insert(sig) {
             return Err(format!("第 {} 条常用语与其他常用语快捷键重复", idx + 1));
         }
@@ -509,14 +595,15 @@ pub fn update_phrases(app: &AppHandle, phrases: Vec<Phrase>) -> Result<Vec<Phras
         });
     }
 
-    let normalized_for_store = normalized.clone();
-    update_settings_field(app, move |settings| {
-        settings.phrases = normalized_for_store;
-    })
-    .map_err(|e| e.to_string())?;
+    Ok(normalized)
+}
 
-    let new_settings = get_settings(app).map_err(|e| e.to_string())?;
-    rebind_all_shortcuts(app, &new_settings)?;
+pub fn update_phrases(app: &AppHandle, phrases: Vec<Phrase>) -> Result<Vec<Phrase>, String> {
+    let settings = get_settings(app).map_err(|e| e.to_string())?;
+    let normalized = normalize_phrases(&settings, phrases)?;
+    let new_settings = save_and_rebind(app, &settings, None, move |settings| {
+        settings.phrases = normalized;
+    })?;
 
     Ok(new_settings.phrases)
 }
@@ -545,5 +632,72 @@ fn format_key_display(key: &str) -> String {
             "CapsLock" => "⇪".to_string(),
             _ => key.to_string(),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::store::AppSettings;
+
+    fn phrase_with_hotkey(hotkey: HotkeyConfig) -> Phrase {
+        Phrase {
+            id: 99,
+            phrase: "Push now".to_string(),
+            hotkey,
+        }
+    }
+
+    #[test]
+    fn phrases_reject_incoming_toggle_shortcut_conflicts() {
+        let settings = AppSettings::default();
+        let error = normalize_phrases(
+            &settings,
+            vec![phrase_with_hotkey(settings.incoming_toggle_hotkey.clone())],
+        )
+        .unwrap_err();
+
+        assert!(error.contains("入向翻译快捷键冲突"));
+    }
+
+    #[test]
+    fn phrases_allow_an_empty_list() {
+        let settings = AppSettings::default();
+
+        let normalized = normalize_phrases(&settings, Vec::new()).unwrap();
+
+        assert!(normalized.is_empty());
+    }
+
+    #[test]
+    fn phrases_reject_click_through_shortcut_conflicts() {
+        let settings = AppSettings::default();
+        let error = normalize_phrases(
+            &settings,
+            vec![phrase_with_hotkey(
+                settings.incoming_click_through_hotkey.clone(),
+            )],
+        )
+        .unwrap_err();
+
+        assert!(error.contains("锁定到游戏快捷键冲突"));
+    }
+
+    #[test]
+    fn phrases_are_trimmed_and_renumbered() {
+        let settings = AppSettings::default();
+        let mut phrase = phrase_with_hotkey(HotkeyConfig {
+            shortcut: String::new(),
+            modifiers: vec!["ShiftLeft".to_string(), "Meta".to_string()],
+            key: "KeyP".to_string(),
+        });
+        phrase.phrase = "  Push now  ".to_string();
+
+        let normalized = normalize_phrases(&settings, vec![phrase]).unwrap();
+
+        assert_eq!(normalized[0].id, 1);
+        assert_eq!(normalized[0].phrase, "Push now");
+        assert_eq!(normalized[0].hotkey.modifiers, vec!["Meta", "Shift"]);
+        assert!(!normalized[0].hotkey.shortcut.is_empty());
     }
 }
