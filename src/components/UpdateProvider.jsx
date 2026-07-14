@@ -3,6 +3,7 @@ import { check } from '@tauri-apps/plugin-updater';
 import { relaunch } from '@tauri-apps/plugin-process';
 import { listen } from '@tauri-apps/api/event';
 import { hasTauriRuntime, invokeCommand } from '../services/tauriRuntime';
+import { getUpdaterErrorMessage, isUpdaterKeyMismatch } from '../services/updaterErrors';
 import { showError, showSuccess } from '../utils/toast';
 import {
   APP_VERSION,
@@ -146,8 +147,8 @@ const buildManualUpdatePatch = (latestRelease, currentVersion) => ({
 });
 
 const formatUpdaterError = (error, { currentVersion, latestRelease, t } = {}) => {
-  const message = String(error?.message || error || t('update.unknownError'));
-  const isKeyMismatch = /UnexpectedKeyId/i.test(message) || /key id/i.test(message);
+  const message = getUpdaterErrorMessage(error, t('update.unknownError'));
+  const isKeyMismatch = isUpdaterKeyMismatch(error);
   const isMissingManifest =
     message.includes('Could not fetch a valid release JSON from the remote') ||
     /latest\.json/i.test(message) ||
@@ -495,10 +496,29 @@ export function UpdateProvider({ children }) {
 
       return true;
     } catch (error) {
-      const readableError = formatUpdaterError(error, { t });
+      const keyMismatch = isUpdaterKeyMismatch(error);
+      const readableError = formatUpdaterError(error, {
+        currentVersion: update.currentVersion,
+        latestRelease: { version: update.version },
+        t,
+      });
+
+      if (keyMismatch) {
+        await closePreviousUpdateHandle();
+      }
+
       patchState({
         downloading: false,
         errorMessage: readableError,
+        ...(keyMismatch
+          ? {
+              hasUpdate: true,
+              manualUpdateRequired: true,
+              latestVersion: update.version,
+              currentVersion: update.currentVersion,
+              progressPercent: 0,
+            }
+          : {}),
       });
       showError(t('update.installFailed', { error: readableError }));
       return false;

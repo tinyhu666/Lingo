@@ -1,9 +1,7 @@
 import { NAV_ITEMS } from '../constants/navigation';
-import { APP_VERSION_LABEL } from '../constants/version';
 import { useUpdater } from './UpdateProvider';
 import { useI18n } from '../i18n/I18nProvider';
 import { useStore } from './StoreProvider';
-import appIcon from '../assets/app-icon.png';
 
 export default function Sidebar({ activeItem, setActiveItem }) {
   const { hasUpdate } = useUpdater();
@@ -13,18 +11,6 @@ export default function Sidebar({ activeItem, setActiveItem }) {
 
   return (
     <aside className='lg-sidebar'>
-      <div className='lg-side-brand' aria-label={t('common.appName')}>
-        <div
-          className='lg-side-brand__icon'
-          style={{ background: 'transparent', boxShadow: 'none' }}>
-          <img src={appIcon} alt='Lingo' style={{ width: 28, height: 28 }} />
-        </div>
-        <div>
-          <div className='lg-side-brand__name'>{t('common.appName')}</div>
-          <div className='lg-side-brand__ver'>{APP_VERSION_LABEL}</div>
-        </div>
-      </div>
-
       <div className='lg-side-eyebrow'>{t('sidebar.controlDeck')}</div>
       <nav className='lg-nav'>
         {NAV_ITEMS.map((item) => {

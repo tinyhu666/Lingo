@@ -1,13 +1,13 @@
 {
   "name": "lingo",
   "private": true,
-  "version": "0.9.6",
+  "version": "0.9.7",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "dev:desktop": "node scripts/dev-desktop.mjs",
     "build": "vite build",
-    "test:client": "node --test src/i18n/messages.test.mjs src/services/analyticsUtils.test.mjs scripts/verify-updater-signing-key.test.mjs",
+    "test:client": "node --test src/i18n/messages.test.mjs src/services/analyticsUtils.test.mjs src/services/updaterErrors.test.mjs scripts/verify-updater-signing-key.test.mjs",
     "preview": "vite preview",
     "tauri": "tauri",
     "proxy:dev": "node server/translate-proxy/src/server.mjs",

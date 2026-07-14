@@ -121,10 +121,8 @@ function LayoutShell({ children, activeItem, setActiveItem }) {
     <div className='lg-win'>
       <header className='lg-titlebar'>
         <div className='lg-titlebar__brand' data-tauri-drag-region>
-          <div
-            className='lg-titlebar__icon'
-            style={{ background: 'transparent', boxShadow: 'none' }}>
-            <img src={appIcon} alt='Lingo' style={{ width: 18, height: 18 }} />
+          <div className='lg-titlebar__icon' aria-hidden='true'>
+            <img src={appIcon} alt='' />
           </div>
           <span className='lg-titlebar__title'>Lingo</span>
         </div>
