@@ -131,9 +131,9 @@ fn parse_line(raw: &str) -> Option<NewMessage> {
     if let Some((idx, colon_len)) = colon_idx {
         let sender = after_scope[..idx].trim();
         let text = after_scope[idx + colon_len..].trim();
-        if !sender.is_empty() && is_meaningful_message(text) && sender.chars().count() <= 32 {
+        if is_meaningful_message(text) && sender.chars().count() <= 32 {
             return Some(NewMessage {
-                sender: Some(sender.to_string()),
+                sender: (!sender.is_empty()).then(|| sender.to_string()),
                 text: text.to_string(),
                 scope,
             });
@@ -398,6 +398,15 @@ mod tests {
         let mut t = LineTracker::default();
         let out = t.ingest(&[line("对（队友）说：|")]);
         assert!(out.is_empty());
+    }
+
+    #[test]
+    fn keeps_message_when_windows_ocr_drops_sender_before_colon() {
+        let mut t = LineTracker::default();
+        let out = t.ingest(&[line("：中路")]);
+        assert_eq!(out.len(), 1);
+        assert_eq!(out[0].sender, None);
+        assert_eq!(out[0].text, "中路");
     }
 
     #[test]

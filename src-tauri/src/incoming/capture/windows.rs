@@ -273,7 +273,10 @@ impl CaptureSource for WindowsCaptureSource {
             .map_err(|e| CaptureError::Platform(format!("GraphicsCaptureItem::Size: {e}")))?;
 
         // ----- Frame pool + session ----------------------------------------
-        let pool = Direct3D11CaptureFramePool::Create(
+        // The incoming pipeline runs on Tauri's async worker pool, where no
+        // UI DispatcherQueue exists. CreateFreeThreaded is the WGC API meant
+        // for this exact background-thread setup.
+        let pool = Direct3D11CaptureFramePool::CreateFreeThreaded(
             &direct3d_device,
             DirectXPixelFormat::B8G8R8A8UIntNormalized,
             2,

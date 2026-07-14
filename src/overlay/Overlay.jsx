@@ -9,6 +9,7 @@ import {
   detectMac,
   normalizeModifier,
 } from '../constants/hotkeys';
+import { calculateOverlayPosition } from './positioning';
 
 /**
  * Lingo Incoming overlay — v0.8 side-edge ticker.
@@ -76,43 +77,20 @@ async function positionOverlayNearGame(gameWindow, anchor = 'right') {
     /* keep defaults */
   }
 
-  let x = bounds.x;
-  let y = bounds.y;
-  if (anchor === 'left') {
-    x = bounds.x - overlayWidth - OVERLAY_GAP;
-    y = bounds.y;
-  } else if (anchor === 'top') {
-    x = bounds.x;
-    y = bounds.y - overlayHeight - OVERLAY_GAP;
-  } else if (anchor === 'bottom') {
-    x = bounds.x;
-    y = bounds.y + bounds.h + OVERLAY_GAP;
-  } else {
-    x = bounds.x + bounds.w + OVERLAY_GAP;
-    y = bounds.y;
-  }
-
-  if (display) {
-    const displayLeft = Number(display.origin_x) || 0;
-    const displayTop = Number(display.origin_y) || 0;
-    const displayRight = displayLeft + Number(display.width || 0);
-    const displayBottom = displayTop + Number(display.height || 0);
-
-    if (anchor === 'left' && x < displayLeft) {
-      x = bounds.x + OVERLAY_GAP;
-    } else if (anchor === 'right' && x + overlayWidth > displayRight) {
-      x = bounds.x + bounds.w - overlayWidth - OVERLAY_GAP;
-    } else if (anchor === 'top' && y < displayTop) {
-      y = bounds.y + OVERLAY_GAP;
-    } else if (anchor === 'bottom' && y + overlayHeight > displayBottom) {
-      y = bounds.y + bounds.h - overlayHeight - OVERLAY_GAP;
-    }
-
-    const maxX = Math.max(displayLeft, displayRight - overlayWidth);
-    const maxY = Math.max(displayTop, displayBottom - overlayHeight);
-    x = Math.min(Math.max(x, displayLeft), maxX);
-    y = Math.min(Math.max(y, displayTop), maxY);
-  }
+  const { x, y } = calculateOverlayPosition({
+    game: bounds,
+    display: display
+      ? {
+          x: display.origin_x,
+          y: display.origin_y,
+          w: display.width,
+          h: display.height,
+        }
+      : null,
+    overlay: { w: overlayWidth, h: overlayHeight },
+    anchor,
+    gap: OVERLAY_GAP,
+  });
 
   const position =
     scaleFactor === 1
@@ -534,6 +512,8 @@ export default function Overlay() {
           const team = state.prefs.team_color === false ? 'ally' : scopeTeam(msg.scope);
           const abbr = msg.sender || teamAbbr(msg.scope);
           const isNew = idx === state.messages.length - 1;
+          const sourceMatchesTranslation =
+            msg.source_text.trim() === msg.translated_text.trim();
           return (
             <div
               key={msg.id}
@@ -545,7 +525,7 @@ export default function Overlay() {
               }}>
               <div className='lg-ticker__author'>
                 <span className='lg-ticker__author-team'>{abbr}</span>
-                {sourceMode !== 'never' && msg.source_text && (
+                {sourceMode !== 'never' && msg.source_text && !sourceMatchesTranslation && (
                   <span
                     className={`lg-ticker__src ${
                       sourceMode === 'hover' ? 'lg-ticker__src--hover' : ''

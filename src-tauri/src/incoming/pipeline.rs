@@ -137,6 +137,15 @@ impl IncomingPipeline {
             previous_run.store(false, Ordering::Release);
         }
 
+        // Initialise platform engines before reporting a successful start.
+        // Previously this happened inside the detached run loop, so a missing
+        // Windows OCR language pack left the UI showing an inert "waiting"
+        // overlay even though the task had already exited.
+        let capture = default_capture_source()
+            .map_err(|error| format!("capture engine unavailable: {error}"))?;
+        let ocr =
+            default_ocr_engine().map_err(|error| format!("OCR engine unavailable: {error}"))?;
+
         let (cancel_tx, cancel_rx) = oneshot::channel();
         let running = Arc::clone(&self.running);
         let active_run = Arc::new(AtomicBool::new(true));
@@ -148,7 +157,15 @@ impl IncomingPipeline {
                 active: Arc::clone(&active_for_loop),
                 running,
             };
-            run_loop(app, cancel_rx, active_for_loop, next_message_id).await;
+            run_loop(
+                app,
+                cancel_rx,
+                active_for_loop,
+                next_message_id,
+                capture,
+                ocr,
+            )
+            .await;
         });
         state.handle = Some(handle);
         state.cancel = Some(cancel_tx);
@@ -195,27 +212,9 @@ async fn run_loop(
     mut cancel: oneshot::Receiver<()>,
     active_run: Arc<AtomicBool>,
     id_counter: Arc<AtomicU64>,
+    capture: Box<dyn CaptureSource>,
+    ocr: Box<dyn OcrEngine>,
 ) {
-    let capture: Box<dyn CaptureSource> = match default_capture_source() {
-        Ok(c) => c,
-        Err(error) => {
-            let _ = app.emit(
-                "incoming:fatal",
-                format!("capture engine unavailable: {error}"),
-            );
-            let _ = app.emit("incoming:stopped", ());
-            return;
-        }
-    };
-    let ocr: Box<dyn OcrEngine> = match default_ocr_engine() {
-        Ok(o) => o,
-        Err(error) => {
-            let _ = app.emit("incoming:fatal", format!("OCR engine unavailable: {error}"));
-            let _ = app.emit("incoming:stopped", ());
-            return;
-        }
-    };
-
     let mut tracker = LineTracker::default();
     // Bound translate-proxy concurrency. Each new line is translated on a
     // detached tokio task so the OCR cadence doesn't depend on proxy
@@ -447,44 +446,41 @@ async fn translate_and_emit(
         return;
     }
 
-    // Skip lines that are already in the user's native language. The
-    // proxy would noop them, but we save a round-trip and avoid the
-    // overlay flashing the same text twice.
-    if is_same_language_as_target(&msg.text, &target_lang) {
-        return;
-    }
+    let translated = match translation_mode(&msg.text, &target_lang) {
+        TranslationMode::EchoLocally => msg.text.clone(),
+        TranslationMode::TranslateRemotely => {
+            // Cap in-flight translation requests so a stalled proxy can't
+            // make us grow unbounded under bursty chat.
+            let permit =
+                match tokio::time::timeout(Duration::from_secs(2), permits.acquire_owned()).await {
+                    Ok(Ok(p)) => p,
+                    Ok(Err(_)) | Err(_) => {
+                        eprintln!(
+                            "[incoming] dropping line (translate queue full): {:?}",
+                            msg.sender
+                        );
+                        return;
+                    }
+                };
 
-    // Cap in-flight translation requests so a stalled proxy can't make us
-    // grow unbounded under bursty chat. If we can't acquire within a
-    // bounded window, drop the line rather than queue it — by the time
-    // the proxy recovers the line is stale anyway.
-    let permit = match tokio::time::timeout(Duration::from_secs(2), permits.acquire_owned()).await {
-        Ok(Ok(p)) => p,
-        Ok(Err(_)) | Err(_) => {
-            eprintln!(
-                "[incoming] dropping line (translate queue full): {:?}",
-                msg.sender
-            );
-            return;
-        }
-    };
+            if !active_run.load(Ordering::Acquire) {
+                return;
+            }
 
-    if !active_run.load(Ordering::Acquire) {
-        return;
-    }
-
-    let translated = match translate_incoming(&msg.text, &target_lang, &game_scene).await {
-        Ok(text) => text,
-        Err(error) => {
-            eprintln!(
-                "[incoming] translate failed for {:?} → {}: {}",
-                msg.sender, target_lang, error
-            );
+            let result = match translate_incoming(&msg.text, &target_lang, &game_scene).await {
+                Ok(text) => text,
+                Err(error) => {
+                    eprintln!(
+                        "[incoming] translate failed for {:?} → {}: {}",
+                        msg.sender, target_lang, error
+                    );
+                    return;
+                }
+            };
             drop(permit);
-            return;
+            result
         }
     };
-    drop(permit);
 
     if translated.trim().is_empty() || !active_run.load(Ordering::Acquire) {
         return;
@@ -519,10 +515,24 @@ fn now_ms() -> u64 {
         .unwrap_or(0)
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum TranslationMode {
+    EchoLocally,
+    TranslateRemotely,
+}
+
+fn translation_mode(text: &str, target: &str) -> TranslationMode {
+    if is_same_language_as_target(text, target) {
+        TranslationMode::EchoLocally
+    } else {
+        TranslationMode::TranslateRemotely
+    }
+}
+
 /// Heuristic: if the OCR text appears to be the user's native language
-/// already, don't bother translating. This is intentionally conservative
-/// — false negatives just spend an API call, false positives hide a
-/// translation entirely, so we lean toward "always translate".
+/// already, echo it locally rather than spending a proxy round-trip. This is
+/// intentionally conservative: false negatives only spend an API call, while
+/// same-language messages still prove that capture and OCR are working.
 fn is_same_language_as_target(text: &str, target: &str) -> bool {
     let trimmed = text.trim();
     if trimmed.is_empty() {
@@ -591,6 +601,18 @@ mod tests {
         assert!(is_same_language_as_target("", "zh"));
         assert!(is_same_language_as_target("   ", "zh"));
         assert!(is_same_language_as_target("123 456", "zh")); // punctuation/numbers only
+    }
+
+    #[test]
+    fn same_language_chat_is_echoed_without_remote_translation() {
+        assert_eq!(
+            translation_mode("推中路", "zh"),
+            TranslationMode::EchoLocally
+        );
+        assert_eq!(
+            translation_mode("smoke now", "zh"),
+            TranslationMode::TranslateRemotely
+        );
     }
 
     #[test]

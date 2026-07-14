@@ -2,7 +2,7 @@ use crate::store::initialize_settings;
 use reqwest::header::{ACCEPT, USER_AGENT};
 use serde::Serialize;
 use serde_json::Value;
-use tauri::Manager;
+use tauri::{Emitter, Manager};
 
 #[cfg(target_os = "windows")]
 use raw_window_handle::{HasWindowHandle, RawWindowHandle};
@@ -454,19 +454,42 @@ pub(crate) fn show_incoming_overlay_window(app: &tauri::AppHandle) -> Result<(),
     let Some(window) = app.get_webview_window("incoming-overlay") else {
         return Err("incoming-overlay window not found".to_string());
     };
-    window.show().map_err(|e| e.to_string())?;
 
-    // Re-apply persisted click-through state. A freshly shown window comes
-    // up interactive by default; we want to honor the user's last choice.
+    // Apply click-through before the first visible frame so the overlay never
+    // steals a click from the game while it is snapping into position.
     let click_through = store::get_settings(app)
         .map(|s| s.incoming_overlay.click_through)
         .unwrap_or(false);
-    if click_through {
-        if let Err(error) = window.set_ignore_cursor_events(true) {
-            eprintln!("[incoming] failed to restore click-through state: {error}");
-        }
+    if let Err(error) = window.set_ignore_cursor_events(click_through) {
+        eprintln!("[incoming] failed to restore click-through state: {error}");
     }
+    sync_incoming_overlay_to_game(app)?;
     Ok(())
+}
+
+/// Detect the current game and send its bounds to the overlay front end. The
+/// front end makes the window visible only after applying the anchored
+/// position, so Tauri's fallback coordinates never flash on screen.
+pub(crate) fn sync_incoming_overlay_to_game(app: &tauri::AppHandle) -> Result<bool, String> {
+    use tauri::Manager;
+    let Some(window) = app.get_webview_window("incoming-overlay") else {
+        return Err("incoming-overlay window not found".to_string());
+    };
+    let Some(game) = incoming::game_window::detect_current() else {
+        let _ = window.hide();
+        let _ = app.emit("incoming:no_game_detected", ());
+        return Ok(false);
+    };
+    if game.minimised {
+        let _ = window.hide();
+        let _ = app.emit("incoming:game_minimised", &game);
+        return Ok(false);
+    }
+
+    window.set_always_on_top(true).map_err(|e| e.to_string())?;
+    app.emit("incoming:game_window_changed", &game)
+        .map_err(|e| e.to_string())?;
+    Ok(true)
 }
 
 pub(crate) fn hide_incoming_overlay_window(app: &tauri::AppHandle) -> Result<(), String> {
@@ -517,7 +540,12 @@ pub(crate) fn apply_incoming_enabled(
 
     if enabled {
         let opts = start_options_from_settings(&settings);
-        pipeline.start(app.clone(), opts)?;
+        if let Err(error) = pipeline.start(app.clone(), opts) {
+            let _ = store::update_settings_field(app, |settings| {
+                settings.incoming_enabled = false;
+            });
+            return Err(error);
+        }
         if let Err(error) = show_incoming_overlay_window(app) {
             eprintln!("[incoming] show overlay failed: {error}");
         }
@@ -542,7 +570,13 @@ pub(crate) fn apply_click_through(
         settings.incoming_overlay.click_through = click_through;
     })
     .map_err(|e| e.to_string())?;
-    store::get_settings(app).map_err(|e| e.to_string())
+    let settings = store::get_settings(app).map_err(|e| e.to_string())?;
+    app.emit("incoming:prefs", &settings.incoming_overlay)
+        .map_err(|e| e.to_string())?;
+    if click_through {
+        sync_incoming_overlay_to_game(app)?;
+    }
+    Ok(settings)
 }
 
 #[tauri::command]
@@ -848,11 +882,19 @@ pub fn run() {
             if let Ok(settings) = store::get_settings(app.app_handle()) {
                 if settings.incoming_enabled {
                     let opts = start_options_from_settings(&settings);
-                    if let Err(error) = incoming_pipeline.start(app.app_handle().clone(), opts) {
-                        eprintln!("启动入向翻译管线失败: {}", error);
-                    }
-                    if let Err(error) = show_incoming_overlay_window(app.app_handle()) {
-                        eprintln!("显示入向翻译覆盖窗失败: {}", error);
+                    match incoming_pipeline.start(app.app_handle().clone(), opts) {
+                        Ok(()) => {
+                            if let Err(error) = show_incoming_overlay_window(app.app_handle()) {
+                                eprintln!("显示入向翻译覆盖窗失败: {}", error);
+                            }
+                        }
+                        Err(error) => {
+                            eprintln!("启动入向翻译管线失败: {}", error);
+                            let _ = store::update_settings_field(app.app_handle(), |settings| {
+                                settings.incoming_enabled = false;
+                            });
+                            let _ = app.emit("incoming:fatal", error);
+                        }
                     }
                 }
             }
