@@ -304,7 +304,7 @@ export default function About() {
               }}>
               <div
                 style={{
-                  fontSize: 10.5,
+                  fontSize: 12,
                   fontWeight: 700,
                   color: 'var(--lg-ink-3)',
                   letterSpacing: '.14em',
@@ -434,7 +434,7 @@ export default function About() {
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div
                     style={{
-                      fontSize: 10.5,
+                      fontSize: 12,
                       fontWeight: 700,
                       color: 'var(--lg-ink-3)',
                       letterSpacing: '.14em',
