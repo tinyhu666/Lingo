@@ -72,7 +72,7 @@ function App() {
       className={`lingo-theme h-full text-zinc-100 ${desktopClient ? 'lingo-theme--desktop' : ''} ${windowsClient ? 'lingo-theme--windows' : ''}`}>
       <Layout activeItem={activeItem} setActiveItem={setActiveItem}>
         <Suspense fallback={<PageFallback />}>
-          <CurrentPage />
+          <CurrentPage onNavigate={setActiveItem} />
         </Suspense>
       </Layout>
     </div>

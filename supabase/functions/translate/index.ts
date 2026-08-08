@@ -47,7 +47,7 @@ const toProvider = (value: unknown): Provider => {
 const defaultApiUrl = (provider: Provider) =>
   provider === 'anthropic'
     ? 'https://api.anthropic.com/v1/messages'
-    : 'https://api.siliconflow.cn/v1/chat/completions';
+    : 'https://api.deepseek.com/v1/chat/completions';
 
 const normalizeOpenAICompletionsUrl = (apiUrl: string) => {
   const trimmed = (apiUrl || defaultApiUrl('openai-compatible')).replace(/\/+$/, '');
@@ -142,10 +142,10 @@ const parseRuntimeConfig = (
     provider,
     apiUrl: normalizeApiUrlByProvider(record.api_url, provider),
     modelName:
-      String(record.model_name || 'deepseek-ai/DeepSeek-V3.2').trim() ||
-      'deepseek-ai/DeepSeek-V3.2',
+      String(record.model_name || 'deepseek-v4-flash').trim() ||
+      'deepseek-v4-flash',
     apiKeySecretName:
-      String(record.api_key_secret_name || 'MODEL_API_KEY').trim() || 'MODEL_API_KEY',
+      String(record.api_key_secret_name || 'DEEPSEEK_API_KEY').trim() || 'DEEPSEEK_API_KEY',
     timeoutMs: clampNumber(record.timeout_ms, DEFAULT_TIMEOUT_MS, 3_000, 120_000),
     maxTokens: clampNumber(record.max_tokens, DEFAULT_MAX_TOKENS, 1, 4_096),
     temperature: clampNumber(record.temperature, DEFAULT_TEMPERATURE, 0, 2),
@@ -158,9 +158,9 @@ const environmentRuntimeConfig = () =>
   parseRuntimeConfig(
     {
       provider: Deno.env.get('MODEL_PROVIDER') || 'openai-compatible',
-      api_url: Deno.env.get('MODEL_API_URL') || 'https://api.siliconflow.cn/v1/chat/completions',
-      model_name: Deno.env.get('MODEL_NAME') || 'deepseek-ai/DeepSeek-V3.2',
-      api_key_secret_name: Deno.env.get('MODEL_API_KEY_SECRET_NAME') || 'MODEL_API_KEY',
+      api_url: Deno.env.get('MODEL_API_URL') || 'https://api.deepseek.com/v1/chat/completions',
+      model_name: Deno.env.get('MODEL_NAME') || 'deepseek-v4-flash',
+      api_key_secret_name: Deno.env.get('MODEL_API_KEY_SECRET_NAME') || 'DEEPSEEK_API_KEY',
       timeout_ms: Deno.env.get('MODEL_TIMEOUT_MS') || DEFAULT_TIMEOUT_MS,
       max_tokens: Deno.env.get('MODEL_MAX_TOKENS') || DEFAULT_MAX_TOKENS,
       temperature: Deno.env.get('MODEL_TEMPERATURE') || DEFAULT_TEMPERATURE,
@@ -233,7 +233,12 @@ const resolveRuntimeConfig = async () => {
 };
 
 const resolveApiKey = (config: RuntimeConfig) =>
-  String(Deno.env.get(config.apiKeySecretName) || '').trim();
+  String(
+    Deno.env.get(config.apiKeySecretName) ||
+      Deno.env.get('DEEPSEEK_API_KEY') ||
+      Deno.env.get('MODEL_API_KEY') ||
+      '',
+  ).trim();
 
 const extractOpenAIContent = (payload: any) => {
   const content = payload?.choices?.[0]?.message?.content;
@@ -326,6 +331,22 @@ const requestModel = async ({
       return translatedText;
     }
 
+    const requestBody: Record<string, unknown> = {
+      model: config.modelName,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: text },
+      ],
+      temperature: config.temperature,
+      max_tokens: config.maxTokens,
+    };
+    if (
+      new URL(config.apiUrl).hostname.toLowerCase() === 'api.deepseek.com' &&
+      config.modelName.startsWith('deepseek-v4-')
+    ) {
+      requestBody.thinking = { type: 'disabled' };
+    }
+
     const response = await fetch(config.apiUrl, {
       method: 'POST',
       headers: {
@@ -333,15 +354,7 @@ const requestModel = async ({
         Authorization: `Bearer ${apiKey}`,
       },
       signal: abortController.signal,
-      body: JSON.stringify({
-        model: config.modelName,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: text },
-        ],
-        temperature: config.temperature,
-        max_tokens: config.maxTokens,
-      }),
+      body: JSON.stringify(requestBody),
     });
 
     const { json: body, raw } = await readJsonResponse(response);

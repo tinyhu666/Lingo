@@ -185,7 +185,7 @@ try {
     enabled: true,
     provider: 'openai-compatible',
     api_url: `${upstreamBaseUrl}${primaryPath}`,
-    model_name: 'deepseek-ai/DeepSeek-V3.2',
+    model_name: 'deepseek-v4-flash',
     api_key_env_name: 'MISSING_PRIMARY_MODEL_KEY',
     temperature: 0.2,
     public_site: {
@@ -281,7 +281,7 @@ try {
     enabled: true,
     provider: 'openai-compatible',
     api_url: `${upstreamBaseUrl}${primaryPath}`,
-    model_name: 'deepseek-ai/DeepSeek-V3.2',
+    model_name: 'deepseek-v4-flash',
     api_key_env_name: 'PRIMARY_MODEL_API_KEY',
     temperature: 0.2,
     fast_lane: {
@@ -297,7 +297,7 @@ try {
       allowed_prompt_variants: ['translate', 'rewrite'],
     },
   });
-  expect(fallbackConfig.model === 'deepseek-ai/DeepSeek-V3.2', 'primary model should round-trip');
+  expect(fallbackConfig.model === 'deepseek-v4-flash', 'primary model should round-trip');
 
   const firstFallback = await translate({ text: 'fallback once' });
   expect(firstFallback.status === 200, 'fallback request should still succeed');

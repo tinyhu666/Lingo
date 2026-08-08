@@ -114,7 +114,7 @@
   --lg-ink-0: #0b1430;          /* headings / strongest text */
   --lg-ink-1: #1d2845;          /* body strong */
   --lg-ink-2: #4d5a78;          /* body */
-  --lg-ink-3: #768297;          /* caption / muted */
+  --lg-ink-3: #5f6d86;          /* caption / muted */
   --lg-ink-4: #9aa4ba;          /* placeholder / hint */
 
   --lg-bg-0:  #eef1f8;          /* page bg cool */
@@ -478,7 +478,7 @@
   box-shadow: 0 1px 0 rgba(255,255,255,.8) inset;
 }
 .lg-kbd-row { display: inline-flex; align-items: center; gap: 4px; }
-.lg-kbd-row__plus { font-size: 10px; color: var(--lg-ink-4); margin: 0 1px; }
+.lg-kbd-row__plus { font-size: 11px; color: var(--lg-ink-2); margin: 0 1px; }
 
 /* ── Segmented ───────────────────────────────────────────── */
 .lg-seg {

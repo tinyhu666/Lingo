@@ -1,6 +1,6 @@
 [package]
 name = "Lingo"
-version = "0.9.8"
+version = "0.9.9"
 description = "A Tauri App"
 authors = ["you"]
 license = ""
@@ -76,6 +76,7 @@ windows-sys = { version = "0.61", features = [
   "Win32_Foundation",
   "Win32_Graphics_Dwm",
   "Win32_Graphics_Gdi",
+  "Win32_UI_Input_KeyboardAndMouse",
   "Win32_UI_WindowsAndMessaging",
 ] }
 # High-level WinRT-projecting crate for the v0.7.0 incoming-translation

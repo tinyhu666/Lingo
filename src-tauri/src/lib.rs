@@ -25,6 +25,8 @@ pub mod shortcut;
 pub mod store;
 pub mod tray;
 
+pub(crate) const INCOMING_TRANSLATION_ENABLED: bool = false;
+
 const RELEASE_LATEST_JSON_URL: &str =
     "https://lingo-1259551686.cos.ap-shanghai.myqcloud.com/releases/latest.json";
 const RELEASE_WEBSITE_LATEST_JSON_URL: &str =
@@ -426,6 +428,18 @@ async fn get_incoming_status(
     pipeline: tauri::State<'_, std::sync::Arc<incoming::IncomingPipeline>>,
 ) -> Result<incoming::IncomingStatus, String> {
     let settings = store::get_settings(&app_handle).map_err(|e| e.to_string())?;
+    if !INCOMING_TRANSLATION_ENABLED {
+        return Ok(incoming::IncomingStatus {
+            enabled: false,
+            active: false,
+            permission: incoming::PermissionState::Unknown,
+            current_game_scene: None,
+            current_game: None,
+            has_region_for_current_scene: false,
+            capture_rate_hz: settings.incoming_capture_rate_hz,
+            last_error: None,
+        });
+    }
     let scene = settings.game_scene.clone();
     let has_region = settings.incoming_regions.contains_key(&scene);
     Ok(incoming::IncomingStatus {
@@ -531,6 +545,15 @@ pub(crate) fn apply_incoming_enabled(
     pipeline: &std::sync::Arc<incoming::IncomingPipeline>,
     enabled: bool,
 ) -> Result<store::AppSettings, String> {
+    if enabled && !INCOMING_TRANSLATION_ENABLED {
+        pipeline.stop();
+        let _ = hide_incoming_overlay_window(app);
+        let _ = store::update_settings_field(app, |settings| {
+            settings.incoming_enabled = false;
+        });
+        return Err("入向翻译功能暂不可用".to_string());
+    }
+
     store::update_settings_field(app, |settings| {
         settings.incoming_enabled = enabled;
     })
@@ -565,6 +588,9 @@ pub(crate) fn apply_click_through(
     app: &tauri::AppHandle,
     click_through: bool,
 ) -> Result<store::AppSettings, String> {
+    if !INCOMING_TRANSLATION_ENABLED {
+        return Err("入向翻译功能暂不可用".to_string());
+    }
     apply_incoming_overlay_click_through(app, click_through)?;
     store::update_settings_field(app, |settings| {
         settings.incoming_overlay.click_through = click_through;
@@ -590,6 +616,9 @@ async fn set_incoming_enabled(
 
 #[tauri::command]
 async fn show_incoming_overlay(app_handle: tauri::AppHandle) -> Result<(), String> {
+    if !INCOMING_TRANSLATION_ENABLED {
+        return Err("入向翻译功能暂不可用".to_string());
+    }
     show_incoming_overlay_window(&app_handle)
 }
 
@@ -604,6 +633,9 @@ async fn save_incoming_chat_region(
     game_scene: String,
     region: incoming::ChatRegion,
 ) -> Result<store::AppSettings, String> {
+    if !INCOMING_TRANSLATION_ENABLED {
+        return Err("入向翻译功能暂不可用".to_string());
+    }
     let scene = game_scene.trim().to_string();
     if scene.is_empty() {
         return Err("game_scene must not be empty".to_string());
@@ -626,6 +658,9 @@ async fn clear_incoming_chat_region(
     app_handle: tauri::AppHandle,
     game_scene: String,
 ) -> Result<store::AppSettings, String> {
+    if !INCOMING_TRANSLATION_ENABLED {
+        return Err("入向翻译功能暂不可用".to_string());
+    }
     let scene = game_scene.trim().to_string();
     if scene.is_empty() {
         return Err("game_scene must not be empty".to_string());
@@ -642,6 +677,9 @@ async fn update_incoming_overlay_preferences(
     app_handle: tauri::AppHandle,
     preferences: store::OverlayPreferences,
 ) -> Result<store::AppSettings, String> {
+    if !INCOMING_TRANSLATION_ENABLED {
+        return Err("入向翻译功能暂不可用".to_string());
+    }
     store::update_settings_field(&app_handle, |settings| {
         settings.incoming_overlay = preferences.clone();
     })
@@ -682,6 +720,9 @@ async fn set_incoming_capture_rate(
     app_handle: tauri::AppHandle,
     rate_hz: f32,
 ) -> Result<store::AppSettings, String> {
+    if !INCOMING_TRANSLATION_ENABLED {
+        return Err("入向翻译功能暂不可用".to_string());
+    }
     if !rate_hz.is_finite() || !(0.5..=4.0).contains(&rate_hz) {
         return Err(format!(
             "capture rate must be a finite number in [0.5, 4.0], got {rate_hz}"
@@ -703,11 +744,17 @@ async fn set_incoming_capture_rate(
 #[tauri::command]
 async fn incoming_debug_enumerate_windows(
 ) -> Result<Vec<incoming::game_window::DebugWindowEntry>, String> {
+    if !INCOMING_TRANSLATION_ENABLED {
+        return Err("入向翻译功能暂不可用".to_string());
+    }
     Ok(incoming::game_window::enumerate_all_for_debug())
 }
 
 #[tauri::command]
 async fn list_displays() -> Result<Vec<incoming::DisplayInfo>, String> {
+    if !INCOMING_TRANSLATION_ENABLED {
+        return Err("入向翻译功能暂不可用".to_string());
+    }
     // macOS: CGGetActiveDisplayList. Windows: still stub until
     // Spike B lands.
     Ok(incoming::list_displays())
@@ -719,6 +766,9 @@ async fn open_region_picker(
     display_id: u64,
     game_scene: String,
 ) -> Result<(), String> {
+    if !INCOMING_TRANSLATION_ENABLED {
+        return Err("入向翻译功能暂不可用".to_string());
+    }
     use tauri::{LogicalPosition, LogicalSize, Manager};
     let displays = incoming::list_displays();
     let display = displays
@@ -789,6 +839,9 @@ async fn save_picked_region(
     w: u32,
     h: u32,
 ) -> Result<store::AppSettings, String> {
+    if !INCOMING_TRANSLATION_ENABLED {
+        return Err("入向翻译功能暂不可用".to_string());
+    }
     use tauri::{Emitter, Manager};
     let scene = game_scene.trim().to_string();
     if scene.is_empty() {
@@ -831,11 +884,17 @@ async fn save_picked_region(
 
 #[tauri::command]
 async fn check_screen_recording_permission() -> Result<incoming::PermissionState, String> {
+    if !INCOMING_TRANSLATION_ENABLED {
+        return Err("入向翻译功能暂不可用".to_string());
+    }
     Ok(incoming::current_permission_state())
 }
 
 #[tauri::command]
 async fn request_screen_recording_permission() -> Result<incoming::PermissionState, String> {
+    if !INCOMING_TRANSLATION_ENABLED {
+        return Err("入向翻译功能暂不可用".to_string());
+    }
     // macOS shows its own Screen Recording prompt on first call. The user
     // typically has to restart the app before a freshly granted permission
     // takes effect — the front-end surfaces that hint.
@@ -878,8 +937,15 @@ pub fn run() {
                 Err(error) => eprintln!("读取设置以决定是否预热失败: {}", error),
             }
 
-            // Restore incoming-translation state from persisted settings.
-            if let Ok(settings) = store::get_settings(app.app_handle()) {
+            // Keep the temporarily hidden incoming-translation subsystem off,
+            // including for users who previously persisted it as enabled.
+            if !INCOMING_TRANSLATION_ENABLED {
+                incoming_pipeline.stop();
+                let _ = hide_incoming_overlay_window(app.app_handle());
+                let _ = store::update_settings_field(app.app_handle(), |settings| {
+                    settings.incoming_enabled = false;
+                });
+            } else if let Ok(settings) = store::get_settings(app.app_handle()) {
                 if settings.incoming_enabled {
                     let opts = start_options_from_settings(&settings);
                     match incoming_pipeline.start(app.app_handle().clone(), opts) {

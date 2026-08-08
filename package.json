@@ -1,7 +1,7 @@
 {
   "name": "lingo",
   "private": true,
-  "version": "0.9.8",
+  "version": "0.9.9",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -11,10 +11,10 @@
     "preview": "vite preview",
     "tauri": "tauri",
     "proxy:dev": "node server/translate-proxy/src/server.mjs",
-    "proxy:smoke": "node server/translate-proxy/scripts/smoke-test.mjs",
+    "proxy:smoke": "node --test server/translate-proxy/src/runtime-config.test.mjs && node server/translate-proxy/scripts/smoke-test.mjs",
     "proxy:analytics-smoke": "node server/translate-proxy/scripts/analytics-smoke-test.mjs",
     "proxy:diagnose": "node server/translate-proxy/scripts/diagnose-latency.mjs",
-    "proxy:print-siliconflow-config": "node server/translate-proxy/scripts/print-siliconflow-config.mjs",
+    "proxy:print-deepseek-config": "node server/translate-proxy/scripts/print-deepseek-config.mjs",
     "brand:assets": "node scripts/generate-brand-assets.mjs",
     "verify:ocr-fixtures": "node scripts/verify-ocr-fixtures.mjs",
     "verify:release-config": "node scripts/verify-release-config.mjs",

@@ -8,9 +8,9 @@ const CONFIG_CACHE_TTL_MS = 1_000;
 const DEFAULT_TIMEOUT_MS = 12_000;
 const DEFAULT_MAX_TOKENS = 96;
 const DEFAULT_TEMPERATURE = 0.2;
-const DEFAULT_MODEL_NAME = 'deepseek-ai/DeepSeek-V4-Flash';
-const DEFAULT_API_KEY_ENV_NAME = 'MODEL_API_KEY';
-const DEFAULT_FAST_LANE_MODEL_NAME = 'deepseek-ai/DeepSeek-V4-Flash';
+const DEFAULT_MODEL_NAME = 'deepseek-v4-flash';
+const DEFAULT_API_KEY_ENV_NAME = 'DEEPSEEK_API_KEY';
+const DEFAULT_FAST_LANE_MODEL_NAME = 'deepseek-v4-flash';
 const DEFAULT_FAST_LANE_TIMEOUT_MS = 5_000;
 const DEFAULT_FAST_LANE_MAX_TOKENS = 48;
 const DEFAULT_FAST_LANE_TEMPERATURE = 0.1;
@@ -27,7 +27,7 @@ const isRecord = (value) => Boolean(value) && typeof value === 'object' && !Arra
 const defaultApiUrl = (provider) =>
   provider === 'anthropic'
     ? 'https://api.anthropic.com/v1/messages'
-    : 'https://api.siliconflow.cn/v1/chat/completions';
+    : 'https://api.deepseek.com/v1/chat/completions';
 
 export const toProvider = (value) => {
   const normalized = String(value || 'openai-compatible').trim().toLowerCase();
@@ -260,7 +260,7 @@ export const environmentRuntimeConfig = (env) => {
   );
 };
 
-export const createSiliconFlowLatencyFirstRuntimeConfig = () => ({
+export const createDeepSeekOfficialRuntimeConfig = () => ({
   enabled: true,
   provider: 'openai-compatible',
   api_url: defaultApiUrl('openai-compatible'),

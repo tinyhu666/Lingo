@@ -1,15 +1,19 @@
 use crate::ai_translator;
 use anyhow::{anyhow, Result};
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use tauri::AppHandle;
 use tauri_plugin_clipboard_manager::ClipboardExt;
+#[cfg(target_os = "macos")]
 use tauri_plugin_shell::ShellExt;
 use tokio::time::sleep;
 
-const COPY_SETTLE_MAX_ATTEMPTS: usize = 8;
+const COPY_SETTLE_MAX_ATTEMPTS: usize = 30;
 const COPY_SETTLE_DELAY_MS: u64 = 20;
+const CLIPBOARD_RESTORE_DELAY_MS: u64 = 350;
+#[cfg(target_os = "windows")]
+const MODIFIER_RELEASE_MAX_ATTEMPTS: usize = 30;
+#[cfg(target_os = "windows")]
+const MODIFIER_RELEASE_DELAY_MS: u64 = 10;
 
 pub async fn trans_and_replace_text(app: &AppHandle) -> Result<()> {
     let clipboard_backup = app.clipboard().read_text().ok();
@@ -21,6 +25,9 @@ pub async fn trans_and_replace_text(app: &AppHandle) -> Result<()> {
             println!("应用已禁用，跳过翻译动作");
             return Ok(());
         }
+
+        #[cfg(target_os = "windows")]
+        wait_for_windows_modifiers_release().await;
 
         let copy_started = Instant::now();
         let clipboard_probe = build_clipboard_probe();
@@ -41,31 +48,9 @@ pub async fn trans_and_replace_text(app: &AppHandle) -> Result<()> {
             return Ok(());
         }
 
-        let translation_finished = Arc::new(AtomicBool::new(false));
-        let placeholder_shown = Arc::new(AtomicBool::new(false));
-        if !settings.daily_mode {
-            let translation_placeholder = resolve_translation_placeholder(app);
-            schedule_translation_placeholder(
-                app.clone(),
-                translation_placeholder,
-                Arc::clone(&translation_finished),
-                Arc::clone(&placeholder_shown),
-            );
-        }
-
         // 3. 调用 AI 翻译
         let model_started = Instant::now();
-        let translated_result = ai_translator::translate_with_gpt(&original_text, &settings).await;
-        translation_finished.store(true, Ordering::Release);
-        let translated = match translated_result {
-            Ok(value) => value,
-            Err(error) => {
-                if placeholder_shown.load(Ordering::Acquire) {
-                    restore_original_text(app, &original_text, settings.daily_mode).await?;
-                }
-                return Err(error);
-            }
-        };
+        let translated = ai_translator::translate_with_gpt(&original_text, &settings).await?;
         println!(
             "[perf] translate_request elapsed_ms={}",
             model_started.elapsed().as_millis()
@@ -151,31 +136,91 @@ async fn simulate_keyboard_shortcuts(app: &AppHandle, keys: &[&str]) -> Result<(
 
     #[cfg(target_os = "windows")]
     {
-        let shell = app.shell();
-        let mut script = String::from("Add-Type -AssemblyName System.Windows.Forms\n");
+        let _ = app;
         for key in keys {
-            script.push_str(&format!(
-                "[System.Windows.Forms.SendKeys]::SendWait(\"^{}\")\n",
-                key
-            ));
-            script.push_str("Start-Sleep -Milliseconds 30\n");
+            send_windows_control_shortcut(key)?;
+            sleep(Duration::from_millis(20)).await;
         }
+    }
 
-        let output = shell
-            .command("powershell")
-            .args(["-Command", &script])
-            .output()
-            .await?;
+    Ok(())
+}
 
-        if !output.status.success() {
-            let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
-            let message = if stderr.is_empty() {
-                "按键模拟失败".to_string()
-            } else {
-                format!("按键模拟失败: {}", stderr)
-            };
-            return Err(anyhow!(message));
+#[cfg(target_os = "windows")]
+async fn wait_for_windows_modifiers_release() {
+    use windows_sys::Win32::UI::Input::KeyboardAndMouse::{
+        GetAsyncKeyState, VK_CONTROL, VK_LWIN, VK_MENU, VK_RWIN, VK_SHIFT,
+    };
+
+    for attempt in 0..MODIFIER_RELEASE_MAX_ATTEMPTS {
+        let modifier_down = [VK_CONTROL, VK_MENU, VK_SHIFT, VK_LWIN, VK_RWIN]
+            .into_iter()
+            .any(|key| unsafe { GetAsyncKeyState(key as i32) } < 0);
+        if !modifier_down {
+            return;
         }
+        if attempt + 1 < MODIFIER_RELEASE_MAX_ATTEMPTS {
+            sleep(Duration::from_millis(MODIFIER_RELEASE_DELAY_MS)).await;
+        }
+    }
+}
+
+#[cfg(target_os = "windows")]
+fn send_windows_control_shortcut(key: &str) -> Result<()> {
+    use windows_sys::Win32::UI::Input::KeyboardAndMouse::{
+        SendInput, INPUT, INPUT_0, INPUT_KEYBOARD, KEYBDINPUT, KEYEVENTF_KEYUP, VK_A, VK_C,
+        VK_CONTROL, VK_V,
+    };
+
+    let key_code = match key {
+        "a" => VK_A,
+        "c" => VK_C,
+        "v" => VK_V,
+        _ => return Err(anyhow!("不支持的 Windows 模拟按键: {key}")),
+    };
+    let input = |virtual_key, flags| INPUT {
+        r#type: INPUT_KEYBOARD,
+        Anonymous: INPUT_0 {
+            ki: KEYBDINPUT {
+                wVk: virtual_key,
+                wScan: 0,
+                dwFlags: flags,
+                time: 0,
+                dwExtraInfo: 0,
+            },
+        },
+    };
+    let inputs = [
+        input(VK_CONTROL, 0),
+        input(key_code, 0),
+        input(key_code, KEYEVENTF_KEYUP),
+        input(VK_CONTROL, KEYEVENTF_KEYUP),
+    ];
+    let sent = unsafe {
+        SendInput(
+            inputs.len() as u32,
+            inputs.as_ptr(),
+            std::mem::size_of::<INPUT>() as i32,
+        )
+    };
+    if sent != inputs.len() as u32 {
+        let error = std::io::Error::last_os_error();
+        let release_inputs = [
+            input(key_code, KEYEVENTF_KEYUP),
+            input(VK_CONTROL, KEYEVENTF_KEYUP),
+        ];
+        unsafe {
+            SendInput(
+                release_inputs.len() as u32,
+                release_inputs.as_ptr(),
+                std::mem::size_of::<INPUT>() as i32,
+            );
+        }
+        return Err(anyhow!(
+            "Windows 按键模拟失败: 仅发送 {sent}/{} 个事件 ({})",
+            inputs.len(),
+            error
+        ));
     }
 
     Ok(())
@@ -249,66 +294,9 @@ fn schedule_clipboard_restore(app: AppHandle, backup: Option<String>) {
     }
 
     tauri::async_runtime::spawn(async move {
-        sleep(Duration::from_millis(120)).await;
+        sleep(Duration::from_millis(CLIPBOARD_RESTORE_DELAY_MS)).await;
         restore_clipboard(&app, &backup);
     });
-}
-
-fn schedule_translation_placeholder(
-    app: AppHandle,
-    placeholder_text: String,
-    translation_finished: Arc<AtomicBool>,
-    placeholder_shown: Arc<AtomicBool>,
-) {
-    tauri::async_runtime::spawn(async move {
-        sleep(Duration::from_millis(350)).await;
-        if translation_finished.load(Ordering::Acquire) {
-            return;
-        }
-
-        if let Err(error) = app.clipboard().write_text(placeholder_text) {
-            eprintln!("写入翻译占位提示失败: {}", error);
-            return;
-        }
-
-        if let Err(error) = simulate_keyboard_shortcuts(&app, paste_shortcut_keys(false)).await {
-            eprintln!("显示翻译占位提示失败: {}", error);
-            return;
-        }
-
-        placeholder_shown.store(true, Ordering::Release);
-    });
-}
-
-fn resolve_translation_placeholder(app: &AppHandle) -> String {
-    let locale = crate::store::get_ui_locale(app).unwrap_or_else(|error| {
-        eprintln!("读取 UI 语言失败，使用默认翻译占位提示: {}", error);
-        "zh-CN".to_string()
-    });
-
-    translation_placeholder_text(&locale).to_string()
-}
-
-fn translation_placeholder_text(locale: &str) -> &'static str {
-    let normalized = locale.trim().to_ascii_lowercase();
-
-    if normalized.starts_with("en") {
-        "Translating, please wait."
-    } else if normalized.starts_with("ru") {
-        "Идет перевод, пожалуйста, подождите."
-    } else {
-        "翻译中，请稍候"
-    }
-}
-
-async fn restore_original_text(
-    app: &AppHandle,
-    original_text: &str,
-    daily_mode: bool,
-) -> Result<()> {
-    app.clipboard().write_text(original_text)?;
-    simulate_keyboard_shortcuts(app, paste_shortcut_keys(daily_mode)).await?;
-    Ok(())
 }
 
 fn build_clipboard_probe() -> String {
@@ -365,16 +353,14 @@ mod tests {
     }
 
     #[test]
-    fn translation_placeholder_text_follows_locale() {
-        assert_eq!(translation_placeholder_text("zh-CN"), "翻译中，请稍候");
-        assert_eq!(
-            translation_placeholder_text("en-US"),
-            "Translating, please wait."
-        );
-        assert_eq!(
-            translation_placeholder_text("ru-RU"),
-            "Идет перевод, пожалуйста, подождите."
-        );
-        assert_eq!(translation_placeholder_text("unknown"), "翻译中，请稍候");
+    fn clipboard_copy_wait_budget_handles_slow_targets() {
+        let wait_budget_ms = COPY_SETTLE_MAX_ATTEMPTS as u64 * COPY_SETTLE_DELAY_MS;
+        assert!(wait_budget_ms >= 600);
+    }
+
+    #[test]
+    fn clipboard_restore_waits_for_target_to_consume_paste() {
+        let restore_delay_ms = std::hint::black_box(CLIPBOARD_RESTORE_DELAY_MS);
+        assert!(restore_delay_ms >= 350);
     }
 }

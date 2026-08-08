@@ -11,6 +11,7 @@ jobs:
       TENCENT_LIGHT_USER: ${{ secrets.TENCENT_LIGHT_USER }}
       TENCENT_LIGHT_SSH_KEY: ${{ secrets.TENCENT_LIGHT_SSH_KEY }}
       TENCENT_TRANSLATE_PROXY_ENV: ${{ secrets.TENCENT_TRANSLATE_PROXY_ENV }}
+      DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
       TENCENT_LIGHT_PORT: ${{ vars.TENCENT_LIGHT_PORT }}
       TENCENT_LIGHT_TARGET_DIR: ${{ vars.TENCENT_LIGHT_TARGET_DIR }}
       TRANSLATE_PROXY_RUNTIME_CONFIG_JSON: ${{ vars.TRANSLATE_PROXY_RUNTIME_CONFIG_JSON }}
@@ -45,6 +46,11 @@ jobs:
             missing=1
           fi
 
+          if [ -z "${DEEPSEEK_API_KEY:-}" ]; then
+            echo "DEEPSEEK_API_KEY secret is required."
+            missing=1
+          fi
+
           if [ "$missing" -ne 0 ]; then
             exit 1
           fi
@@ -75,6 +81,7 @@ jobs:
             translate-proxy
 
           printf '%s\n' "$TENCENT_TRANSLATE_PROXY_ENV" > translate-proxy.env
+          printf '\nDEEPSEEK_API_KEY=%s\n' "$DEEPSEEK_API_KEY" >> translate-proxy.env
 
           if [ -n "${TRANSLATE_PROXY_RUNTIME_CONFIG_JSON:-}" ]; then
             printf '%s\n' "$TRANSLATE_PROXY_RUNTIME_CONFIG_JSON" > runtime-config.json

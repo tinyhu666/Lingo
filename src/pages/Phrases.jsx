@@ -79,14 +79,6 @@ export default function Phrases() {
     () => hotkeySignature(settings?.trans_hotkey),
     [settings?.trans_hotkey],
   );
-  const incomingToggleSignature = useMemo(
-    () => hotkeySignature(settings?.incoming_toggle_hotkey),
-    [settings?.incoming_toggle_hotkey],
-  );
-  const incomingClickThroughSignature = useMemo(
-    () => hotkeySignature(settings?.incoming_click_through_hotkey),
-    [settings?.incoming_click_through_hotkey],
-  );
 
   const usedSignatures = useMemo(() => {
     const signatures = new Set();
@@ -132,10 +124,6 @@ export default function Phrases() {
       const signature = rowSignature(row.keyCode);
       if (signature === translatorSignature)
         return t('phrases.errors.conflictTranslator', { index: index + 1 });
-      if (signature === incomingToggleSignature)
-        return t('phrases.errors.conflictIncomingToggle', { index: index + 1 });
-      if (signature === incomingClickThroughSignature)
-        return t('phrases.errors.conflictClickThrough', { index: index + 1 });
       if (signatures.has(signature)) return t('phrases.errors.duplicateHotkey', { index: index + 1 });
       signatures.add(signature);
     }
