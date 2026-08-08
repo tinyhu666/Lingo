@@ -1,18 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { listen } from '@tauri-apps/api/event';
 import { CN, DE, ES, FR, JP, KR, RU, SG, US } from 'country-flag-icons/react/3x2';
 import { useStore } from '../../components/StoreProvider';
 import { useI18n } from '../../i18n/I18nProvider';
 import { Chip, Toggle, Kbd, PageHead } from '../../components/lg';
 import {
-  IBubbles,
-  ICalibrate,
-  ILock,
-  IUnlock,
-  ISliders,
   ITarget,
   IPower,
-  IGamepad,
   IBolt,
   ISwap,
   IChevDown,
@@ -25,15 +18,7 @@ import {
   getLanguageMeta,
 } from '../../constants/languages';
 import {
-  DEFAULT_GAME_SCENE,
-  GAME_SCENE_OPTIONS,
-  getGameSceneLabel,
-  getGameSceneMeta,
-} from '../../constants/gameScenes';
-import {
   buildHotkeyFromKeyCodes,
-  defaultIncomingClickThroughHotkeyLabel,
-  defaultIncomingToggleHotkeyLabel,
   defaultTranslatorHotkeyLabel,
   formatMainKeyLabel,
   formatModifierLabel,
@@ -41,538 +26,11 @@ import {
   normalizeModifier,
 } from '../../constants/hotkeys';
 import DropdownMenu from '../../components/DropdownMenu';
-import IncomingAdvancedSettingsModal from '../../components/IncomingAdvancedSettingsModal';
-import {
-  PERMISSION_STATES,
-  getIncomingStatus,
-  requestScreenRecordingPermission,
-  setIncomingEnabled,
-  setIncomingOverlayClickThrough,
-} from '../../services/incomingService';
 import { hasTauriRuntime, invokeCommand } from '../../services/tauriRuntime';
-import { showError, showInfo, showSuccess } from '../../utils/toast';
+import { showError, showSuccess } from '../../utils/toast';
 import { toErrorMessage } from '../../utils/error';
 
-const STATUS_NOTE_EVENT_KEYS = {
-  'incoming:permission_required': 'home.incoming.statusPermission',
-  'incoming:region_required': 'home.incoming.statusNeedsRegion',
-  'incoming:capture_error': 'home.incoming.statusCaptureError',
-  'incoming:ocr_error': 'home.incoming.statusOcrError',
-  'incoming:fatal': 'home.incoming.statusFatal',
-};
-
-const STATUS_NOTE_EVENTS = Object.keys(STATUS_NOTE_EVENT_KEYS);
-
 const FLAG_COMPONENTS = { CN, SG, KR, US, FR, RU, ES, JP, DE };
-
-const MENU_HEIGHT_PX = 276;
-
-const heroBtnStyle = (active = false) => ({
-  display: 'flex',
-  alignItems: 'center',
-  gap: 8,
-  padding: '8px 10px',
-  border: `1px solid ${active ? 'rgba(22,163,107,.30)' : 'var(--lg-line-1)'}`,
-  background: active ? 'rgba(230,246,238,.6)' : 'var(--lg-surf-1)',
-  borderRadius: 12,
-  cursor: 'pointer',
-  textAlign: 'left',
-  minHeight: 68,
-  transition: 'all var(--lg-dur) var(--lg-ease)',
-  minWidth: 0,
-});
-
-function IncomingHero() {
-  const { settings, syncSettings } = useStore();
-  const { t } = useI18n();
-  const [status, setStatus] = useState(null);
-  const [pending, setPending] = useState(false);
-  const [clickPending, setClickPending] = useState(false);
-  const [advancedOpen, setAdvancedOpen] = useState(false);
-  // v0.9.0 auto-detect: tracks the currently-detected game (pipeline emits
-  // incoming:game_window_changed when one appears, and incoming:game_closed
-  // / incoming:no_game_detected when it goes away). null = no detection.
-  const [detectedGame, setDetectedGame] = useState(null);
-
-  const persistedEnabled = Boolean(settings?.incoming_enabled);
-  const gameScene = settings?.game_scene || DEFAULT_GAME_SCENE;
-  const clickThrough = Boolean(settings?.incoming_overlay?.click_through);
-
-  const refreshStatus = useCallback(async () => {
-    if (!hasTauriRuntime()) {
-      setStatus(null);
-      return;
-    }
-    try {
-      const next = await getIncomingStatus();
-      setStatus(next);
-      setDetectedGame(next?.current_game || null);
-    } catch (error) {
-      console.warn('failed to load incoming status', error);
-    }
-  }, []);
-
-  useEffect(() => {
-    void refreshStatus();
-  }, [refreshStatus, persistedEnabled, gameScene]);
-
-  // v0.9.0 auto-detect events. Pipeline emits these on every tick when the
-  // foreground game window changes (or vanishes); we mirror the state here
-  // so the home card can show "Dota 2 已检测到" vs "正在等待游戏...".
-  useEffect(() => {
-    if (!hasTauriRuntime()) return undefined;
-    let cancelled = false;
-    const unlisteners = [];
-    (async () => {
-      try {
-        const u1 = await listen('incoming:game_window_changed', (event) => {
-          if (cancelled) return;
-          setDetectedGame(event.payload || null);
-        });
-        unlisteners.push(u1);
-        const u2 = await listen('incoming:game_closed', () => {
-          if (cancelled) return;
-          setDetectedGame(null);
-        });
-        unlisteners.push(u2);
-        const u3 = await listen('incoming:no_game_detected', () => {
-          if (cancelled) return;
-          setDetectedGame(null);
-        });
-        unlisteners.push(u3);
-        const u4 = await listen('incoming:game_minimised', () => {
-          if (cancelled) return;
-          void refreshStatus();
-        });
-        unlisteners.push(u4);
-      } catch (error) {
-        console.warn('failed to subscribe to game-window events', error);
-      }
-    })();
-    return () => {
-      cancelled = true;
-      for (const u of unlisteners) {
-        try {
-          u();
-        } catch (_) {
-          // ignore
-        }
-      }
-    };
-  }, [refreshStatus]);
-
-  // Load-bearing: the Windows incoming-translation flow emits status events
-  // when capture/OCR can't run. Surface them as toasts; otherwise the card
-  // would silently sit on "Ready" while nothing actually translates.
-  useEffect(() => {
-    if (!hasTauriRuntime()) return undefined;
-    let cancelled = false;
-    const unlisteners = [];
-    (async () => {
-      for (const eventName of STATUS_NOTE_EVENTS) {
-        try {
-          const unlisten = await listen(eventName, (event) => {
-            if (cancelled) return;
-            const payload = event.payload;
-            const error = typeof payload === 'string' && payload.trim() ? payload : eventName;
-            const message = t(STATUS_NOTE_EVENT_KEYS[eventName], { error });
-            showError(message);
-            void refreshStatus();
-          });
-          if (cancelled) {
-            unlisten();
-          } else {
-            unlisteners.push(unlisten);
-          }
-        } catch (error) {
-          console.warn(`failed to listen for ${eventName}`, error);
-        }
-      }
-    })();
-    return () => {
-      cancelled = true;
-      for (const u of unlisteners) {
-        try {
-          u();
-        } catch (e) {
-          // ignore
-        }
-      }
-    };
-  }, [refreshStatus, t]);
-
-  const permission = status?.permission || PERMISSION_STATES.UNKNOWN;
-  const permissionMissing = permission === PERMISSION_STATES.DENIED;
-  const needsPermission = persistedEnabled && permissionMissing;
-  const effectiveDetectedGame = detectedGame || status?.current_game || null;
-  const gameMinimised = Boolean(effectiveDetectedGame?.minimised);
-  const waitingForGame = persistedEnabled && !effectiveDetectedGame;
-
-  const chipInfo = useMemo(() => {
-    if (!persistedEnabled) {
-      return { tone: 'default', text: t('home.incoming.statusDisabled'), dot: true };
-    }
-    if (needsPermission) {
-      return { tone: 'warn', text: t('home.incoming.statusPermission'), dot: true };
-    }
-    if (waitingForGame) {
-      // v0.9.0: dormant-but-listening state. The pipeline polls every
-      // 2.5s for a supported game window; when found the chip flips to
-      // success automatically.
-      return { tone: 'default', text: t('home.incoming.statusWaitingGame'), dot: true };
-    }
-    if (gameMinimised) {
-      return { tone: 'warn', text: t('common.paused'), dot: true };
-    }
-    return { tone: 'success', text: t('home.incoming.statusActive'), dot: true };
-  }, [persistedEnabled, needsPermission, waitingForGame, gameMinimised, t]);
-
-  const handleToggle = async () => {
-    if (pending) return;
-    const nextEnabled = !persistedEnabled;
-    setPending(true);
-    try {
-      if (hasTauriRuntime()) {
-        const latest = await setIncomingEnabled(nextEnabled);
-        if (latest && typeof latest === 'object') {
-          await syncSettings(latest);
-        }
-      } else {
-        await syncSettings({ ...(settings || {}), incoming_enabled: nextEnabled });
-      }
-
-      if (nextEnabled) {
-        showSuccess(t('home.incoming.toggleEnabledSuccess'));
-        // v0.9.0: no more region calibration to nag about. The only
-        // pre-flight hint left is the macOS Screen Recording permission.
-        if (permissionMissing) {
-          showInfo(t('home.incoming.permissionHintToast'));
-        }
-      } else {
-        showSuccess(t('home.incoming.toggleDisabledSuccess'));
-      }
-
-      void refreshStatus();
-    } catch (error) {
-      showError(t('home.incoming.toggleFailed', { error: toErrorMessage(error) }));
-    } finally {
-      setPending(false);
-    }
-  };
-
-  // v0.9.0-rc.2: emergency diagnostic. When auto-detect fails in the field,
-  // the user clicks "诊断检测" and we copy the full window enumeration
-  // (class + title + process + matched-game-id for every visible window)
-  // to clipboard so they can paste it to support. No DevTools required.
-  const handleDiagnoseDetection = async () => {
-    if (!hasTauriRuntime()) {
-      showError(t('home.incoming.diagnoseUnavailable'));
-      return;
-    }
-    try {
-      const rows = await invokeCommand('incoming_debug_enumerate_windows');
-      const summary = {
-        timestamp: new Date().toISOString(),
-        detectedGame: effectiveDetectedGame || null,
-        platform: navigator.platform,
-        userAgent: navigator.userAgent.slice(0, 200),
-        windowCount: Array.isArray(rows) ? rows.length : 0,
-        windows: rows,
-      };
-      const text = JSON.stringify(summary, null, 2);
-      try {
-        await navigator.clipboard.writeText(text);
-        showSuccess(t('home.incoming.diagnoseCopied', { count: summary.windowCount }));
-      } catch (clipErr) {
-        // Fallback when clipboard API isn't available (older webviews).
-        // eslint-disable-next-line no-console
-        console.log('lingo-diagnose-detection', text);
-        showInfo(t('home.incoming.diagnoseConsole'));
-      }
-    } catch (error) {
-      showError(t('home.incoming.diagnoseFailed', { error: toErrorMessage(error) }));
-    }
-  };
-
-  const handleClickThroughToggle = async () => {
-    if (clickPending) return;
-    const next = !clickThrough;
-    setClickPending(true);
-    try {
-      if (hasTauriRuntime()) {
-        const latest = await setIncomingOverlayClickThrough(next);
-        if (latest && typeof latest === 'object') {
-          await syncSettings(latest);
-        }
-      } else {
-        await syncSettings({
-          ...(settings || {}),
-          incoming_overlay: { ...(settings?.incoming_overlay || {}), click_through: next },
-        });
-      }
-      showSuccess(
-        next ? t('home.incoming.clickThroughLocked') : t('home.incoming.clickThroughUnlocked'),
-      );
-    } catch (error) {
-      showError(t('home.incoming.clickThroughFailed', { error: toErrorMessage(error) }));
-    } finally {
-      setClickPending(false);
-    }
-  };
-
-  const handleRequestPermission = useCallback(async () => {
-    try {
-      await requestScreenRecordingPermission();
-      showInfo(t('home.incoming.permissionRequested'));
-      void refreshStatus();
-    } catch (error) {
-      showError(t('home.incoming.permissionRequestFailed', { error: toErrorMessage(error) }));
-    }
-  }, [refreshStatus, t]);
-
-  const clickThroughShortcut = settings?.incoming_click_through_hotkey?.shortcut || '';
-  const detectedGameBounds = effectiveDetectedGame?.bounds;
-
-  const detectedGameMeta = effectiveDetectedGame
-    ? detectedGameBounds
-      ? `${detectedGameBounds.x ?? 0},${detectedGameBounds.y ?? 0} · ${detectedGameBounds.w ?? 0}×${detectedGameBounds.h ?? 0}`
-      : t('home.incoming.statusActive')
-    : t('home.incoming.waitingGameHint');
-  const detectedGameLabel = effectiveDetectedGame
-    ? getGameSceneLabel(effectiveDetectedGame.game_id)
-    : t('home.incoming.statusWaitingGame');
-
-  return (
-    <>
-      <div className='lg-card lg-card--hero' style={{ gridColumn: '1 / -1' }}>
-        <div className='lg-card__head'>
-          <div className='lg-card__icon lg-card__icon--brand'>
-            <IBubbles />
-          </div>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <div className='lg-card__title'>{t('home.incoming.title')}</div>
-              <Chip tone='brand'>{t('home.heroBadgeNew')}</Chip>
-            </div>
-            <div className='lg-card__sub'>{t('home.heroSub')}</div>
-          </div>
-          <div className='lg-card__actions'>
-            <Chip tone={chipInfo.tone} dot={chipInfo.dot}>
-              {chipInfo.text}
-            </Chip>
-            <Toggle
-              on={persistedEnabled}
-              onClick={handleToggle}
-              disabled={pending}
-              ariaLabel={t('home.incoming.title')}
-            />
-          </div>
-        </div>
-
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: '1.25fr repeat(3, minmax(0, 1fr))',
-            gap: 8,
-            marginTop: 4,
-          }}>
-          {/* Preview strip */}
-          <div
-            style={{
-              gridRow: 'span 1',
-              padding: '8px 10px',
-              background: 'linear-gradient(120deg, rgba(11,20,48,.92), rgba(45,40,90,.92))',
-              borderRadius: 12,
-              color: '#f0f3fa',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 3,
-              minHeight: 68,
-              overflow: 'hidden',
-              position: 'relative',
-            }}>
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                fontSize: 10,
-                letterSpacing: '.08em',
-                textTransform: 'uppercase',
-                color: 'rgba(240,243,250,.55)',
-                fontWeight: 700,
-              }}>
-              <span className='lg-ticker__live' />
-              {t('home.heroPreviewLabel')}
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              <div style={{ display: 'flex', gap: 6, alignItems: 'baseline' }}>
-                <span style={{ fontSize: 10.5, fontWeight: 700, color: '#61ebff' }}>
-                  {t('home.heroPreviewAllyTeam')}
-                </span>
-                <span
-                  style={{
-                    fontSize: 11.5,
-                    color: 'rgba(240,243,250,.55)',
-                    fontStyle: 'italic',
-                  }}>
-                  {t('home.heroPreviewAllySrc')}
-                </span>
-              </div>
-              <div style={{ fontSize: 12.5, fontWeight: 500 }}>{t('home.heroPreviewAllyTrg')}</div>
-              <div style={{ display: 'flex', gap: 6, alignItems: 'baseline' }}>
-                <span style={{ fontSize: 10.5, fontWeight: 700, color: '#ff9c8c' }}>
-                  {t('home.heroPreviewEnemyTeam')}
-                </span>
-                <span
-                  style={{
-                    fontSize: 11.5,
-                    color: 'rgba(240,243,250,.55)',
-                    fontStyle: 'italic',
-                  }}>
-                  {t('home.heroPreviewEnemySrc')}
-                </span>
-              </div>
-              <div style={{ fontSize: 12.5, fontWeight: 500 }}>{t('home.heroPreviewEnemyTrg')}</div>
-            </div>
-          </div>
-
-          {/* v0.9.0 auto-detect: passive status, not a button. The drag-
-              to-select calibration was removed; chat region is computed
-              from the detected game window's bounds. v0.9.0-rc.2 added
-              a small `诊断` link for cases where detection silently
-              misses — clicking it copies the window enumeration to
-              clipboard so the user can hand it to support. */}
-          <div style={{ ...heroBtnStyle(Boolean(effectiveDetectedGame)), cursor: 'default' }}>
-            <IGamepad
-              style={{
-                color: effectiveDetectedGame ? '#16a36b' : 'var(--lg-ink-3)',
-                width: 20,
-                height: 20,
-              }}
-            />
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontWeight: 700, fontSize: 12.5, color: 'var(--lg-ink-0)' }}>
-                {detectedGameLabel}
-              </div>
-              <div
-                style={{
-                  fontSize: 10.5,
-                  color: 'var(--lg-ink-3)',
-                  marginTop: 2,
-                  fontFamily: 'var(--lg-mono)',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                }}>
-                {detectedGameMeta}
-              </div>
-            </div>
-            <button
-              type='button'
-              onClick={(e) => {
-                e.stopPropagation();
-                void handleDiagnoseDetection();
-              }}
-              title={t('home.incoming.diagnoseTitle')}
-              style={{
-                background: 'transparent',
-                border: '1px solid var(--lg-line-1)',
-                borderRadius: 6,
-                padding: '4px 7px',
-                fontSize: 10.5,
-                color: 'var(--lg-ink-3)',
-                cursor: 'pointer',
-                flexShrink: 0,
-              }}>
-              {t('home.incoming.diagnoseDetection')}
-            </button>
-          </div>
-
-          {/* Action: click-through / lock */}
-          <button
-            type='button'
-            style={heroBtnStyle(clickThrough)}
-            onClick={handleClickThroughToggle}
-            disabled={clickPending}
-            aria-pressed={clickThrough}>
-            {clickThrough ? (
-              <ILock style={{ color: '#16a36b', width: 20, height: 20 }} />
-            ) : (
-              <IUnlock style={{ color: 'var(--lg-ink-2)', width: 20, height: 20 }} />
-            )}
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontWeight: 700, fontSize: 12.5, color: 'var(--lg-ink-0)' }}>
-                {clickThrough ? t('home.incoming.clickThroughOn') : t('home.incoming.clickThroughOff')}
-              </div>
-              <div
-                style={{
-                  fontSize: 10.5,
-                  color: 'var(--lg-ink-3)',
-                  marginTop: 2,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  minWidth: 0,
-                }}>
-                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {t('home.incoming.hotkeyLockLabel')}
-                </span>
-                {clickThroughShortcut ? <span>{clickThroughShortcut}</span> : null}
-              </div>
-            </div>
-          </button>
-
-          {/* Action: advanced */}
-          <button
-            type='button'
-            style={heroBtnStyle()}
-            onClick={() => setAdvancedOpen(true)}>
-            <ISliders style={{ color: 'var(--lg-ink-2)', width: 20, height: 20 }} />
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontWeight: 700, fontSize: 12.5, color: 'var(--lg-ink-0)' }}>
-                {t('home.incoming.advancedSettings')}
-              </div>
-              <div
-                style={{
-                  fontSize: 10.5,
-                  color: 'var(--lg-ink-3)',
-                  marginTop: 2,
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                }}>
-                {t('home.heroBtnAdvancedHint')}
-              </div>
-            </div>
-          </button>
-        </div>
-
-        {needsPermission ? (
-          <div style={{ marginTop: 10 }}>
-            <button
-              type='button'
-              className='lg-btn lg-btn--sm lg-btn--warn'
-              onClick={handleRequestPermission}>
-              {t('home.incoming.grantPermission')}
-            </button>
-          </div>
-        ) : null}
-      </div>
-
-      <IncomingAdvancedSettingsModal
-        open={advancedOpen}
-        onClose={() => setAdvancedOpen(false)}
-        settings={settings}
-        onChange={async (next) => {
-          if (next && typeof next === 'object') {
-            await syncSettings(next);
-          }
-        }}
-      />
-    </>
-  );
-}
 
 function LangPicker({ value, onClick, expanded, uiLocale }) {
   const meta = getLanguageMeta(value, uiLocale);
@@ -797,114 +255,6 @@ function EnableCard() {
   );
 }
 
-function GameCard() {
-  const { settings, updateSettings } = useStore();
-  const { locale, t } = useI18n();
-  const currentScene = settings?.game_scene || DEFAULT_GAME_SCENE;
-
-  const handleSelect = async (id) => {
-    if (id === currentScene) return;
-    try {
-      await updateSettings({ game_scene: id });
-    } catch (error) {
-      showError(t('home.gameScene.updateFailed', { error: toErrorMessage(error) }));
-    }
-  };
-
-  return (
-    <div className='lg-card'>
-      <div className='lg-card__head'>
-        <div className='lg-card__icon'>
-          <IGamepad />
-        </div>
-        <div>
-          <div className='lg-card__title'>{t('home.gameScene.title')}</div>
-          <div className='lg-card__sub'>{t('home.cardGameSub')}</div>
-        </div>
-      </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: 6 }}>
-        {GAME_SCENE_OPTIONS.map((g) => {
-          const meta = getGameSceneMeta(g.id, locale);
-          const active = g.id === currentScene;
-          return (
-            <button
-              key={g.id}
-              type='button'
-              title={meta.label}
-              aria-pressed={active}
-              onClick={() => handleSelect(g.id)}
-              style={{
-                padding: '8px 6px',
-                border: `1px solid ${active ? 'rgba(112,133,250,.4)' : 'var(--lg-line-1)'}`,
-                background: active ? 'rgba(112,133,250,.06)' : 'var(--lg-surf-1)',
-                borderRadius: 10,
-                cursor: 'pointer',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: 6,
-                transition: 'all var(--lg-dur) var(--lg-ease)',
-              }}>
-              <div
-                style={{
-                  width: 26,
-                  height: 26,
-                  borderRadius: 7,
-                  overflow: 'hidden',
-                  background: '#e2e8f1',
-                  display: 'grid',
-                  placeItems: 'center',
-                  color: '#fff',
-                  fontWeight: 700,
-                  fontSize: 11,
-                  boxShadow: 'inset 0 1px 0 rgba(255,255,255,.2)',
-                }}>
-                {meta.icon ? (
-                  <img
-                    src={meta.icon}
-                    alt=''
-                    style={{
-                      width: '100%',
-                      height: '100%',
-                      objectFit: meta.iconFit === 'cover' ? 'cover' : 'contain',
-                    }}
-                  />
-                ) : (
-                  <IGamepad style={{ width: 14, height: 14, color: 'var(--lg-ink-3)' }} />
-                )}
-              </div>
-              <div
-                style={{
-                  fontSize: 11,
-                  fontWeight: 600,
-                  color: 'var(--lg-ink-1)',
-                  whiteSpace: 'nowrap',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  maxWidth: '100%',
-                }}>
-                {meta.label}
-              </div>
-            </button>
-          );
-        })}
-      </div>
-      <div
-        style={{
-          marginTop: 8,
-          fontSize: 11,
-          color: 'var(--lg-ink-3)',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 6,
-        }}>
-        <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--lg-info)' }} />
-        {t('home.cardGameHint')}
-      </div>
-    </div>
-  );
-}
-
 const formatPreview = (codes) =>
   codes
     .map((code) =>
@@ -1021,13 +371,6 @@ function HotkeyCard() {
     return defaultTranslatorHotkeyLabel().split('+');
   }, [recording, capturedCodes, settings?.trans_hotkey]);
 
-  const incomingShortcut =
-    settings?.incoming_toggle_hotkey?.shortcut || defaultIncomingToggleHotkeyLabel();
-  const incomingKeys = incomingShortcut.split('+');
-  const lockShortcut =
-    settings?.incoming_click_through_hotkey?.shortcut || defaultIncomingClickThroughHotkeyLabel();
-  const lockKeys = lockShortcut.split('+');
-
   const rows = [
     {
       key: 'translate',
@@ -1035,18 +378,6 @@ function HotkeyCard() {
       hint: t('home.cardHotkeyRowTranslateHint'),
       keys: translateKeys,
       onClick: beginRecording,
-    },
-    {
-      key: 'incoming',
-      label: t('home.cardHotkeyRowIncoming'),
-      hint: t('home.cardHotkeyRowIncomingHint'),
-      keys: incomingKeys,
-    },
-    {
-      key: 'lock',
-      label: t('home.cardHotkeyRowLock'),
-      hint: t('home.cardHotkeyRowLockHint'),
-      keys: lockKeys,
     },
   ];
 
@@ -1104,7 +435,7 @@ function HotkeyCard() {
   );
 }
 
-export default function Home() {
+export default function Home({ onNavigate }) {
   const { settings } = useStore();
   const { t } = useI18n();
   const enabled = settings?.app_enabled ?? true;
@@ -1119,7 +450,10 @@ export default function Home() {
             <Chip tone={enabled ? 'success' : 'warn'} dot lg>
               {enabled ? t('sidebar.serviceRunning') : t('sidebar.servicePaused')}
             </Chip>
-            <button type='button' className='lg-btn lg-btn--sm'>
+            <button
+              type='button'
+              className='lg-btn lg-btn--sm'
+              onClick={() => onNavigate?.('translate')}>
               <ITarget /> {t('home.heroTryBtn')}
             </button>
           </div>
@@ -1132,11 +466,11 @@ export default function Home() {
           gridTemplateColumns: '1fr 1fr',
           gap: 12,
         }}>
-        <IncomingHero />
         <DirectionCard />
         <EnableCard />
-        <GameCard />
-        <HotkeyCard />
+        <div style={{ gridColumn: '1 / -1' }}>
+          <HotkeyCard />
+        </div>
       </div>
     </>
   );

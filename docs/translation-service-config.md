@@ -27,9 +27,9 @@ Example payload:
 {
   "enabled": true,
   "provider": "openai-compatible",
-  "api_url": "https://api.siliconflow.cn/v1/chat/completions",
-  "model_name": "deepseek-ai/DeepSeek-V3.2",
-  "api_key_secret_name": "MODEL_API_KEY",
+  "api_url": "https://api.deepseek.com/v1/chat/completions",
+  "model_name": "deepseek-v4-flash",
+  "api_key_secret_name": "DEEPSEEK_API_KEY",
   "timeout_ms": 12000,
   "max_tokens": 96,
   "temperature": 0.2
@@ -41,7 +41,7 @@ The same example is also stored in
 
 If you still use the Supabase Edge Function path instead of the standalone
 translate proxy, keep its primary model aligned with the proxy recommendation:
-use `deepseek-ai/DeepSeek-V3.2` for the main translation model. This legacy path
+use `deepseek-v4-flash` for the main translation model. This legacy path
 does not currently expose the proxy's dual-model fast-lane routing, so it
 should not be treated as the place to tune short-text latency.
 
@@ -51,7 +51,7 @@ For the GitHub deploy workflow, configure these repository secrets:
 
 - `SUPABASE_ACCESS_TOKEN`
 - `SUPABASE_SERVICE_ROLE_KEY`
-- `MODEL_API_KEY`
+- `DEEPSEEK_API_KEY`
 
 Also configure these repository variables:
 

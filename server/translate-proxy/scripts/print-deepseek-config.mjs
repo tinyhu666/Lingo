@@ -1,4 +1,4 @@
-import { createSiliconFlowLatencyFirstRuntimeConfig } from '../src/runtime-config.mjs';
+import { createDeepSeekOfficialRuntimeConfig } from '../src/runtime-config.mjs';
 
 const args = process.argv.slice(2);
 
@@ -11,7 +11,7 @@ const format = getArgValue('--format') || 'json';
 const adminUrl = getArgValue('--url').replace(/\/+$/, '');
 const tokenPlaceholder = getArgValue('--token') || 'YOUR_ADMIN_TOKEN';
 
-const config = createSiliconFlowLatencyFirstRuntimeConfig();
+const config = createDeepSeekOfficialRuntimeConfig();
 
 if (format === 'curl') {
   if (!adminUrl) {

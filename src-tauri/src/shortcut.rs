@@ -290,33 +290,35 @@ fn rebind_all_shortcuts(
         ));
     }
 
-    // Incoming hotkeys are registered last. Startup can tolerate an OS-level
-    // conflict, while update commands inspect the outcome and roll back when
-    // the binding the user just edited could not be registered.
     let mut outcome = RebindOutcome::default();
-    if let Err(error) = try_register_optional_shortcut(
-        app,
-        "incoming-toggle",
-        &settings.incoming_toggle_hotkey,
-        &mut used_signatures,
-        || create_incoming_toggle_handler(app.clone()),
-    ) {
-        eprintln!("[shortcut] {error}");
-        outcome
-            .optional_failures
-            .push((HotkeyOwner::IncomingToggle, error));
-    }
-    if let Err(error) = try_register_optional_shortcut(
-        app,
-        "incoming-click-through",
-        &settings.incoming_click_through_hotkey,
-        &mut used_signatures,
-        || create_click_through_handler(app.clone()),
-    ) {
-        eprintln!("[shortcut] {error}");
-        outcome
-            .optional_failures
-            .push((HotkeyOwner::IncomingClickThrough, error));
+    if crate::INCOMING_TRANSLATION_ENABLED {
+        // Incoming hotkeys are registered last. Startup can tolerate an OS-level
+        // conflict, while update commands inspect the outcome and roll back when
+        // the binding the user just edited could not be registered.
+        if let Err(error) = try_register_optional_shortcut(
+            app,
+            "incoming-toggle",
+            &settings.incoming_toggle_hotkey,
+            &mut used_signatures,
+            || create_incoming_toggle_handler(app.clone()),
+        ) {
+            eprintln!("[shortcut] {error}");
+            outcome
+                .optional_failures
+                .push((HotkeyOwner::IncomingToggle, error));
+        }
+        if let Err(error) = try_register_optional_shortcut(
+            app,
+            "incoming-click-through",
+            &settings.incoming_click_through_hotkey,
+            &mut used_signatures,
+            || create_click_through_handler(app.clone()),
+        ) {
+            eprintln!("[shortcut] {error}");
+            outcome
+                .optional_failures
+                .push((HotkeyOwner::IncomingClickThrough, error));
+        }
     }
 
     Ok(outcome)
@@ -414,11 +416,13 @@ fn ensure_no_signature_conflict(
     if self_label != HotkeyOwner::Translator && candidate == trans_sig {
         return Err("该快捷键已被翻译快捷键占用，请更换组合".to_string());
     }
-    if self_label != HotkeyOwner::IncomingToggle && candidate == incoming_toggle_sig {
-        return Err("该快捷键已被入向翻译切换占用，请更换组合".to_string());
-    }
-    if self_label != HotkeyOwner::IncomingClickThrough && candidate == incoming_lock_sig {
-        return Err("该快捷键已被锁定到游戏占用，请更换组合".to_string());
+    if crate::INCOMING_TRANSLATION_ENABLED {
+        if self_label != HotkeyOwner::IncomingToggle && candidate == incoming_toggle_sig {
+            return Err("该快捷键已被入向翻译切换占用，请更换组合".to_string());
+        }
+        if self_label != HotkeyOwner::IncomingClickThrough && candidate == incoming_lock_sig {
+            return Err("该快捷键已被锁定到游戏占用，请更换组合".to_string());
+        }
     }
     for phrase in &settings.phrases {
         let sig = shortcut_signature(
@@ -493,6 +497,9 @@ pub fn update_translator_shortcut(app: &AppHandle, keys: Vec<String>) -> Result<
 }
 
 pub fn update_incoming_toggle_shortcut(app: &AppHandle, keys: Vec<String>) -> Result<(), String> {
+    if !crate::INCOMING_TRANSLATION_ENABLED {
+        return Err("入向翻译功能暂不可用".to_string());
+    }
     let new_hotkey = build_hotkey_from_keys(&keys)?;
     let settings = get_settings(app).map_err(|e| e.to_string())?;
     let candidate = shortcut_signature(&new_hotkey.modifiers, &new_hotkey.key);
@@ -513,6 +520,9 @@ pub fn update_incoming_click_through_shortcut(
     app: &AppHandle,
     keys: Vec<String>,
 ) -> Result<(), String> {
+    if !crate::INCOMING_TRANSLATION_ENABLED {
+        return Err("入向翻译功能暂不可用".to_string());
+    }
     let new_hotkey = build_hotkey_from_keys(&keys)?;
     let settings = get_settings(app).map_err(|e| e.to_string())?;
     let candidate = shortcut_signature(&new_hotkey.modifiers, &new_hotkey.key);
@@ -574,11 +584,13 @@ fn normalize_phrases(
         if sig == trans_sig {
             return Err(format!("第 {} 条常用语与翻译快捷键冲突", idx + 1));
         }
-        if sig == incoming_toggle_sig {
-            return Err(format!("第 {} 条常用语与入向翻译快捷键冲突", idx + 1));
-        }
-        if sig == incoming_click_through_sig {
-            return Err(format!("第 {} 条常用语与锁定到游戏快捷键冲突", idx + 1));
+        if crate::INCOMING_TRANSLATION_ENABLED {
+            if sig == incoming_toggle_sig {
+                return Err(format!("第 {} 条常用语与入向翻译快捷键冲突", idx + 1));
+            }
+            if sig == incoming_click_through_sig {
+                return Err(format!("第 {} 条常用语与锁定到游戏快捷键冲突", idx + 1));
+            }
         }
         if !seen_hotkeys.insert(sig) {
             return Err(format!("第 {} 条常用语与其他常用语快捷键重复", idx + 1));
@@ -649,15 +661,15 @@ mod tests {
     }
 
     #[test]
-    fn phrases_reject_incoming_toggle_shortcut_conflicts() {
+    fn phrases_allow_disabled_incoming_toggle_shortcut() {
         let settings = AppSettings::default();
-        let error = normalize_phrases(
+        let normalized = normalize_phrases(
             &settings,
             vec![phrase_with_hotkey(settings.incoming_toggle_hotkey.clone())],
         )
-        .unwrap_err();
+        .unwrap();
 
-        assert!(error.contains("入向翻译快捷键冲突"));
+        assert_eq!(normalized.len(), 1);
     }
 
     #[test]
@@ -670,17 +682,17 @@ mod tests {
     }
 
     #[test]
-    fn phrases_reject_click_through_shortcut_conflicts() {
+    fn phrases_allow_disabled_incoming_click_through_shortcut() {
         let settings = AppSettings::default();
-        let error = normalize_phrases(
+        let normalized = normalize_phrases(
             &settings,
             vec![phrase_with_hotkey(
                 settings.incoming_click_through_hotkey.clone(),
             )],
         )
-        .unwrap_err();
+        .unwrap();
 
-        assert!(error.contains("锁定到游戏快捷键冲突"));
+        assert_eq!(normalized.len(), 1);
     }
 
     #[test]

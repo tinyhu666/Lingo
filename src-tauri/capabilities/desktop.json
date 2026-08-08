@@ -37,16 +37,6 @@
               "validator": "^tell application \"System Events\"\\n(    keystroke \"[acv]\" using command down\\n    delay 0\\.03\\n){1,2}end tell\\n$"
             }
           ]
-        },
-        {
-          "name": "exec-powershell",
-          "cmd": "powershell",
-          "args": [
-            "-Command",
-            {
-              "validator": "^Add-Type -AssemblyName System\\.Windows\\.Forms\\n(\\[System\\.Windows\\.Forms\\.SendKeys\\]::SendWait\\(\"\\^[acv]\"\\)\\nStart-Sleep -Milliseconds 30\\n){1,2}$"
-            }
-          ]
         }
       ]
     }

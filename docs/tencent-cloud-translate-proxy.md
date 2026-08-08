@@ -75,36 +75,26 @@ and fall back to the primary model on failure. By default, both short
 `translate` and short `rewrite` requests can be routed through fast lane as long
 as the selected style profile allows it.
 
-## SiliconFlow Model Recommendation
+## DeepSeek Official Model Recommendation
 
-For SiliconFlow-backed translation, avoid using `deepseek-ai/DeepSeek-R1` or
-`DeepSeek-R1-Distill-*` as the primary translation model. They are reasoning
-models and usually add latency without improving short chat-style translation.
-As of March 27, 2026, SiliconFlow's official docs show `deepseek-ai/DeepSeek-V3.2`,
-`Qwen/Qwen3-32B`, and `Qwen/Qwen3-14B` as supported chat-completions model IDs;
-I did not find a published `Qwen3.5` model ID in the current official docs.
+Lingo uses DeepSeek's official OpenAI-compatible endpoint for both the primary
+and fast translation lanes:
 
-Recommended split for Lingo:
+- API URL: `https://api.deepseek.com/v1/chat/completions`
+- Model: `deepseek-v4-flash`
+- API key environment variable: `DEEPSEEK_API_KEY`
 
-- Primary model: `deepseek-ai/DeepSeek-V3.2`
-- Fast lane model: `Qwen/Qwen3-14B`
-
-If this is still not strong enough for your game terminology, stay on the same
-primary model and move the fast lane to a larger Qwen3-tier model that is
-actually listed in SiliconFlow's official model catalog. In Lingo's live
-testing, `Qwen/Qwen3-32B` was strong enough but too heavy for the fast-lane
-role: short requests repeatedly waited for the fast model and then returned via
-`fast-fallback`, which erased most latency gains. `Qwen/Qwen3-14B` keeps the
-Qwen3 family while fitting the fast-lane budget more realistically. Do not
-switch the primary model to `R1` unless you specifically want slower
-reasoning-heavy behavior.
+The proxy explicitly disables thinking mode for this official V4 route because
+short translation and rewrite requests benefit from direct answers rather than
+reasoning output. The key remains server-side and is never compiled into the
+desktop client or installer.
 
 Suggested split:
 
 - Environment variables:
   - `ADMIN_TOKEN`
   - `BACKEND_PUBLIC_KEY`
-  - `MODEL_API_KEY`
+  - `DEEPSEEK_API_KEY`
 - Runtime JSON:
   - `enabled`
   - `provider`
@@ -160,7 +150,7 @@ At minimum set:
 - `BACKEND_PUBLIC_KEY`
 - `CADDY_DOMAIN`
 - `ANALYTICS_DB_PATH` if you do not want the default `/app/data/analytics.sqlite`
-- `MODEL_API_KEY`
+- `DEEPSEEK_API_KEY`
 - `MODEL_PROVIDER`
 - `MODEL_API_URL`
 - `MODEL_NAME`
@@ -188,17 +178,17 @@ from `/` and keeps these API paths reverse-proxied to `translate-proxy`:
 - `/admin*`
 - `/public/site-config`
 
-If you want to print the repository's recommended SiliconFlow payload instead of
+If you want to print the repository's recommended DeepSeek payload instead of
 copying the example file by hand, run:
 
 ```bash
-npm run proxy:print-siliconflow-config
+npm run proxy:print-deepseek-config
 ```
 
 To print a ready-to-run `curl` for your deployed proxy:
 
 ```bash
-npm run proxy:print-siliconflow-config -- --format=curl --url=https://your-domain.example.com
+npm run proxy:print-deepseek-config -- --format=curl --url=https://your-domain.example.com
 ```
 
 5. Start the service.
@@ -255,9 +245,9 @@ curl -X PUT "https://your-domain.example.com/admin/runtime-config" \
   -d '{
     "enabled": true,
     "provider": "openai-compatible",
-    "api_url": "https://api.siliconflow.cn/v1/chat/completions",
-    "model_name": "deepseek-ai/DeepSeek-V3.2",
-    "api_key_env_name": "MODEL_API_KEY",
+    "api_url": "https://api.deepseek.com/v1/chat/completions",
+    "model_name": "deepseek-v4-flash",
+    "api_key_env_name": "DEEPSEEK_API_KEY",
     "timeout_ms": 12000,
     "max_tokens": 96,
     "temperature": 0.2,
@@ -271,9 +261,9 @@ curl -X PUT "https://your-domain.example.com/admin/runtime-config" \
     "fast_lane": {
       "enabled": true,
       "provider": "openai-compatible",
-      "api_url": "https://api.siliconflow.cn/v1/chat/completions",
-      "model_name": "Qwen/Qwen3-14B",
-      "api_key_env_name": "MODEL_API_KEY",
+      "api_url": "https://api.deepseek.com/v1/chat/completions",
+      "model_name": "deepseek-v4-flash",
+      "api_key_env_name": "DEEPSEEK_API_KEY",
       "timeout_ms": 5000,
       "max_tokens": 48,
       "temperature": 0.1,
@@ -300,9 +290,9 @@ survive container restarts.
 }
 ```
 
-This repository's current latency-first recommendation is the same payload:
-`DeepSeek-V3.2` stays as the primary model, and `Qwen/Qwen3-14B`
-handles short `translate` and `rewrite` requests through fast lane.
+This repository's latency-first recommendation uses official
+`deepseek-v4-flash` for both primary and fast-lane translation, with thinking
+mode disabled for short `translate` and `rewrite` requests.
 
 For a repeatable feasibility check against your live proxy, run:
 

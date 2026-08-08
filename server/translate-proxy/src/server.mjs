@@ -626,6 +626,26 @@ const requestModelOnce = async ({
       };
     }
 
+    const requestBody = {
+      model: config.model_name,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: text },
+      ],
+      temperature: effectiveTemperature,
+      max_tokens: effectiveMaxTokens,
+    };
+    const apiHostname = (() => {
+      try {
+        return new URL(config.api_url).hostname.toLowerCase();
+      } catch {
+        return '';
+      }
+    })();
+    if (apiHostname === 'api.deepseek.com' && config.model_name.startsWith('deepseek-v4-')) {
+      requestBody.thinking = { type: 'disabled' };
+    }
+
     const response = await fetch(config.api_url, {
       method: 'POST',
       headers: {
@@ -633,15 +653,7 @@ const requestModelOnce = async ({
         Authorization: `Bearer ${apiKey}`,
       },
       signal: controller.signal,
-      body: JSON.stringify({
-        model: config.model_name,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: text },
-        ],
-        temperature: effectiveTemperature,
-        max_tokens: effectiveMaxTokens,
-      }),
+      body: JSON.stringify(requestBody),
     });
 
     const { json: body, raw } = await readJsonResponse(response);
