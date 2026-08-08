@@ -9,9 +9,9 @@ import { toErrorMessage } from '../utils/error';
 const STYLE_IDS = ['auto', 'pro', 'toxic'];
 
 const STYLE_COLORS = {
-  auto: '#4d70f5',
-  pro: '#16a36b',
-  toxic: '#c93434',
+  auto: '#3d5bd6',
+  pro: '#0f7a50',
+  toxic: '#b42323',
 };
 
 export default function Translate() {
@@ -83,7 +83,7 @@ export default function Translate() {
                         display: 'grid',
                         placeItems: 'center',
                         fontWeight: 800,
-                        fontSize: 11,
+                        fontSize: 12,
                         letterSpacing: '.04em',
                         border: `1px solid ${color}33`,
                       }}>
@@ -93,7 +93,7 @@ export default function Translate() {
                       <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--lg-ink-0)' }}>
                         {t(`translate.mode.${id}.title`)}
                       </div>
-                      <div style={{ fontSize: 11, color, fontWeight: 600, marginTop: 2 }}>
+                      <div style={{ fontSize: 12, color, fontWeight: 600, marginTop: 2 }}>
                         {t(`translate.mode.${id}.tag`)}
                       </div>
                     </div>
@@ -111,7 +111,7 @@ export default function Translate() {
                   <div
                     style={{
                       marginTop: 12,
-                      fontSize: 11,
+                      fontSize: 12,
                       color: 'var(--lg-ink-3)',
                       display: 'flex',
                       alignItems: 'center',
@@ -133,7 +133,7 @@ export default function Translate() {
                 <div style={{ flex: 1, padding: '16px 18px', background: 'var(--lg-surf-2)' }}>
                   <div
                     style={{
-                      fontSize: 10.5,
+                      fontSize: 12,
                       fontWeight: 700,
                       color: 'var(--lg-ink-3)',
                       letterSpacing: '.14em',
@@ -157,7 +157,7 @@ export default function Translate() {
                   </div>
                   <div
                     style={{
-                      fontSize: 10.5,
+                      fontSize: 12,
                       fontWeight: 700,
                       color: 'var(--lg-ink-3)',
                       letterSpacing: '.14em',

@@ -70,7 +70,7 @@ function LangPicker({ value, onClick, expanded, uiLocale }) {
       <div style={{ textAlign: 'left', minWidth: 0, flex: 1 }}>
         <div
           style={{
-            fontSize: 12.5,
+            fontSize: 13,
             fontWeight: 700,
             color: 'var(--lg-ink-0)',
             whiteSpace: 'nowrap',
@@ -79,7 +79,7 @@ function LangPicker({ value, onClick, expanded, uiLocale }) {
           }}>
           {meta.label}
         </div>
-        <div style={{ fontSize: 10.5, color: 'var(--lg-ink-3)', fontFamily: 'var(--lg-mono)' }}>
+        <div style={{ fontSize: 12, color: 'var(--lg-ink-3)', fontFamily: 'var(--lg-mono)' }}>
           {meta.id}
         </div>
       </div>
@@ -239,7 +239,7 @@ function EnableCard() {
             <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--lg-ink-0)' }}>
               {isEnabled ? t('common.enabled') : t('common.paused')}
             </div>
-            <div style={{ fontSize: 11, color: 'var(--lg-ink-3)', marginTop: 1 }}>
+            <div style={{ fontSize: 12, color: 'var(--lg-ink-3)', marginTop: 1 }}>
               {t('home.cardEnableIdleMeta')}
             </div>
           </div>
@@ -420,8 +420,8 @@ function HotkeyCard() {
                 : undefined
             }>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--lg-ink-0)' }}>{r.label}</div>
-              <div style={{ fontSize: 10.5, color: 'var(--lg-ink-3)', marginTop: 1 }}>{r.hint}</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--lg-ink-0)' }}>{r.label}</div>
+              <div style={{ fontSize: 12, color: 'var(--lg-ink-3)', marginTop: 1 }}>{r.hint}</div>
             </div>
             {r.keys === null ? (
               <Spinner style={{ width: 16, height: 16, color: 'var(--lg-ink-3)' }} />

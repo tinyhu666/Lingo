@@ -202,7 +202,7 @@ export default function Phrases() {
             gridTemplateColumns: GRID_COLS,
             gap: 0,
             padding: '10px 16px',
-            fontSize: 10.5,
+            fontSize: 12,
             fontWeight: 700,
             color: 'var(--lg-ink-3)',
             letterSpacing: '.14em',
@@ -289,7 +289,7 @@ export default function Phrases() {
             background: 'var(--lg-surf-2)',
             borderTop: '1px solid var(--lg-line-3)',
           }}>
-          <span style={{ fontSize: 11, color: 'var(--lg-ink-3)' }}>{t('phrases.footerHint')}</span>
+          <span style={{ fontSize: 12, color: 'var(--lg-ink-3)' }}>{t('phrases.footerHint')}</span>
           <span style={{ fontSize: 12, color: 'var(--lg-ink-2)' }}>{t('phrases.footerBody')}</span>
         </div>
       </div>

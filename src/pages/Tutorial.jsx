@@ -62,7 +62,7 @@ export default function Tutorial() {
           }}>
           <Kbd keys={hotkeyKeys} />
           <IArrowR style={{ color: 'var(--lg-ink-4)', width: 14, height: 14 }} />
-          <span style={{ fontSize: 11.5, color: 'var(--lg-ink-2)' }}>{t('tutorial.step2InProgress')}</span>
+          <span style={{ fontSize: 12, color: 'var(--lg-ink-2)' }}>{t('tutorial.step2InProgress')}</span>
           <div
             style={{
               marginLeft: 'auto',
