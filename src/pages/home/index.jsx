@@ -352,7 +352,7 @@ function HotkeyCard() {
     setCapturedCodes([]);
   };
 
-  // Build the labels for the outgoing translate hotkey
+  // Build the labels shown for the translate-and-replace hotkey.
   const translateKeys = useMemo(() => {
     if (recording && capturedCodes.length === 0) {
       return null; // spinner placeholder
@@ -435,6 +435,96 @@ function HotkeyCard() {
   );
 }
 
+function WorkflowCard() {
+  const { t } = useI18n();
+  const steps = [
+    {
+      number: '1',
+      title: t('home.workflowStep1Title'),
+      desc: t('home.workflowStep1Desc'),
+    },
+    {
+      number: '2',
+      title: t('home.workflowStep2Title'),
+      desc: t('home.workflowStep2Desc'),
+    },
+    {
+      number: '3',
+      title: t('home.workflowStep3Title'),
+      desc: t('home.workflowStep3Desc'),
+    },
+  ];
+
+  return (
+    <div className='lg-card'>
+      <div className='lg-card__head' style={{ marginBottom: 12 }}>
+        <div className='lg-card__icon'>
+          <ITarget />
+        </div>
+        <div>
+          <div className='lg-card__title'>{t('home.cardWorkflowTitle')}</div>
+          <div className='lg-card__sub'>{t('home.cardWorkflowSub')}</div>
+        </div>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'stretch', gap: 8 }}>
+        {steps.map((step, index) => (
+          <div key={step.number} style={{ display: 'contents' }}>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+                flex: 1,
+                minWidth: 0,
+                padding: '10px 12px',
+                borderRadius: 10,
+                background: 'var(--lg-surf-2)',
+                border: '1px solid var(--lg-line-1)',
+              }}>
+              <div
+                style={{
+                  display: 'grid',
+                  placeItems: 'center',
+                  width: 26,
+                  height: 26,
+                  flex: '0 0 26px',
+                  borderRadius: 8,
+                  background: '#3158d4',
+                  color: '#fff',
+                  fontSize: 12,
+                  fontWeight: 800,
+                  fontFamily: 'var(--lg-mono)',
+                }}>
+                {step.number}
+              </div>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 750, color: 'var(--lg-ink-0)' }}>
+                  {step.title}
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--lg-ink-2)', marginTop: 2 }}>
+                  {step.desc}
+                </div>
+              </div>
+            </div>
+            {index < steps.length - 1 ? (
+              <div
+                aria-hidden='true'
+                style={{
+                  display: 'grid',
+                  placeItems: 'center',
+                  flex: '0 0 18px',
+                  color: 'var(--lg-ink-3)',
+                }}>
+                <IArrowR style={{ width: 13, height: 13 }} />
+              </div>
+            ) : null}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function Home({ onNavigate }) {
   const { settings } = useStore();
   const { t } = useI18n();
@@ -470,6 +560,9 @@ export default function Home({ onNavigate }) {
         <EnableCard />
         <div style={{ gridColumn: '1 / -1' }}>
           <HotkeyCard />
+        </div>
+        <div style={{ gridColumn: '1 / -1' }}>
+          <WorkflowCard />
         </div>
       </div>
     </>
