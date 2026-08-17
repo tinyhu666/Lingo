@@ -3,10 +3,13 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { pipeline } from 'node:stream/promises';
 
+import { mapWithConcurrency } from './cos-release-helpers.mjs';
+
 const RELEASE_REPO = process.env.RELEASE_REPO || 'tinyhu666/Lingo';
 const RELEASE_TAG = String(process.env.RELEASE_TAG || '').trim();
 const COS_PUBLIC_BASE_URL = String(process.env.TENCENT_COS_PUBLIC_BASE_URL || '').replace(/\/+$/, '');
 const OUTPUT_DIR = path.resolve(process.cwd(), process.env.COS_PREP_DIR || '.mirror-cos');
+const DOWNLOAD_CONCURRENCY = Number(process.env.COS_DOWNLOAD_CONCURRENCY || 3);
 
 if (!RELEASE_TAG) {
   throw new Error('RELEASE_TAG is required.');
@@ -136,10 +139,10 @@ async function main() {
     }
   }
 
-  for (const assetName of assetNames) {
+  await mapWithConcurrency(assetNames, DOWNLOAD_CONCURRENCY, async (assetName) => {
     const asset = getReleaseAsset(release, assetName);
     await downloadFile(asset.browser_download_url, path.join(versionRoot, assetName));
-  }
+  });
 
   const mirroredLatestPayload = structuredClone(latestPayload);
 

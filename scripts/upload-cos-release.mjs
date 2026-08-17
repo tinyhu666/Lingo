@@ -1,6 +1,8 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
+import { buildCosCopySource, mapWithConcurrency } from './cos-release-helpers.mjs';
+
 const { default: COSModule } = await import('cos-nodejs-sdk-v5');
 const COS = COSModule?.default ?? COSModule;
 
@@ -40,12 +42,13 @@ const RefreshStableAliases = !['0', 'false', 'no', 'off'].includes(
     .trim()
     .toLowerCase(),
 );
-const MULTIPART_THRESHOLD_BYTES = Number(process.env.COS_MULTIPART_THRESHOLD_BYTES || 1024 * 1024);
-const MULTIPART_CHUNK_SIZE_BYTES = Number(process.env.COS_MULTIPART_CHUNK_SIZE_BYTES || 512 * 1024);
-const MULTIPART_ASYNC_LIMIT = Number(process.env.COS_MULTIPART_ASYNC_LIMIT || 2);
-const MAX_UPLOAD_ATTEMPTS = Number(process.env.COS_MAX_UPLOAD_ATTEMPTS || 6);
+const MULTIPART_THRESHOLD_BYTES = Number(process.env.COS_MULTIPART_THRESHOLD_BYTES || 8 * 1024 * 1024);
+const MULTIPART_CHUNK_SIZE_BYTES = Number(process.env.COS_MULTIPART_CHUNK_SIZE_BYTES || 4 * 1024 * 1024);
+const MULTIPART_ASYNC_LIMIT = Number(process.env.COS_MULTIPART_ASYNC_LIMIT || 3);
+const FILE_UPLOAD_CONCURRENCY = Number(process.env.COS_FILE_UPLOAD_CONCURRENCY || 3);
+const MAX_UPLOAD_ATTEMPTS = Number(process.env.COS_MAX_UPLOAD_ATTEMPTS || 4);
 const RETRY_BASE_DELAY_MS = 2_000;
-const SDK_REQUEST_TIMEOUT_MS = Number(process.env.COS_REQUEST_TIMEOUT_MS || 300_000);
+const SDK_REQUEST_TIMEOUT_MS = Number(process.env.COS_REQUEST_TIMEOUT_MS || 120_000);
 const SDK_PROGRESS_INTERVAL_MS = 5_000;
 
 const cos = new COS({
@@ -55,7 +58,7 @@ const cos = new COS({
   Timeout: SDK_REQUEST_TIMEOUT_MS,
   ProgressInterval: SDK_PROGRESS_INTERVAL_MS,
   ChunkParallelLimit: MULTIPART_ASYNC_LIMIT,
-  FileParallelLimit: 1,
+  FileParallelLimit: FILE_UPLOAD_CONCURRENCY,
 });
 
 function normalizeKey(value) {
@@ -143,6 +146,19 @@ function managedUpload(params) {
     }
 
     cos.uploadFile(params, (error, data) => {
+      if (error) {
+        reject(error);
+        return;
+      }
+
+      resolve(data);
+    });
+  });
+}
+
+function putObjectCopy(params) {
+  return new Promise((resolve, reject) => {
+    cos.putObjectCopy(params, (error, data) => {
       if (error) {
         reject(error);
         return;
@@ -273,48 +289,66 @@ async function uploadFile(localPath, remoteKey, cacheControl, options = {}) {
 async function uploadVersionedReleaseFiles(files) {
   files.sort();
 
-  for (const localPath of files) {
+  await mapWithConcurrency(files, FILE_UPLOAD_CONCURRENCY, async (localPath) => {
     const relativePath = path.relative(versionRoot, localPath);
     const remoteKey = path.posix.join('releases', `v${version}`, normalizeKey(relativePath));
     await uploadFile(localPath, remoteKey, 'public,max-age=31536000,immutable', {
       skipIfSameSize: true,
     });
+  });
+}
+
+async function copyStableAlias(localPath, versionedKey, stableKey) {
+  try {
+    await retryUpload(`cos://${Bucket}/${stableKey}`, () =>
+      putObjectCopy({
+        Bucket,
+        Region,
+        Key: stableKey,
+        CopySource: buildCosCopySource(Bucket, Region, versionedKey),
+        ACL: 'public-read',
+        CacheControl: 'public,max-age=60',
+        MetadataDirective: 'Replaced',
+      }),
+    );
+    console.log(`Copied cos://${Bucket}/${versionedKey} => cos://${Bucket}/${stableKey}`);
+  } catch (error) {
+    console.warn(
+      `Server-side copy failed for cos://${Bucket}/${stableKey}; falling back to direct upload. ${error?.message || error}`,
+    );
+    await uploadFile(localPath, stableKey, 'public,max-age=60', { skipIfSameSize: true });
   }
 }
 
 async function uploadStableAliases() {
-  await uploadFile(
-    path.join(versionRoot, `Lingo_${version}_aarch64.dmg`),
-    'releases/Lingo_latest_aarch64.dmg',
-    'public,max-age=60',
+  const aliases = [
     {
-      skipIfSameSize: true,
+      localPath: path.join(versionRoot, `Lingo_${version}_aarch64.dmg`),
+      versionedKey: `releases/v${version}/Lingo_${version}_aarch64.dmg`,
+      stableKey: 'releases/Lingo_latest_aarch64.dmg',
     },
-  );
-
-  await uploadFile(
-    path.join(versionRoot, `Lingo_${version}_x64-setup.exe`),
-    'releases/Lingo_latest_x64-setup.exe',
-    'public,max-age=60',
     {
-      skipIfSameSize: true,
+      localPath: path.join(versionRoot, `Lingo_${version}_x64-setup.exe`),
+      versionedKey: `releases/v${version}/Lingo_${version}_x64-setup.exe`,
+      stableKey: 'releases/Lingo_latest_x64-setup.exe',
     },
-  );
+  ];
 
   const portableZipPath = path.join(versionRoot, `Lingo_${version}_x64-portable.zip`);
   try {
     await fs.access(portableZipPath);
-    await uploadFile(
-      portableZipPath,
-      'releases/Lingo_latest_x64-portable.zip',
-      'public,max-age=60',
-      {
-        skipIfSameSize: true,
-      },
-    );
+    aliases.push({
+      localPath: portableZipPath,
+      versionedKey: `releases/v${version}/Lingo_${version}_x64-portable.zip`,
+      stableKey: 'releases/Lingo_latest_x64-portable.zip',
+    });
   } catch {
     console.log(`Portable ZIP not found for v${version}; skipping portable alias upload.`);
   }
+
+  await mapWithConcurrency(aliases, FILE_UPLOAD_CONCURRENCY, ({ localPath, versionedKey, stableKey }) =>
+    copyStableAlias(localPath, versionedKey, stableKey),
+  );
 }
 
 async function uploadUpdaterManifest() {

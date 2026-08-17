@@ -426,7 +426,7 @@ jobs:
           node-version: '22'
 
       - name: Install Tencent COS SDK
-        run: npm install --no-save cos-nodejs-sdk-v5
+        run: npm install --no-save --ignore-scripts --no-audit --no-fund cos-nodejs-sdk-v5@3.0.0
 
       - name: Prepare Mirrored Release Payload
         id: prepare_mirror
@@ -474,7 +474,7 @@ jobs:
           node-version: '22'
 
       - name: Install Tencent COS SDK
-        run: npm install --no-save cos-nodejs-sdk-v5
+        run: npm install --no-save --ignore-scripts --no-audit --no-fund cos-nodejs-sdk-v5@3.0.0
 
       - name: Prepare Mirrored Release Payload
         id: prepare_mirror
