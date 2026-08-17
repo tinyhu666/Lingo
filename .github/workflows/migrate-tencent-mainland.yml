@@ -393,17 +393,23 @@ jobs:
               echo "DNSPod lookup failed for $subdomain.buffpp.com: $api_error"
               exit 1
             fi
-            record_count="$(jq --arg name "$subdomain" '[.Response.RecordList[]? | select(.Name == $name and .Type == "A" and .Status == "ENABLE")] | length' <<< "$records_json")"
+            record_count="$(jq '.Response.RecordList | length' <<< "$records_json")"
             if [ "$record_count" -ne 1 ]; then
-              echo "Expected exactly one enabled A record for $subdomain.buffpp.com, found $record_count."
+              echo "Expected exactly one A record for $subdomain.buffpp.com, found $record_count."
+              jq -c '.Response.RecordList[]? | {RecordId, Name, Type, Line, Status}' <<< "$records_json"
               exit 1
             fi
-            record="$(jq -c --arg name "$subdomain" '.Response.RecordList[]? | select(.Name == $name and .Type == "A" and .Status == "ENABLE")' <<< "$records_json")"
-            local record_id line
+            record="$(jq -c '.Response.RecordList[0]' <<< "$records_json")"
+            local record_id line status
             record_id="$(jq -r '.RecordId' <<< "$record")"
             line="$(jq -r '.Line' <<< "$record")"
+            status="$(jq -r '.Status // empty | ascii_upcase' <<< "$record")"
             if [ -z "$record_id" ] || [ "$record_id" = "null" ]; then
               echo "Missing A record for $subdomain.buffpp.com"
+              exit 1
+            fi
+            if [ "$status" != "ENABLE" ]; then
+              echo "Refusing to modify disabled A record for $subdomain.buffpp.com."
               exit 1
             fi
             tccli dnspod ModifyRecord \
