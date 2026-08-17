@@ -11,6 +11,10 @@ on:
         description: Tencent Cloud region containing the Lighthouse instance
         required: true
         default: ap-shanghai
+      target_dir:
+        description: Install directory on the mainland server
+        required: true
+        default: /opt/lingo-translate-proxy
       website_ref:
         description: lingoweb branch, tag, or commit to deploy
         required: true
@@ -37,6 +41,8 @@ jobs:
       SWITCH_DNS: ${{ inputs.switch_dns }}
       TENCENT_LIGHT_USER: ${{ secrets.TENCENT_LIGHT_USER }}
       TENCENT_LIGHT_SSH_KEY: ${{ secrets.TENCENT_LIGHT_SSH_KEY }}
+      TENCENT_MAINLAND_USER: ${{ secrets.TENCENT_MAINLAND_USER }}
+      TENCENT_MAINLAND_SSH_KEY: ${{ secrets.TENCENT_MAINLAND_SSH_KEY }}
       TENCENT_TRANSLATE_PROXY_ENV: ${{ secrets.TENCENT_TRANSLATE_PROXY_ENV }}
       DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
       TENCENT_SECRET_ID: ${{ secrets.TENCENT_SECRET_ID }}
@@ -67,7 +73,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          for required_name in TARGET_HOST TENCENT_LIGHT_USER TENCENT_LIGHT_SSH_KEY TENCENT_TRANSLATE_PROXY_ENV DEEPSEEK_API_KEY; do
+          for required_name in TARGET_HOST TENCENT_LIGHT_USER TENCENT_LIGHT_SSH_KEY TENCENT_MAINLAND_USER TENCENT_MAINLAND_SSH_KEY TENCENT_TRANSLATE_PROXY_ENV DEEPSEEK_API_KEY; do
             if [ -z "${!required_name:-}" ]; then
               echo "$required_name is required."
               exit 1
@@ -83,7 +89,7 @@ jobs:
             done
           fi
 
-          deploy_target_dir="${TENCENT_LIGHT_TARGET_DIR:-/home/ubuntu/lingo-translate-proxy}"
+          deploy_target_dir="${{ inputs.target_dir }}"
           case "$deploy_target_dir" in
             /opt/*|/srv/*|/home/*) ;;
             *)
@@ -95,6 +101,7 @@ jobs:
           echo "DEPLOY_PORT=${TENCENT_LIGHT_PORT:-22}" >> "$GITHUB_ENV"
           echo "DEPLOY_TARGET_DIR=$deploy_target_dir" >> "$GITHUB_ENV"
           echo "DEPLOY_WEBSITE_DIR=${deploy_target_dir}/public-sites/lingoweb" >> "$GITHUB_ENV"
+          echo "SOURCE_TARGET_DIR=${TENCENT_LIGHT_TARGET_DIR:-/home/ubuntu/lingo-translate-proxy}" >> "$GITHUB_ENV"
 
           source_host="$(dig +short A buffpp.com | tail -n 1)"
           if [ -z "$source_host" ]; then
@@ -137,8 +144,9 @@ jobs:
           set -euo pipefail
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
-          printf '%s\n' "$TENCENT_LIGHT_SSH_KEY" > ~/.ssh/id_ed25519
-          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "$TENCENT_MAINLAND_SSH_KEY" > ~/.ssh/id_target
+          printf '%s\n' "$TENCENT_LIGHT_SSH_KEY" > ~/.ssh/id_source
+          chmod 600 ~/.ssh/id_target ~/.ssh/id_source
           ssh-keyscan -p "$DEPLOY_PORT" "$TARGET_HOST" >> ~/.ssh/known_hosts
           if [ "$MIGRATE_ANALYTICS" = "true" ] && [ "$SOURCE_HOST" != "$TARGET_HOST" ]; then
             ssh-keyscan -p "$DEPLOY_PORT" "$SOURCE_HOST" >> ~/.ssh/known_hosts
@@ -149,8 +157,8 @@ jobs:
         run: |
           set -euo pipefail
 
-          ssh_options=(-p "$DEPLOY_PORT" -o BatchMode=yes -o ConnectTimeout=8)
-          if ssh "${ssh_options[@]}" "${TENCENT_LIGHT_USER}@${TARGET_HOST}" true; then
+          ssh_options=(-i ~/.ssh/id_target -p "$DEPLOY_PORT" -o IdentitiesOnly=yes -o BatchMode=yes -o ConnectTimeout=8)
+          if ssh "${ssh_options[@]}" "${TENCENT_MAINLAND_USER}@${TARGET_HOST}" true; then
             echo "Target already accepts the deployment key."
             exit 0
           fi
@@ -185,10 +193,10 @@ jobs:
             exit 1
           fi
 
-          public_key="$(ssh-keygen -y -f ~/.ssh/id_ed25519)"
+          public_key="$(ssh-keygen -y -f ~/.ssh/id_target)"
           remote_script="$(cat <<SCRIPT
           set -euo pipefail
-          target_user='$TENCENT_LIGHT_USER'
+          target_user='$TENCENT_MAINLAND_USER'
           target_home=\"\$(getent passwd \"\$target_user\" | cut -d: -f6)\"
           target_group=\"\$(id -gn \"\$target_user\")\"
           test -n \"\$target_home\"
@@ -232,7 +240,7 @@ jobs:
             sleep 5
           done
 
-          ssh "${ssh_options[@]}" "${TENCENT_LIGHT_USER}@${TARGET_HOST}" true
+          ssh "${ssh_options[@]}" "${TENCENT_MAINLAND_USER}@${TARGET_HOST}" true
 
       - name: Export current analytics data
         if: ${{ inputs.migrate_analytics }}
@@ -244,12 +252,12 @@ jobs:
             exit 0
           fi
 
-          ssh -p "$DEPLOY_PORT" "${TENCENT_LIGHT_USER}@${SOURCE_HOST}" \
-            "test -d '$DEPLOY_TARGET_DIR/data' && tar -czf /tmp/lingo-proxy-data.tgz -C '$DEPLOY_TARGET_DIR' data"
-          scp -P "$DEPLOY_PORT" \
+          ssh -i ~/.ssh/id_source -o IdentitiesOnly=yes -p "$DEPLOY_PORT" "${TENCENT_LIGHT_USER}@${SOURCE_HOST}" \
+            "test -d '$SOURCE_TARGET_DIR/data' && tar -czf /tmp/lingo-proxy-data.tgz -C '$SOURCE_TARGET_DIR' data"
+          scp -i ~/.ssh/id_source -o IdentitiesOnly=yes -P "$DEPLOY_PORT" \
             "${TENCENT_LIGHT_USER}@${SOURCE_HOST}:/tmp/lingo-proxy-data.tgz" \
             lingo-proxy-data.tgz
-          ssh -p "$DEPLOY_PORT" "${TENCENT_LIGHT_USER}@${SOURCE_HOST}" \
+          ssh -i ~/.ssh/id_source -o IdentitiesOnly=yes -p "$DEPLOY_PORT" "${TENCENT_LIGHT_USER}@${SOURCE_HOST}" \
             "rm -f /tmp/lingo-proxy-data.tgz"
 
       - name: Upload migration payload
@@ -257,11 +265,11 @@ jobs:
         run: |
           set -euo pipefail
           for payload in translate-proxy.tgz translate-proxy.env lingoweb-dist.tgz; do
-            scp -P "$DEPLOY_PORT" "$payload" "${TENCENT_LIGHT_USER}@${TARGET_HOST}:/tmp/$payload"
+            scp -i ~/.ssh/id_target -o IdentitiesOnly=yes -P "$DEPLOY_PORT" "$payload" "${TENCENT_MAINLAND_USER}@${TARGET_HOST}:/tmp/$payload"
           done
           for optional_payload in runtime-config.json lingo-proxy-data.tgz; do
             if [ -f "$optional_payload" ]; then
-              scp -P "$DEPLOY_PORT" "$optional_payload" "${TENCENT_LIGHT_USER}@${TARGET_HOST}:/tmp/$optional_payload"
+              scp -i ~/.ssh/id_target -o IdentitiesOnly=yes -P "$DEPLOY_PORT" "$optional_payload" "${TENCENT_MAINLAND_USER}@${TARGET_HOST}:/tmp/$optional_payload"
             fi
           done
 
@@ -269,7 +277,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          ssh -p "$DEPLOY_PORT" "${TENCENT_LIGHT_USER}@${TARGET_HOST}" \
+          ssh -i ~/.ssh/id_target -o IdentitiesOnly=yes -p "$DEPLOY_PORT" "${TENCENT_MAINLAND_USER}@${TARGET_HOST}" \
             "DEPLOY_TARGET_DIR='$DEPLOY_TARGET_DIR' DEPLOY_WEBSITE_DIR='$DEPLOY_WEBSITE_DIR' bash -s" <<'REMOTE'
           set -euo pipefail
 
@@ -294,17 +302,7 @@ jobs:
           tar -xzf /tmp/lingoweb-dist.tgz -C "$website_dir"
           rm -f /tmp/translate-proxy.tgz /tmp/lingoweb-dist.tgz /tmp/lingo-proxy-data.tgz
 
-          cd "$target_dir"
-          if docker info >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then
-            compose() { docker compose -f docker-compose.nginx.yml "$@"; }
-          elif sudo -n docker info >/dev/null 2>&1 && sudo -n docker compose version >/dev/null 2>&1; then
-            compose() { sudo -n docker compose -f docker-compose.nginx.yml "$@"; }
-          else
-            echo "docker compose is not available for ${USER}"
-            exit 1
-          fi
-          compose up -d --build
-          compose ps
+          bash "$target_dir/scripts/install-systemd.sh" "$target_dir"
 
           nginx_config="$(mktemp)"
           cat > "$nginx_config" <<NGINX
@@ -399,7 +397,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          ssh -p "$DEPLOY_PORT" "${TENCENT_LIGHT_USER}@${TARGET_HOST}" bash -s <<'REMOTE'
+          ssh -i ~/.ssh/id_target -o IdentitiesOnly=yes -p "$DEPLOY_PORT" "${TENCENT_MAINLAND_USER}@${TARGET_HOST}" bash -s <<'REMOTE'
           set -euo pipefail
           if ! command -v certbot >/dev/null 2>&1; then
             sudo -n apt-get update

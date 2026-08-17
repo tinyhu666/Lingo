@@ -1244,6 +1244,11 @@ if (!Number.isInteger(parsedPort) || parsedPort <= 0 || parsedPort > 65535) {
   process.exit(1);
 }
 const port = parsedPort;
+const host = String(process.env.HOST || '0.0.0.0').trim();
+if (!host) {
+  console.error('[translate-proxy] invalid empty HOST value');
+  process.exit(1);
+}
 
 const warnAboutCredentialsAtStartup = () => {
   const backendKey = String(process.env.BACKEND_PUBLIC_KEY || '').trim();
@@ -1295,10 +1300,10 @@ process.on('uncaughtException', (error) => {
   process.exitCode = 1;
 });
 
-server.listen(port, '0.0.0.0', async () => {
+server.listen(port, host, async () => {
   warnAboutCredentialsAtStartup();
   const config = await loadRuntimeConfig(process.env);
   console.log(
-    `[translate-proxy] listening on :${port} provider=${config.provider} model=${config.model_name} source=${config.source}`,
+    `[translate-proxy] listening on ${host}:${port} provider=${config.provider} model=${config.model_name} source=${config.source}`,
   );
 });
