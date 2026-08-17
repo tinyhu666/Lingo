@@ -7,6 +7,10 @@ on:
         description: Mainland Tencent Lighthouse IPv4
         required: true
         default: 118.89.94.251
+      target_region:
+        description: Tencent Cloud region containing the Lighthouse instance
+        required: true
+        default: ap-shanghai
       website_ref:
         description: lingoweb branch, tag, or commit to deploy
         required: true
@@ -27,6 +31,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       TARGET_HOST: ${{ inputs.target_host }}
+      TARGET_REGION: ${{ inputs.target_region }}
       WEBSITE_REF: ${{ inputs.website_ref }}
       MIGRATE_ANALYTICS: ${{ inputs.migrate_analytics }}
       SWITCH_DNS: ${{ inputs.switch_dns }}
@@ -163,23 +168,20 @@ jobs:
             output json
 
           filters_json="$(jq -nc --arg ip "$TARGET_HOST" '[{Name:"public-ip-address",Values:[$ip]}]')"
-          instance_id=''
-          instance_region=''
-          while IFS= read -r region; do
-            [ -n "$region" ] || continue
-            instance_json="$(tccli lighthouse DescribeInstances \
-              --region "$region" \
-              --Filters "$filters_json" \
-              --Limit 1)"
-            instance_id="$(jq -r '.Response.InstanceSet[0].InstanceId // empty' <<< "$instance_json")"
-            if [ -n "$instance_id" ]; then
-              instance_region="$region"
-              break
-            fi
-          done < <(tccli lighthouse DescribeRegions --region ap-guangzhou | jq -r '.Response.RegionSet[].Region')
+          instance_region="$TARGET_REGION"
+          instance_json="$(tccli lighthouse DescribeInstances \
+            --region "$instance_region" \
+            --Filters "$filters_json" \
+            --Limit 1)"
+          api_error="$(jq -r 'if .Response.Error then "\(.Response.Error.Code): \(.Response.Error.Message)" else empty end' <<< "$instance_json")"
+          if [ -n "$api_error" ]; then
+            echo "Tencent Lighthouse lookup failed in $instance_region: $api_error"
+            exit 1
+          fi
+          instance_id="$(jq -r '.Response.InstanceSet[0].InstanceId // empty' <<< "$instance_json")"
 
           if [ -z "$instance_id" ] || [ -z "$instance_region" ]; then
-            echo "Could not find a Lighthouse instance for $TARGET_HOST in this Tencent account."
+            echo "Could not find a Lighthouse instance for $TARGET_HOST in $instance_region."
             exit 1
           fi
 
