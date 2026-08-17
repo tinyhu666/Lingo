@@ -51,7 +51,9 @@ jobs:
           cache: 'npm'
 
       - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
+        run: |
+          rustup toolchain install stable --profile minimal --no-self-update
+          rustup default stable
 
       - name: Install Dependencies
         run: npm ci
@@ -152,58 +154,16 @@ jobs:
           "WINDOWS_CERTIFICATE_THUMBPRINT=$($signingCertificate.Thumbprint)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
           "WINDOWS_TIMESTAMP_URL=https://timestamp.digicert.com" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
 
-      - name: Setup .NET 8 Runtime For Artifact Signing
+      - name: Prepare Azure Artifact Signing
         if: matrix.os == 'windows-latest' && env.AZURE_CLIENT_ID != '' && env.AZURE_TENANT_ID != '' && env.AZURE_SUBSCRIPTION_ID != '' && vars.AZURE_ARTIFACT_SIGNING_ENDPOINT != '' && vars.AZURE_ARTIFACT_SIGNING_ACCOUNT_NAME != '' && vars.AZURE_ARTIFACT_SIGNING_CERTIFICATE_PROFILE_NAME != ''
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '8.0.x'
-
-      - name: Azure Login For Artifact Signing
-        if: matrix.os == 'windows-latest' && env.AZURE_CLIENT_ID != '' && env.AZURE_TENANT_ID != '' && env.AZURE_SUBSCRIPTION_ID != '' && vars.AZURE_ARTIFACT_SIGNING_ENDPOINT != '' && vars.AZURE_ARTIFACT_SIGNING_ACCOUNT_NAME != '' && vars.AZURE_ARTIFACT_SIGNING_CERTIFICATE_PROFILE_NAME != ''
-        uses: azure/login@v2
+        uses: ./.github/actions/prepare-artifact-signing
         with:
           client-id: ${{ env.AZURE_CLIENT_ID }}
           tenant-id: ${{ env.AZURE_TENANT_ID }}
           subscription-id: ${{ env.AZURE_SUBSCRIPTION_ID }}
-
-      - name: Prepare Artifact Signing SignTool Integration
-        if: matrix.os == 'windows-latest' && env.AZURE_CLIENT_ID != '' && env.AZURE_TENANT_ID != '' && env.AZURE_SUBSCRIPTION_ID != '' && vars.AZURE_ARTIFACT_SIGNING_ENDPOINT != '' && vars.AZURE_ARTIFACT_SIGNING_ACCOUNT_NAME != '' && vars.AZURE_ARTIFACT_SIGNING_CERTIFICATE_PROFILE_NAME != ''
-        shell: pwsh
-        env:
-          AZURE_ARTIFACT_SIGNING_ENDPOINT: ${{ vars.AZURE_ARTIFACT_SIGNING_ENDPOINT }}
-          AZURE_ARTIFACT_SIGNING_ACCOUNT_NAME: ${{ vars.AZURE_ARTIFACT_SIGNING_ACCOUNT_NAME }}
-          AZURE_ARTIFACT_SIGNING_CERTIFICATE_PROFILE_NAME: ${{ vars.AZURE_ARTIFACT_SIGNING_CERTIFICATE_PROFILE_NAME }}
-        run: |
-          $artifactDir = Join-Path $PWD ".github/windows-signing/artifact-signing"
-          New-Item -ItemType Directory -Path $artifactDir -Force | Out-Null
-
-          $nugetPath = Join-Path $artifactDir "nuget.exe"
-          Invoke-WebRequest -Uri "https://dist.nuget.org/win-x86-commandline/latest/nuget.exe" -OutFile $nugetPath
-
-          $packagesDir = Join-Path $artifactDir "packages"
-          & $nugetPath install Microsoft.ArtifactSigning.Client -x -OutputDirectory $packagesDir | Out-Host
-
-          $dlib = Get-ChildItem -Path $packagesDir -Recurse -Filter "Azure.CodeSigning.Dlib.dll" |
-            Sort-Object FullName -Descending |
-            Select-Object -First 1
-
-          if (-not $dlib) {
-            throw "Azure.CodeSigning.Dlib.dll was not found after installing Microsoft.ArtifactSigning.Client."
-          }
-
-          $metadataPath = Join-Path $artifactDir "metadata.json"
-          $metadata = [ordered]@{
-            Endpoint = $env:AZURE_ARTIFACT_SIGNING_ENDPOINT
-            CodeSigningAccountName = $env:AZURE_ARTIFACT_SIGNING_ACCOUNT_NAME
-            CertificateProfileName = $env:AZURE_ARTIFACT_SIGNING_CERTIFICATE_PROFILE_NAME
-            CorrelationId = "$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"
-          } | ConvertTo-Json
-
-          Set-Content -Path $metadataPath -Value $metadata -Encoding utf8
-
-          "ARTIFACT_SIGNING_DLIB_PATH=$($dlib.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
-          "ARTIFACT_SIGNING_METADATA_PATH=$metadataPath" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
-          "WINDOWS_TIMESTAMP_URL=http://timestamp.acs.microsoft.com" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          endpoint: ${{ vars.AZURE_ARTIFACT_SIGNING_ENDPOINT }}
+          account-name: ${{ vars.AZURE_ARTIFACT_SIGNING_ACCOUNT_NAME }}
+          certificate-profile-name: ${{ vars.AZURE_ARTIFACT_SIGNING_CERTIFICATE_PROFILE_NAME }}
 
       - name: Load And Normalize Updater Signing Key
         shell: bash

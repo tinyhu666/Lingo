@@ -1,0 +1,75 @@
+name: Prepare Azure Artifact Signing
+description: Install and configure the Windows-only Azure Artifact Signing toolchain.
+
+inputs:
+  client-id:
+    required: true
+    description: Azure workload identity client ID.
+  tenant-id:
+    required: true
+    description: Azure tenant ID.
+  subscription-id:
+    required: true
+    description: Azure subscription ID.
+  endpoint:
+    required: true
+    description: Azure Artifact Signing endpoint.
+  account-name:
+    required: true
+    description: Azure Artifact Signing account name.
+  certificate-profile-name:
+    required: true
+    description: Azure Artifact Signing certificate profile name.
+
+runs:
+  using: composite
+  steps:
+    - name: Setup .NET 8 Runtime
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+
+    - name: Azure Login
+      uses: azure/login@v2
+      with:
+        client-id: ${{ inputs.client-id }}
+        tenant-id: ${{ inputs.tenant-id }}
+        subscription-id: ${{ inputs.subscription-id }}
+
+    - name: Prepare SignTool Integration
+      shell: pwsh
+      env:
+        AZURE_ARTIFACT_SIGNING_ENDPOINT: ${{ inputs.endpoint }}
+        AZURE_ARTIFACT_SIGNING_ACCOUNT_NAME: ${{ inputs.account-name }}
+        AZURE_ARTIFACT_SIGNING_CERTIFICATE_PROFILE_NAME: ${{ inputs.certificate-profile-name }}
+      run: |
+        $artifactDir = Join-Path $PWD ".github/windows-signing/artifact-signing"
+        New-Item -ItemType Directory -Path $artifactDir -Force | Out-Null
+
+        $nugetPath = Join-Path $artifactDir "nuget.exe"
+        Invoke-WebRequest -Uri "https://dist.nuget.org/win-x86-commandline/latest/nuget.exe" -OutFile $nugetPath
+
+        $packagesDir = Join-Path $artifactDir "packages"
+        & $nugetPath install Microsoft.ArtifactSigning.Client -x -OutputDirectory $packagesDir | Out-Host
+
+        $dlib = Get-ChildItem -Path $packagesDir -Recurse -Filter "Azure.CodeSigning.Dlib.dll" |
+          Sort-Object FullName -Descending |
+          Select-Object -First 1
+
+        if (-not $dlib) {
+          throw "Azure.CodeSigning.Dlib.dll was not found after installing Microsoft.ArtifactSigning.Client."
+        }
+
+        $metadataPath = Join-Path $artifactDir "metadata.json"
+        $metadata = [ordered]@{
+          Endpoint = $env:AZURE_ARTIFACT_SIGNING_ENDPOINT
+          CodeSigningAccountName = $env:AZURE_ARTIFACT_SIGNING_ACCOUNT_NAME
+          CertificateProfileName = $env:AZURE_ARTIFACT_SIGNING_CERTIFICATE_PROFILE_NAME
+          CorrelationId = "$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"
+        } | ConvertTo-Json
+
+        Set-Content -Path $metadataPath -Value $metadata -Encoding utf8
+
+        "ARTIFACT_SIGNING_DLIB_PATH=$($dlib.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+        "ARTIFACT_SIGNING_METADATA_PATH=$metadataPath" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+        "WINDOWS_TIMESTAMP_URL=http://timestamp.acs.microsoft.com" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
