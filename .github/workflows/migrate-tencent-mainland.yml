@@ -368,10 +368,25 @@ jobs:
           python -m pip install --disable-pip-version-check tccli
           tccli configure set secretId "$TENCENT_SECRET_ID" secretKey "$TENCENT_SECRET_KEY" region ap-guangzhou output json
 
+          records_json="$(tccli dnspod DescribeRecordList \
+            --Domain buffpp.com \
+            --RecordType A \
+            --Limit 3000)"
+          api_error="$(jq -r 'if .Response.Error then "\(.Response.Error.Code): \(.Response.Error.Message)" else empty end' <<< "$records_json")"
+          if [ -n "$api_error" ]; then
+            echo "DNSPod record lookup failed: $api_error"
+            exit 1
+          fi
+
           update_record() {
             local subdomain="$1"
-            local record
-            record="$(tccli dnspod DescribeRecordList --Domain buffpp.com --Subdomain "$subdomain" --RecordType A | jq -c '.Response.RecordList[0]')"
+            local record_count record
+            record_count="$(jq --arg name "$subdomain" '[.Response.RecordList[]? | select(.Name == $name and .Type == "A" and .Status == "ENABLE")] | length' <<< "$records_json")"
+            if [ "$record_count" -ne 1 ]; then
+              echo "Expected exactly one enabled A record for $subdomain.buffpp.com, found $record_count."
+              exit 1
+            fi
+            record="$(jq -c --arg name "$subdomain" '.Response.RecordList[]? | select(.Name == $name and .Type == "A" and .Status == "ENABLE")' <<< "$records_json")"
             local record_id line
             record_id="$(jq -r '.RecordId' <<< "$record")"
             line="$(jq -r '.Line' <<< "$record")"
