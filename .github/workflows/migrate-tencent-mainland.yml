@@ -396,7 +396,11 @@ jobs:
             record_count="$(jq '.Response.RecordList | length' <<< "$records_json")"
             if [ "$record_count" -ne 1 ]; then
               echo "Expected exactly one A record for $subdomain.buffpp.com, found $record_count."
-              jq -c '.Response.RecordList[]? | {RecordId, Name, Type, Line, Status}' <<< "$records_json"
+              tccli dnspod DescribeRecordList \
+                --Domain buffpp.com \
+                --Limit 3000 \
+                --ErrorOnEmpty no \
+                | jq -c '.Response.RecordList[]? | {RecordId, Name, Type, Line, Status}'
               exit 1
             fi
             record="$(jq -c '.Response.RecordList[0]' <<< "$records_json")"
