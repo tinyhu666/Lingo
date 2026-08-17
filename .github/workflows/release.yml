@@ -47,7 +47,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v5
         with:
-          node-version: 'lts/*'
+          node-version: '22'
           cache: 'npm'
 
       - name: Install Rust
@@ -423,7 +423,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v5
         with:
-          node-version: 'lts/*'
+          node-version: '22'
 
       - name: Install Tencent COS SDK
         run: npm install --no-save cos-nodejs-sdk-v5
@@ -471,7 +471,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v5
         with:
-          node-version: 'lts/*'
+          node-version: '22'
 
       - name: Install Tencent COS SDK
         run: npm install --no-save cos-nodejs-sdk-v5
