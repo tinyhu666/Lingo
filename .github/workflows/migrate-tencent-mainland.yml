@@ -1,0 +1,322 @@
+name: Migrate Lingo to Tencent Mainland
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_host:
+        description: Mainland Tencent Lighthouse IPv4
+        required: true
+        default: 118.89.94.251
+      website_ref:
+        description: lingoweb branch, tag, or commit to deploy
+        required: true
+        default: main
+      migrate_analytics:
+        description: Copy proxy data from the current buffpp.com server
+        required: true
+        type: boolean
+        default: true
+      switch_dns:
+        description: Switch buffpp.com DNS and provision TLS after health checks
+        required: true
+        type: boolean
+        default: false
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    env:
+      TARGET_HOST: ${{ inputs.target_host }}
+      WEBSITE_REF: ${{ inputs.website_ref }}
+      MIGRATE_ANALYTICS: ${{ inputs.migrate_analytics }}
+      SWITCH_DNS: ${{ inputs.switch_dns }}
+      TENCENT_LIGHT_USER: ${{ secrets.TENCENT_LIGHT_USER }}
+      TENCENT_LIGHT_SSH_KEY: ${{ secrets.TENCENT_LIGHT_SSH_KEY }}
+      TENCENT_TRANSLATE_PROXY_ENV: ${{ secrets.TENCENT_TRANSLATE_PROXY_ENV }}
+      DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+      TENCENT_SECRET_ID: ${{ secrets.TENCENT_SECRET_ID }}
+      TENCENT_SECRET_KEY: ${{ secrets.TENCENT_SECRET_KEY }}
+      TENCENT_LIGHT_PORT: ${{ vars.TENCENT_LIGHT_PORT }}
+      TENCENT_LIGHT_TARGET_DIR: ${{ vars.TENCENT_LIGHT_TARGET_DIR }}
+      TRANSLATE_PROXY_RUNTIME_CONFIG_JSON: ${{ vars.TRANSLATE_PROXY_RUNTIME_CONFIG_JSON }}
+    steps:
+      - name: Checkout Lingo
+        uses: actions/checkout@v5
+
+      - name: Checkout website
+        uses: actions/checkout@v5
+        with:
+          repository: tinyhu666/lingoweb
+          ref: ${{ env.WEBSITE_REF }}
+          path: website-src
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 'lts/*'
+          cache: npm
+          cache-dependency-path: website-src/package-lock.json
+
+      - name: Validate migration settings
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          for required_name in TARGET_HOST TENCENT_LIGHT_USER TENCENT_LIGHT_SSH_KEY TENCENT_TRANSLATE_PROXY_ENV DEEPSEEK_API_KEY; do
+            if [ -z "${!required_name:-}" ]; then
+              echo "$required_name is required."
+              exit 1
+            fi
+          done
+
+          if [ "$SWITCH_DNS" = "true" ]; then
+            for required_name in TENCENT_SECRET_ID TENCENT_SECRET_KEY; do
+              if [ -z "${!required_name:-}" ]; then
+                echo "$required_name is required when switch_dns is enabled."
+                exit 1
+              fi
+            done
+          fi
+
+          deploy_target_dir="${TENCENT_LIGHT_TARGET_DIR:-/home/ubuntu/lingo-translate-proxy}"
+          case "$deploy_target_dir" in
+            /opt/*|/srv/*|/home/*) ;;
+            *)
+              echo "Refusing unsafe target directory: $deploy_target_dir"
+              exit 1
+              ;;
+          esac
+
+          echo "DEPLOY_PORT=${TENCENT_LIGHT_PORT:-22}" >> "$GITHUB_ENV"
+          echo "DEPLOY_TARGET_DIR=$deploy_target_dir" >> "$GITHUB_ENV"
+          echo "DEPLOY_WEBSITE_DIR=${deploy_target_dir}/public-sites/lingoweb" >> "$GITHUB_ENV"
+
+          source_host="$(dig +short A buffpp.com | tail -n 1)"
+          if [ -z "$source_host" ]; then
+            echo "Could not resolve the current buffpp.com server."
+            exit 1
+          fi
+          echo "SOURCE_HOST=$source_host" >> "$GITHUB_ENV"
+
+      - name: Build website
+        working-directory: website-src
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci
+          npm run build
+
+      - name: Prepare deploy bundles
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          tar \
+            --exclude='translate-proxy/node_modules' \
+            --exclude='translate-proxy/data' \
+            --exclude='translate-proxy/.env' \
+            -czf translate-proxy.tgz \
+            -C server \
+            translate-proxy
+          tar -czf lingoweb-dist.tgz -C website-src/dist .
+
+          printf '%s\n' "$TENCENT_TRANSLATE_PROXY_ENV" > translate-proxy.env
+          printf '\nDEEPSEEK_API_KEY=%s\n' "$DEEPSEEK_API_KEY" >> translate-proxy.env
+          if [ -n "${TRANSLATE_PROXY_RUNTIME_CONFIG_JSON:-}" ]; then
+            printf '%s\n' "$TRANSLATE_PROXY_RUNTIME_CONFIG_JSON" > runtime-config.json
+          fi
+
+      - name: Configure SSH
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$TENCENT_LIGHT_SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -p "$DEPLOY_PORT" "$TARGET_HOST" >> ~/.ssh/known_hosts
+          if [ "$MIGRATE_ANALYTICS" = "true" ] && [ "$SOURCE_HOST" != "$TARGET_HOST" ]; then
+            ssh-keyscan -p "$DEPLOY_PORT" "$SOURCE_HOST" >> ~/.ssh/known_hosts
+          fi
+
+      - name: Export current analytics data
+        if: ${{ inputs.migrate_analytics }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "$SOURCE_HOST" = "$TARGET_HOST" ]; then
+            echo "Source and target are the same host; keeping the existing data directory."
+            exit 0
+          fi
+
+          ssh -p "$DEPLOY_PORT" "${TENCENT_LIGHT_USER}@${SOURCE_HOST}" \
+            "test -d '$DEPLOY_TARGET_DIR/data' && tar -czf /tmp/lingo-proxy-data.tgz -C '$DEPLOY_TARGET_DIR' data"
+          scp -P "$DEPLOY_PORT" \
+            "${TENCENT_LIGHT_USER}@${SOURCE_HOST}:/tmp/lingo-proxy-data.tgz" \
+            lingo-proxy-data.tgz
+          ssh -p "$DEPLOY_PORT" "${TENCENT_LIGHT_USER}@${SOURCE_HOST}" \
+            "rm -f /tmp/lingo-proxy-data.tgz"
+
+      - name: Upload migration payload
+        shell: bash
+        run: |
+          set -euo pipefail
+          for payload in translate-proxy.tgz translate-proxy.env lingoweb-dist.tgz; do
+            scp -P "$DEPLOY_PORT" "$payload" "${TENCENT_LIGHT_USER}@${TARGET_HOST}:/tmp/$payload"
+          done
+          for optional_payload in runtime-config.json lingo-proxy-data.tgz; do
+            if [ -f "$optional_payload" ]; then
+              scp -P "$DEPLOY_PORT" "$optional_payload" "${TENCENT_LIGHT_USER}@${TARGET_HOST}:/tmp/$optional_payload"
+            fi
+          done
+
+      - name: Deploy proxy, website, and Nginx route
+        shell: bash
+        run: |
+          set -euo pipefail
+          ssh -p "$DEPLOY_PORT" "${TENCENT_LIGHT_USER}@${TARGET_HOST}" \
+            "DEPLOY_TARGET_DIR='$DEPLOY_TARGET_DIR' DEPLOY_WEBSITE_DIR='$DEPLOY_WEBSITE_DIR' bash -s" <<'REMOTE'
+          set -euo pipefail
+
+          target_dir="${DEPLOY_TARGET_DIR:?}"
+          website_dir="${DEPLOY_WEBSITE_DIR:?}"
+          mkdir -p "$target_dir/data" "$website_dir"
+
+          if [ -f /tmp/lingo-proxy-data.tgz ]; then
+            tar -xzf /tmp/lingo-proxy-data.tgz -C "$target_dir"
+          fi
+
+          find "$target_dir" -mindepth 1 -maxdepth 1 \
+            ! -name data ! -name .env ! -name public-sites -exec rm -rf {} +
+          tar -xzf /tmp/translate-proxy.tgz -C "$target_dir" --strip-components=1
+          mv /tmp/translate-proxy.env "$target_dir/.env"
+
+          if [ -f /tmp/runtime-config.json ]; then
+            mv /tmp/runtime-config.json "$target_dir/data/runtime-config.json"
+          fi
+
+          find "$website_dir" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+          tar -xzf /tmp/lingoweb-dist.tgz -C "$website_dir"
+          rm -f /tmp/translate-proxy.tgz /tmp/lingoweb-dist.tgz /tmp/lingo-proxy-data.tgz
+
+          cd "$target_dir"
+          if docker info >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then
+            compose() { docker compose -f docker-compose.nginx.yml "$@"; }
+          elif sudo -n docker info >/dev/null 2>&1 && sudo -n docker compose version >/dev/null 2>&1; then
+            compose() { sudo -n docker compose -f docker-compose.nginx.yml "$@"; }
+          else
+            echo "docker compose is not available for ${USER}"
+            exit 1
+          fi
+          compose up -d --build
+          compose ps
+
+          nginx_config="$(mktemp)"
+          cat > "$nginx_config" <<NGINX
+          server {
+              listen 80;
+              listen [::]:80;
+              server_name buffpp.com www.buffpp.com;
+
+              root $website_dir;
+              index index.html;
+
+              location = /healthz { proxy_pass http://127.0.0.1:8787; include proxy_params; }
+              location = /translate { proxy_pass http://127.0.0.1:8787; include proxy_params; }
+              location ^~ /analytics { proxy_pass http://127.0.0.1:8787; include proxy_params; }
+              location ^~ /admin { proxy_pass http://127.0.0.1:8787; include proxy_params; }
+              location = /public/site-config { proxy_pass http://127.0.0.1:8787; include proxy_params; }
+
+              location / {
+                  try_files \$uri \$uri/ /index.html;
+              }
+          }
+          NGINX
+
+          if [ -f /etc/nginx/sites-available/lingo-buffpp.conf ]; then
+            sudo -n cp /etc/nginx/sites-available/lingo-buffpp.conf \
+              "/etc/nginx/sites-available/lingo-buffpp.conf.bak.$(date +%Y%m%d%H%M%S)"
+          fi
+          sudo -n install -m 0644 "$nginx_config" /etc/nginx/sites-available/lingo-buffpp.conf
+          sudo -n ln -sfn /etc/nginx/sites-available/lingo-buffpp.conf /etc/nginx/sites-enabled/lingo-buffpp.conf
+          sudo -n nginx -t
+          sudo -n systemctl reload nginx
+          rm -f "$nginx_config"
+
+          curl -fsS http://127.0.0.1:8787/healthz
+          curl -fsS -H 'Host: buffpp.com' http://127.0.0.1/healthz
+          curl -fsS -H 'Host: buffpp.com' http://127.0.0.1/ | grep -qi '<!doctype html'
+          curl -fsS -H 'Host: buffpp.com' http://127.0.0.1/analytics/public/overview >/dev/null
+          REMOTE
+
+      - name: Verify target before cutover
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS --resolve "buffpp.com:80:${TARGET_HOST}" http://buffpp.com/healthz
+          curl -fsS --resolve "buffpp.com:80:${TARGET_HOST}" http://buffpp.com/ | grep -qi '<!doctype html'
+          curl -fsS --resolve "buffpp.com:80:${TARGET_HOST}" http://buffpp.com/analytics/public/overview >/dev/null
+
+      - name: Switch DNS to mainland server
+        if: ${{ inputs.switch_dns }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check tccli
+          tccli configure set secretId "$TENCENT_SECRET_ID" secretKey "$TENCENT_SECRET_KEY" region ap-guangzhou output json
+
+          update_record() {
+            local subdomain="$1"
+            local record
+            record="$(tccli dnspod DescribeRecordList --Domain buffpp.com --Subdomain "$subdomain" --RecordType A | jq -c '.Response.RecordList[0]')"
+            local record_id line
+            record_id="$(jq -r '.RecordId' <<< "$record")"
+            line="$(jq -r '.Line' <<< "$record")"
+            if [ -z "$record_id" ] || [ "$record_id" = "null" ]; then
+              echo "Missing A record for $subdomain.buffpp.com"
+              exit 1
+            fi
+            tccli dnspod ModifyRecord \
+              --Domain buffpp.com \
+              --RecordId "$record_id" \
+              --SubDomain "$subdomain" \
+              --RecordType A \
+              --RecordLine "$line" \
+              --Value "$TARGET_HOST" >/dev/null
+          }
+
+          update_record '@'
+          update_record 'www'
+
+          for attempt in {1..12}; do
+            root_ip="$(dig +short @1.1.1.1 A buffpp.com | tail -n 1)"
+            www_ip="$(dig +short @1.1.1.1 A www.buffpp.com | tail -n 1)"
+            if [ "$root_ip" = "$TARGET_HOST" ] && [ "$www_ip" = "$TARGET_HOST" ]; then
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "DNS did not converge within 60 seconds."
+          exit 1
+
+      - name: Provision TLS and verify public service
+        if: ${{ inputs.switch_dns }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          ssh -p "$DEPLOY_PORT" "${TENCENT_LIGHT_USER}@${TARGET_HOST}" bash -s <<'REMOTE'
+          set -euo pipefail
+          if ! command -v certbot >/dev/null 2>&1; then
+            sudo -n apt-get update
+            sudo -n apt-get install -y certbot python3-certbot-nginx
+          fi
+          sudo -n certbot --nginx --non-interactive --agree-tos --register-unsafely-without-email \
+            --redirect -d buffpp.com -d www.buffpp.com
+          sudo -n nginx -t
+          sudo -n systemctl reload nginx
+          REMOTE
+
+          curl --fail --show-error --silent --retry 6 --retry-delay 5 https://buffpp.com/healthz
+          curl --fail --show-error --silent --retry 6 --retry-delay 5 https://buffpp.com/ | grep -qi '<!doctype html'
+          curl --fail --show-error --silent --retry 6 --retry-delay 5 \
+            https://buffpp.com/analytics/public/overview >/dev/null

@@ -41,7 +41,8 @@ fn shared_http_client() -> &'static Client {
         Client::builder()
             .connect_timeout(Duration::from_secs(5))
             .timeout(Duration::from_secs(15))
-            .pool_idle_timeout(Duration::from_secs(60))
+            .pool_idle_timeout(Duration::from_secs(600))
+            .tcp_keepalive(Duration::from_secs(30))
             .build()
             .unwrap_or_else(|_| Client::new())
     })
@@ -317,7 +318,13 @@ fn should_retry_transport_error(error: &reqwest::Error) -> bool {
 }
 
 fn should_retry_status(status: StatusCode) -> bool {
-    status == StatusCode::TOO_MANY_REQUESTS || status.is_server_error()
+    status == StatusCode::TOO_MANY_REQUESTS
+        || matches!(
+            status,
+            StatusCode::INTERNAL_SERVER_ERROR
+                | StatusCode::BAD_GATEWAY
+                | StatusCode::SERVICE_UNAVAILABLE
+        )
 }
 
 pub async fn warm_translation_backend() -> Result<()> {
@@ -744,6 +751,15 @@ mod tests {
         let mut buffer = [0_u8; 8192];
         let bytes_read = stream.read(&mut buffer).unwrap_or(0);
         String::from_utf8_lossy(&buffer[..bytes_read]).into_owned()
+    }
+
+    #[test]
+    fn retries_transient_capacity_errors_but_not_gateway_timeouts() {
+        assert!(should_retry_status(StatusCode::TOO_MANY_REQUESTS));
+        assert!(should_retry_status(StatusCode::BAD_GATEWAY));
+        assert!(should_retry_status(StatusCode::SERVICE_UNAVAILABLE));
+        assert!(!should_retry_status(StatusCode::GATEWAY_TIMEOUT));
+        assert!(!should_retry_status(StatusCode::BAD_REQUEST));
     }
 
     fn start_mock_translate_server(

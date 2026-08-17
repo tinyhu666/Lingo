@@ -28,6 +28,8 @@ export const formatMainKeyLabel = (keyCode = '') => {
 
 export const defaultTranslatorHotkeyLabel = () => (detectMac() ? '⌘+T' : 'Alt+T');
 
+export const defaultTranslatorHotkeyCodes = () => (detectMac() ? ['Meta', 'KeyT'] : ['Alt', 'KeyT']);
+
 export const defaultIncomingToggleHotkeyLabel = () =>
   detectMac() ? '⌘+⇧+T' : 'Alt+⇧+T';
 
@@ -40,9 +42,10 @@ export const defaultPhraseModifierLabel = () => (detectMac() ? '⌘' : 'Alt');
 
 export const buildHotkeyFromKeyCodes = (keyCodes) => {
   const modifiers = [...new Set(keyCodes.filter(isModifierKeyCode).map(normalizeModifier))].sort();
-  const key = [...keyCodes].reverse().find((item) => !isModifierKeyCode(item));
+  const mainKeys = [...new Set(keyCodes.filter((item) => !isModifierKeyCode(item)))];
+  const key = mainKeys[0];
 
-  if (!modifiers.length || !key) {
+  if (!modifiers.length || !key || mainKeys.length !== 1) {
     throw new Error('Hotkey must include at least one modifier and one main key');
   }
 

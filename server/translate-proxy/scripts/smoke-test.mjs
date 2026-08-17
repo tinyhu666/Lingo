@@ -74,6 +74,9 @@ const upstream = createServer(async (req, res) => {
     upstreamState.primaryHits += 1;
     upstreamState.lastPrimarySystemPrompt = systemPrompt;
     expect(auth === 'Bearer primary-model-key', 'primary model auth should use primary key');
+    if (userText === 'same upstream outage') {
+      return jsonResponse(res, 503, { message: 'same upstream temporary outage' });
+    }
     return jsonResponse(res, 200, {
       choices: [{ message: { content: `PRIMARY:${userText}` } }],
     });
@@ -315,6 +318,35 @@ try {
     'second request should not reuse cached primary fallback',
   );
   expect(upstreamState.fastHits >= 3, 'fast lane should be retried after transient fallback');
+
+  await updateRuntimeConfig({
+    enabled: true,
+    provider: 'openai-compatible',
+    api_url: `${upstreamBaseUrl}${primaryPath}`,
+    model_name: 'deepseek-v4-flash',
+    api_key_env_name: 'PRIMARY_MODEL_API_KEY',
+    temperature: 0.2,
+    fast_lane: {
+      enabled: true,
+      provider: 'openai-compatible',
+      api_url: `${upstreamBaseUrl}${primaryPath}`,
+      model_name: 'deepseek-v4-flash',
+      api_key_env_name: 'PRIMARY_MODEL_API_KEY',
+      timeout_ms: 5000,
+      max_tokens: 48,
+      temperature: 0.1,
+      max_text_length: 72,
+      allowed_prompt_variants: ['translate', 'rewrite'],
+    },
+  });
+
+  const primaryHitsBeforeSameUpstreamFailure = upstreamState.primaryHits;
+  const sameUpstreamFailure = await translate({ text: 'same upstream outage' });
+  expect(sameUpstreamFailure.status === 503, 'same-upstream failure should be returned immediately');
+  expect(
+    upstreamState.primaryHits === primaryHitsBeforeSameUpstreamFailure + 1,
+    'same-upstream failure must not trigger a duplicate fallback request',
+  );
 
   const toxicPrimary = await translate({
     text: 'stop feeding and play baron side',

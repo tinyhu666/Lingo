@@ -19,6 +19,7 @@ import {
 } from '../../constants/languages';
 import {
   buildHotkeyFromKeyCodes,
+  defaultTranslatorHotkeyCodes,
   defaultTranslatorHotkeyLabel,
   formatMainKeyLabel,
   formatModifierLabel,
@@ -265,43 +266,61 @@ const formatPreview = (codes) =>
 function HotkeyCard() {
   const { settings, updateSettings, syncSettings } = useStore();
   const { t } = useI18n();
-  const [recording, setRecording] = useState(false);
+  const [recorderState, setRecorderState] = useState('idle');
   const [capturedCodes, setCapturedCodes] = useState([]);
+  const [inlineError, setInlineError] = useState('');
 
   const codesRef = useRef([]);
   const committingRef = useRef(false);
+  const recording = recorderState === 'recording';
+  const saving = recorderState === 'saving';
 
-  const stopRecording = useCallback(() => {
+  const resetRecorder = useCallback((nextState = 'idle') => {
     codesRef.current = [];
     setCapturedCodes([]);
-    setRecording(false);
+    setRecorderState(nextState);
     committingRef.current = false;
   }, []);
 
-  const commitHotkey = useCallback(async () => {
+  const cancelRecording = useCallback(() => {
+    setInlineError('');
+    resetRecorder('idle');
+  }, [resetRecorder]);
+
+  const persistHotkey = useCallback(async (keys, successMessageKey = 'setSuccess') => {
     if (committingRef.current) return;
-    committingRef.current = true;
-    const keys = [...codesRef.current];
-    if (keys.length === 0) {
-      stopRecording();
+    let hotkey;
+    try {
+      hotkey = buildHotkeyFromKeyCodes(keys);
+    } catch {
+      setInlineError(t('home.hotkey.invalidCombo'));
+      resetRecorder('error');
       return;
     }
+
+    committingRef.current = true;
+    setRecorderState('saving');
+    setInlineError('');
     try {
       if (hasTauriRuntime()) {
         const latest = await invokeCommand('update_translator_shortcut', { keys });
         await syncSettings(latest);
-        showSuccess(t('home.hotkey.setSuccess'));
       } else {
-        const hotkey = buildHotkeyFromKeyCodes(keys);
         await updateSettings({ trans_hotkey: hotkey });
-        showSuccess(t('home.hotkey.previewSuccess'));
       }
+      showSuccess(t(`home.hotkey.${hasTauriRuntime() ? successMessageKey : 'previewSuccess'}`));
+      resetRecorder('idle');
     } catch (error) {
-      showError(t('home.hotkey.setFailed', { error: toErrorMessage(error) }));
+      const message = t('home.hotkey.setFailed', { error: toErrorMessage(error) });
+      setInlineError(message);
+      setRecorderState('error');
+      showError(message);
     } finally {
-      stopRecording();
+      codesRef.current = [];
+      setCapturedCodes([]);
+      committingRef.current = false;
     }
-  }, [syncSettings, stopRecording, updateSettings, t]);
+  }, [resetRecorder, syncSettings, updateSettings, t]);
 
   const handleKeyDown = useCallback(
     (event) => {
@@ -309,57 +328,50 @@ function HotkeyCard() {
       event.preventDefault();
       event.stopPropagation();
       if (event.key === 'Escape') {
-        stopRecording();
+        cancelRecording();
         return;
       }
+      if (event.repeat) return;
       const code = event.code;
       if (!code || codesRef.current.includes(code)) return;
       codesRef.current = [...codesRef.current, code];
       setCapturedCodes(codesRef.current);
     },
-    [recording, stopRecording],
+    [recording, cancelRecording],
   );
 
   const handleKeyUp = useCallback(
     (event) => {
       if (!recording) return;
-      const hasMainKey = codesRef.current.some((code) => !isModifierKeyCode(code));
-      if (!hasMainKey) return;
+      const mainKey = [...codesRef.current].reverse().find((code) => !isModifierKeyCode(code));
+      if (!mainKey || event.code !== mainKey) return;
       event.preventDefault();
       event.stopPropagation();
-      void commitHotkey();
+      void persistHotkey([...codesRef.current]);
     },
-    [recording, commitHotkey],
+    [recording, persistHotkey],
   );
 
   useEffect(() => {
     if (!recording) return undefined;
     window.addEventListener('keydown', handleKeyDown, true);
     window.addEventListener('keyup', handleKeyUp, true);
+    window.addEventListener('blur', cancelRecording);
     return () => {
       window.removeEventListener('keydown', handleKeyDown, true);
       window.removeEventListener('keyup', handleKeyUp, true);
+      window.removeEventListener('blur', cancelRecording);
     };
-  }, [recording, handleKeyDown, handleKeyUp]);
+  }, [recording, handleKeyDown, handleKeyUp, cancelRecording]);
 
   const beginRecording = () => {
-    if (recording) {
-      stopRecording();
-      return;
-    }
-    setRecording(true);
+    setInlineError('');
+    setRecorderState('recording');
     codesRef.current = [];
     setCapturedCodes([]);
   };
 
-  // Build the labels shown for the translate-and-replace hotkey.
-  const translateKeys = useMemo(() => {
-    if (recording && capturedCodes.length === 0) {
-      return null; // spinner placeholder
-    }
-    if (recording) {
-      return formatPreview(capturedCodes).split(' + ');
-    }
+  const currentKeys = useMemo(() => {
     const storedHotkey = settings?.trans_hotkey;
     if (storedHotkey?.key) {
       const labels = [
@@ -369,17 +381,13 @@ function HotkeyCard() {
       if (labels.length > 0) return labels;
     }
     return defaultTranslatorHotkeyLabel().split('+');
-  }, [recording, capturedCodes, settings?.trans_hotkey]);
+  }, [settings?.trans_hotkey]);
 
-  const rows = [
-    {
-      key: 'translate',
-      label: t('home.cardHotkeyRowTranslate'),
-      hint: t('home.cardHotkeyRowTranslateHint'),
-      keys: translateKeys,
-      onClick: beginRecording,
-    },
-  ];
+  const previewKeys = capturedCodes.length > 0 ? formatPreview(capturedCodes).split(' + ') : [];
+
+  const restoreDefault = () => {
+    void persistHotkey(defaultTranslatorHotkeyCodes(), 'restoreDefaultSuccess');
+  };
 
   return (
     <div className='lg-card'>
@@ -394,42 +402,50 @@ function HotkeyCard() {
           </div>
         </div>
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column' }}>
-        {rows.map((r, i) => (
-          <div
-            key={r.key}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 12,
-              padding: '5px 0',
-              borderTop: i === 0 ? 'none' : '1px solid var(--lg-line-3)',
-              cursor: r.onClick ? 'pointer' : 'default',
-            }}
-            onClick={r.onClick}
-            role={r.onClick ? 'button' : undefined}
-            tabIndex={r.onClick ? 0 : -1}
-            onKeyDown={
-              r.onClick
-                ? (e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      r.onClick();
-                    }
-                  }
-                : undefined
-            }>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--lg-ink-0)' }}>{r.label}</div>
-              <div style={{ fontSize: 12, color: 'var(--lg-ink-3)', marginTop: 1 }}>{r.hint}</div>
-            </div>
-            {r.keys === null ? (
-              <Spinner style={{ width: 16, height: 16, color: 'var(--lg-ink-3)' }} />
+      <div className={`hotkey-setting${recording ? ' hotkey-setting--recording' : ''}`}>
+        <div className='hotkey-setting__copy'>
+          <div className='hotkey-setting__label'>{t('home.cardHotkeyRowTranslate')}</div>
+          <div className='hotkey-setting__hint'>{t('home.cardHotkeyRowTranslateHint')}</div>
+        </div>
+        <div className='hotkey-setting__controls'>
+          <div className='hotkey-setting__status' aria-live='polite' aria-atomic='true'>
+            {recording ? (
+              previewKeys.length > 0 ? (
+                <Kbd keys={previewKeys} />
+              ) : (
+                <span className='hotkey-setting__listening'>{t('home.hotkey.pressCombo')}</span>
+              )
             ) : (
-              <Kbd keys={r.keys} />
+              <Kbd keys={currentKeys} />
             )}
           </div>
-        ))}
+          <button
+            type='button'
+            className={`lg-btn lg-btn--sm${recording ? ' lg-btn--warn' : ' lg-btn--primary'}`}
+            onClick={recording ? cancelRecording : beginRecording}
+            disabled={saving}
+            aria-describedby='translator-hotkey-help'>
+            {saving ? <Spinner style={{ width: 14, height: 14 }} /> : null}
+            {saving
+              ? t('home.hotkey.saving')
+              : recording
+                ? t('home.hotkey.cancel')
+                : t('home.hotkey.change')}
+          </button>
+          <button
+            type='button'
+            className='lg-btn lg-btn--sm lg-btn--ghost'
+            onClick={restoreDefault}
+            disabled={recording || saving}>
+            {t('home.cardHotkeyResetDefault')}
+          </button>
+        </div>
+      </div>
+      <div
+        id='translator-hotkey-help'
+        className={`hotkey-setting__message${inlineError ? ' hotkey-setting__message--error' : ''}`}
+        role={inlineError ? 'alert' : 'status'}>
+        {inlineError || (recording ? t('home.hotkey.escapeHint') : t('home.hotkey.currentHint'))}
       </div>
     </div>
   );
@@ -549,19 +565,13 @@ export default function Home({ onNavigate }) {
           </div>
         }
       />
-      <div
-        className='home-main-grid'
-        style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
-          gap: 12,
-        }}>
+      <div className='home-main-grid'>
         <DirectionCard />
         <EnableCard />
-        <div style={{ gridColumn: '1 / -1' }}>
+        <div className='home-main-grid__wide'>
           <HotkeyCard />
         </div>
-        <div style={{ gridColumn: '1 / -1' }}>
+        <div className='home-main-grid__wide'>
           <WorkflowCard />
         </div>
       </div>

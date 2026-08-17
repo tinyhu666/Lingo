@@ -248,6 +248,8 @@ const buildModelIdentity = (config) =>
     api_key_env_name: config.api_key_env_name,
   });
 
+const sharesModelUpstream = (left, right) => buildModelIdentity(left) === buildModelIdentity(right);
+
 const getFastLaneCircuitExpiresAt = (fastLaneConfig) => {
   const identity = buildModelIdentity(fastLaneConfig);
   const expiresAt = fastLaneCircuit.get(identity) || 0;
@@ -1001,6 +1003,19 @@ const routeTranslate = async (req, res, traceId) => {
       } catch (error) {
         if (shouldOpenFastLaneCircuit(error)) {
           openFastLaneCircuit(selectedRouteConfig);
+        }
+        if (sharesModelUpstream(config, selectedRouteConfig)) {
+          console.warn(
+            JSON.stringify({
+              trace_id: traceId,
+              message: 'Fast lane failed; skipped redundant fallback to the same upstream model',
+              model_route: 'fast-lane',
+              fast_model: selectedRouteConfig.model_name,
+              fast_status: Number(error?.status || 0),
+              fast_error: String(error?.message || error),
+            }),
+          );
+          throw error;
         }
         console.warn(
           JSON.stringify({

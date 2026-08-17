@@ -110,24 +110,29 @@ const requestScenario = async ({ name, payload, iteration }) => {
     headers.apikey = publicKey;
   }
 
+  const requestStartedAt = performance.now();
   const response = await fetch(`${baseUrl}/translate`, {
     method: 'POST',
     headers,
     body: JSON.stringify(payload),
   });
   const json = await expectOkJson(response);
+  const clientLatencyMs = Math.round(performance.now() - requestStartedAt);
   const latencyMs = Number(json.latency_ms || 0);
   const modelLatencyMs = Number(json.model_latency_ms || 0);
   const proxyOverheadMs = Number(json.proxy_overhead_ms || Math.max(0, latencyMs - modelLatencyMs));
+  const networkLatencyMs = Math.max(0, clientLatencyMs - latencyMs);
   const dominantStage = modelLatencyMs >= proxyOverheadMs ? 'model-dominant' : 'proxy-dominant';
 
   return {
     iteration,
     name,
     translatedText: json.translated_text,
+    clientLatencyMs,
     latencyMs,
     modelLatencyMs,
     proxyOverheadMs,
+    networkLatencyMs,
     dominantStage,
     modelRoute: json.model_route || '-',
     responseSource: json.response_source || '-',
@@ -141,9 +146,11 @@ const printRow = (result) => {
   console.log(
     [
       `[diag] run=${result.iteration} ${result.name}`,
+      `client_latency_ms=${result.clientLatencyMs}`,
       `latency_ms=${result.latencyMs}`,
       `model_latency_ms=${result.modelLatencyMs}`,
       `proxy_overhead_ms=${result.proxyOverheadMs}`,
+      `network_ms=${result.networkLatencyMs}`,
       `dominant=${result.dominantStage}`,
       `route=${result.modelRoute}`,
       `source=${result.responseSource}`,
@@ -155,9 +162,11 @@ const printRow = (result) => {
 };
 
 const summarize = (name, results) => {
+  const clientLatencyValues = results.map((item) => item.clientLatencyMs);
   const latencyValues = results.map((item) => item.latencyMs);
   const modelLatencyValues = results.map((item) => item.modelLatencyMs);
   const proxyOverheadValues = results.map((item) => item.proxyOverheadMs);
+  const networkLatencyValues = results.map((item) => item.networkLatencyMs);
   const routeCounts = results.reduce((counts, item) => {
     counts[item.modelRoute] = (counts[item.modelRoute] || 0) + 1;
     return counts;
@@ -170,11 +179,13 @@ const summarize = (name, results) => {
   const summary = {
     name,
     runs: results.length,
-    latencyP50: percentile(latencyValues, 0.5),
-    latencyP95: percentile(latencyValues, 0.95),
-    latencyAvg: average(latencyValues),
+    clientLatencyP50: percentile(clientLatencyValues, 0.5),
+    clientLatencyP95: percentile(clientLatencyValues, 0.95),
+    clientLatencyAvg: average(clientLatencyValues),
+    serverLatencyAvg: average(latencyValues),
     modelLatencyAvg: average(modelLatencyValues),
     proxyOverheadAvg: average(proxyOverheadValues),
+    networkLatencyAvg: average(networkLatencyValues),
     fastLaneRate: rate(routeCounts['fast-lane'] || 0, results.length),
     fastFallbackRate: rate(routeCounts['fast-fallback'] || 0, results.length),
     primaryRate: rate(routeCounts.primary || 0, results.length),
@@ -186,11 +197,13 @@ const summarize = (name, results) => {
     [
       `[diag-summary] ${summary.name}`,
       `runs=${summary.runs}`,
-      `p50=${summary.latencyP50}`,
-      `p95=${summary.latencyP95}`,
-      `avg=${summary.latencyAvg}`,
+      `client_p50=${summary.clientLatencyP50}`,
+      `client_p95=${summary.clientLatencyP95}`,
+      `client_avg=${summary.clientLatencyAvg}`,
+      `server_avg=${summary.serverLatencyAvg}`,
       `model_avg=${summary.modelLatencyAvg}`,
       `proxy_avg=${summary.proxyOverheadAvg}`,
+      `network_avg=${summary.networkLatencyAvg}`,
       `fast_lane_rate=${summary.fastLaneRate}%`,
       `fast_fallback_rate=${summary.fastFallbackRate}%`,
       `primary_rate=${summary.primaryRate}%`,
@@ -235,9 +248,9 @@ try {
   const rewrite = summaries.find((item) => item.name === 'rewrite_pro_other');
 
   const feasibility =
-    cold.fastFallbackRate >= 50 || cold.latencyP50 >= 6_000
+    cold.fastFallbackRate >= 50 || cold.clientLatencyP50 >= 6_000
       ? 'not-viable'
-      : cold.fastLaneRate >= 50 && cold.latencyP50 <= 4_000
+      : cold.fastLaneRate >= 50 && cold.clientLatencyP50 <= 4_000
         ? 'viable'
         : 'borderline';
 
