@@ -32,6 +32,8 @@ test('home copy describes the user action without duplicate product jargon', () 
 
   assert.equal(zh.home.pageTitle, '游戏内聊天翻译');
   assert.equal(zh.home.cardWorkflowTitle, '使用教程');
+  assert.equal(zh.home.cardDirectionTitle, '语言选择');
   assert.equal(zh.home.cardHotkeyTitle, '翻译快捷键');
   assert.equal(zh.home.gameScene.title, '选择游戏');
+  assert.equal(zh.home.enableStatus.title, '翻译功能');
 });

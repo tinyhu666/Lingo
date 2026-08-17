@@ -37,20 +37,22 @@ export default function Sidebar({ activeItem, setActiveItem }) {
         })}
       </nav>
 
-      <div className='lg-side-status'>
-        <span
-          className={`lg-side-status__dot ${isEnabled ? '' : 'lg-side-status__dot--paused'}`}
-          aria-hidden='true'
-        />
-        <div className='lg-side-status__copy'>
-          <div className='lg-side-status__title'>
-            {isEnabled ? t('sidebar.serviceRunning') : t('sidebar.servicePaused')}
+      <footer className='lg-side-footer'>
+        <div className='lg-side-status'>
+          <span
+            className={`lg-side-status__dot ${isEnabled ? '' : 'lg-side-status__dot--paused'}`}
+            aria-hidden='true'
+          />
+          <div className='lg-side-status__copy'>
+            <div className='lg-side-status__title'>
+              {isEnabled ? t('sidebar.serviceRunning') : t('sidebar.servicePaused')}
+            </div>
           </div>
+          <span className={`lg-chip ${isEnabled ? 'lg-chip--success' : 'lg-chip--warn'}`}>
+            {isEnabled ? t('common.enabled') : t('common.paused')}
+          </span>
         </div>
-        <span className={`lg-chip ${isEnabled ? 'lg-chip--success' : 'lg-chip--warn'}`}>
-          {isEnabled ? t('common.enabled') : t('common.paused')}
-        </span>
-      </div>
+      </footer>
     </aside>
   );
 }

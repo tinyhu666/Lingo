@@ -539,7 +539,7 @@ function WorkflowCard() {
   ];
 
   return (
-    <div className='lg-card'>
+    <div className='lg-card home-tutorial-card'>
       <div className='lg-card__head' style={{ marginBottom: 12 }}>
         <div className='lg-card__icon'>
           <ITarget />
@@ -615,15 +615,11 @@ export default function Home() {
         sub={t('home.pageSub')}
       />
       <div className='home-main-grid'>
-        <DirectionCard />
-        <GameSceneCard />
         <EnableCard />
-        <div className='home-main-grid__wide'>
-          <HotkeyCard />
-        </div>
-        <div className='home-main-grid__wide'>
-          <WorkflowCard />
-        </div>
+        <GameSceneCard />
+        <DirectionCard />
+        <HotkeyCard />
+        <WorkflowCard />
       </div>
     </>
   );
