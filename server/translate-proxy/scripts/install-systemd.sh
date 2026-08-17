@@ -64,8 +64,7 @@ Environment=NODE_ENV=production
 Environment=HOST=127.0.0.1
 Environment=PORT=8787
 EnvironmentFile=$target_dir/.env
-Environment=RUNTIME_CONFIG_PATH=$target_dir/data/runtime-config.json
-ExecStart=$node_path $target_dir/src/server.mjs
+ExecStart=/usr/bin/env RUNTIME_CONFIG_PATH=$target_dir/data/runtime-config.json $node_path $target_dir/src/server.mjs
 Restart=on-failure
 RestartSec=2
 NoNewPrivileges=true
