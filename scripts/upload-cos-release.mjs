@@ -42,10 +42,10 @@ const RefreshStableAliases = !['0', 'false', 'no', 'off'].includes(
     .trim()
     .toLowerCase(),
 );
-const MULTIPART_THRESHOLD_BYTES = Number(process.env.COS_MULTIPART_THRESHOLD_BYTES || 8 * 1024 * 1024);
-const MULTIPART_CHUNK_SIZE_BYTES = Number(process.env.COS_MULTIPART_CHUNK_SIZE_BYTES || 4 * 1024 * 1024);
-const MULTIPART_ASYNC_LIMIT = Number(process.env.COS_MULTIPART_ASYNC_LIMIT || 3);
-const FILE_UPLOAD_CONCURRENCY = Number(process.env.COS_FILE_UPLOAD_CONCURRENCY || 3);
+const MULTIPART_THRESHOLD_BYTES = Number(process.env.COS_MULTIPART_THRESHOLD_BYTES || 1024 * 1024);
+const MULTIPART_CHUNK_SIZE_BYTES = Number(process.env.COS_MULTIPART_CHUNK_SIZE_BYTES || 1024 * 1024);
+const MULTIPART_ASYNC_LIMIT = Number(process.env.COS_MULTIPART_ASYNC_LIMIT || 4);
+const FILE_UPLOAD_CONCURRENCY = Number(process.env.COS_FILE_UPLOAD_CONCURRENCY || 2);
 const MAX_UPLOAD_ATTEMPTS = Number(process.env.COS_MAX_UPLOAD_ATTEMPTS || 4);
 const RETRY_BASE_DELAY_MS = 2_000;
 const SDK_REQUEST_TIMEOUT_MS = Number(process.env.COS_REQUEST_TIMEOUT_MS || 120_000);
