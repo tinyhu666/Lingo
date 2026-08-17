@@ -423,7 +423,12 @@
   border-color: transparent;
   box-shadow: 0 4px 14px -4px rgba(77,113,245,.45), inset 0 1px 0 rgba(255,255,255,.3);
 }
-.lg-btn--primary:hover { filter: brightness(1.05); transform: translateY(-1px); border-color: transparent; }
+.lg-btn--primary:hover {
+  background: var(--lg-brand-grad);
+  filter: brightness(1.05);
+  transform: translateY(-1px);
+  border-color: transparent;
+}
 .lg-btn--ghost { background: transparent; border-color: transparent; color: var(--lg-ink-2); }
 .lg-btn--ghost:hover { background: var(--lg-surf-2); border-color: transparent; }
 .lg-btn--warn { background: linear-gradient(135deg, #f59e0b 0%, #ea7917 100%); color: #fff; border-color: transparent; box-shadow: 0 4px 12px -3px rgba(234,121,23,.45); }
@@ -441,6 +446,95 @@
 
 .home-main-grid .lg-card__head {
   margin-bottom: 8px;
+}
+
+.home-main-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.home-main-grid__wide {
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+
+.hotkey-setting {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  min-height: 54px;
+  padding: 10px 12px;
+  border: 1px solid var(--lg-line-1);
+  border-radius: 10px;
+  background: var(--lg-surf-2);
+  transition: border-color var(--lg-dur) var(--lg-ease), box-shadow var(--lg-dur) var(--lg-ease);
+}
+
+.hotkey-setting--recording {
+  border-color: rgba(77, 113, 245, 0.52);
+  box-shadow: 0 0 0 3px rgba(77, 113, 245, 0.1);
+}
+
+.hotkey-setting__copy {
+  flex: 1;
+  min-width: 0;
+}
+
+.hotkey-setting__label {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--lg-ink-0);
+}
+
+.hotkey-setting__hint,
+.hotkey-setting__message {
+  margin-top: 2px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--lg-ink-2);
+}
+
+.hotkey-setting__controls {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.hotkey-setting__controls .lg-btn--sm {
+  min-height: 34px;
+  padding-inline: 12px;
+  font-size: 13px;
+}
+
+.hotkey-setting__status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 112px;
+  min-height: 32px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: var(--lg-surf-1);
+  border: 1px solid var(--lg-line-1);
+}
+
+.hotkey-setting__listening {
+  color: var(--lg-brand-1);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.hotkey-setting__message {
+  min-height: 18px;
+  padding-inline: 2px;
+}
+
+.hotkey-setting__message--error {
+  color: var(--lg-danger-ink);
+  font-weight: 600;
 }
 
 /* ── Toggle ──────────────────────────────────────────────── */
@@ -3434,6 +3528,24 @@
     html.platform-desktop .translate-mode-grid,
     body.platform-desktop .translate-mode-grid {
       grid-template-columns: 1fr;
+    }
+
+    .home-main-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .home-main-grid__wide {
+      grid-column: auto;
+    }
+
+    .hotkey-setting {
+      align-items: stretch;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .hotkey-setting__controls {
+      justify-content: flex-start;
     }
 
     .lingo-shell__sidebar {

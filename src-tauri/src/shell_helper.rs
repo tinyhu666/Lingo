@@ -11,7 +11,7 @@ const COPY_SETTLE_MAX_ATTEMPTS: usize = 30;
 const COPY_SETTLE_DELAY_MS: u64 = 20;
 const CLIPBOARD_RESTORE_DELAY_MS: u64 = 350;
 #[cfg(target_os = "windows")]
-const MODIFIER_RELEASE_MAX_ATTEMPTS: usize = 30;
+const MODIFIER_RELEASE_MAX_ATTEMPTS: usize = 60;
 #[cfg(target_os = "windows")]
 const MODIFIER_RELEASE_DELAY_MS: u64 = 10;
 
@@ -27,7 +27,14 @@ pub async fn trans_and_replace_text(app: &AppHandle) -> Result<()> {
         }
 
         #[cfg(target_os = "windows")]
-        wait_for_windows_modifiers_release().await;
+        {
+            let modifier_started = Instant::now();
+            wait_for_windows_modifiers_release().await?;
+            println!(
+                "[perf] modifier_release elapsed_ms={}",
+                modifier_started.elapsed().as_millis()
+            );
+        }
 
         let copy_started = Instant::now();
         let clipboard_probe = build_clipboard_probe();
@@ -41,7 +48,12 @@ pub async fn trans_and_replace_text(app: &AppHandle) -> Result<()> {
         );
 
         // 2. 读取剪贴板内容
+        let clipboard_started = Instant::now();
         let original_text = read_copied_text(app, &clipboard_probe).await?;
+        println!(
+            "[perf] clipboard_read elapsed_ms={}",
+            clipboard_started.elapsed().as_millis()
+        );
         println!("原始文本: {:?}", original_text);
         if original_text.trim().is_empty() {
             println!("剪贴板为空，跳过翻译");
@@ -147,7 +159,7 @@ async fn simulate_keyboard_shortcuts(app: &AppHandle, keys: &[&str]) -> Result<(
 }
 
 #[cfg(target_os = "windows")]
-async fn wait_for_windows_modifiers_release() {
+async fn wait_for_windows_modifiers_release() -> Result<()> {
     use windows_sys::Win32::UI::Input::KeyboardAndMouse::{
         GetAsyncKeyState, VK_CONTROL, VK_LWIN, VK_MENU, VK_RWIN, VK_SHIFT,
     };
@@ -157,12 +169,14 @@ async fn wait_for_windows_modifiers_release() {
             .into_iter()
             .any(|key| unsafe { GetAsyncKeyState(key as i32) } < 0);
         if !modifier_down {
-            return;
+            return Ok(());
         }
         if attempt + 1 < MODIFIER_RELEASE_MAX_ATTEMPTS {
             sleep(Duration::from_millis(MODIFIER_RELEASE_DELAY_MS)).await;
         }
     }
+
+    Err(anyhow!("快捷键仍处于按下状态，请松开组合键后重试"))
 }
 
 #[cfg(target_os = "windows")]
@@ -362,5 +376,12 @@ mod tests {
     fn clipboard_restore_waits_for_target_to_consume_paste() {
         let restore_delay_ms = std::hint::black_box(CLIPBOARD_RESTORE_DELAY_MS);
         assert!(restore_delay_ms >= 350);
+    }
+
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn modifier_release_wait_has_a_bounded_budget() {
+        let wait_budget_ms = MODIFIER_RELEASE_MAX_ATTEMPTS as u64 * MODIFIER_RELEASE_DELAY_MS;
+        assert!((500..=750).contains(&wait_budget_ms));
     }
 }
