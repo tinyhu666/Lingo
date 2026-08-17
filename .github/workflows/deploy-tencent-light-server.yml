@@ -137,5 +137,6 @@ jobs:
 
           bash "$target_dir/scripts/install-systemd.sh" "$target_dir"
           curl -fsS http://127.0.0.1:8787/analytics/public/overview >/dev/null
-          curl -fsS -H 'Host: buffpp.com' http://127.0.0.1/healthz >/dev/null
+          curl --retry 5 --retry-all-errors --retry-delay 1 -fsS \
+            -H 'Host: buffpp.com' http://127.0.0.1/healthz >/dev/null
           REMOTE

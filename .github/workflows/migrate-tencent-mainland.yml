@@ -336,10 +336,20 @@ jobs:
           sudo -n systemctl reload nginx
           rm -f "$nginx_config"
 
-          curl -fsS http://127.0.0.1:8787/healthz
-          curl -fsS -H 'Host: buffpp.com' http://127.0.0.1/healthz
-          curl -fsS -H 'Host: buffpp.com' http://127.0.0.1/ | grep -qi '<!doctype html'
-          curl -fsS -H 'Host: buffpp.com' http://127.0.0.1/analytics/public/overview >/dev/null
+          retry_curl() {
+            for attempt in {1..10}; do
+              if curl -fsS "$@"; then
+                return 0
+              fi
+              sleep 1
+            done
+            return 1
+          }
+
+          retry_curl http://127.0.0.1:8787/healthz
+          retry_curl -H 'Host: buffpp.com' http://127.0.0.1/healthz
+          retry_curl -H 'Host: buffpp.com' http://127.0.0.1/ | grep -qi '<!doctype html'
+          retry_curl -H 'Host: buffpp.com' http://127.0.0.1/analytics/public/overview >/dev/null
           REMOTE
 
       - name: Verify target before cutover

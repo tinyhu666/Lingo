@@ -117,5 +117,6 @@ jobs:
           tar -xzf /tmp/lingoweb-dist.tgz -C "$website_dir"
           rm -f /tmp/lingoweb-dist.tgz
 
-          curl -fsS -H 'Host: buffpp.com' http://127.0.0.1/ | grep -qi '<!doctype html'
+          curl --retry 5 --retry-all-errors --retry-delay 1 -fsS \
+            -H 'Host: buffpp.com' http://127.0.0.1/ | grep -qi '<!doctype html'
           REMOTE
