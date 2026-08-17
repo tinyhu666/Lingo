@@ -74,11 +74,16 @@ const upstream = createServer(async (req, res) => {
     upstreamState.primaryHits += 1;
     upstreamState.lastPrimarySystemPrompt = systemPrompt;
     expect(auth === 'Bearer primary-model-key', 'primary model auth should use primary key');
-    if (userText === 'same upstream outage') {
+    if (userText === 'same upstream outage' && payload.model === 'deepseek-v4-flash') {
       return jsonResponse(res, 503, { message: 'same upstream temporary outage' });
     }
+    if (userText === '你出蝴蝶吗？') {
+      return jsonResponse(res, 200, {
+        choices: [{ message: { content: payload.model === 'deepseek-v4-pro' ? 'Are you building Butterfly?' : userText } }],
+      });
+    }
     return jsonResponse(res, 200, {
-      choices: [{ message: { content: `PRIMARY:${userText}` } }],
+      choices: [{ message: { content: `${payload.model === 'deepseek-v4-pro' ? 'PRO' : 'PRIMARY'}:${userText}` } }],
     });
   }
 
@@ -257,8 +262,24 @@ try {
     'dota2 prompt should mention Dota 2 terminology',
   );
   expect(
+    upstreamState.lastFastSystemPrompt.includes('蝴蝶=Butterfly'),
+    'dota2 prompt should disambiguate the Butterfly item',
+  );
+  expect(
     upstreamState.lastFastSystemPrompt.includes('Style:pro'),
     'pro prompt should include style profile',
+  );
+
+  const mixedLanguageResult = await translate({
+    text: '你出 Butterfly 吗？',
+    translation_from: 'zh',
+    translation_to: 'en',
+    game_scene: 'dota2',
+  });
+  expect(mixedLanguageResult.status === 200, 'mixed Chinese and English request should translate');
+  expect(
+    upstreamState.lastFastSystemPrompt.includes('Translate in-game chat from Chinese to English.'),
+    'mixed input should preserve the configured translation direction',
   );
 
   const rewriteFast = await translate({
@@ -326,6 +347,16 @@ try {
     model_name: 'deepseek-v4-flash',
     api_key_env_name: 'PRIMARY_MODEL_API_KEY',
     temperature: 0.2,
+    fallback: {
+      enabled: true,
+      provider: 'openai-compatible',
+      api_url: `${upstreamBaseUrl}${primaryPath}`,
+      model_name: 'deepseek-v4-pro',
+      api_key_env_name: 'PRIMARY_MODEL_API_KEY',
+      timeout_ms: 5000,
+      max_tokens: 96,
+      temperature: 0.2,
+    },
     fast_lane: {
       enabled: true,
       provider: 'openai-compatible',
@@ -342,10 +373,34 @@ try {
 
   const primaryHitsBeforeSameUpstreamFailure = upstreamState.primaryHits;
   const sameUpstreamFailure = await translate({ text: 'same upstream outage' });
-  expect(sameUpstreamFailure.status === 503, 'same-upstream failure should be returned immediately');
+  expect(sameUpstreamFailure.status === 200, 'same-upstream Flash failure should use V4 Pro');
   expect(
-    upstreamState.primaryHits === primaryHitsBeforeSameUpstreamFailure + 1,
-    'same-upstream failure must not trigger a duplicate fallback request',
+    sameUpstreamFailure.json.model_route === 'fast-pro-fallback',
+    'same-upstream Flash failure should report the Pro fallback route',
+  );
+  expect(
+    sameUpstreamFailure.json.translated_text === 'PRO:same upstream outage',
+    'Pro fallback content should be returned',
+  );
+  expect(
+    upstreamState.primaryHits === primaryHitsBeforeSameUpstreamFailure + 2,
+    'same-upstream failure should call Flash once and Pro once without retrying Flash',
+  );
+
+  const unchangedItemResult = await translate({
+    text: '你出蝴蝶吗？',
+    translation_from: 'zh',
+    translation_to: 'en',
+    game_scene: 'dota2',
+  });
+  expect(unchangedItemResult.status === 200, 'unchanged Flash output should use V4 Pro');
+  expect(
+    unchangedItemResult.json.model_route === 'fast-pro-fallback',
+    'unchanged Flash output should report the Pro fallback route',
+  );
+  expect(
+    unchangedItemResult.json.translated_text === 'Are you building Butterfly?',
+    'Dota 2 item question should use the canonical Butterfly item name',
   );
 
   const toxicPrimary = await translate({
@@ -361,7 +416,7 @@ try {
     'lol prompt should include explicit game context',
   );
   expect(
-    upstreamState.lastPrimarySystemPrompt.includes('baron'),
+    upstreamState.lastPrimarySystemPrompt.includes('Baron'),
     'lol prompt should mention League of Legends terminology',
   );
   expect(

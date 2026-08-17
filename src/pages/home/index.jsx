@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CN, DE, ES, FR, JP, KR, RU, SG, US } from 'country-flag-icons/react/3x2';
 import { useStore } from '../../components/StoreProvider';
 import { useI18n } from '../../i18n/I18nProvider';
-import { Chip, Toggle, Kbd, PageHead } from '../../components/lg';
+import { Toggle, Kbd, PageHead } from '../../components/lg';
 import {
   ITarget,
   IPower,
@@ -17,6 +17,11 @@ import {
   getLanguageLabel,
   getLanguageMeta,
 } from '../../constants/languages';
+import {
+  DEFAULT_GAME_SCENE,
+  GAME_SCENE_OPTIONS,
+  getGameSceneMeta,
+} from '../../constants/gameScenes';
 import {
   buildHotkeyFromKeyCodes,
   defaultTranslatorHotkeyCodes,
@@ -117,15 +122,12 @@ function DirectionCard() {
   };
 
   return (
-    <div className='lg-card'>
+    <div className='lg-card home-direction-card'>
       <div className='lg-card__head'>
         <div className='lg-card__icon'>
           <ISwap />
         </div>
-        <div>
-          <div className='lg-card__title'>{t('home.cardDirectionTitle')}</div>
-          <div className='lg-card__sub'>{t('home.cardDirectionSub')}</div>
-        </div>
+        <div className='lg-card__title'>{t('home.cardDirectionTitle')}</div>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         <div ref={fromTriggerRef} style={{ position: 'relative', flex: 1, minWidth: 0 }}>
@@ -180,6 +182,90 @@ function DirectionCard() {
   );
 }
 
+function GameSceneCard() {
+  const { settings, updateSettings } = useStore();
+  const { locale, t } = useI18n();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const triggerRef = useRef(null);
+  const selected = settings?.game_scene || DEFAULT_GAME_SCENE;
+  const selectedMeta = getGameSceneMeta(selected, locale);
+  const options = useMemo(
+    () =>
+      Object.fromEntries(
+        GAME_SCENE_OPTIONS.map((item) => [
+          item.id,
+          getGameSceneMeta(item.id, locale).label,
+        ]),
+      ),
+    [locale],
+  );
+
+  const handleSelect = async (gameScene) => {
+    setMenuOpen(false);
+    try {
+      await updateSettings({ game_scene: gameScene });
+    } catch (error) {
+      showError(t('home.gameScene.updateFailed', { error: toErrorMessage(error) }));
+    }
+  };
+
+  const renderGame = (value, label) => {
+    const meta = getGameSceneMeta(value, locale);
+    return (
+      <span className='game-picker__option'>
+        <span className='game-picker__icon' aria-hidden='true'>
+          {meta.icon ? (
+            <img
+              src={meta.icon}
+              alt=''
+              className={`game-picker__image game-picker__image--${meta.iconFit}`}
+            />
+          ) : (
+            <span className='game-picker__fallback'>G</span>
+          )}
+        </span>
+        <span>{label}</span>
+      </span>
+    );
+  };
+
+  return (
+    <div className='lg-card home-game-card'>
+      <div className='lg-card__head'>
+        <div className='lg-card__icon'>
+          <ITarget />
+        </div>
+        <div>
+          <div className='lg-card__title'>{t('home.gameScene.title')}</div>
+          <div className='lg-card__sub'>{t('home.cardGameSub')}</div>
+        </div>
+      </div>
+      <div ref={triggerRef} className='game-picker'>
+        <button
+          type='button'
+          className='game-picker__trigger'
+          aria-haspopup='menu'
+          aria-expanded={menuOpen}
+          onClick={() => setMenuOpen((open) => !open)}>
+          {renderGame(selectedMeta.id, selectedMeta.label)}
+          <IChevDown className='game-picker__chevron' />
+        </button>
+        <DropdownMenu
+          show={menuOpen}
+          onClose={() => setMenuOpen(false)}
+          options={options}
+          currentValue={selectedMeta.id}
+          onSelect={handleSelect}
+          direction='down'
+          anchorRef={triggerRef}
+          className='game-picker__menu'
+          renderOption={renderGame}
+        />
+      </div>
+    </div>
+  );
+}
+
 function EnableCard() {
   const { settings, updateSettings, syncSettings } = useStore();
   const { t } = useI18n();
@@ -221,30 +307,12 @@ function EnableCard() {
   };
 
   return (
-    <div className='lg-card'>
-      <div className='lg-card__head'>
+    <div className='lg-card home-enable-card'>
+      <div className='lg-card__head home-enable-card__head'>
         <div className='lg-card__icon'>
           <IPower />
         </div>
-        <div>
-          <div className='lg-card__title'>{t('home.enableStatus.title')}</div>
-          <div className='lg-card__sub'>{t('home.cardEnableSub')}</div>
-        </div>
-      </div>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ position: 'relative', width: 10, height: 10 }}>
-            <div className={isEnabled ? 'lg-pulse' : ''} />
-          </div>
-          <div>
-            <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--lg-ink-0)' }}>
-              {isEnabled ? t('common.enabled') : t('common.paused')}
-            </div>
-            <div style={{ fontSize: 12, color: 'var(--lg-ink-3)', marginTop: 1 }}>
-              {t('home.cardEnableIdleMeta')}
-            </div>
-          </div>
-        </div>
+        <div className='lg-card__title'>{t('home.enableStatus.title')}</div>
         <Toggle
           on={isEnabled}
           onClick={handleToggle}
@@ -403,10 +471,7 @@ function HotkeyCard() {
         </div>
       </div>
       <div className={`hotkey-setting${recording ? ' hotkey-setting--recording' : ''}`}>
-        <div className='hotkey-setting__copy'>
-          <div className='hotkey-setting__label'>{t('home.cardHotkeyRowTranslate')}</div>
-          <div className='hotkey-setting__hint'>{t('home.cardHotkeyRowTranslateHint')}</div>
-        </div>
+        <div className='hotkey-setting__label'>{t('home.hotkey.currentLabel')}</div>
         <div className='hotkey-setting__controls'>
           <div className='hotkey-setting__status' aria-live='polite' aria-atomic='true'>
             {recording ? (
@@ -424,7 +489,7 @@ function HotkeyCard() {
             className={`lg-btn lg-btn--sm${recording ? ' lg-btn--warn' : ' lg-btn--primary'}`}
             onClick={recording ? cancelRecording : beginRecording}
             disabled={saving}
-            aria-describedby='translator-hotkey-help'>
+            aria-describedby={inlineError || recording ? 'translator-hotkey-help' : undefined}>
             {saving ? <Spinner style={{ width: 14, height: 14 }} /> : null}
             {saving
               ? t('home.hotkey.saving')
@@ -441,12 +506,14 @@ function HotkeyCard() {
           </button>
         </div>
       </div>
-      <div
-        id='translator-hotkey-help'
-        className={`hotkey-setting__message${inlineError ? ' hotkey-setting__message--error' : ''}`}
-        role={inlineError ? 'alert' : 'status'}>
-        {inlineError || (recording ? t('home.hotkey.escapeHint') : t('home.hotkey.currentHint'))}
-      </div>
+      {inlineError || recording ? (
+        <div
+          id='translator-hotkey-help'
+          className={`hotkey-setting__message${inlineError ? ' hotkey-setting__message--error' : ''}`}
+          role={inlineError ? 'alert' : 'status'}>
+          {inlineError || t('home.hotkey.escapeHint')}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -477,10 +544,7 @@ function WorkflowCard() {
         <div className='lg-card__icon'>
           <ITarget />
         </div>
-        <div>
-          <div className='lg-card__title'>{t('home.cardWorkflowTitle')}</div>
-          <div className='lg-card__sub'>{t('home.cardWorkflowSub')}</div>
-        </div>
+        <div className='lg-card__title'>{t('home.cardWorkflowTitle')}</div>
       </div>
       <div style={{ display: 'flex', alignItems: 'stretch', gap: 8 }}>
         {steps.map((step, index) => (
@@ -541,32 +605,18 @@ function WorkflowCard() {
   );
 }
 
-export default function Home({ onNavigate }) {
-  const { settings } = useStore();
+export default function Home() {
   const { t } = useI18n();
-  const enabled = settings?.app_enabled ?? true;
 
   return (
     <>
       <PageHead
         title={t('home.pageTitle')}
         sub={t('home.pageSub')}
-        right={
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <Chip tone={enabled ? 'success' : 'warn'} dot lg>
-              {enabled ? t('sidebar.serviceRunning') : t('sidebar.servicePaused')}
-            </Chip>
-            <button
-              type='button'
-              className='lg-btn lg-btn--sm'
-              onClick={() => onNavigate?.('translate')}>
-              <ITarget /> {t('home.heroTryBtn')}
-            </button>
-          </div>
-        }
       />
       <div className='home-main-grid'>
         <DirectionCard />
+        <GameSceneCard />
         <EnableCard />
         <div className='home-main-grid__wide'>
           <HotkeyCard />

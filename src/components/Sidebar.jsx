@@ -46,7 +46,6 @@ export default function Sidebar({ activeItem, setActiveItem }) {
           <div className='lg-side-status__title'>
             {isEnabled ? t('sidebar.serviceRunning') : t('sidebar.servicePaused')}
           </div>
-          <div className='lg-side-status__meta'>{t('sidebar.hotkeyReady')}</div>
         </div>
         <span className={`lg-chip ${isEnabled ? 'lg-chip--success' : 'lg-chip--warn'}`}>
           {isEnabled ? t('common.enabled') : t('common.paused')}

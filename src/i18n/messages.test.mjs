@@ -26,3 +26,12 @@ test('every supported locale provides the same non-empty message keys', () => {
     }
   }
 });
+
+test('home copy describes the user action without duplicate product jargon', () => {
+  const zh = messages['zh-CN'];
+
+  assert.equal(zh.home.pageTitle, '游戏内聊天翻译');
+  assert.equal(zh.home.cardWorkflowTitle, '使用教程');
+  assert.equal(zh.home.cardHotkeyTitle, '翻译快捷键');
+  assert.equal(zh.home.gameScene.title, '选择游戏');
+});

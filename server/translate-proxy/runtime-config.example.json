@@ -7,6 +7,16 @@
   "timeout_ms": 12000,
   "max_tokens": 96,
   "temperature": 0.2,
+  "fallback": {
+    "enabled": true,
+    "provider": "openai-compatible",
+    "api_url": "https://api.deepseek.com/v1/chat/completions",
+    "model_name": "deepseek-v4-pro",
+    "api_key_env_name": "DEEPSEEK_API_KEY",
+    "timeout_ms": 12000,
+    "max_tokens": 96,
+    "temperature": 0.2
+  },
   "fast_lane": {
     "enabled": true,
     "provider": "openai-compatible",
