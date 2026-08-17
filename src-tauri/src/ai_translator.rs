@@ -912,6 +912,14 @@ mod tests {
         let (from, to) = resolve_translation_direction("gank 下路", "zh", "en");
         assert_eq!(from, "zh");
         assert_eq!(to, "en");
+
+        let (from, to) = resolve_translation_direction("你出 Butterfly 吗？", "zh", "en");
+        assert_eq!(from, "zh");
+        assert_eq!(to, "en");
+
+        let (from, to) = resolve_translation_direction("你出蝴蝶吗？", "zh", "en");
+        assert_eq!(from, "zh");
+        assert_eq!(to, "en");
     }
 
     #[test]

@@ -45,16 +45,6 @@ export const GAME_SCENE_OPTIONS = [
     },
   },
   {
-    id: 'wow',
-    icon: worldOfWarcraftIcon,
-    iconFit: 'contain',
-    labels: {
-      zh: '\u9b54\u517d\u4e16\u754c',
-      en: 'World of Warcraft',
-      ru: 'World of Warcraft',
-    },
-  },
-  {
     id: 'overwatch',
     icon: overwatchIcon,
     iconFit: 'contain',
@@ -62,6 +52,16 @@ export const GAME_SCENE_OPTIONS = [
       zh: '\u5b88\u671b\u5148\u950b',
       en: 'Overwatch',
       ru: 'Overwatch',
+    },
+  },
+  {
+    id: 'wow',
+    icon: worldOfWarcraftIcon,
+    iconFit: 'contain',
+    labels: {
+      zh: '\u9b54\u517d\u4e16\u754c',
+      en: 'World of Warcraft',
+      ru: 'World of Warcraft',
     },
   },
   {

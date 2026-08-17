@@ -49,25 +49,25 @@ const GAME_SCENE_PROFILES = {
     id: 'dota2',
     label: 'Dota 2',
     promptInstruction:
-      'Prefer Dota 2 terms such as hero, lane, rune, buyback, Roshan, BKB, smoke, and high ground when they fit naturally.',
+      'Use established Dota 2 terminology. Canonical mappings when context fits: 蝴蝶=Butterfly, 黑皇杖/BKB=Black King Bar/BKB, 跳刀=Blink Dagger, 肉山=Roshan, 不朽盾=Aegis, 买活=buyback, 开雾=smoke, 高地=high ground. Treat these as game entities, not their everyday meanings.',
   },
   lol: {
     id: 'lol',
     label: 'League of Legends',
     promptInstruction:
-      'Prefer League of Legends terms such as champion, lane, jungle, dragon, baron, flash, TP, and objective when they fit naturally.',
+      'Use established League of Legends terminology. Canonical mappings when context fits: 英雄=champion, 打野=jungler, 闪现=Flash, 传送=Teleport/TP, 大龙=Baron, 小龙=Dragon, 补刀=CS, 推线=push the wave.',
   },
   wow: {
     id: 'wow',
     label: 'World of Warcraft',
     promptInstruction:
-      'Prefer World of Warcraft terms such as dungeon, raid, healer, tank, aggro, pull, cooldown, and wipe when they fit naturally.',
+      'Use established World of Warcraft terminology. Canonical mappings when context fits: 副本=dungeon, 团本=raid, 治疗=healer, 坦克=tank, 仇恨=aggro, 开怪=pull, 冷却=cooldown, 灭团=wipe.',
   },
   overwatch: {
     id: 'overwatch',
     label: 'Overwatch',
     promptInstruction:
-      'Prefer Overwatch terms such as hero, ult, payload, point, flank, support, dive, and stagger when they fit naturally.',
+      'Use established Overwatch terminology. Canonical mappings when context fits: 英雄=hero, 大招=ult, 运载目标=payload, 占点=take the point, 绕后=flank, 辅助=support, 放狗=dive, 续点=contest.',
   },
   other: {
     id: 'other',
@@ -315,6 +315,28 @@ const extractAnthropicContent = (payload) =>
         .trim()
     : '';
 
+const normalizeComparableTranslation = (value) =>
+  String(value || '')
+    .normalize('NFKC')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLocaleLowerCase();
+
+const assertTranslationChanged = ({ result, text, promptVariant }) => {
+  if (
+    promptVariant === 'translate' &&
+    normalizeComparableTranslation(result?.translatedText) === normalizeComparableTranslation(text)
+  ) {
+    const error = new Error('Model returned unchanged source text');
+    error.status = 502;
+    error.fromUpstream = true;
+    error.attemptCount = Number(result?.attemptCount || 1);
+    error.modelLatencyMs = Number(result?.modelLatencyMs || 0);
+    throw error;
+  }
+  return result;
+};
+
 const describeLanguage = (value, fallback = 'the requested language') => {
   const normalized = String(value || '').trim();
   if (!normalized) {
@@ -403,6 +425,7 @@ const buildSystemPrompt = (payload) => {
     `Style:${translationMode}. ${styleInstruction}`,
     `Game:${gameSceneProfile.label}. ${gameSceneProfile.promptInstruction}`,
     dailyInstruction,
+    'Mixed-language input is still one message: translate the source-language parts and preserve established game names, abbreviations, and already-correct target-language terms.',
     'Output one concise send-ready line only. Prefer established in-game terms when they help. No notes or quotes.',
   ].join(' ');
 };
@@ -696,6 +719,19 @@ const requestModelOnce = async ({
 
 const shouldRetryModelRequest = (error) => String(error?.message || '').includes('Empty model response');
 
+const shouldUseConfiguredFallback = (error) => {
+  const status = Number(error?.status || 0);
+  if ([400, 401, 403, 404, 405, 422].includes(status)) {
+    return false;
+  }
+  if (status === 408 || status === 425 || status === 429 || status >= 500) {
+    return true;
+  }
+  const name = String(error?.name || '').toLowerCase();
+  const message = String(error?.message || '').toLowerCase();
+  return status === 0 && (name.includes('abort') || message.includes('abort') || message.includes('fetch'));
+};
+
 const requestModel = async ({
   config,
   apiKey,
@@ -723,6 +759,8 @@ const requestModel = async ({
     };
   } catch (error) {
     if (!shouldRetryModelRequest(error)) {
+      error.attemptCount = Number(error?.attemptCount || 1);
+      error.modelLatencyMs = Date.now() - startedAt;
       throw error;
     }
 
@@ -735,20 +773,26 @@ const requestModel = async ({
       }),
     );
 
-    const retryResult = await requestModelOnce({
-      config,
-      apiKey,
-      text,
-      traceId,
-      effectiveMaxTokens,
-      effectiveTemperature,
-      systemPrompt: `${systemPrompt} Never return an empty response.`,
-    });
-    return {
-      ...retryResult,
-      attemptCount: 2,
-      modelLatencyMs: Date.now() - startedAt,
-    };
+    try {
+      const retryResult = await requestModelOnce({
+        config,
+        apiKey,
+        text,
+        traceId,
+        effectiveMaxTokens,
+        effectiveTemperature,
+        systemPrompt: `${systemPrompt} Never return an empty response.`,
+      });
+      return {
+        ...retryResult,
+        attemptCount: 2,
+        modelLatencyMs: Date.now() - startedAt,
+      };
+    } catch (retryError) {
+      retryError.attemptCount = 2;
+      retryError.modelLatencyMs = Date.now() - startedAt;
+      throw retryError;
+    }
   }
 };
 
@@ -919,6 +963,70 @@ const routeTranslate = async (req, res, traceId) => {
   } = await requestTranslatedText({
     cacheKey,
     load: async () => {
+      const runFallbackModel = async ({ error, originConfig, modelRouteName }) => {
+        const fallbackConfig = config.fallback;
+        if (
+          !fallbackConfig?.enabled ||
+          !shouldUseConfiguredFallback(error) ||
+          sharesModelUpstream(originConfig, fallbackConfig)
+        ) {
+          throw error;
+        }
+
+        const fallbackApiKey = resolveApiKey(process.env, fallbackConfig);
+        if (!fallbackApiKey) {
+          console.error(
+            JSON.stringify({
+              trace_id: traceId,
+              level: 'fatal',
+              message: 'Fallback model is missing API key env',
+              api_key_env_name: fallbackConfig.api_key_env_name,
+            }),
+          );
+          throw error;
+        }
+
+        const fallbackTuning = resolveRequestTuning({ config: fallbackConfig, payload, text });
+        console.warn(
+          JSON.stringify({
+            trace_id: traceId,
+            message: 'Preferred model failed, using configured fallback model',
+            model_route: modelRouteName,
+            preferred_model: originConfig.model_name,
+            fallback_model: fallbackConfig.model_name,
+            preferred_status: Number(error?.status || 0),
+            preferred_error: String(error?.message || error),
+          }),
+        );
+
+        const fallbackResult = assertTranslationChanged({
+          result: await requestModel({
+            config: fallbackConfig,
+            apiKey: fallbackApiKey,
+            systemPrompt: fallbackTuning.systemPrompt,
+            text,
+            traceId,
+            effectiveMaxTokens: fallbackTuning.effectiveMaxTokens,
+            effectiveTemperature: fallbackTuning.effectiveTemperature,
+          }),
+          text,
+          promptVariant: fallbackTuning.promptVariant,
+        });
+        return {
+          ...fallbackResult,
+          attemptCount: Number(error?.attemptCount || 1) + fallbackResult.attemptCount,
+          modelLatencyMs: Number(error?.modelLatencyMs || 0) + fallbackResult.modelLatencyMs,
+          cacheable: false,
+          modelRoute: modelRouteName,
+          modelName: fallbackConfig.model_name,
+          modelProvider: fallbackConfig.provider,
+          promptVariant: fallbackTuning.promptVariant,
+          effectiveMaxTokens: fallbackTuning.effectiveMaxTokens,
+          effectiveTemperature: fallbackTuning.effectiveTemperature,
+          styleProfile: fallbackTuning.styleProfile,
+        };
+      };
+
       const runPrimaryModel = async (modelRouteName) => {
         const primaryApiKey = resolveApiKey(process.env, config);
         if (!primaryApiKey) {
@@ -940,15 +1048,28 @@ const routeTranslate = async (req, res, traceId) => {
           throw error;
         }
 
-        const result = await requestModel({
-          config,
-          apiKey: primaryApiKey,
-          systemPrompt: primaryTuning.systemPrompt,
-          text,
-          traceId,
-          effectiveMaxTokens: primaryTuning.effectiveMaxTokens,
-          effectiveTemperature: primaryTuning.effectiveTemperature,
-        });
+        let result;
+        try {
+          result = assertTranslationChanged({
+            result: await requestModel({
+              config,
+              apiKey: primaryApiKey,
+              systemPrompt: primaryTuning.systemPrompt,
+              text,
+              traceId,
+              effectiveMaxTokens: primaryTuning.effectiveMaxTokens,
+              effectiveTemperature: primaryTuning.effectiveTemperature,
+            }),
+            text,
+            promptVariant: primaryTuning.promptVariant,
+          });
+        } catch (error) {
+          return runFallbackModel({
+            error,
+            originConfig: config,
+            modelRouteName: `${modelRouteName}-pro-fallback`,
+          });
+        }
         return {
           ...result,
           cacheable: modelRouteName === 'primary',
@@ -981,14 +1102,18 @@ const routeTranslate = async (req, res, traceId) => {
       }
 
       try {
-        const fastLaneResult = await requestModel({
-          config: selectedRouteConfig,
-          apiKey: fastLaneApiKey,
-          systemPrompt: selectedTuning.systemPrompt,
+        const fastLaneResult = assertTranslationChanged({
+          result: await requestModel({
+            config: selectedRouteConfig,
+            apiKey: fastLaneApiKey,
+            systemPrompt: selectedTuning.systemPrompt,
+            text,
+            traceId,
+            effectiveMaxTokens: selectedTuning.effectiveMaxTokens,
+            effectiveTemperature: selectedTuning.effectiveTemperature,
+          }),
           text,
-          traceId,
-          effectiveMaxTokens: selectedTuning.effectiveMaxTokens,
-          effectiveTemperature: selectedTuning.effectiveTemperature,
+          promptVariant: selectedTuning.promptVariant,
         });
         return {
           ...fastLaneResult,
@@ -1015,7 +1140,11 @@ const routeTranslate = async (req, res, traceId) => {
               fast_error: String(error?.message || error),
             }),
           );
-          throw error;
+          return runFallbackModel({
+            error,
+            originConfig: selectedRouteConfig,
+            modelRouteName: 'fast-pro-fallback',
+          });
         }
         console.warn(
           JSON.stringify({

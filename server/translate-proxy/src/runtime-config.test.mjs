@@ -10,6 +10,9 @@ test('defaults to the official DeepSeek V4 Flash endpoint and server-side key', 
   assert.equal(config.api_url, 'https://api.deepseek.com/v1/chat/completions');
   assert.equal(config.model_name, 'deepseek-v4-flash');
   assert.equal(config.api_key_env_name, 'DEEPSEEK_API_KEY');
+  assert.equal(config.fallback.enabled, true);
+  assert.equal(config.fallback.model_name, 'deepseek-v4-pro');
+  assert.equal(config.fallback.api_key_env_name, 'DEEPSEEK_API_KEY');
   assert.equal(config.fast_lane.api_url, 'https://api.deepseek.com/v1/chat/completions');
   assert.equal(config.fast_lane.model_name, 'deepseek-v4-flash');
   assert.equal(config.fast_lane.api_key_env_name, 'DEEPSEEK_API_KEY');
