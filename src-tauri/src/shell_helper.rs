@@ -1,4 +1,5 @@
 use crate::ai_translator;
+use crate::translation_diagnostics::{self, DiagnosticMetadata};
 use anyhow::{anyhow, Result};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use tauri::AppHandle;
@@ -15,21 +16,71 @@ const MODIFIER_RELEASE_MAX_ATTEMPTS: usize = 60;
 #[cfg(target_os = "windows")]
 const MODIFIER_RELEASE_DELAY_MS: u64 = 10;
 
-pub async fn trans_and_replace_text(app: &AppHandle) -> Result<()> {
+fn emit_stage_failure(
+    app: &AppHandle,
+    operation_id: &str,
+    stage: &str,
+    total_started: Instant,
+    error: &anyhow::Error,
+) {
+    translation_diagnostics::emit(
+        app,
+        operation_id,
+        stage,
+        "failed",
+        total_started.elapsed().as_millis() as u64,
+        DiagnosticMetadata {
+            error_code: Some(format!("{stage}_failed")),
+            error_message: Some(error.to_string()),
+            ..Default::default()
+        },
+    );
+}
+
+pub async fn trans_and_replace_text(app: &AppHandle, operation_id: &str) -> Result<()> {
     let clipboard_backup = app.clipboard().read_text().ok();
     let result = async {
         let total_started = Instant::now();
+        translation_diagnostics::emit(
+            app,
+            operation_id,
+            "pipeline",
+            "started",
+            0,
+            DiagnosticMetadata::default(),
+        );
 
-        let settings = crate::store::get_settings(app)?;
+        let settings = match crate::store::get_settings(app) {
+            Ok(settings) => settings,
+            Err(error) => {
+                let error = anyhow!(error);
+                emit_stage_failure(app, operation_id, "settings", total_started, &error);
+                return Err(error);
+            }
+        };
         if !settings.app_enabled {
             println!("应用已禁用，跳过翻译动作");
+            translation_diagnostics::emit(
+                app,
+                operation_id,
+                "pipeline",
+                "skipped",
+                total_started.elapsed().as_millis() as u64,
+                DiagnosticMetadata {
+                    error_code: Some("app_disabled".to_string()),
+                    ..Default::default()
+                },
+            );
             return Ok(());
         }
 
         #[cfg(target_os = "windows")]
         {
             let modifier_started = Instant::now();
-            wait_for_windows_modifiers_release().await?;
+            if let Err(error) = wait_for_windows_modifiers_release().await {
+                emit_stage_failure(app, operation_id, "modifier_release", total_started, &error);
+                return Err(error);
+            }
             println!(
                 "[perf] modifier_release elapsed_ms={}",
                 modifier_started.elapsed().as_millis()
@@ -38,41 +89,136 @@ pub async fn trans_and_replace_text(app: &AppHandle) -> Result<()> {
 
         let copy_started = Instant::now();
         let clipboard_probe = build_clipboard_probe();
-        app.clipboard().write_text(&clipboard_probe)?;
+        if let Err(error) = app.clipboard().write_text(&clipboard_probe) {
+            let error = anyhow!(error);
+            emit_stage_failure(app, operation_id, "clipboard_probe", total_started, &error);
+            return Err(error);
+        }
 
         // 1. 复制选中文本
-        simulate_keyboard_shortcuts(app, copy_shortcut_keys(settings.daily_mode)).await?;
+        if let Err(error) =
+            simulate_keyboard_shortcuts(app, copy_shortcut_keys(settings.daily_mode)).await
+        {
+            emit_stage_failure(app, operation_id, "copy", total_started, &error);
+            return Err(error);
+        }
         println!(
             "[perf] copy_phase elapsed_ms={}",
             copy_started.elapsed().as_millis()
         );
+        translation_diagnostics::emit(
+            app,
+            operation_id,
+            "copy",
+            "completed",
+            total_started.elapsed().as_millis() as u64,
+            DiagnosticMetadata::default(),
+        );
 
         // 2. 读取剪贴板内容
         let clipboard_started = Instant::now();
-        let original_text = read_copied_text(app, &clipboard_probe).await?;
+        let original_text = match read_copied_text(app, &clipboard_probe).await {
+            Ok(text) => text,
+            Err(error) => {
+                emit_stage_failure(app, operation_id, "clipboard_read", total_started, &error);
+                return Err(error);
+            }
+        };
         println!(
             "[perf] clipboard_read elapsed_ms={}",
             clipboard_started.elapsed().as_millis()
         );
-        println!("原始文本: {:?}", original_text);
         if original_text.trim().is_empty() {
             println!("剪贴板为空，跳过翻译");
+            translation_diagnostics::emit(
+                app,
+                operation_id,
+                "clipboard_read",
+                "skipped",
+                total_started.elapsed().as_millis() as u64,
+                DiagnosticMetadata {
+                    text_length: Some(0),
+                    error_code: Some("empty_selection".to_string()),
+                    ..Default::default()
+                },
+            );
             return Ok(());
         }
+        let text_length = original_text.chars().count();
+        translation_diagnostics::emit(
+            app,
+            operation_id,
+            "clipboard_read",
+            "completed",
+            total_started.elapsed().as_millis() as u64,
+            DiagnosticMetadata {
+                text_length: Some(text_length),
+                ..Default::default()
+            },
+        );
 
         // 3. 调用 AI 翻译
         let model_started = Instant::now();
-        let translated = ai_translator::translate_with_gpt(&original_text, &settings).await?;
+        translation_diagnostics::emit(
+            app,
+            operation_id,
+            "request",
+            "started",
+            total_started.elapsed().as_millis() as u64,
+            DiagnosticMetadata {
+                text_length: Some(text_length),
+                translation_from: Some(settings.translation_from.clone()),
+                translation_to: Some(settings.translation_to.clone()),
+                translation_mode: Some(settings.translation_mode.clone()),
+                game_scene: Some(settings.game_scene.clone()),
+                daily_mode: Some(settings.daily_mode),
+                ..Default::default()
+            },
+        );
+        let translated = match ai_translator::translate_with_gpt(
+            &original_text,
+            &settings,
+            operation_id,
+        )
+        .await
+        {
+            Ok(translated) => translated,
+            Err(error) => {
+                emit_stage_failure(app, operation_id, "request", total_started, &error);
+                return Err(error);
+            }
+        };
         println!(
             "[perf] translate_request elapsed_ms={}",
             model_started.elapsed().as_millis()
         );
-        println!("翻译结果: {:?}", translated);
+        translation_diagnostics::emit(
+            app,
+            operation_id,
+            "request",
+            "completed",
+            total_started.elapsed().as_millis() as u64,
+            DiagnosticMetadata {
+                text_length: Some(text_length),
+                trace_id: translated.trace_id.clone(),
+                model: translated.model.clone(),
+                ..Default::default()
+            },
+        );
 
         // 4. 粘贴翻译结果
         let paste_started = Instant::now();
-        app.clipboard().write_text(translated)?;
-        simulate_keyboard_shortcuts(app, paste_shortcut_keys(settings.daily_mode)).await?;
+        if let Err(error) = app.clipboard().write_text(&translated.text) {
+            let error = anyhow!(error);
+            emit_stage_failure(app, operation_id, "paste", total_started, &error);
+            return Err(error);
+        }
+        if let Err(error) =
+            simulate_keyboard_shortcuts(app, paste_shortcut_keys(settings.daily_mode)).await
+        {
+            emit_stage_failure(app, operation_id, "paste", total_started, &error);
+            return Err(error);
+        }
         println!(
             "[perf] paste_phase elapsed_ms={}",
             paste_started.elapsed().as_millis()
@@ -80,6 +226,19 @@ pub async fn trans_and_replace_text(app: &AppHandle) -> Result<()> {
         println!(
             "[perf] pipeline_total elapsed_ms={}",
             total_started.elapsed().as_millis()
+        );
+        translation_diagnostics::emit(
+            app,
+            operation_id,
+            "pipeline",
+            "succeeded",
+            total_started.elapsed().as_millis() as u64,
+            DiagnosticMetadata {
+                text_length: Some(text_length),
+                trace_id: translated.trace_id,
+                model: translated.model,
+                ..Default::default()
+            },
         );
 
         Ok(())

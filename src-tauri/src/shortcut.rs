@@ -1,5 +1,6 @@
 use crate::shell_helper::{send_phrase, trans_and_replace_text};
 use crate::store::{get_settings, update_settings_field, HotkeyConfig, Phrase};
+use crate::translation_diagnostics::{self, DiagnosticMetadata};
 use std::collections::HashSet;
 use std::str::FromStr;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -128,11 +129,23 @@ fn create_trans_handler(
     let app = Arc::new(app);
     move |_app, _shortcut, event| {
         if event.state() == ShortcutState::Pressed {
+            let operation_id = translation_diagnostics::new_operation_id();
             if TRANSLATION_IN_FLIGHT
                 .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
                 .is_err()
             {
                 println!("翻译任务进行中，忽略重复触发");
+                translation_diagnostics::emit(
+                    app.as_ref(),
+                    &operation_id,
+                    "busy",
+                    "skipped",
+                    0,
+                    DiagnosticMetadata {
+                        error_code: Some("translation_in_flight".to_string()),
+                        ..Default::default()
+                    },
+                );
                 let _ = app.emit("translation_busy", "busy");
                 return;
             }
@@ -140,7 +153,7 @@ fn create_trans_handler(
             let app_clone = Arc::clone(&app);
             tauri::async_runtime::spawn(async move {
                 let _guard = InFlightGuard;
-                if let Err(e) = trans_and_replace_text(app_clone.as_ref()).await {
+                if let Err(e) = trans_and_replace_text(app_clone.as_ref(), &operation_id).await {
                     println!("翻译替换失败: {:?}", e);
                     let _ = app_clone.emit("translation_failed", format!("翻译失败：{}", e));
                 }

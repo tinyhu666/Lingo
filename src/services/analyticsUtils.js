@@ -1,5 +1,5 @@
 export const ANALYTICS_TIMEZONE = 'Asia/Shanghai';
-export const ANALYTICS_QUEUE_LIMIT = 200;
+export const ANALYTICS_QUEUE_LIMIT = 500;
 
 export const EMPTY_ANALYTICS_STATE = Object.freeze({
   last_seen_version: null,
@@ -12,6 +12,16 @@ const dayKeyFormatters = new Map();
 export const toNonEmptyString = (value) => {
   const normalized = String(value || '').trim();
   return normalized || null;
+};
+
+const toBoundedString = (value, maxLength) => {
+  const normalized = toNonEmptyString(value);
+  return normalized ? normalized.slice(0, maxLength) : null;
+};
+
+const toNonNegativeInteger = (value) => {
+  const normalized = Number(value);
+  return Number.isFinite(normalized) && normalized >= 0 ? Math.round(normalized) : null;
 };
 
 export const coerceIsoTimestamp = (value) => {
@@ -86,7 +96,7 @@ export const normalizeAnalyticsEvent = (value) => {
 
   const occurredDate = new Date(occurredAt);
 
-  return {
+  const normalized = {
     installation_id: installationId,
     event_name: eventName,
     occurred_at: occurredAt,
@@ -99,6 +109,35 @@ export const normalizeAnalyticsEvent = (value) => {
     previous_app_version: toNonEmptyString(value.previous_app_version),
     current_app_version: toNonEmptyString(value.current_app_version),
   };
+
+  if (eventName === 'translation_diagnostic') {
+    const operationId = toBoundedString(value.operation_id, 128);
+    const stage = toBoundedString(value.stage, 64);
+    const status = toBoundedString(value.status, 32);
+    if (!operationId || !stage || !status) {
+      return null;
+    }
+
+    return {
+      ...normalized,
+      operation_id: operationId,
+      stage,
+      status,
+      elapsed_ms: toNonNegativeInteger(value.elapsed_ms),
+      text_length: toNonNegativeInteger(value.text_length),
+      translation_from: toBoundedString(value.translation_from, 32),
+      translation_to: toBoundedString(value.translation_to, 32),
+      translation_mode: toBoundedString(value.translation_mode, 32),
+      game_scene: toBoundedString(value.game_scene, 64),
+      daily_mode: typeof value.daily_mode === 'boolean' ? value.daily_mode : null,
+      error_code: toBoundedString(value.error_code, 64),
+      error_message: toBoundedString(value.error_message, 500),
+      trace_id: toBoundedString(value.trace_id, 128),
+      model: toBoundedString(value.model, 128),
+    };
+  }
+
+  return normalized;
 };
 
 export const normalizeAnalyticsQueue = (value) => {

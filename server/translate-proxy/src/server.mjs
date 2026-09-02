@@ -13,16 +13,18 @@ import {
 } from './runtime-config.mjs';
 import {
   ingestAnalyticsEvents,
+  queryTranslationDiagnostics,
   queryAnalyticsDaily,
   queryAnalyticsOverview,
   queryAnalyticsDistributions,
+  recordTranslationServerDiagnostic,
 } from './analytics-store.mjs';
 
 const corsHeaders = {
   'Content-Type': 'application/json',
   'Cache-Control': 'no-store',
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-lingo-operation-id, x-lingo-client-version, x-lingo-client-platform',
   'Access-Control-Allow-Methods': 'GET, POST, PUT, OPTIONS',
 };
 
@@ -552,6 +554,36 @@ const readBearerToken = (headerValue) => {
   return value.slice(7).trim();
 };
 
+const boundedHeader = (value, maxLength = 128) => {
+  const normalized = String(value || '').trim();
+  return normalized ? normalized.slice(0, maxLength) : null;
+};
+
+const readTranslationClientContext = (req) => ({
+  operationId: boundedHeader(req.headers['x-lingo-operation-id']),
+  appVersion: boundedHeader(req.headers['x-lingo-client-version'], 64),
+  platform: boundedHeader(req.headers['x-lingo-client-platform'], 64),
+});
+
+const persistTranslationServerDiagnostic = (value) => {
+  if (!value?.operation_id) {
+    return;
+  }
+
+  try {
+    recordTranslationServerDiagnostic(value);
+  } catch (error) {
+    console.error(
+      JSON.stringify({
+        operation_id: value.operation_id,
+        trace_id: value.trace_id,
+        message: 'Failed to persist translation diagnostic',
+        diagnostic_error: String(error?.message || error),
+      }),
+    );
+  }
+};
+
 const requireAdminToken = (req) => {
   const configured = String(process.env.ADMIN_TOKEN || '').trim();
   if (!configured) {
@@ -899,7 +931,7 @@ const routePublicSiteConfig = async (req, res, traceId) => {
   });
 };
 
-const routeTranslate = async (req, res, traceId) => {
+const routeTranslate = async (req, res, traceId, clientContext) => {
   const startedAt = Date.now();
   const config = await loadRuntimeConfig(process.env);
 
@@ -917,16 +949,45 @@ const routeTranslate = async (req, res, traceId) => {
   validateClientKey(req);
 
   if (!config.enabled) {
+    persistTranslationServerDiagnostic({
+      operation_id: clientContext.operationId,
+      stage: 'server_response',
+      status: 'failed',
+      elapsed_ms: Date.now() - startedAt,
+      error_code: 'service_disabled',
+      error_message: 'Translation service is disabled',
+      trace_id: traceId,
+      http_status: 503,
+      app_version: clientContext.appVersion,
+      platform: clientContext.platform,
+    });
     return jsonResponse(res, 503, {
       message: 'Translation service is disabled',
       trace_id: traceId,
+      operation_id: clientContext.operationId,
     });
   }
 
   const payload = await readJsonBody(req);
   const text = String(payload?.text || '').trim();
   if (!text) {
-    return jsonResponse(res, 400, { message: 'text is required', trace_id: traceId });
+    persistTranslationServerDiagnostic({
+      operation_id: clientContext.operationId,
+      stage: 'server_response',
+      status: 'failed',
+      elapsed_ms: Date.now() - startedAt,
+      error_code: 'invalid_request',
+      error_message: 'text is required',
+      trace_id: traceId,
+      http_status: 400,
+      app_version: clientContext.appVersion,
+      platform: clientContext.platform,
+    });
+    return jsonResponse(res, 400, {
+      message: 'text is required',
+      trace_id: traceId,
+      operation_id: clientContext.operationId,
+    });
   }
 
   const primaryTuning = resolveRequestTuning({ config, payload, text });
@@ -1167,6 +1228,9 @@ const routeTranslate = async (req, res, traceId) => {
   console.log(
     JSON.stringify({
       trace_id: traceId,
+      operation_id: clientContext.operationId,
+      client_version: clientContext.appVersion,
+      client_platform: clientContext.platform,
       provider: modelProvider,
       model: modelName,
       config_source: config.source,
@@ -1185,6 +1249,25 @@ const routeTranslate = async (req, res, traceId) => {
     }),
   );
 
+  persistTranslationServerDiagnostic({
+    operation_id: clientContext.operationId,
+    stage: 'server_response',
+    status: 'succeeded',
+    elapsed_ms: latencyMs,
+    text_length: text.length,
+    translation_from: payload?.translation_from,
+    translation_to: payload?.translation_to,
+    translation_mode: payload?.translation_mode,
+    game_scene: payload?.game_scene,
+    daily_mode: payload?.daily_mode,
+    trace_id: traceId,
+    model: modelName,
+    model_route: modelRoute,
+    http_status: 200,
+    app_version: clientContext.appVersion,
+    platform: clientContext.platform,
+  });
+
   return jsonResponse(res, 200, {
     translated_text: translatedText,
     model: modelName,
@@ -1201,6 +1284,7 @@ const routeTranslate = async (req, res, traceId) => {
     effective_max_tokens: effectiveMaxTokens,
     effective_temperature: effectiveTemperature,
     trace_id: traceId,
+    operation_id: clientContext.operationId,
   });
 };
 
@@ -1262,8 +1346,29 @@ const routeAnalyticsPublicDaily = (url, res, traceId) => {
   });
 };
 
+const routeAdminTranslationDiagnostics = (req, res, url, traceId) => {
+  if (req.method !== 'GET') {
+    return jsonResponse(res, 405, { message: 'Method not allowed', trace_id: traceId });
+  }
+
+  requireAdminToken(req);
+  const payload = queryTranslationDiagnostics({
+    operationId: url.searchParams.get('operation_id'),
+    traceId: url.searchParams.get('trace_id'),
+    installationId: url.searchParams.get('installation_id'),
+    status: url.searchParams.get('status'),
+    from: url.searchParams.get('from'),
+    to: url.searchParams.get('to'),
+    limit: url.searchParams.get('limit'),
+  });
+  return jsonResponse(res, 200, { ...payload, trace_id: traceId });
+};
+
 const server = createServer(async (req, res) => {
   const traceId = randomUUID();
+  const requestStartedAt = Date.now();
+  const clientContext = readTranslationClientContext(req);
+  let requestPath = '';
 
   if (req.method === 'OPTIONS') {
     res.writeHead(204, corsHeaders);
@@ -1273,6 +1378,7 @@ const server = createServer(async (req, res) => {
 
   try {
     const url = new URL(req.url || '/', `http://${req.headers.host || '127.0.0.1'}`);
+    requestPath = url.pathname;
 
     if (url.pathname === '/healthz') {
       await routeHealthz(res, traceId);
@@ -1280,7 +1386,7 @@ const server = createServer(async (req, res) => {
     }
 
     if (url.pathname === '/translate') {
-      await routeTranslate(req, res, traceId);
+      await routeTranslate(req, res, traceId, clientContext);
       return;
     }
 
@@ -1336,6 +1442,11 @@ const server = createServer(async (req, res) => {
       return;
     }
 
+    if (url.pathname === '/admin/translation-diagnostics') {
+      routeAdminTranslationDiagnostics(req, res, url, traceId);
+      return;
+    }
+
     jsonResponse(res, 404, {
       message: 'Not found',
       trace_id: traceId,
@@ -1354,15 +1465,34 @@ const server = createServer(async (req, res) => {
     console.error(
       JSON.stringify({
         trace_id: traceId,
+        operation_id: clientContext.operationId,
+        client_version: clientContext.appVersion,
+        client_platform: clientContext.platform,
         status,
         message: internalMessage,
         from_upstream: Boolean(error?.fromUpstream),
       }),
     );
 
+    if (requestPath === '/translate') {
+      persistTranslationServerDiagnostic({
+        operation_id: clientContext.operationId,
+        stage: 'server_response',
+        status: 'failed',
+        elapsed_ms: Date.now() - requestStartedAt,
+        error_code: error?.fromUpstream ? 'upstream_error' : isTimeout ? 'timeout' : 'server_error',
+        error_message: internalMessage,
+        trace_id: traceId,
+        http_status: isTimeout ? 504 : status,
+        app_version: clientContext.appVersion,
+        platform: clientContext.platform,
+      });
+    }
+
     jsonResponse(res, isTimeout ? 504 : status, {
       message: clientMessage,
       trace_id: traceId,
+      operation_id: clientContext.operationId,
     });
   }
 });

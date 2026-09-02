@@ -64,3 +64,44 @@ test('normalizeAnalyticsQueue keeps only valid events within queue limit', () =>
     },
   ]);
 });
+
+test('normalizeAnalyticsQueue preserves bounded translation diagnostics without text content', () => {
+  const [event] = normalizeAnalyticsQueue([
+    {
+      installation_id: 'install-1',
+      event_name: 'translation_diagnostic',
+      occurred_at: '2026-09-02T09:00:00.000Z',
+      operation_id: 'operation-1',
+      stage: 'request',
+      status: 'failed',
+      elapsed_ms: 1568.4,
+      text_length: 12,
+      translation_from: 'zh',
+      translation_to: 'en',
+      error_code: 'request_failed',
+      error_message: 'x'.repeat(600),
+      source_text: '不会被保留',
+    },
+  ]);
+
+  assert.equal(event.operation_id, 'operation-1');
+  assert.equal(event.elapsed_ms, 1568);
+  assert.equal(event.text_length, 12);
+  assert.equal(event.error_message.length, 500);
+  assert.equal('source_text' in event, false);
+});
+
+test('normalizeAnalyticsQueue rejects incomplete translation diagnostics', () => {
+  assert.deepEqual(
+    normalizeAnalyticsQueue([
+      {
+        installation_id: 'install-1',
+        event_name: 'translation_diagnostic',
+        occurred_at: '2026-09-02T09:00:00.000Z',
+        operation_id: 'operation-1',
+        stage: 'request',
+      },
+    ]),
+    [],
+  );
+});

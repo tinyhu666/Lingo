@@ -8,12 +8,14 @@ const SUSPECTED_UNINSTALL_WINDOW_DAYS = 30;
 const moduleDir = dirname(fileURLToPath(import.meta.url));
 const DEFAULT_DB_PATH = process.env.ANALYTICS_DB_PATH || join(moduleDir, '..', 'data', 'analytics.sqlite');
 const MAX_BATCH_EVENTS = 100;
+const TRANSLATION_DIAGNOSTIC_RETENTION_DAYS = 30;
 const ALLOWED_EVENT_NAMES = new Set([
   'install_registered',
   'app_launch',
   'app_active_ping',
   'update_applied',
 ]);
+const TRANSLATION_DIAGNOSTIC_EVENT = 'translation_diagnostic';
 
 const dayKeyFormatters = new Map();
 
@@ -49,6 +51,16 @@ const getDayKey = (date = new Date(), timeZone = ANALYTICS_TIMEZONE) => {
 const toNonEmptyString = (value) => {
   const normalized = String(value || '').trim();
   return normalized || null;
+};
+
+const toBoundedString = (value, maxLength) => {
+  const normalized = toNonEmptyString(value);
+  return normalized ? normalized.slice(0, maxLength) : null;
+};
+
+const toNonNegativeInteger = (value) => {
+  const normalized = Number(value);
+  return Number.isFinite(normalized) && normalized >= 0 ? Math.round(normalized) : null;
 };
 
 const coerceIsoDate = (value) => {
@@ -156,7 +168,50 @@ const createDatabase = () => {
 
     CREATE INDEX IF NOT EXISTS analytics_installations_last_active_idx
       ON analytics_installations (last_active_ping_at);
+
+    CREATE TABLE IF NOT EXISTS translation_diagnostics (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      installation_id TEXT,
+      operation_id TEXT NOT NULL,
+      occurred_at TEXT NOT NULL,
+      source TEXT NOT NULL,
+      stage TEXT NOT NULL,
+      status TEXT NOT NULL,
+      session_id TEXT NOT NULL DEFAULT '',
+      platform TEXT,
+      app_version TEXT,
+      ui_locale TEXT,
+      runtime TEXT,
+      elapsed_ms INTEGER,
+      text_length INTEGER,
+      translation_from TEXT,
+      translation_to TEXT,
+      translation_mode TEXT,
+      game_scene TEXT,
+      daily_mode INTEGER,
+      error_code TEXT,
+      error_message TEXT,
+      trace_id TEXT,
+      model TEXT,
+      model_route TEXT,
+      http_status INTEGER,
+      inserted_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+      UNIQUE (source, operation_id, stage, status, occurred_at)
+    );
+
+    CREATE INDEX IF NOT EXISTS translation_diagnostics_operation_idx
+      ON translation_diagnostics (operation_id, occurred_at);
+
+    CREATE INDEX IF NOT EXISTS translation_diagnostics_trace_idx
+      ON translation_diagnostics (trace_id);
+
+    CREATE INDEX IF NOT EXISTS translation_diagnostics_time_idx
+      ON translation_diagnostics (occurred_at DESC);
   `);
+  db.prepare(`
+    DELETE FROM translation_diagnostics
+    WHERE julianday(occurred_at) < julianday('now', ?)
+  `).run(`-${TRANSLATION_DIAGNOSTIC_RETENTION_DAYS} days`);
 
   return db;
 };
@@ -184,6 +239,60 @@ const insertEventStatement = db.prepare(`
     @app_version,
     @ui_locale,
     @runtime
+  )
+`);
+
+const insertTranslationDiagnosticStatement = db.prepare(`
+  INSERT OR IGNORE INTO translation_diagnostics (
+    installation_id,
+    operation_id,
+    occurred_at,
+    source,
+    stage,
+    status,
+    session_id,
+    platform,
+    app_version,
+    ui_locale,
+    runtime,
+    elapsed_ms,
+    text_length,
+    translation_from,
+    translation_to,
+    translation_mode,
+    game_scene,
+    daily_mode,
+    error_code,
+    error_message,
+    trace_id,
+    model,
+    model_route,
+    http_status
+  ) VALUES (
+    @installation_id,
+    @operation_id,
+    @occurred_at,
+    @source,
+    @stage,
+    @status,
+    @session_id,
+    @platform,
+    @app_version,
+    @ui_locale,
+    @runtime,
+    @elapsed_ms,
+    @text_length,
+    @translation_from,
+    @translation_to,
+    @translation_mode,
+    @game_scene,
+    @daily_mode,
+    @error_code,
+    @error_message,
+    @trace_id,
+    @model,
+    @model_route,
+    @http_status
   )
 `);
 
@@ -307,7 +416,7 @@ const newInstallsTrendStatement = db.prepare(`
   ORDER BY analytics_day
 `);
 
-const normalizeAnalyticsEvent = (value) => {
+const normalizeLifecycleEvent = (value) => {
   if (!value || typeof value !== 'object') {
     return null;
   }
@@ -333,18 +442,66 @@ const normalizeAnalyticsEvent = (value) => {
   };
 };
 
-const ingestTransaction = db.transaction((events) => {
+const normalizeTranslationDiagnostic = (value, source = 'client') => {
+  if (!value || typeof value !== 'object') {
+    return null;
+  }
+
+  const operationId = toBoundedString(value.operation_id, 128);
+  const occurredAt = coerceIsoDate(value.occurred_at);
+  const stage = toBoundedString(value.stage, 64);
+  const status = toBoundedString(value.status, 32);
+  if (!operationId || !occurredAt || !stage || !status) {
+    return null;
+  }
+
+  return {
+    installation_id: toBoundedString(value.installation_id, 128),
+    operation_id: operationId,
+    occurred_at: occurredAt,
+    source: source === 'server' ? 'server' : 'client',
+    stage,
+    status,
+    session_id: toBoundedString(value.session_id, 128) || '',
+    platform: toBoundedString(value.platform, 64),
+    app_version: toBoundedString(value.app_version, 64),
+    ui_locale: toBoundedString(value.ui_locale, 64),
+    runtime: toBoundedString(value.runtime, 64),
+    elapsed_ms: toNonNegativeInteger(value.elapsed_ms),
+    text_length: toNonNegativeInteger(value.text_length),
+    translation_from: toBoundedString(value.translation_from, 32),
+    translation_to: toBoundedString(value.translation_to, 32),
+    translation_mode: toBoundedString(value.translation_mode, 32),
+    game_scene: toBoundedString(value.game_scene, 64),
+    daily_mode: typeof value.daily_mode === 'boolean' ? Number(value.daily_mode) : null,
+    error_code: toBoundedString(value.error_code, 64),
+    error_message: toBoundedString(value.error_message, 500),
+    trace_id: toBoundedString(value.trace_id, 128),
+    model: toBoundedString(value.model, 128),
+    model_route: toBoundedString(value.model_route, 64),
+    http_status: toNonNegativeInteger(value.http_status),
+  };
+};
+
+const ingestTransaction = db.transaction((entries) => {
   let inserted = 0;
   let duplicates = 0;
 
-  for (const event of events) {
-    const result = insertEventStatement.run(event);
+  for (const entry of entries) {
+    const result = entry.kind === 'translation_diagnostic'
+      ? insertTranslationDiagnosticStatement.run(entry.event)
+      : insertEventStatement.run(entry.event);
     if (result.changes > 0) {
       inserted += 1;
     } else {
       duplicates += 1;
     }
 
+    if (entry.kind === 'translation_diagnostic') {
+      continue;
+    }
+
+    const event = entry.event;
     upsertInstallationStatement.run({
       installation_id: event.installation_id,
       first_seen_at: event.occurred_at,
@@ -358,7 +515,7 @@ const ingestTransaction = db.transaction((events) => {
   }
 
   return {
-    accepted: events.length,
+    accepted: entries.length,
     inserted,
     duplicates,
   };
@@ -367,7 +524,15 @@ const ingestTransaction = db.transaction((events) => {
 export const ingestAnalyticsEvents = (inputEvents = []) => {
   const normalizedEvents = (Array.isArray(inputEvents) ? inputEvents : [])
     .slice(0, MAX_BATCH_EVENTS)
-    .map(normalizeAnalyticsEvent)
+    .map((event) => {
+      if (event?.event_name === TRANSLATION_DIAGNOSTIC_EVENT) {
+        const diagnostic = normalizeTranslationDiagnostic(event, 'client');
+        return diagnostic ? { kind: 'translation_diagnostic', event: diagnostic } : null;
+      }
+
+      const lifecycle = normalizeLifecycleEvent(event);
+      return lifecycle ? { kind: 'lifecycle', event: lifecycle } : null;
+    })
     .filter(Boolean);
 
   if (!normalizedEvents.length) {
@@ -379,6 +544,86 @@ export const ingestAnalyticsEvents = (inputEvents = []) => {
   }
 
   return ingestTransaction(normalizedEvents);
+};
+
+export const recordTranslationServerDiagnostic = (value) => {
+  const normalized = normalizeTranslationDiagnostic(
+    {
+      ...value,
+      occurred_at: value?.occurred_at || new Date().toISOString(),
+    },
+    'server',
+  );
+  if (!normalized) {
+    return false;
+  }
+
+  return insertTranslationDiagnosticStatement.run(normalized).changes > 0;
+};
+
+export const queryTranslationDiagnostics = ({
+  operationId,
+  traceId,
+  installationId,
+  status,
+  from,
+  to,
+  limit,
+} = {}) => {
+  const normalizedLimit = Math.min(500, Math.max(1, Number.parseInt(limit, 10) || 100));
+  const rows = db.prepare(`
+    SELECT
+      installation_id,
+      operation_id,
+      occurred_at,
+      source,
+      stage,
+      status,
+      session_id,
+      platform,
+      app_version,
+      ui_locale,
+      runtime,
+      elapsed_ms,
+      text_length,
+      translation_from,
+      translation_to,
+      translation_mode,
+      game_scene,
+      daily_mode,
+      error_code,
+      error_message,
+      trace_id,
+      model,
+      model_route,
+      http_status
+    FROM translation_diagnostics
+    WHERE (@operation_id IS NULL OR operation_id = @operation_id)
+      AND (@trace_id IS NULL OR trace_id = @trace_id)
+      AND (@installation_id IS NULL OR installation_id = @installation_id)
+      AND (@status IS NULL OR status = @status)
+      AND (@from_time IS NULL OR occurred_at >= @from_time)
+      AND (@to_time IS NULL OR occurred_at <= @to_time)
+    ORDER BY occurred_at DESC, id DESC
+    LIMIT @limit
+  `).all({
+    operation_id: toBoundedString(operationId, 128),
+    trace_id: toBoundedString(traceId, 128),
+    installation_id: toBoundedString(installationId, 128),
+    status: toBoundedString(status, 32),
+    from_time: coerceIsoDate(from),
+    to_time: coerceIsoDate(to),
+    limit: normalizedLimit,
+  });
+
+  return {
+    generated_at: new Date().toISOString(),
+    count: rows.length,
+    diagnostics: rows.map((row) => ({
+      ...row,
+      daily_mode: row.daily_mode === null ? null : Boolean(row.daily_mode),
+    })),
+  };
 };
 
 const buildDailyMetricMap = (range) =>

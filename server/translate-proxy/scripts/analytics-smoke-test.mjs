@@ -155,6 +155,47 @@ try {
   expect(secondBatch.json.inserted === 1, 'second analytics batch should insert only one new event');
   expect(secondBatch.json.duplicates === 1, 'second analytics batch should report one duplicate');
 
+  const diagnosticBatch = await postEvents(baseUrl, [
+    {
+      installation_id: 'install-1',
+      event_name: 'translation_diagnostic',
+      occurred_at: `${analyticsDay}T06:00:00.000Z`,
+      session_id: 'session-1',
+      operation_id: 'operation-1',
+      stage: 'request',
+      status: 'failed',
+      elapsed_ms: 3012,
+      text_length: 8,
+      translation_from: 'zh',
+      translation_to: 'en',
+      error_code: 'request_failed',
+      error_message: 'Upstream service error',
+      trace_id: 'trace-1',
+      source_text: 'must-not-be-stored',
+      platform: 'windows',
+      app_version: '0.9.14',
+    },
+  ]);
+  expect(diagnosticBatch.ok, 'translation diagnostic batch should succeed');
+  expect(diagnosticBatch.json.inserted === 1, 'translation diagnostic should be inserted');
+
+  const unauthorizedDiagnostics = await fetch(
+    `${baseUrl}/admin/translation-diagnostics?operation_id=operation-1`,
+  );
+  expect(unauthorizedDiagnostics.status === 401, 'diagnostics endpoint should require admin auth');
+
+  const diagnostics = await fetchJson(
+    `${baseUrl}/admin/translation-diagnostics?operation_id=operation-1&from=${analyticsDay}T05:59:00.000Z&to=${analyticsDay}T06:01:00.000Z`,
+    { headers: { Authorization: 'Bearer test-admin-token' } },
+  );
+  expect(diagnostics.ok, 'diagnostics endpoint should succeed with admin auth');
+  expect(diagnostics.json.count === 1, 'diagnostics endpoint should return one matching event');
+  expect(diagnostics.json.diagnostics[0].trace_id === 'trace-1', 'diagnostic should preserve trace id');
+  expect(
+    !JSON.stringify(diagnostics.json).includes('must-not-be-stored'),
+    'diagnostics must not persist source text',
+  );
+
   const daily = await fetchJson(
     `${baseUrl}/analytics/public/daily?from=${analyticsDay}&to=${analyticsDay}`,
   );

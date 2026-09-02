@@ -28,6 +28,7 @@ const LIFECYCLE_EVENTS = {
   activePing: 'app_active_ping',
   updateApplied: 'update_applied',
 };
+const TRANSLATION_DIAGNOSTIC_EVENT = 'translation_diagnostic';
 
 let startupPromise = null;
 let heartbeatIntervalId = null;
@@ -321,4 +322,50 @@ export const startDesktopAnalytics = async ({ getLocale } = {}) => {
   }
 
   return result;
+};
+
+export const trackTranslationDiagnostic = (payload = {}) => {
+  if (!hasTauriRuntime()) {
+    return Promise.resolve({ queued: false, pending: 0 });
+  }
+
+  return serializeOperation(async () => {
+    const context = await getAnalyticsContext();
+    const event = enqueueLifecycleEvent(
+      context,
+      TRANSLATION_DIAGNOSTIC_EVENT,
+      new Date().toISOString(),
+      {
+        operation_id: payload.operation_id || payload.operationId,
+        stage: payload.stage,
+        status: payload.status,
+        elapsed_ms: payload.elapsed_ms ?? payload.elapsedMs,
+        text_length: payload.text_length ?? payload.textLength,
+        translation_from: payload.translation_from || payload.translationFrom,
+        translation_to: payload.translation_to || payload.translationTo,
+        translation_mode: payload.translation_mode || payload.translationMode,
+        game_scene: payload.game_scene || payload.gameScene,
+        daily_mode: payload.daily_mode ?? payload.dailyMode,
+        error_code: payload.error_code || payload.errorCode,
+        error_message: payload.error_message || payload.errorMessage,
+        trace_id: payload.trace_id || payload.traceId,
+        model: payload.model,
+      },
+    );
+
+    if (!event) {
+      return { queued: false, pending: context.queue.length };
+    }
+
+    await writeAnalyticsQueue(context.queue);
+
+    if (['failed', 'succeeded', 'skipped'].includes(event.status)) {
+      await flushAnalyticsQueue(context);
+    }
+
+    return { queued: true, pending: context.queue.length };
+  }).catch((error) => {
+    console.warn('Failed to persist translation diagnostic:', error);
+    return { queued: false, pending: null };
+  });
 };

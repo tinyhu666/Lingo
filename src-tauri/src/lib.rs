@@ -23,6 +23,7 @@ pub mod incoming;
 pub mod shell_helper;
 pub mod shortcut;
 pub mod store;
+pub mod translation_diagnostics;
 pub mod tray;
 
 pub(crate) const INCOMING_TRANSLATION_ENABLED: bool = false;

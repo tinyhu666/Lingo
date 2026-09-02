@@ -402,11 +402,26 @@ pub async fn warm_translation_backend() -> Result<()> {
     Ok(())
 }
 
-pub async fn translate_with_gpt(original: &str, settings: &AppSettings) -> Result<String> {
+#[derive(Debug)]
+pub struct TranslationResult {
+    pub text: String,
+    pub trace_id: Option<String>,
+    pub model: Option<String>,
+}
+
+pub async fn translate_with_gpt(
+    original: &str,
+    settings: &AppSettings,
+    operation_id: &str,
+) -> Result<TranslationResult> {
     let started = Instant::now();
     let text = original.trim();
     if text.is_empty() {
-        return Ok(String::new());
+        return Ok(TranslationResult {
+            text: String::new(),
+            trace_id: None,
+            model: None,
+        });
     }
 
     let backend = backend_config()?;
@@ -443,6 +458,9 @@ pub async fn translate_with_gpt(original: &str, settings: &AppSettings) -> Resul
         let mut request = client
             .post(&endpoint)
             .header("Content-Type", "application/json")
+            .header("X-Lingo-Operation-Id", operation_id)
+            .header("X-Lingo-Client-Version", env!("CARGO_PKG_VERSION"))
+            .header("X-Lingo-Client-Platform", std::env::consts::OS)
             .json(&body);
 
         if let Some(api_key) = &backend.api_key {
@@ -611,7 +629,11 @@ pub async fn translate_with_gpt(original: &str, settings: &AppSettings) -> Resul
             trace_id
         );
 
-        return Ok(cleaned);
+        return Ok(TranslationResult {
+            text: cleaned,
+            trace_id: (trace_id != "-").then(|| trace_id.to_string()),
+            model: (model != "-").then(|| model.to_string()),
+        });
     }
 
     Err(anyhow!("翻译服务暂时不可用，请稍后重试"))
@@ -779,6 +801,18 @@ mod tests {
                 request.contains("\"text\":\"你好\""),
                 "request body should include original text: {request}"
             );
+            assert!(
+                request
+                    .to_ascii_lowercase()
+                    .contains("x-lingo-operation-id: test-operation-1"),
+                "request should include operation id: {request}"
+            );
+            assert!(
+                request
+                    .to_ascii_lowercase()
+                    .contains("x-lingo-client-version:"),
+                "request should include client version: {request}"
+            );
 
             let response = format!(
                 "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
@@ -811,14 +845,15 @@ mod tests {
         ]);
 
         let translated = tauri::async_runtime::block_on(async {
-            translate_with_gpt("你好", &AppSettings::default()).await
+            translate_with_gpt("你好", &AppSettings::default(), "test-operation-1").await
         })
         .expect("translate should succeed");
 
         handle
             .join()
             .expect("mock translate server should exit cleanly");
-        assert_eq!(translated, "Hello team");
+        assert_eq!(translated.text, "Hello team");
+        assert_eq!(translated.trace_id.as_deref(), Some("test-trace"));
     }
 
     #[test]

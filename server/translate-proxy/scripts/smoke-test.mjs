@@ -48,6 +48,7 @@ const jsonResponse = (res, status, payload) => {
 
 const tempDir = await mkdtemp(path.join(os.tmpdir(), 'lingo-proxy-'));
 const runtimeConfigPath = path.join(tempDir, 'runtime-config.json');
+const analyticsDbPath = path.join(tempDir, 'analytics.sqlite');
 const port = 9797;
 const upstreamPort = 9798;
 const baseUrl = `http://127.0.0.1:${port}`;
@@ -118,6 +119,7 @@ const child = spawn(process.execPath, ['src/server.mjs'], {
     PRIMARY_MODEL_API_KEY: 'primary-model-key',
     FAST_MODEL_API_KEY: 'fast-model-key',
     RUNTIME_CONFIG_PATH: runtimeConfigPath,
+    ANALYTICS_DB_PATH: analyticsDbPath,
   },
   stdio: ['ignore', 'pipe', 'pipe'],
 });
@@ -146,12 +148,19 @@ const fetchPublicSiteConfig = async () => {
   return json;
 };
 
+let translationCounter = 0;
+
 const translate = async (payloadOverrides = {}) => {
+  translationCounter += 1;
+  const operationId = `smoke-operation-${translationCounter}`;
   const response = await fetch(`${baseUrl}/translate`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       Authorization: 'Bearer test-public-key',
+      'X-Lingo-Operation-Id': operationId,
+      'X-Lingo-Client-Version': '0.9.14-smoke',
+      'X-Lingo-Client-Platform': 'test',
     },
     body: JSON.stringify({
       text: 'hello',
@@ -165,6 +174,7 @@ const translate = async (payloadOverrides = {}) => {
   return {
     status: response.status,
     json: await response.json(),
+    operationId,
   };
 };
 
@@ -444,6 +454,26 @@ try {
   const blockedResponse = await translate({ text: 'hello' });
   expect(blockedResponse.status === 503, 'disabled config should block translate requests');
   expect(blockedResponse.json.message === 'Translation service is disabled', 'disabled message should match');
+  expect(
+    blockedResponse.json.operation_id === blockedResponse.operationId,
+    'translate response should echo the operation id',
+  );
+
+  const diagnosticResponse = await fetch(
+    `${baseUrl}/admin/translation-diagnostics?operation_id=${blockedResponse.operationId}`,
+    { headers: { Authorization: 'Bearer test-admin-token' } },
+  );
+  const diagnosticPayload = await diagnosticResponse.json();
+  expect(diagnosticResponse.ok, 'server translation diagnostic should be queryable');
+  expect(diagnosticPayload.count === 1, 'disabled request should create one server diagnostic');
+  expect(
+    diagnosticPayload.diagnostics[0].error_code === 'service_disabled',
+    'server diagnostic should preserve the failure classification',
+  );
+  expect(
+    diagnosticPayload.diagnostics[0].trace_id === blockedResponse.json.trace_id,
+    'server diagnostic should link operation id and trace id',
+  );
 
   console.log('[smoke] translate proxy smoke test passed');
 } finally {
