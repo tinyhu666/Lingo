@@ -172,13 +172,19 @@ const sanitizeFastLaneConfig = (candidate, baseConfig) => {
   };
 };
 
-const sanitizeFallbackConfig = (candidate, baseConfig) => {
+const sanitizeFallbackConfig = (candidate, baseConfig, defaults = {}) => {
   const record = isRecord(candidate) ? candidate : {};
   const provider = toProvider(record.provider || baseConfig.provider);
-  const modelName = String(record.model_name || DEFAULT_FALLBACK_MODEL_NAME).trim();
+  const defaultModelName =
+    defaults.model_name === undefined ? DEFAULT_FALLBACK_MODEL_NAME : defaults.model_name;
+  const modelName = String(record.model_name || defaultModelName).trim();
+  const enabled =
+    defaults.enabled === false
+      ? record.enabled === true && Boolean(modelName)
+      : record.enabled !== false && Boolean(modelName);
 
   return {
-    enabled: record.enabled !== false && Boolean(modelName),
+    enabled,
     provider,
     api_url: normalizeApiUrlByProvider(record.api_url || baseConfig.api_url, provider),
     model_name: modelName,
@@ -237,6 +243,10 @@ export const sanitizeRuntimeConfig = (candidate, source = 'environment', updated
     max_tokens,
     temperature,
     fallback: sanitizeFallbackConfig(record.fallback, baseConfig),
+    secondary_fallback: sanitizeFallbackConfig(record.secondary_fallback, baseConfig, {
+      enabled: false,
+      model_name: '',
+    }),
     fast_lane: sanitizeFastLaneConfig(record.fast_lane, baseConfig),
     public_site: sanitizePublicSiteConfig(record.public_site),
     source,
@@ -310,6 +320,16 @@ export const createDeepSeekOfficialRuntimeConfig = () => ({
     provider: 'openai-compatible',
     api_url: defaultApiUrl('openai-compatible'),
     model_name: DEFAULT_FALLBACK_MODEL_NAME,
+    api_key_env_name: DEFAULT_API_KEY_ENV_NAME,
+    timeout_ms: DEFAULT_TIMEOUT_MS,
+    max_tokens: DEFAULT_MAX_TOKENS,
+    temperature: DEFAULT_TEMPERATURE,
+  },
+  secondary_fallback: {
+    enabled: false,
+    provider: 'openai-compatible',
+    api_url: defaultApiUrl('openai-compatible'),
+    model_name: '',
     api_key_env_name: DEFAULT_API_KEY_ENV_NAME,
     timeout_ms: DEFAULT_TIMEOUT_MS,
     max_tokens: DEFAULT_MAX_TOKENS,
@@ -396,6 +416,26 @@ const toPersistedRuntimeConfig = (config) => ({
       config.fallback?.temperature ?? config.temperature ?? DEFAULT_TEMPERATURE,
     ),
   },
+  secondary_fallback: {
+    enabled: config.secondary_fallback?.enabled === true,
+    provider: toProvider(config.secondary_fallback?.provider || config.provider),
+    api_url: String(config.secondary_fallback?.api_url || config.api_url || ''),
+    model_name: String(config.secondary_fallback?.model_name || ''),
+    api_key_env_name: String(
+      config.secondary_fallback?.api_key_env_name ||
+        config.api_key_env_name ||
+        DEFAULT_API_KEY_ENV_NAME,
+    ),
+    timeout_ms: Number(
+      config.secondary_fallback?.timeout_ms || config.timeout_ms || DEFAULT_TIMEOUT_MS,
+    ),
+    max_tokens: Number(
+      config.secondary_fallback?.max_tokens || config.max_tokens || DEFAULT_MAX_TOKENS,
+    ),
+    temperature: Number(
+      config.secondary_fallback?.temperature ?? config.temperature ?? DEFAULT_TEMPERATURE,
+    ),
+  },
   fast_lane: {
     enabled: config.fast_lane?.enabled === true,
     provider: toProvider(config.fast_lane?.provider || config.provider),
@@ -447,6 +487,12 @@ export const summarizeRuntimeConfig = (config) => ({
     provider: config.fallback?.provider || config.provider,
     model: config.fallback?.model_name || null,
     api_url: config.fallback?.api_url || config.api_url,
+  },
+  secondary_fallback: {
+    enabled: config.secondary_fallback?.enabled === true,
+    provider: config.secondary_fallback?.provider || config.provider,
+    model: config.secondary_fallback?.model_name || null,
+    api_url: config.secondary_fallback?.api_url || config.api_url,
   },
   fast_lane: {
     enabled: config.fast_lane?.enabled === true,

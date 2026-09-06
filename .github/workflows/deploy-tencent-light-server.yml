@@ -12,6 +12,7 @@ jobs:
       TENCENT_LIGHT_SSH_KEY: ${{ secrets.TENCENT_LIGHT_SSH_KEY }}
       TENCENT_TRANSLATE_PROXY_ENV: ${{ secrets.TENCENT_TRANSLATE_PROXY_ENV }}
       DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+      ZHIPU_API_KEY: ${{ secrets.ZHIPU_API_KEY }}
       TENCENT_LIGHT_PORT: ${{ vars.TENCENT_LIGHT_PORT }}
       TENCENT_LIGHT_TARGET_DIR: ${{ vars.TENCENT_LIGHT_TARGET_DIR }}
       TRANSLATE_PROXY_RUNTIME_CONFIG_JSON: ${{ vars.TRANSLATE_PROXY_RUNTIME_CONFIG_JSON }}
@@ -75,6 +76,9 @@ jobs:
 
           printf '%s\n' "$TENCENT_TRANSLATE_PROXY_ENV" > translate-proxy.env
           printf '\nDEEPSEEK_API_KEY=%s\n' "$DEEPSEEK_API_KEY" >> translate-proxy.env
+          if [ -n "${ZHIPU_API_KEY:-}" ]; then
+            printf '\nZHIPU_API_KEY=%s\n' "$ZHIPU_API_KEY" >> translate-proxy.env
+          fi
 
           if [ -n "${TRANSLATE_PROXY_RUNTIME_CONFIG_JSON:-}" ]; then
             printf '%s\n' "$TRANSLATE_PROXY_RUNTIME_CONFIG_JSON" > runtime-config.json

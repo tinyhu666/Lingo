@@ -307,6 +307,46 @@ actually viable.
 
 ## Connect Lingo To Tencent Cloud
 
+### GLM-5.3-Flash fallback
+
+The proxy supports two ordered fallback slots: `fallback`, then
+`secondary_fallback`. Existing configurations keep their original single
+fallback; the second slot requires both `enabled: true` and a model name.
+
+For Flash → GLM → Pro, configure `fallback` as follows and move the existing
+DeepSeek Pro configuration into `secondary_fallback` with `enabled: true`:
+
+```json
+{
+  "enabled": true,
+  "provider": "openai-compatible",
+  "api_url": "https://open.bigmodel.cn/api/paas/v4/chat/completions",
+  "model_name": "glm-5.3-flash",
+  "api_key_env_name": "ZHIPU_API_KEY",
+  "timeout_ms": 5000,
+  "max_tokens": 1024,
+  "temperature": 1
+}
+```
+
+Use the complete completions URL above. Store the credential in the server's
+`.env` and the GitHub `ZHIPU_API_KEY` secret so the Tencent deploy workflow
+preserves it. Keep credentials out of runtime JSON and client builds.
+
+The [official GLM-5.3-Flash documentation](https://docs.bigmodel.cn/cn/guide/models/vlm/glm-5.3-flash)
+requires thinking to remain enabled. The proxy uses `reasoning_effort: low`,
+temperature 1 and a minimum output budget of 1024 tokens for this official
+endpoint, including reasoning. Returned diagnostics reflect that budget.
+
+Keep route timeouts within the desktop client's 15-second HTTP timeout. The
+production chain uses 4000 ms for Flash (both primary and fast lane), 5000 ms for
+GLM and 4000 ms for Pro. Empty-response retries share each route's timeout
+instead of restarting it. Fallback responses are not cached, so the next request
+can return to the preferred model. Diagnostics identify the first fallback as
+`primary-fallback` / `fast-fallback`, and the second by the `-secondary` suffix.
+
+### Desktop backend configuration
+
 After the proxy is online, point release builds to it:
 
 1. Set GitHub Actions variable `LINGO_BACKEND_URL=https://your-domain.example.com`

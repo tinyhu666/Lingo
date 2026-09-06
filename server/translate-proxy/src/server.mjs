@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { modelRequestOptions } from './model-request-options.mjs';
 
 import {
   loadRuntimeConfig,
@@ -467,11 +468,12 @@ const resolveRequestTuning = ({ config, payload, text }) => {
     ? Math.min(configuredTemperature, temperatureCap)
     : temperatureCap;
 
+  const modelOptions = modelRequestOptions(config, effectiveMaxTokens, effectiveTemperature);
   return {
     promptVariant: isRewrite ? 'rewrite' : 'translate',
     systemPrompt: buildSystemPrompt(payload),
-    effectiveMaxTokens,
-    effectiveTemperature,
+    effectiveMaxTokens: modelOptions.max_tokens,
+    effectiveTemperature: modelOptions.temperature,
     styleProfile: styleProfile.id,
   };
 };
@@ -689,19 +691,8 @@ const requestModelOnce = async ({
         { role: 'system', content: systemPrompt },
         { role: 'user', content: text },
       ],
-      temperature: effectiveTemperature,
-      max_tokens: effectiveMaxTokens,
+      ...modelRequestOptions(config, effectiveMaxTokens, effectiveTemperature),
     };
-    const apiHostname = (() => {
-      try {
-        return new URL(config.api_url).hostname.toLowerCase();
-      } catch {
-        return '';
-      }
-    })();
-    if (apiHostname === 'api.deepseek.com' && config.model_name.startsWith('deepseek-v4-')) {
-      requestBody.thinking = { type: 'disabled' };
-    }
 
     const response = await fetch(config.api_url, {
       method: 'POST',
@@ -796,6 +787,13 @@ const requestModel = async ({
       throw error;
     }
 
+    const remainingMs = config.timeout_ms - (Date.now() - startedAt);
+    if (remainingMs <= 0) {
+      error.attemptCount = 1;
+      error.modelLatencyMs = Date.now() - startedAt;
+      throw error;
+    }
+
     console.warn(
       JSON.stringify({
         trace_id: traceId,
@@ -807,7 +805,7 @@ const requestModel = async ({
 
     try {
       const retryResult = await requestModelOnce({
-        config,
+        config: { ...config, timeout_ms: remainingMs },
         apiKey,
         text,
         traceId,
@@ -1025,69 +1023,94 @@ const routeTranslate = async (req, res, traceId, clientContext) => {
     cacheKey,
     load: async () => {
       const runFallbackModel = async ({ error, originConfig, modelRouteName }) => {
-        const fallbackConfig = config.fallback;
-        if (
-          !fallbackConfig?.enabled ||
-          !shouldUseConfiguredFallback(error) ||
-          sharesModelUpstream(originConfig, fallbackConfig)
-        ) {
-          throw error;
-        }
+        let lastError = error;
+        let attemptCount = Number(error?.attemptCount || 1);
+        let modelLatencyMs = Number(error?.modelLatencyMs || 0);
+        const attemptedConfigs = [originConfig];
+        const fallbacks = [
+          { routeConfig: config.fallback, routeName: modelRouteName },
+          { routeConfig: config.secondary_fallback, routeName: `${modelRouteName}-secondary` },
+        ];
 
-        const fallbackApiKey = resolveApiKey(process.env, fallbackConfig);
-        if (!fallbackApiKey) {
-          console.error(
+        for (const { routeConfig: fallbackConfig, routeName } of fallbacks) {
+          if (!shouldUseConfiguredFallback(lastError)) {
+            break;
+          }
+          if (
+            !fallbackConfig?.enabled ||
+            attemptedConfigs.some((attempted) => sharesModelUpstream(attempted, fallbackConfig))
+          ) {
+            continue;
+          }
+
+          const fallbackApiKey = resolveApiKey(process.env, fallbackConfig);
+          if (!fallbackApiKey) {
+            console.error(
+              JSON.stringify({
+                trace_id: traceId,
+                message: 'Fallback model is missing API key env',
+                api_key_env_name: fallbackConfig.api_key_env_name,
+              }),
+            );
+            continue;
+          }
+
+          const fallbackTuning = resolveRequestTuning({ config: fallbackConfig, payload, text });
+          console.warn(
             JSON.stringify({
               trace_id: traceId,
-              level: 'fatal',
-              message: 'Fallback model is missing API key env',
-              api_key_env_name: fallbackConfig.api_key_env_name,
+              message: 'Preferred model failed, using configured fallback model',
+              model_route: routeName,
+              preferred_model: attemptedConfigs.at(-1).model_name,
+              fallback_model: fallbackConfig.model_name,
+              preferred_status: Number(lastError?.status || 0),
+              preferred_error: String(lastError?.message || lastError),
             }),
           );
-          throw error;
+          attemptedConfigs.push(fallbackConfig);
+
+          try {
+            const fallbackResult = assertTranslationChanged({
+              result: await requestModel({
+                config: fallbackConfig,
+                apiKey: fallbackApiKey,
+                systemPrompt: fallbackTuning.systemPrompt,
+                text,
+                traceId,
+                effectiveMaxTokens: fallbackTuning.effectiveMaxTokens,
+                effectiveTemperature: fallbackTuning.effectiveTemperature,
+              }),
+              text,
+              promptVariant: fallbackTuning.promptVariant,
+            });
+            return {
+              ...fallbackResult,
+              attemptCount: attemptCount + fallbackResult.attemptCount,
+              modelLatencyMs: modelLatencyMs + fallbackResult.modelLatencyMs,
+              cacheable: false,
+              modelRoute: routeName,
+              modelName: fallbackConfig.model_name,
+              modelProvider: fallbackConfig.provider,
+              promptVariant: fallbackTuning.promptVariant,
+              effectiveMaxTokens: fallbackTuning.effectiveMaxTokens,
+              effectiveTemperature: fallbackTuning.effectiveTemperature,
+              styleProfile: fallbackTuning.styleProfile,
+            };
+          } catch (fallbackError) {
+            attemptCount += Number(fallbackError?.attemptCount || 1);
+            modelLatencyMs += Number(fallbackError?.modelLatencyMs || 0);
+            lastError = fallbackError;
+          }
         }
 
-        const fallbackTuning = resolveRequestTuning({ config: fallbackConfig, payload, text });
-        console.warn(
-          JSON.stringify({
-            trace_id: traceId,
-            message: 'Preferred model failed, using configured fallback model',
-            model_route: modelRouteName,
-            preferred_model: originConfig.model_name,
-            fallback_model: fallbackConfig.model_name,
-            preferred_status: Number(error?.status || 0),
-            preferred_error: String(error?.message || error),
-          }),
-        );
-
-        const fallbackResult = assertTranslationChanged({
-          result: await requestModel({
-            config: fallbackConfig,
-            apiKey: fallbackApiKey,
-            systemPrompt: fallbackTuning.systemPrompt,
-            text,
-            traceId,
-            effectiveMaxTokens: fallbackTuning.effectiveMaxTokens,
-            effectiveTemperature: fallbackTuning.effectiveTemperature,
-          }),
-          text,
-          promptVariant: fallbackTuning.promptVariant,
-        });
-        return {
-          ...fallbackResult,
-          attemptCount: Number(error?.attemptCount || 1) + fallbackResult.attemptCount,
-          modelLatencyMs: Number(error?.modelLatencyMs || 0) + fallbackResult.modelLatencyMs,
-          cacheable: false,
-          modelRoute: modelRouteName,
-          modelName: fallbackConfig.model_name,
-          modelProvider: fallbackConfig.provider,
-          promptVariant: fallbackTuning.promptVariant,
-          effectiveMaxTokens: fallbackTuning.effectiveMaxTokens,
-          effectiveTemperature: fallbackTuning.effectiveTemperature,
-          styleProfile: fallbackTuning.styleProfile,
-        };
+        lastError.attemptCount = attemptCount;
+        lastError.modelLatencyMs = modelLatencyMs;
+        throw lastError;
       };
 
+      const fallbackRouteSuffix = config.fallback?.model_name === 'deepseek-v4-pro'
+        ? 'pro-fallback'
+        : 'fallback';
       const runPrimaryModel = async (modelRouteName) => {
         const primaryApiKey = resolveApiKey(process.env, config);
         if (!primaryApiKey) {
@@ -1128,7 +1151,7 @@ const routeTranslate = async (req, res, traceId, clientContext) => {
           return runFallbackModel({
             error,
             originConfig: config,
-            modelRouteName: `${modelRouteName}-pro-fallback`,
+            modelRouteName: `${modelRouteName}-${fallbackRouteSuffix}`,
           });
         }
         return {
@@ -1204,7 +1227,7 @@ const routeTranslate = async (req, res, traceId, clientContext) => {
           return runFallbackModel({
             error,
             originConfig: selectedRouteConfig,
-            modelRouteName: 'fast-pro-fallback',
+            modelRouteName: `fast-${fallbackRouteSuffix}`,
           });
         }
         console.warn(

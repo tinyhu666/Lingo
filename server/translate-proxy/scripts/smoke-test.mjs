@@ -56,9 +56,13 @@ const upstreamBaseUrl = `http://127.0.0.1:${upstreamPort}`;
 const proxyRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const primaryPath = '/primary/v1/chat/completions';
 const fastPath = '/fast/v1/chat/completions';
+const secondaryPath = '/secondary/chat/completions';
 
 const upstreamState = {
   primaryHits: 0,
+  secondaryHits: 0,
+  slowEmptyHits: 0,
+  requestedModels: [],
   fastHits: 0,
   fastTransientFailures: 0,
   lastPrimarySystemPrompt: '',
@@ -70,11 +74,32 @@ const upstream = createServer(async (req, res) => {
   const userText = String(payload?.messages?.[1]?.content || '').trim();
   const systemPrompt = String(payload?.messages?.[0]?.content || payload?.system || '').trim();
   const auth = String(req.headers.authorization || '');
+  upstreamState.requestedModels.push(payload.model);
 
   if (req.url === primaryPath) {
     upstreamState.primaryHits += 1;
     upstreamState.lastPrimarySystemPrompt = systemPrompt;
     expect(auth === 'Bearer primary-model-key', 'primary model auth should use primary key');
+    if (userText === 'slow empty primary' && payload.model === 'deepseek-v4-flash') {
+      upstreamState.slowEmptyHits += 1;
+      if (upstreamState.slowEmptyHits === 1) {
+        await wait(1600);
+        return jsonResponse(res, 200, { choices: [{ message: { content: '' } }] });
+      }
+      return; // The proxy must abort this retry within the original route budget.
+    }
+    if (userText.startsWith('provider outage')) {
+      return jsonResponse(res, 503, { message: 'provider unavailable' });
+    }
+    if (userText === 'glm unavailable' && payload.model === 'deepseek-v4-flash') {
+      return jsonResponse(res, 503, { message: 'Flash unavailable' });
+    }
+    if (userText === 'provider auth rejected') {
+      return jsonResponse(res, 401, { message: 'invalid upstream credentials' });
+    }
+    if (userText === 'unchanged from both models') {
+      return jsonResponse(res, 200, { choices: [{ message: { content: userText } }] });
+    }
     if (userText === 'same upstream outage' && payload.model === 'deepseek-v4-flash') {
       return jsonResponse(res, 503, { message: 'same upstream temporary outage' });
     }
@@ -86,6 +111,16 @@ const upstream = createServer(async (req, res) => {
     return jsonResponse(res, 200, {
       choices: [{ message: { content: `${payload.model === 'deepseek-v4-pro' ? 'PRO' : 'PRIMARY'}:${userText}` } }],
     });
+  }
+
+  if (req.url === secondaryPath) {
+    upstreamState.secondaryHits += 1;
+    expect(auth === 'Bearer secondary-model-key', 'secondary model must use its own key');
+    expect(payload.model === 'glm-5.3-flash', 'secondary model ID must be forwarded');
+    if (userText === 'provider outage all' || userText === 'glm unavailable') {
+      return jsonResponse(res, 503, { message: 'secondary unavailable' });
+    }
+    return jsonResponse(res, 200, { choices: [{ message: { content: `GLM:${userText}` } }] });
   }
 
   if (req.url === fastPath) {
@@ -118,6 +153,7 @@ const child = spawn(process.execPath, ['src/server.mjs'], {
     BACKEND_PUBLIC_KEY: 'test-public-key',
     PRIMARY_MODEL_API_KEY: 'primary-model-key',
     FAST_MODEL_API_KEY: 'fast-model-key',
+    ZHIPU_API_KEY: 'secondary-model-key',
     RUNTIME_CONFIG_PATH: runtimeConfigPath,
     ANALYTICS_DB_PATH: analyticsDbPath,
   },
@@ -433,6 +469,79 @@ try {
     upstreamState.lastPrimarySystemPrompt.includes('Style:toxic'),
     'toxic prompt should include toxic style profile',
   );
+
+  const chainConfig = {
+    fast_lane: { enabled: false },
+    provider: 'openai-compatible',
+    api_url: `${upstreamBaseUrl}${primaryPath}`,
+    model_name: 'deepseek-v4-flash',
+    api_key_env_name: 'PRIMARY_MODEL_API_KEY',
+    fallback: {
+      enabled: true,
+      model_name: 'deepseek-v4-pro',
+    },
+    secondary_fallback: {
+      enabled: true,
+      api_url: `${upstreamBaseUrl}${secondaryPath}`,
+      model_name: 'glm-5.3-flash',
+      api_key_env_name: 'ZHIPU_API_KEY',
+      timeout_ms: 3000,
+    },
+  };
+  const chainSummary = await updateRuntimeConfig(chainConfig);
+  expect(chainSummary.secondary_fallback?.model === 'glm-5.3-flash', 'secondary config should persist');
+  const beforeChain = upstreamState.primaryHits;
+  const chain = await translate({ text: 'provider outage primary' });
+  expect(chain.status === 200 && chain.json.translated_text === 'GLM:provider outage primary', 'both DeepSeek failures must reach GLM');
+  expect(chain.json.model_route === 'primary-pro-fallback-secondary', 'secondary route must be identifiable');
+  expect(chain.json.attempt_count === 3, 'all three attempts must be counted');
+  expect(upstreamState.primaryHits === beforeChain + 2, 'both DeepSeek models must be attempted first');
+  const beforeRecovery = upstreamState.secondaryHits;
+  await translate({ text: 'provider recovered' });
+  expect(upstreamState.secondaryHits === beforeRecovery, 'healthy primary must not call GLM');
+  const unchangedChain = await translate({ text: 'unchanged from both models' });
+  expect(unchangedChain.status === 200 && unchangedChain.json.model === 'glm-5.3-flash', 'unchanged text from both models must reach GLM');
+  const allFailed = await translate({ text: 'provider outage all' });
+  expect(allFailed.status === 503, 'exhausted chain must return failure');
+  const beforeAuth = upstreamState.secondaryHits;
+  const authFailed = await translate({ text: 'provider auth rejected' });
+  expect(authFailed.status === 401 && upstreamState.secondaryHits === beforeAuth, 'non-retryable errors must retain existing behavior');
+  await updateRuntimeConfig({ ...chainConfig, fallback: { ...chainConfig.fallback, api_key_env_name: 'MISSING_FALLBACK_KEY' } });
+  const missingFirstKey = await translate({ text: 'provider outage missing first key' });
+  expect(missingFirstKey.status === 200 && missingFirstKey.json.model === 'glm-5.3-flash', 'missing first fallback key must not block secondary');
+  await updateRuntimeConfig({ ...chainConfig, secondary_fallback: { ...chainConfig.secondary_fallback, enabled: false } });
+  const disabledSecondary = await translate({ text: 'provider outage disabled secondary' });
+  expect(disabledSecondary.status === 503, 'disabled secondary must not be called');
+  await updateRuntimeConfig({ ...chainConfig, secondary_fallback: { ...chainConfig.secondary_fallback, api_key_env_name: 'MISSING_SECONDARY_KEY' } });
+  const missingSecondary = await translate({ text: 'provider outage missing secondary key' });
+  expect(missingSecondary.status === 503, 'missing secondary credentials must preserve upstream failure');
+  await updateRuntimeConfig({ ...chainConfig, fast_lane: { enabled: true, model_name: 'deepseek-v4-flash' } });
+  const fastChain = await translate({ text: 'provider outage fast lane' });
+  expect(fastChain.status === 200 && fastChain.json.model_route === 'fast-pro-fallback-secondary', 'same-model fast lane must reach secondary without repeating Flash');
+  expect(fastChain.json.attempt_count === 3, 'fast lane chain must count Flash, Pro, GLM once each');
+
+  await updateRuntimeConfig({
+    ...chainConfig,
+    fallback: chainConfig.secondary_fallback,
+    secondary_fallback: { ...chainConfig.fallback, enabled: true },
+  });
+  const priorityStart = upstreamState.primaryHits;
+  const glmFirst = await translate({ text: 'provider outage glm preferred' });
+  expect(glmFirst.status === 200 && glmFirst.json.model === 'glm-5.3-flash', 'GLM must precede Pro when configured first');
+  expect(glmFirst.json.model_route === 'primary-fallback' && glmFirst.json.attempt_count === 2, 'GLM first fallback diagnostics must be accurate');
+  expect(upstreamState.primaryHits === priorityStart + 1, 'Pro must not run after GLM succeeds');
+
+  const priorityCalls = upstreamState.requestedModels.length;
+  const glmUnavailable = await translate({ text: 'glm unavailable' });
+  expect(glmUnavailable.status === 200 && glmUnavailable.json.model === 'deepseek-v4-pro', 'Pro must rescue failed GLM');
+  expect(JSON.stringify(upstreamState.requestedModels.slice(priorityCalls)) === JSON.stringify(['deepseek-v4-flash', 'glm-5.3-flash', 'deepseek-v4-pro']), 'production priority must be Flash, GLM, Pro');
+
+  await updateRuntimeConfig({ ...chainConfig, timeout_ms: 3000 });
+  const retryBudgetStarted = Date.now();
+  const slowEmpty = await translate({ text: 'slow empty primary' });
+  expect(slowEmpty.status === 200, 'a timed-out empty response retry must reach fallback');
+  expect(slowEmpty.json.attempt_count === 3, 'empty response, bounded retry and fallback must be counted');
+  expect(Date.now() - retryBudgetStarted < 4200, 'empty retries must share their route timeout budget');
 
   const disabledConfig = await updateRuntimeConfig({
     enabled: false,

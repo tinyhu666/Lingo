@@ -11,7 +11,7 @@
     "preview": "vite preview",
     "tauri": "tauri",
     "proxy:dev": "node server/translate-proxy/src/server.mjs",
-    "proxy:smoke": "node --test server/translate-proxy/src/runtime-config.test.mjs && node server/translate-proxy/scripts/smoke-test.mjs",
+    "proxy:smoke": "node --test server/translate-proxy/src/runtime-config.test.mjs server/translate-proxy/src/model-request-options.test.mjs && node server/translate-proxy/scripts/smoke-test.mjs",
     "proxy:analytics-smoke": "node server/translate-proxy/scripts/analytics-smoke-test.mjs",
     "proxy:diagnose": "node server/translate-proxy/scripts/diagnose-latency.mjs",
     "proxy:print-deepseek-config": "node server/translate-proxy/scripts/print-deepseek-config.mjs",
