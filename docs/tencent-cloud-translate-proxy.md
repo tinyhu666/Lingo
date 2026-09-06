@@ -313,8 +313,9 @@ The proxy supports two ordered fallback slots: `fallback`, then
 `secondary_fallback`. Existing configurations keep their original single
 fallback; the second slot requires both `enabled: true` and a model name.
 
-For Flash → GLM → Pro, configure `fallback` as follows and move the existing
-DeepSeek Pro configuration into `secondary_fallback` with `enabled: true`:
+For Flash → Pro → GLM, keep DeepSeek Pro in `fallback` and configure
+`secondary_fallback` as follows. This order follows the
+[production-host latency comparison](model-fallback-benchmark-2026-09-06.md):
 
 ```json
 {
@@ -339,11 +340,12 @@ temperature 1 and a minimum output budget of 1024 tokens for this official
 endpoint, including reasoning. Returned diagnostics reflect that budget.
 
 Keep route timeouts within the desktop client's 15-second HTTP timeout. The
-production chain uses 4000 ms for Flash (both primary and fast lane), 5000 ms for
-GLM and 4000 ms for Pro. Empty-response retries share each route's timeout
+production chain uses 4000 ms for Flash (both primary and fast lane), 4000 ms for
+Pro and 5000 ms for GLM. Empty-response retries share each route's timeout
 instead of restarting it. Fallback responses are not cached, so the next request
 can return to the preferred model. Diagnostics identify the first fallback as
-`primary-fallback` / `fast-fallback`, and the second by the `-secondary` suffix.
+`primary-pro-fallback` / `fast-pro-fallback` for DeepSeek Pro, and the second
+by the `-secondary` suffix.
 
 ### Desktop backend configuration
 
