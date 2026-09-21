@@ -174,6 +174,7 @@ fn create_phrase_handler(
             tauri::async_runtime::spawn(async move {
                 if let Err(e) = send_phrase(app_clone.as_ref(), &phrase_text).await {
                     println!("发送常用语失败: {:?}", e);
+                    let _ = app_clone.emit("translation_failed", format!("发送常用语失败：{}", e));
                 }
             });
         }

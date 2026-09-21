@@ -25,6 +25,8 @@ pub mod shortcut;
 pub mod store;
 pub mod translation_diagnostics;
 pub mod tray;
+#[cfg(target_os = "windows")]
+mod windows_input;
 
 pub(crate) const INCOMING_TRANSLATION_ENABLED: bool = false;
 
