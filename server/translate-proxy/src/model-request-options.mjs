@@ -12,7 +12,7 @@ export const modelRequestOptions = (config, maxTokens, temperature) => {
   return {
     max_tokens: maxTokens,
     temperature,
-    ...(hostname === 'api.deepseek.com' && config.model_name.startsWith('deepseek-v4-')
+    ...(hostname === 'api.deepseek.com' && (config.model_name === 'deepseek-flash' || config.model_name.startsWith('deepseek-v4-'))
       ? { thinking: { type: 'disabled' } }
       : {}),
   };
