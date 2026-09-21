@@ -18,3 +18,14 @@ test('existing DeepSeek and other OpenAI-compatible settings remain unchanged', 
     max_tokens: 30, temperature: 0.1,
   });
 });
+
+test('canonical official V4.1 Flash disables thinking without changing third-party requests', () => {
+  for (const model_name of ['deepseek-flash', 'deepseek-v4-flash', 'deepseek-v4-pro']) {
+    assert.deepEqual(modelRequestOptions({ api_url: 'https://api.deepseek.com/v1/chat/completions', model_name }, 96, 0.2), {
+      max_tokens: 96, temperature: 0.2, thinking: { type: 'disabled' },
+    });
+  }
+  assert.deepEqual(modelRequestOptions({ api_url: 'https://example.com/v1/chat/completions', model_name: 'deepseek-flash' }, 96, 0.2), {
+    max_tokens: 96, temperature: 0.2,
+  });
+});

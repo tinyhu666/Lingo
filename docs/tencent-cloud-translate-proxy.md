@@ -81,7 +81,7 @@ Lingo uses DeepSeek's official OpenAI-compatible endpoint for both the primary
 and fast translation lanes:
 
 - API URL: `https://api.deepseek.com/v1/chat/completions`
-- Model: `deepseek-v4-flash`
+- Model: `deepseek-flash`
 - API key environment variable: `DEEPSEEK_API_KEY`
 
 The proxy explicitly disables thinking mode for this official V4 route because
@@ -246,7 +246,7 @@ curl -X PUT "https://your-domain.example.com/admin/runtime-config" \
     "enabled": true,
     "provider": "openai-compatible",
     "api_url": "https://api.deepseek.com/v1/chat/completions",
-    "model_name": "deepseek-v4-flash",
+    "model_name": "deepseek-flash",
     "api_key_env_name": "DEEPSEEK_API_KEY",
     "timeout_ms": 12000,
     "max_tokens": 96,
@@ -262,7 +262,7 @@ curl -X PUT "https://your-domain.example.com/admin/runtime-config" \
       "enabled": true,
       "provider": "openai-compatible",
       "api_url": "https://api.deepseek.com/v1/chat/completions",
-      "model_name": "deepseek-v4-flash",
+      "model_name": "deepseek-flash",
       "api_key_env_name": "DEEPSEEK_API_KEY",
       "timeout_ms": 5000,
       "max_tokens": 48,
@@ -291,7 +291,7 @@ survive container restarts.
 ```
 
 This repository's latency-first recommendation uses official
-`deepseek-v4-flash` for both primary and fast-lane translation, with thinking
+`deepseek-flash` for both primary and fast-lane translation, with thinking
 mode disabled for short `translate` and `rewrite` requests.
 
 For a repeatable feasibility check against your live proxy, run:

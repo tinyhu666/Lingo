@@ -6,11 +6,12 @@ use serde_json::{json, Value};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::OnceLock;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
-use tokio::time::sleep;
+use tokio::time::{sleep, timeout};
 
 static HTTP_CLIENT: OnceLock<Client> = OnceLock::new();
 static PREWARM_LAST_RUN_MS: AtomicU64 = AtomicU64::new(0);
 const MAX_PROXY_ATTEMPTS: usize = 2;
+const TRANSLATION_TIMEOUT: Duration = Duration::from_secs(15);
 const PROXY_RETRY_DELAY_MS: u64 = 120;
 const PREWARM_COOLDOWN_MS: u64 = 30_000;
 const DEBUG_LOCAL_PROXY_URL: &str = "http://127.0.0.1:8787";
@@ -414,7 +415,6 @@ pub async fn translate_with_gpt(
     settings: &AppSettings,
     operation_id: &str,
 ) -> Result<TranslationResult> {
-    let started = Instant::now();
     let text = original.trim();
     if text.is_empty() {
         return Ok(TranslationResult {
@@ -424,7 +424,24 @@ pub async fn translate_with_gpt(
         });
     }
 
-    let backend = backend_config()?;
+    translate_with_backend(
+        text,
+        settings,
+        operation_id,
+        backend_config()?,
+        TRANSLATION_TIMEOUT,
+    )
+    .await
+}
+
+async fn translate_with_backend(
+    text: &str,
+    settings: &AppSettings,
+    operation_id: &str,
+    backend: BackendConfig,
+    budget: Duration,
+) -> Result<TranslationResult> {
+    let started = Instant::now();
     let endpoint = if backend.base_url.ends_with("/translate") {
         backend.base_url.clone()
     } else {
@@ -454,189 +471,201 @@ pub async fn translate_with_gpt(
     let client = shared_http_client();
     let request_started = Instant::now();
 
-    for attempt in 1..=MAX_PROXY_ATTEMPTS {
-        let mut request = client
-            .post(&endpoint)
-            .header("Content-Type", "application/json")
-            .header("X-Lingo-Operation-Id", operation_id)
-            .header("X-Lingo-Client-Version", env!("CARGO_PKG_VERSION"))
-            .header("X-Lingo-Client-Platform", std::env::consts::OS)
-            .json(&body);
+    // One budget covers sends, response bodies, and retry delays. A retry must
+    // never restart the user's wait after a slow first attempt.
+    timeout(budget, async {
+        for attempt in 1..=MAX_PROXY_ATTEMPTS {
+            let mut request = client
+                .post(&endpoint)
+                .header("Content-Type", "application/json")
+                .header("X-Lingo-Operation-Id", operation_id)
+                .header("X-Lingo-Client-Version", env!("CARGO_PKG_VERSION"))
+                .header("X-Lingo-Client-Platform", std::env::consts::OS)
+                .json(&body);
 
-        if let Some(api_key) = &backend.api_key {
-            request = request
-                .header("apikey", api_key)
-                .header("Authorization", format!("Bearer {}", api_key));
-        }
-
-        let response = match request.send().await {
-            Ok(response) => response,
-            Err(error) => {
-                if attempt < MAX_PROXY_ATTEMPTS && should_retry_transport_error(&error) {
-                    println!(
-                        "[translate] retrying_transport attempt={} reason={}",
-                        attempt, error
-                    );
-                    sleep(Duration::from_millis(PROXY_RETRY_DELAY_MS)).await;
-                    continue;
-                }
-
-                return Err(anyhow!(request_error_message(&backend, &error)));
+            if let Some(api_key) = &backend.api_key {
+                request = request
+                    .header("apikey", api_key)
+                    .header("Authorization", format!("Bearer {}", api_key));
             }
-        };
-        let status = response.status();
-        let body_text = response
-            .text()
-            .await
-            .map_err(|error| anyhow!("读取翻译代理响应失败: {}", error))?;
 
-        let json: Value = match serde_json::from_str(&body_text) {
-            Ok(value) => value,
-            Err(_) => {
-                if !status.is_success()
-                    && attempt < MAX_PROXY_ATTEMPTS
-                    && should_retry_status(status)
-                {
+            let response = match request.send().await {
+                Ok(response) => response,
+                Err(error) => {
+                    if attempt < MAX_PROXY_ATTEMPTS && should_retry_transport_error(&error) {
+                        println!(
+                            "[translate] retrying_transport attempt={} reason={}",
+                            attempt, error
+                        );
+                        sleep(Duration::from_millis(PROXY_RETRY_DELAY_MS)).await;
+                        continue;
+                    }
+
+                    return Err(anyhow!(request_error_message(&backend, &error)));
+                }
+            };
+            let status = response.status();
+            let body_text = response
+                .text()
+                .await
+                .map_err(|error| anyhow!("读取翻译代理响应失败: {}", error))?;
+
+            let json: Value = match serde_json::from_str(&body_text) {
+                Ok(value) => value,
+                Err(_) => {
+                    if !status.is_success()
+                        && attempt < MAX_PROXY_ATTEMPTS
+                        && should_retry_status(status)
+                    {
+                        println!(
+                            "[translate] retrying_non_json_response attempt={} status={}",
+                            attempt,
+                            status.as_u16()
+                        );
+                        sleep(Duration::from_millis(PROXY_RETRY_DELAY_MS)).await;
+                        continue;
+                    }
+
+                    return Err(if status.is_success() {
+                        anyhow!("翻译代理返回了非 JSON 数据: {}", summarize_body(&body_text))
+                    } else {
+                        anyhow!(
+                            "翻译代理请求失败 (HTTP {}): {}",
+                            status.as_u16(),
+                            summarize_body(&body_text)
+                        )
+                    });
+                }
+            };
+
+            if !status.is_success() {
+                let trace_id = json
+                    .get("trace_id")
+                    .and_then(|value| value.as_str())
+                    .unwrap_or("-");
+                let message = normalize_proxy_error_message(
+                    extract_error_message(&json)
+                        .unwrap_or_else(|| format!("翻译代理请求失败 (HTTP {})", status.as_u16())),
+                );
+                if attempt < MAX_PROXY_ATTEMPTS && should_retry_status(status) {
                     println!(
-                        "[translate] retrying_non_json_response attempt={} status={}",
+                        "[translate] retrying_proxy_status attempt={} status={} trace_id={}",
                         attempt,
-                        status.as_u16()
+                        status.as_u16(),
+                        trace_id
                     );
                     sleep(Duration::from_millis(PROXY_RETRY_DELAY_MS)).await;
                     continue;
                 }
 
-                return Err(if status.is_success() {
-                    anyhow!("翻译代理返回了非 JSON 数据: {}", summarize_body(&body_text))
-                } else {
-                    anyhow!(
-                        "翻译代理请求失败 (HTTP {}): {}",
-                        status.as_u16(),
-                        summarize_body(&body_text)
-                    )
-                });
+                return Err(anyhow!("{} [trace_id={}]", message, trace_id));
             }
-        };
 
-        if !status.is_success() {
+            let translated = json
+                .get("translated_text")
+                .and_then(|value| value.as_str())
+                .ok_or_else(|| anyhow!("翻译代理返回格式异常，缺少 translated_text"))?;
+
+            let cleaned = cleanup_text(translated);
             let trace_id = json
                 .get("trace_id")
                 .and_then(|value| value.as_str())
                 .unwrap_or("-");
-            let message = normalize_proxy_error_message(
-                extract_error_message(&json)
-                    .unwrap_or_else(|| format!("翻译代理请求失败 (HTTP {})", status.as_u16())),
-            );
-            if attempt < MAX_PROXY_ATTEMPTS && should_retry_status(status) {
-                println!(
-                    "[translate] retrying_proxy_status attempt={} status={} trace_id={}",
-                    attempt,
-                    status.as_u16(),
+            if cleaned.trim().is_empty() {
+                if attempt < MAX_PROXY_ATTEMPTS {
+                    println!(
+                        "[translate] retrying_empty_translated_text attempt={} trace_id={}",
+                        attempt, trace_id
+                    );
+                    sleep(Duration::from_millis(PROXY_RETRY_DELAY_MS)).await;
+                    continue;
+                }
+                return Err(anyhow!(
+                    "翻译服务返回空结果，请重试 [trace_id={}]",
                     trace_id
-                );
-                sleep(Duration::from_millis(PROXY_RETRY_DELAY_MS)).await;
-                continue;
+                ));
             }
 
-            return Err(anyhow!("{} [trace_id={}]", message, trace_id));
-        }
-
-        let translated = json
-            .get("translated_text")
-            .and_then(|value| value.as_str())
-            .ok_or_else(|| anyhow!("翻译代理返回格式异常，缺少 translated_text"))?;
-
-        let cleaned = cleanup_text(translated);
-        let trace_id = json
-            .get("trace_id")
-            .and_then(|value| value.as_str())
-            .unwrap_or("-");
-        if cleaned.trim().is_empty() {
-            if attempt < MAX_PROXY_ATTEMPTS {
-                println!(
-                    "[translate] retrying_empty_translated_text attempt={} trace_id={}",
-                    attempt, trace_id
-                );
-                sleep(Duration::from_millis(PROXY_RETRY_DELAY_MS)).await;
-                continue;
-            }
-            return Err(anyhow!(
-                "翻译服务返回空结果，请重试 [trace_id={}]",
+            let model = json
+                .get("model")
+                .and_then(|value| value.as_str())
+                .unwrap_or("-");
+            let response_source = json
+                .get("response_source")
+                .and_then(|value| value.as_str())
+                .or_else(|| json.get("served_from").and_then(|value| value.as_str()))
+                .unwrap_or("model");
+            let attempt_count = json
+                .get("attempt_count")
+                .and_then(|value| value.as_u64())
+                .unwrap_or(attempt as u64);
+            let model_latency_ms = json
+                .get("model_latency_ms")
+                .and_then(|value| value.as_u64())
+                .unwrap_or(0);
+            let prompt_variant = json
+                .get("prompt_variant")
+                .and_then(|value| value.as_str())
+                .unwrap_or("-");
+            let style_profile = json
+                .get("style_profile")
+                .and_then(|value| value.as_str())
+                .unwrap_or("-");
+            let model_route = json
+                .get("model_route")
+                .and_then(|value| value.as_str())
+                .unwrap_or("-");
+            let effective_max_tokens = json
+                .get("effective_max_tokens")
+                .and_then(|value| value.as_u64())
+                .unwrap_or(0);
+            let effective_temperature = json
+                .get("effective_temperature")
+                .and_then(|value| value.as_f64())
+                .unwrap_or(0.0);
+            let proxy_elapsed_ms = request_started.elapsed().as_millis() as u64;
+            let proxy_overhead_ms = json
+                .get("proxy_overhead_ms")
+                .and_then(|value| value.as_u64())
+                .unwrap_or_else(|| proxy_elapsed_ms.saturating_sub(model_latency_ms));
+            println!(
+                "[perf] backend_translate elapsed_ms={} model_latency_ms={} proxy_overhead_ms={} attempts={} source={} route={} prompt_variant={} style_profile={} max_tokens={} temperature={} trace_id={} model={}",
+                proxy_elapsed_ms,
+                model_latency_ms,
+                proxy_overhead_ms,
+                attempt_count,
+                response_source,
+                model_route,
+                prompt_variant,
+                style_profile,
+                effective_max_tokens,
+                effective_temperature,
+                trace_id,
+                model
+            );
+            println!(
+                "[perf] translate_total elapsed_ms={} trace_id={}",
+                started.elapsed().as_millis(),
                 trace_id
-            ));
+            );
+
+            return Ok(TranslationResult {
+                text: cleaned,
+                trace_id: (trace_id != "-").then(|| trace_id.to_string()),
+                model: (model != "-").then(|| model.to_string()),
+            });
         }
 
-        let model = json
-            .get("model")
-            .and_then(|value| value.as_str())
-            .unwrap_or("-");
-        let response_source = json
-            .get("response_source")
-            .and_then(|value| value.as_str())
-            .or_else(|| json.get("served_from").and_then(|value| value.as_str()))
-            .unwrap_or("model");
-        let attempt_count = json
-            .get("attempt_count")
-            .and_then(|value| value.as_u64())
-            .unwrap_or(attempt as u64);
-        let model_latency_ms = json
-            .get("model_latency_ms")
-            .and_then(|value| value.as_u64())
-            .unwrap_or(0);
-        let prompt_variant = json
-            .get("prompt_variant")
-            .and_then(|value| value.as_str())
-            .unwrap_or("-");
-        let style_profile = json
-            .get("style_profile")
-            .and_then(|value| value.as_str())
-            .unwrap_or("-");
-        let model_route = json
-            .get("model_route")
-            .and_then(|value| value.as_str())
-            .unwrap_or("-");
-        let effective_max_tokens = json
-            .get("effective_max_tokens")
-            .and_then(|value| value.as_u64())
-            .unwrap_or(0);
-        let effective_temperature = json
-            .get("effective_temperature")
-            .and_then(|value| value.as_f64())
-            .unwrap_or(0.0);
-        let proxy_elapsed_ms = request_started.elapsed().as_millis() as u64;
-        let proxy_overhead_ms = json
-            .get("proxy_overhead_ms")
-            .and_then(|value| value.as_u64())
-            .unwrap_or_else(|| proxy_elapsed_ms.saturating_sub(model_latency_ms));
-        println!(
-            "[perf] backend_translate elapsed_ms={} model_latency_ms={} proxy_overhead_ms={} attempts={} source={} route={} prompt_variant={} style_profile={} max_tokens={} temperature={} trace_id={} model={}",
-            proxy_elapsed_ms,
-            model_latency_ms,
-            proxy_overhead_ms,
-            attempt_count,
-            response_source,
-            model_route,
-            prompt_variant,
-            style_profile,
-            effective_max_tokens,
-            effective_temperature,
-            trace_id,
-            model
-        );
-        println!(
-            "[perf] translate_total elapsed_ms={} trace_id={}",
-            started.elapsed().as_millis(),
-            trace_id
-        );
-
-        return Ok(TranslationResult {
-            text: cleaned,
-            trace_id: (trace_id != "-").then(|| trace_id.to_string()),
-            model: (model != "-").then(|| model.to_string()),
-        });
-    }
-
-    Err(anyhow!("翻译服务暂时不可用，请稍后重试"))
+        Err(anyhow!("翻译服务暂时不可用，请稍后重试"))
+    })
+    .await
+    .map_err(|_| {
+        anyhow!(if is_local_proxy_source(backend.source) {
+            local_proxy_unreachable_message().to_string()
+        } else {
+            normalize_proxy_error_message("timeout".to_string())
+        })
+    })?
 }
 
 /// Translate a single chat line we OCR'd from another player. Routes to
@@ -770,9 +799,31 @@ mod tests {
     }
 
     fn read_http_request(stream: &mut TcpStream) -> String {
+        let mut request = Vec::new();
         let mut buffer = [0_u8; 8192];
-        let bytes_read = stream.read(&mut buffer).unwrap_or(0);
-        String::from_utf8_lossy(&buffer[..bytes_read]).into_owned()
+        loop {
+            let bytes_read = stream.read(&mut buffer).expect("read mock request");
+            if bytes_read == 0 {
+                break;
+            }
+            request.extend_from_slice(&buffer[..bytes_read]);
+            if let Some(header_end) = request.windows(4).position(|part| part == b"\r\n\r\n") {
+                let headers = String::from_utf8_lossy(&request[..header_end]);
+                let content_length = headers
+                    .lines()
+                    .find_map(|line| {
+                        let (name, value) = line.split_once(':')?;
+                        name.eq_ignore_ascii_case("content-length")
+                            .then(|| value.trim().parse::<usize>().ok())
+                            .flatten()
+                    })
+                    .unwrap_or(0);
+                if request.len() >= header_end + 4 + content_length {
+                    break;
+                }
+            }
+        }
+        String::from_utf8_lossy(&request).into_owned()
     }
 
     #[test]
@@ -826,6 +877,129 @@ mod tests {
         });
 
         (address, handle)
+    }
+
+    // Each tuple controls status, delay before headers, delay before body, and body.
+    fn run_timed_proxy(
+        responses: Vec<(u16, u64, u64, &'static str)>,
+        budget_ms: u64,
+        source: &'static str,
+    ) -> (Result<TranslationResult>, Duration) {
+        let listener = TcpListener::bind("127.0.0.1:0").expect("bind timed proxy");
+        let base_url = format!("http://{}", listener.local_addr().unwrap());
+        let handle = thread::spawn(move || {
+            listener.set_nonblocking(true).unwrap();
+            for (status, header_delay, body_delay, body) in responses {
+                let accept_started = Instant::now();
+                let mut stream = loop {
+                    match listener.accept() {
+                        Ok((stream, _)) => break stream,
+                        Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {
+                            assert!(
+                                accept_started.elapsed() < Duration::from_secs(3),
+                                "missing retry"
+                            );
+                            thread::sleep(Duration::from_millis(2));
+                        }
+                        Err(error) => panic!("accept timed proxy: {error}"),
+                    }
+                };
+                stream.set_nonblocking(false).unwrap();
+                stream
+                    .set_read_timeout(Some(Duration::from_secs(2)))
+                    .unwrap();
+                let _ = read_http_request(&mut stream);
+                thread::sleep(Duration::from_millis(header_delay));
+                let headers = format!(
+                    "HTTP/1.1 {status} Response\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+                    body.len()
+                );
+                // Cancellation intentionally closes slow connections before the write.
+                let _ = stream.write_all(headers.as_bytes());
+                let _ = stream.flush();
+                thread::sleep(Duration::from_millis(body_delay));
+                let _ = stream.write_all(body.as_bytes());
+            }
+        });
+        let started = Instant::now();
+        let result = tauri::async_runtime::block_on(translate_with_backend(
+            "你好",
+            &AppSettings::default(),
+            "deadline-test",
+            BackendConfig {
+                base_url,
+                api_key: None,
+                source,
+            },
+            Duration::from_millis(budget_ms),
+        ));
+        let elapsed = started.elapsed();
+        handle.join().expect("timed proxy exits");
+        (result, elapsed)
+    }
+
+    #[test]
+    fn translation_deadline_bounds_slow_headers_and_response_body() {
+        for (header_delay, body_delay) in [(900, 0), (0, 900)] {
+            let (result, elapsed) = run_timed_proxy(
+                vec![(
+                    200,
+                    header_delay,
+                    body_delay,
+                    r#"{"translated_text":"Hello"}"#,
+                )],
+                300,
+                "runtime:LINGO_BACKEND_URL",
+            );
+            assert!(result.unwrap_err().to_string().contains("响应超时"));
+            assert!(elapsed < Duration::from_millis(750), "elapsed={elapsed:?}");
+        }
+    }
+
+    #[test]
+    fn quick_capacity_error_still_retries_successfully() {
+        let (result, _) = run_timed_proxy(
+            vec![
+                (503, 0, 0, r#"{"error":"busy"}"#),
+                (200, 0, 0, r#"{"translated_text":"Hello"}"#),
+            ],
+            1000,
+            "runtime:LINGO_BACKEND_URL",
+        );
+        assert_eq!(result.unwrap().text, "Hello");
+    }
+
+    #[test]
+    fn late_capacity_and_empty_responses_cannot_restart_deadline() {
+        for (status, body) in [
+            (503, r#"{"error":"busy"}"#),
+            (200, r#"{"translated_text":""}"#),
+        ] {
+            let (result, elapsed) = run_timed_proxy(
+                vec![
+                    (status, 250, 0, body),
+                    (200, 700, 0, r#"{"translated_text":"Hello"}"#),
+                ],
+                500,
+                "runtime:LINGO_BACKEND_URL",
+            );
+            assert!(result.unwrap_err().to_string().contains("响应超时"));
+            assert!(elapsed < Duration::from_millis(850), "elapsed={elapsed:?}");
+        }
+    }
+
+    #[test]
+    fn deadline_includes_retry_delay_and_preserves_local_proxy_guidance() {
+        let (result, elapsed) = run_timed_proxy(
+            vec![(503, 0, 0, r#"{"error":"busy"}"#)],
+            50,
+            "runtime:LINGO_LOCAL_PROXY_URL",
+        );
+        assert_eq!(
+            result.unwrap_err().to_string(),
+            local_proxy_unreachable_message()
+        );
+        assert!(elapsed < Duration::from_millis(500), "elapsed={elapsed:?}");
     }
 
     #[test]
