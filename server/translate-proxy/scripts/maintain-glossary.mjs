@@ -154,7 +154,7 @@ async function main() {
   if (mode === '--recover') return recoverGlossary({ stateDir, restart, verify });
   const check = async (officialPath) => {
     const env = { ...process.env, HOST: '127.0.0.1', GLOSSARY_OFFICIAL_PATH: officialPath };
-    const tests = (await readdir(join(appDir, 'src'))).filter((name) => name.endsWith('.test.mjs')).map((name) => `src/${name}`);
+    const tests = (await readdir(join(appDir, 'src'))).filter((name) => !name.startsWith('.') && name.endsWith('.test.mjs')).map((name) => `src/${name}`);
     await command(process.execPath, ['--test', ...tests, 'scripts/maintain-glossary.test.mjs'], { cwd: appDir, env });
     for (const script of ['smoke-test.mjs', 'analytics-smoke-test.mjs']) {
       await command(process.execPath, [`scripts/${script}`], { cwd: appDir, env });
