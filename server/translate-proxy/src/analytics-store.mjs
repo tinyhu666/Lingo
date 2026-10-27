@@ -208,15 +208,30 @@ const createDatabase = () => {
     CREATE INDEX IF NOT EXISTS translation_diagnostics_time_idx
       ON translation_diagnostics (occurred_at DESC);
   `);
-  db.prepare(`
-    DELETE FROM translation_diagnostics
-    WHERE julianday(occurred_at) < julianday('now', ?)
-  `).run(`-${TRANSLATION_DIAGNOSTIC_RETENTION_DAYS} days`);
 
   return db;
 };
 
 const db = createDatabase();
+const diagnosticCutoff = () => new Date(
+  Date.now() - TRANSLATION_DIAGNOSTIC_RETENTION_DAYS * 24 * 60 * 60 * 1000,
+).toISOString();
+const pruneDiagnosticsStatement = db.prepare(`
+  DELETE FROM translation_diagnostics WHERE occurred_at < ?
+`);
+const pruneTranslationDiagnostics = () => {
+  // Stored timestamps are normalized ISO strings, so the time index can be used.
+  pruneDiagnosticsStatement.run(diagnosticCutoff());
+};
+pruneTranslationDiagnostics();
+const retentionTimer = setInterval(() => {
+  try {
+    pruneTranslationDiagnostics();
+  } catch (error) {
+    console.error('Failed to prune translation diagnostics:', error.message);
+  }
+}, 60 * 60 * 1000);
+retentionTimer.unref();
 
 const insertEventStatement = db.prepare(`
   INSERT OR IGNORE INTO analytics_events (
@@ -451,7 +466,7 @@ const normalizeTranslationDiagnostic = (value, source = 'client') => {
   const occurredAt = coerceIsoDate(value.occurred_at);
   const stage = toBoundedString(value.stage, 64);
   const status = toBoundedString(value.status, 32);
-  if (!operationId || !occurredAt || !stage || !status) {
+  if (!operationId || !occurredAt || !stage || !status || occurredAt < diagnosticCutoff()) {
     return null;
   }
 
@@ -570,6 +585,7 @@ export const queryTranslationDiagnostics = ({
   to,
   limit,
 } = {}) => {
+  pruneTranslationDiagnostics();
   const normalizedLimit = Math.min(500, Math.max(1, Number.parseInt(limit, 10) || 100));
   const rows = db.prepare(`
     SELECT

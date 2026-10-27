@@ -1,0 +1,385 @@
+{
+  "prompt_revision": "2026-10-27.1:331d37299f0c",
+  "evaluated_at": "2026-10-27T10:46:55.571Z",
+  "results": [
+    {
+      "id": "dota-item-question",
+      "game_scene": "dota2",
+      "text": "你出蝴蝶吗？",
+      "translation_from": "zh",
+      "translation_to": "en",
+      "check": "Asks whether the teammate is building Butterfly; must not answer the question.",
+      "output": "Are you going Butterfly?",
+      "finish_reason": "stop",
+      "model": "deepseek-flash",
+      "latency_ms": 657,
+      "usage": {
+        "prompt_tokens": 289,
+        "completion_tokens": 5,
+        "total_tokens": 294,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        },
+        "prompt_cache_hit_tokens": 0,
+        "prompt_cache_miss_tokens": 289
+      }
+    },
+    {
+      "id": "dota-negation-timer",
+      "game_scene": "dota2",
+      "text": "别开雾，我没买活，BKB还有20秒",
+      "translation_from": "zh",
+      "translation_to": "en",
+      "check": "Do not smoke; speaker has no buyback; BKB ready in 20 seconds.",
+      "output": "Don't smoke, I don't have buyback, Black King Bar ready in 20 seconds",
+      "finish_reason": "stop",
+      "model": "deepseek-flash",
+      "latency_ms": 700,
+      "usage": {
+        "prompt_tokens": 366,
+        "completion_tokens": 19,
+        "total_tokens": 385,
+        "prompt_tokens_details": {
+          "cached_tokens": 128
+        },
+        "prompt_cache_hit_tokens": 128,
+        "prompt_cache_miss_tokens": 238
+      }
+    },
+    {
+      "id": "dota-monkey",
+      "game_scene": "dota2",
+      "text": "猴子别上高，等我跳刀",
+      "translation_from": "zh",
+      "translation_to": "en",
+      "check": "Addresses Phantom Lancer, asks not to go high ground and to wait for the speaker's Blink Dagger; not Monkey King.",
+      "output": "Phantom Lancer, don't go high ground, wait for my Blink Dagger.",
+      "finish_reason": "stop",
+      "model": "deepseek-flash",
+      "latency_ms": 607,
+      "usage": {
+        "prompt_tokens": 313,
+        "completion_tokens": 19,
+        "total_tokens": 332,
+        "prompt_tokens_details": {
+          "cached_tokens": 128
+        },
+        "prompt_cache_hit_tokens": 128,
+        "prompt_cache_miss_tokens": 185
+      }
+    },
+    {
+      "id": "lol-monkey",
+      "game_scene": "lol",
+      "text": "猴子别开，瞎子没闪，等20秒打大龙",
+      "translation_from": "zh",
+      "translation_to": "en",
+      "check": "Addresses Wukong, don't engage; Lee Sin has no Flash; wait 20 seconds before Baron.",
+      "output": "Don't engage, Wukong. Lee Sin has no Flash. Wait 20 seconds, then do Baron.",
+      "finish_reason": "stop",
+      "model": "deepseek-flash",
+      "latency_ms": 675,
+      "usage": {
+        "prompt_tokens": 317,
+        "completion_tokens": 23,
+        "total_tokens": 340,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        },
+        "prompt_cache_hit_tokens": 0,
+        "prompt_cache_miss_tokens": 317
+      }
+    },
+    {
+      "id": "lol-mixed",
+      "game_scene": "lol",
+      "text": "mid no flash，先推线再打小龙",
+      "translation_from": "zh",
+      "translation_to": "en",
+      "check": "Mid has no Flash, push the wave before Dragon; preserve order.",
+      "output": "mid no Flash, push the wave first then do Dragon",
+      "finish_reason": "stop",
+      "model": "deepseek-flash",
+      "latency_ms": 836,
+      "usage": {
+        "prompt_tokens": 310,
+        "completion_tokens": 11,
+        "total_tokens": 321,
+        "prompt_tokens_details": {
+          "cached_tokens": 128
+        },
+        "prompt_cache_hit_tokens": 128,
+        "prompt_cache_miss_tokens": 182
+      }
+    },
+    {
+      "id": "overwatch-nano",
+      "game_scene": "overwatch",
+      "text": "大锤别开大，等我激素",
+      "translation_from": "zh",
+      "translation_to": "en",
+      "check": "Reinhardt must hold ultimate and wait for speaker's Nano Boost; no invented ability timing.",
+      "output": "Reinhardt don't use your ultimate, wait for my Nano Boost.",
+      "finish_reason": "stop",
+      "model": "deepseek-flash",
+      "latency_ms": 685,
+      "usage": {
+        "prompt_tokens": 333,
+        "completion_tokens": 15,
+        "total_tokens": 348,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        },
+        "prompt_cache_hit_tokens": 0,
+        "prompt_cache_miss_tokens": 333
+      }
+    },
+    {
+      "id": "overwatch-contest",
+      "game_scene": "overwatch",
+      "text": "猎空去续点，天使别拉我",
+      "translation_from": "zh",
+      "translation_to": "en",
+      "check": "Tracer should contest; Mercy must not resurrect the speaker.",
+      "output": "Tracer, go contest the point. Mercy, don't rez me.",
+      "finish_reason": "stop",
+      "model": "deepseek-flash",
+      "latency_ms": 605,
+      "usage": {
+        "prompt_tokens": 309,
+        "completion_tokens": 15,
+        "total_tokens": 324,
+        "prompt_tokens_details": {
+          "cached_tokens": 128
+        },
+        "prompt_cache_hit_tokens": 128,
+        "prompt_cache_miss_tokens": 181
+      }
+    },
+    {
+      "id": "wow-battle-res",
+      "game_scene": "wow",
+      "text": "DK别开怪，小德战复还有30秒",
+      "translation_from": "zh",
+      "translation_to": "en",
+      "check": "Death Knight must not pull; druid's battle resurrection is on cooldown for 30 seconds.",
+      "output": "DK don't pull, Druid's battle resurrection is ready in 30 seconds.",
+      "finish_reason": "stop",
+      "model": "deepseek-flash",
+      "latency_ms": 419,
+      "usage": {
+        "prompt_tokens": 335,
+        "completion_tokens": 17,
+        "total_tokens": 352,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        },
+        "prompt_cache_hit_tokens": 0,
+        "prompt_cache_miss_tokens": 335
+      }
+    },
+    {
+      "id": "wow-question",
+      "game_scene": "wow",
+      "text": "奶妈没蓝了，能等10秒再开怪吗？",
+      "translation_from": "zh",
+      "translation_to": "en",
+      "check": "Healer is out of mana; asks to wait 10 seconds before pulling. Not an instruction to pull immediately.",
+      "output": "The healer is out of mana, can we wait 10 seconds before pulling?",
+      "finish_reason": "stop",
+      "model": "deepseek-flash",
+      "latency_ms": 978,
+      "usage": {
+        "prompt_tokens": 349,
+        "completion_tokens": 17,
+        "total_tokens": 366,
+        "prompt_tokens_details": {
+          "cached_tokens": 128
+        },
+        "prompt_cache_hit_tokens": 128,
+        "prompt_cache_miss_tokens": 221
+      }
+    },
+    {
+      "id": "incoming-no-style",
+      "game_scene": "dota2",
+      "text": "no buyback, BKB in 20, don't go high ground",
+      "translation_from": "en",
+      "translation_to": "zh",
+      "direction": "incoming",
+      "translation_mode": "toxic",
+      "check": "No buyback, BKB in 20, do not go high ground; no added insult despite outgoing Toxic selection.",
+      "output": "没买活，黑皇杖20秒后好，别上高地",
+      "finish_reason": "stop",
+      "model": "deepseek-flash",
+      "latency_ms": 800,
+      "usage": {
+        "prompt_tokens": 359,
+        "completion_tokens": 15,
+        "total_tokens": 374,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        },
+        "prompt_cache_hit_tokens": 0,
+        "prompt_cache_miss_tokens": 359
+      }
+    },
+    {
+      "id": "russian-item",
+      "game_scene": "dota2",
+      "text": "等我跳刀，别开雾",
+      "translation_from": "zh",
+      "translation_to": "ru",
+      "check": "Russian output: wait for speaker's Blink Dagger, do not use smoke.",
+      "output": "Подождите мой Blink Dagger, не используйте смок.",
+      "finish_reason": "stop",
+      "model": "deepseek-flash",
+      "latency_ms": 933,
+      "usage": {
+        "prompt_tokens": 325,
+        "completion_tokens": 16,
+        "total_tokens": 341,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        },
+        "prompt_cache_hit_tokens": 0,
+        "prompt_cache_miss_tokens": 325
+      }
+    },
+    {
+      "id": "russian-baron",
+      "game_scene": "lol",
+      "text": "20秒后打大龙，别先开",
+      "translation_from": "zh",
+      "translation_to": "ru",
+      "check": "Baron after 20 seconds; do not start early.",
+      "output": "Через 20 секунд идём на Барона Нашора, не начинайте первыми.",
+      "finish_reason": "stop",
+      "model": "deepseek-flash",
+      "latency_ms": 762,
+      "usage": {
+        "prompt_tokens": 297,
+        "completion_tokens": 23,
+        "total_tokens": 320,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        },
+        "prompt_cache_hit_tokens": 0,
+        "prompt_cache_miss_tokens": 297
+      }
+    },
+    {
+      "id": "daily-butterfly",
+      "game_scene": "dota2",
+      "text": "我在花园看到一只蝴蝶",
+      "translation_from": "zh",
+      "translation_to": "en",
+      "daily_mode": true,
+      "check": "Ordinary butterfly in a garden; no item, build or hero reference.",
+      "output": "I saw a butterfly in the garden.",
+      "finish_reason": "stop",
+      "model": "deepseek-flash",
+      "latency_ms": 805,
+      "usage": {
+        "prompt_tokens": 270,
+        "completion_tokens": 8,
+        "total_tokens": 278,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        },
+        "prompt_cache_hit_tokens": 0,
+        "prompt_cache_miss_tokens": 270
+      }
+    },
+    {
+      "id": "handle-boundary",
+      "game_scene": "dota2",
+      "text": "@PASTA123 等我20秒再开",
+      "translation_from": "zh",
+      "translation_to": "en",
+      "check": "Preserve @PASTA123 exactly; wait for speaker for 20 seconds before engaging; no Phantom Assassin.",
+      "output": "@PASTA123 wait 20 seconds for me before starting.",
+      "finish_reason": "stop",
+      "model": "deepseek-flash",
+      "latency_ms": 552,
+      "usage": {
+        "prompt_tokens": 270,
+        "completion_tokens": 13,
+        "total_tokens": 283,
+        "prompt_tokens_details": {
+          "cached_tokens": 128
+        },
+        "prompt_cache_hit_tokens": 128,
+        "prompt_cache_miss_tokens": 142
+      }
+    },
+    {
+      "id": "toxic-no-invention",
+      "game_scene": "wow",
+      "text": "你为什么不等治疗？",
+      "translation_from": "zh",
+      "translation_to": "en",
+      "translation_mode": "toxic",
+      "check": "Keep the question about not waiting for the healer; no invented personal insult.",
+      "output": "Why the hell didn't you wait for the healer?",
+      "finish_reason": "stop",
+      "model": "deepseek-flash",
+      "latency_ms": 394,
+      "usage": {
+        "prompt_tokens": 320,
+        "completion_tokens": 12,
+        "total_tokens": 332,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        },
+        "prompt_cache_hit_tokens": 0,
+        "prompt_cache_miss_tokens": 320
+      }
+    },
+    {
+      "id": "acronym-only",
+      "game_scene": "dota2",
+      "text": "GG!",
+      "translation_from": "en",
+      "translation_to": "zh",
+      "check": "A conventional equivalent or unchanged GG is acceptable; no explanation.",
+      "output": "GG！",
+      "finish_reason": "stop",
+      "model": "deepseek-flash",
+      "latency_ms": 892,
+      "usage": {
+        "prompt_tokens": 298,
+        "completion_tokens": 2,
+        "total_tokens": 300,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        },
+        "prompt_cache_hit_tokens": 0,
+        "prompt_cache_miss_tokens": 298
+      }
+    },
+    {
+      "id": "wow-healing-action",
+      "game_scene": "wow",
+      "text": "治疗我，别去开怪",
+      "translation_from": "zh",
+      "translation_to": "en",
+      "check": "Heal the speaker; do not pull. 治疗 is an action here, not a healer role.",
+      "output": "Heal me, don't pull.",
+      "finish_reason": "stop",
+      "model": "deepseek-flash",
+      "latency_ms": 480,
+      "usage": {
+        "prompt_tokens": 340,
+        "completion_tokens": 8,
+        "total_tokens": 348,
+        "prompt_tokens_details": {
+          "cached_tokens": 128
+        },
+        "prompt_cache_hit_tokens": 128,
+        "prompt_cache_miss_tokens": 212
+      }
+    }
+  ],
+  "additional_check_evaluated_at": "2026-10-27T10:53:17.015Z"
+}

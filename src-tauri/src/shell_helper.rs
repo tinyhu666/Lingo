@@ -1,6 +1,7 @@
 use crate::ai_translator;
 use crate::translation_diagnostics::{self, DiagnosticMetadata};
 use anyhow::{anyhow, Result};
+use std::future::Future;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use tauri::AppHandle;
 use tauri_plugin_clipboard_manager::ClipboardExt;
@@ -10,12 +11,36 @@ use tokio::time::sleep;
 
 const COPY_SETTLE_TIMEOUT_MS: u64 = 1500;
 const COPY_SETTLE_DELAY_MS: u64 = 20;
+const COPY_RETRY_DELAY_MS: u64 = 150;
 const CLIPBOARD_RESTORE_DELAY_MS: u64 = 350;
 // All clipboard users share this non-queued lock, including the restore delay.
 static CLIPBOARD_OPERATION: tauri::async_runtime::Mutex<()> =
     tauri::async_runtime::Mutex::const_new(());
 #[cfg(target_os = "windows")]
 const MODIFIER_RELEASE_TIMEOUT_MS: u64 = 2000;
+
+// Capture once for the whole operation; never adopt a new foreground window
+// between validation, modifier waits, or individual injected shortcuts.
+#[derive(Clone, Copy)]
+struct KeyboardTarget {
+    #[cfg(target_os = "windows")]
+    window: usize,
+}
+
+impl KeyboardTarget {
+    fn capture() -> Self {
+        Self {
+            #[cfg(target_os = "windows")]
+            window: windows_foreground_window(),
+        }
+    }
+
+    fn validate(self) -> Result<()> {
+        #[cfg(target_os = "windows")]
+        ensure_windows_target(self.window)?;
+        Ok(())
+    }
+}
 
 fn emit_stage_failure(
     app: &AppHandle,
@@ -44,6 +69,8 @@ pub async fn trans_and_replace_text(app: &AppHandle, operation_id: &str) -> Resu
         .map_err(|_| anyhow!("文本操作进行中，请稍后重试"))?;
     let clipboard_backup = app.clipboard().read_text().ok();
     let mut owned_clipboard = None;
+    let mut paste_attempted = false;
+    let target = KeyboardTarget::capture();
     let result = async {
         let total_started = Instant::now();
         translation_diagnostics::emit(
@@ -80,8 +107,6 @@ pub async fn trans_and_replace_text(app: &AppHandle, operation_id: &str) -> Resu
         }
 
         #[cfg(target_os = "windows")]
-        let target_window = windows_foreground_window();
-        #[cfg(target_os = "windows")]
         {
             let modifier_started = Instant::now();
             if let Err(error) = wait_for_windows_modifiers_release().await {
@@ -104,14 +129,15 @@ pub async fn trans_and_replace_text(app: &AppHandle, operation_id: &str) -> Resu
 
         owned_clipboard = Some(clipboard_probe.clone());
         #[cfg(target_os = "windows")]
-        if let Err(error) = ensure_windows_target(target_window) {
+        if let Err(error) = target.validate() {
             emit_stage_failure(app, operation_id, "copy", total_started, &error);
             return Err(error);
         }
 
         // 1. 复制选中文本
         if let Err(error) =
-            simulate_keyboard_shortcuts(app, copy_shortcut_keys(settings.daily_mode), None).await
+            simulate_keyboard_shortcuts(app, copy_shortcut_keys(settings.daily_mode), None, target)
+                .await
         {
             emit_stage_failure(app, operation_id, "copy", total_started, &error);
             return Err(error);
@@ -131,7 +157,7 @@ pub async fn trans_and_replace_text(app: &AppHandle, operation_id: &str) -> Resu
 
         // 2. 读取剪贴板内容
         let clipboard_started = Instant::now();
-        let original_text = match read_copied_text(app, &clipboard_probe).await {
+        let original_text = match read_copied_text(app, &clipboard_probe, target).await {
             Ok(text) => text,
             Err(error) => {
                 emit_stage_failure(app, operation_id, "clipboard_read", total_started, &error);
@@ -227,7 +253,7 @@ pub async fn trans_and_replace_text(app: &AppHandle, operation_id: &str) -> Resu
         {
             if let Err(error) = wait_for_windows_modifiers_release()
                 .await
-                .and_then(|_| ensure_windows_target(target_window))
+                .and_then(|_| target.validate())
             {
                 emit_stage_failure(app, operation_id, "paste", total_started, &error);
                 return Err(error);
@@ -239,10 +265,12 @@ pub async fn trans_and_replace_text(app: &AppHandle, operation_id: &str) -> Resu
             return Err(error);
         }
         owned_clipboard = Some(translated.text.clone());
+        paste_attempted = true;
         if let Err(error) = simulate_keyboard_shortcuts(
             app,
             paste_shortcut_keys(settings.daily_mode),
             Some(&translated.text),
+            target,
         )
         .await
         {
@@ -275,7 +303,7 @@ pub async fn trans_and_replace_text(app: &AppHandle, operation_id: &str) -> Resu
     }
     .await;
 
-    finish_clipboard_operation(app, &clipboard_backup, &owned_clipboard).await;
+    finish_clipboard_operation(app, &clipboard_backup, &owned_clipboard, paste_attempted).await;
     result
 }
 
@@ -284,13 +312,14 @@ pub async fn has_text_selection(app: &AppHandle) -> Result<bool> {
         .try_lock()
         .map_err(|_| anyhow!("文本操作进行中，请稍后重试"))?;
     let clipboard_backup = app.clipboard().read_text().ok();
+    let target = KeyboardTarget::capture();
     let clipboard_probe = build_clipboard_probe();
     app.clipboard().write_text(&clipboard_probe)?;
     let mut owned_clipboard = Some(clipboard_probe.clone());
 
     let result = async {
-        simulate_keyboard_shortcuts(app, copy_shortcut_keys(true), None).await?;
-        let selected_text = read_copied_text(app, &clipboard_probe).await?;
+        simulate_keyboard_shortcuts(app, copy_shortcut_keys(true), None, target).await?;
+        let selected_text = read_copied_text(app, &clipboard_probe, target).await?;
         owned_clipboard = Some(selected_text.clone());
         Ok(is_meaningful_clipboard_text(
             &selected_text,
@@ -307,19 +336,24 @@ async fn simulate_keyboard_shortcuts(
     app: &AppHandle,
     keys: &[&str],
     expected_clipboard: Option<&str>,
+    target: KeyboardTarget,
 ) -> Result<()> {
     if keys.is_empty() {
         return Ok(());
     }
+
+    target.validate()?;
 
     #[cfg(target_os = "macos")]
     {
         ensure_expected_clipboard(app, expected_clipboard)?;
         let shell = app.shell();
         let mut script = String::from("tell application \"System Events\"\n");
-        for key in keys {
+        for (index, key) in keys.iter().enumerate() {
             script.push_str(&format!("    keystroke \"{}\" using command down\n", key));
-            script.push_str("    delay 0.03\n");
+            if index + 1 < keys.len() {
+                script.push_str("    delay 0.03\n");
+            }
         }
         script.push_str("end tell\n");
 
@@ -342,15 +376,16 @@ async fn simulate_keyboard_shortcuts(
 
     #[cfg(target_os = "windows")]
     {
-        let target_window = windows_foreground_window();
         wait_for_windows_modifiers_release().await?;
-        for key in keys {
+        for (index, key) in keys.iter().enumerate() {
             crate::windows_input::send_control_shortcut(key, || {
-                ensure_windows_target(target_window)?;
+                target.validate()?;
                 ensure_expected_clipboard(app, expected_clipboard)
             })
             .await?;
-            sleep(Duration::from_millis(20)).await;
+            if index + 1 < keys.len() {
+                sleep(Duration::from_millis(20)).await;
+            }
         }
     }
 
@@ -359,19 +394,36 @@ async fn simulate_keyboard_shortcuts(
 
 #[cfg(target_os = "windows")]
 async fn wait_for_windows_modifiers_release() -> Result<()> {
-    use windows_sys::Win32::UI::Input::KeyboardAndMouse::{
-        GetAsyncKeyState, VK_CONTROL, VK_LWIN, VK_MENU, VK_RWIN, VK_SHIFT,
-    };
-
     wait_for_modifiers_release(
-        || {
-            [VK_CONTROL, VK_MENU, VK_SHIFT, VK_LWIN, VK_RWIN]
-                .into_iter()
-                .any(|key| unsafe { GetAsyncKeyState(key as i32) } < 0)
-        },
+        || !pressed_windows_modifiers().is_empty(),
         Duration::from_millis(MODIFIER_RELEASE_TIMEOUT_MS),
     )
     .await
+    .map_err(|error| {
+        let pressed = pressed_windows_modifiers();
+        if pressed.is_empty() {
+            error
+        } else {
+            anyhow!("{error}（仍按下：{}）", pressed.join(" + "))
+        }
+    })
+}
+
+#[cfg(target_os = "windows")]
+fn pressed_windows_modifiers() -> Vec<&'static str> {
+    use windows_sys::Win32::UI::Input::KeyboardAndMouse::{
+        GetAsyncKeyState, VK_CONTROL, VK_LWIN, VK_MENU, VK_RWIN, VK_SHIFT,
+    };
+    [
+        (VK_CONTROL, "Ctrl"),
+        (VK_MENU, "Alt"),
+        (VK_SHIFT, "Shift"),
+        (VK_LWIN, "Win(L)"),
+        (VK_RWIN, "Win(R)"),
+    ]
+    .into_iter()
+    .filter_map(|(key, name)| (unsafe { GetAsyncKeyState(key as i32) } < 0).then_some(name))
+    .collect()
 }
 
 #[cfg(any(target_os = "windows", test))]
@@ -430,6 +482,8 @@ pub async fn send_phrase(app: &AppHandle, phrase: &str) -> Result<()> {
         .map_err(|_| anyhow!("文本操作进行中，请稍后重试"))?;
     let clipboard_backup = app.clipboard().read_text().ok();
     let mut owned_clipboard = None;
+    let mut paste_attempted = false;
+    let target = KeyboardTarget::capture();
     let result = async {
         let settings = crate::store::get_settings(app)?;
         if !settings.app_enabled {
@@ -439,22 +493,22 @@ pub async fn send_phrase(app: &AppHandle, phrase: &str) -> Result<()> {
 
         #[cfg(target_os = "windows")]
         {
-            let target_window = windows_foreground_window();
             wait_for_windows_modifiers_release().await?;
-            ensure_windows_target(target_window)?;
+            target.validate()?;
         }
         // 将短语写入剪贴板
         app.clipboard().write_text(phrase)?;
         owned_clipboard = Some(phrase.to_string());
 
         // 模拟粘贴操作
-        simulate_keyboard_shortcuts(app, &["v"], Some(phrase)).await?;
+        paste_attempted = true;
+        simulate_keyboard_shortcuts(app, &["v"], Some(phrase), target).await?;
 
         Ok(())
     }
     .await;
 
-    finish_clipboard_operation(app, &clipboard_backup, &owned_clipboard).await;
+    finish_clipboard_operation(app, &clipboard_backup, &owned_clipboard, paste_attempted).await;
     result
 }
 
@@ -498,27 +552,62 @@ fn restore_owned_clipboard<E>(
     Ok(())
 }
 
-async fn read_copied_text(app: &AppHandle, clipboard_probe: &str) -> Result<String> {
+async fn read_copied_text(
+    app: &AppHandle,
+    clipboard_probe: &str,
+    target: KeyboardTarget,
+) -> Result<String> {
     poll_copied_text(
         || app.clipboard().read_text(),
         clipboard_probe,
         Duration::from_millis(COPY_SETTLE_TIMEOUT_MS),
+        cfg!(target_os = "windows").then_some(Duration::from_millis(COPY_RETRY_DELAY_MS)),
+        || async {
+            target.validate()?;
+            // The first copy may finish between polling and the retry callback.
+            match app.clipboard().read_text() {
+                Ok(current) if current == clipboard_probe => {}
+                // Let the normal poll handle a late copy or temporary read lock.
+                _ => return Ok(()),
+            }
+            let result =
+                simulate_keyboard_shortcuts(app, &["c"], Some(clipboard_probe), target).await;
+            // A late first copy during the modifier wait is success, not a
+            // changed-clipboard failure. A changed target must still abort.
+            target.validate()?;
+            if app
+                .clipboard()
+                .read_text()
+                .is_ok_and(|current| is_meaningful_clipboard_text(&current, clipboard_probe))
+            {
+                return Ok(());
+            }
+            result
+        },
     )
     .await
 }
 
-async fn poll_copied_text<E: std::fmt::Display>(
+async fn poll_copied_text<E: std::fmt::Display, F: Future<Output = Result<()>>>(
     mut read: impl FnMut() -> std::result::Result<String, E>,
     clipboard_probe: &str,
     timeout: Duration,
+    retry_after: Option<Duration>,
+    mut retry_copy: impl FnMut() -> F,
 ) -> Result<String> {
-    let deadline = Instant::now() + timeout;
+    let started = Instant::now();
+    let deadline = started + timeout;
+    let mut retried = false;
     loop {
+        let mut probe_unchanged = false;
         let read_error = match read() {
             Ok(current) if is_meaningful_clipboard_text(&current, clipboard_probe) => {
                 return Ok(current)
             }
-            Ok(_) => None,
+            Ok(current) => {
+                probe_unchanged = current == clipboard_probe;
+                None
+            }
             Err(error) => Some(error.to_string()),
         };
         let remaining = deadline.saturating_duration_since(Instant::now());
@@ -530,6 +619,18 @@ async fn poll_copied_text<E: std::fmt::Display>(
                 ),
             });
         }
+        // Retry only an untouched probe. Empty/non-text content or a new user
+        // copy must never trigger another injected shortcut. Do not re-select.
+        if probe_unchanged
+            && !retried
+            && retry_after.is_some_and(|delay| started.elapsed() >= delay)
+        {
+            retried = true;
+            tokio::time::timeout(remaining, retry_copy())
+                .await
+                .map_err(|_| anyhow!("复制重试超时，请松开组合键并确认输入框已聚焦后重试"))??;
+            continue;
+        }
         sleep(remaining.min(Duration::from_millis(COPY_SETTLE_DELAY_MS))).await;
     }
 }
@@ -538,13 +639,14 @@ async fn finish_clipboard_operation(
     app: &AppHandle,
     backup: &Option<String>,
     owned: &Option<String>,
+    paste_attempted: bool,
 ) {
-    if owned.is_some() {
+    if paste_attempted {
         // Await this delay while holding the operation lock. An old restore must
         // never race a new translation or phrase's copy/paste.
         sleep(Duration::from_millis(CLIPBOARD_RESTORE_DELAY_MS)).await;
-        restore_clipboard(app, backup, owned);
     }
+    restore_clipboard(app, backup, owned);
 }
 
 fn build_clipboard_probe() -> String {
@@ -613,23 +715,131 @@ mod tests {
                 Ok("probe".to_string()),
                 Err("busy"),
             ];
-            let text =
-                poll_copied_text(|| reads.pop().unwrap(), "probe", Duration::from_millis(200))
-                    .await
-                    .unwrap();
+            let text = poll_copied_text(
+                || reads.pop().unwrap(),
+                "probe",
+                Duration::from_millis(200),
+                None,
+                || async { Ok(()) },
+            )
+            .await
+            .unwrap();
             assert_eq!(text, "copied text");
-            let error = poll_copied_text(|| Err::<String, _>("busy"), "probe", Duration::ZERO)
-                .await
-                .unwrap_err();
+            let error = poll_copied_text(
+                || Err::<String, _>("busy"),
+                "probe",
+                Duration::ZERO,
+                None,
+                || async { Ok(()) },
+            )
+            .await
+            .unwrap_err();
             assert!(error.to_string().contains("busy"));
             let error = poll_copied_text(
                 || Ok::<_, &str>("probe".to_string()),
                 "probe",
                 Duration::ZERO,
+                None,
+                || async { Ok(()) },
             )
             .await
             .unwrap_err();
             assert!(error.to_string().contains("输入框"));
+        });
+    }
+
+    #[test]
+    fn missed_copy_retries_once_and_returns_recovered_text() {
+        use std::cell::Cell;
+        tauri::async_runtime::block_on(async {
+            let retries = Cell::new(0);
+            let text = poll_copied_text(
+                || {
+                    Ok::<_, &str>(
+                        if retries.get() == 0 {
+                            "probe"
+                        } else {
+                            "recovered"
+                        }
+                        .to_string(),
+                    )
+                },
+                "probe",
+                Duration::from_millis(200),
+                Some(Duration::ZERO),
+                || {
+                    retries.set(retries.get() + 1);
+                    async { Ok(()) }
+                },
+            )
+            .await
+            .unwrap();
+            assert_eq!(text, "recovered");
+            assert_eq!(retries.get(), 1);
+
+            retries.set(0);
+            assert!(poll_copied_text(
+                || Ok::<_, &str>("probe".to_string()),
+                "probe",
+                Duration::from_millis(30),
+                Some(Duration::ZERO),
+                || {
+                    retries.set(retries.get() + 1);
+                    async { Ok(()) }
+                },
+            )
+            .await
+            .is_err());
+            assert_eq!(retries.get(), 1);
+        });
+    }
+
+    #[test]
+    fn copy_retry_does_not_touch_changed_or_unreadable_clipboard() {
+        tauri::async_runtime::block_on(async {
+            for content in [Ok("new text".to_string()), Ok("".to_string()), Err("busy")] {
+                let result = poll_copied_text(
+                    || content.clone(),
+                    "probe",
+                    Duration::from_millis(10),
+                    Some(Duration::ZERO),
+                    || async { panic!("must not inject another copy") },
+                )
+                .await;
+                if content == Ok("new text".to_string()) {
+                    assert_eq!(result.unwrap(), "new text");
+                } else {
+                    assert!(result.is_err());
+                }
+            }
+        });
+    }
+
+    #[test]
+    fn copy_retry_keeps_original_deadline_and_propagates_target_validation() {
+        tauri::async_runtime::block_on(async {
+            let result = poll_copied_text(
+                || Ok::<_, &str>("probe".to_string()),
+                "probe",
+                Duration::from_millis(20),
+                Some(Duration::ZERO),
+                || async {
+                    sleep(Duration::from_secs(1)).await;
+                    panic!("retry must be cancelled within the original budget")
+                },
+            )
+            .await;
+            assert!(result.unwrap_err().to_string().contains("重试超时"));
+
+            let result = poll_copied_text(
+                || Ok::<_, &str>("probe".to_string()),
+                "probe",
+                Duration::from_millis(100),
+                Some(Duration::ZERO),
+                || async { ensure_same_target(12, 13) },
+            )
+            .await;
+            assert!(result.unwrap_err().to_string().contains("目标窗口"));
         });
     }
 

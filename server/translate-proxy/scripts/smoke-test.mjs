@@ -75,6 +75,9 @@ const upstream = createServer(async (req, res) => {
   const systemPrompt = String(payload?.messages?.[0]?.content || payload?.system || '').trim();
   const auth = String(req.headers.authorization || '');
   upstreamState.requestedModels.push(payload.model);
+  if (userText === 'GG!' || userText === 'BKB') {
+    return jsonResponse(res, 200, { choices: [{ message: { content: userText } }] });
+  }
 
   if (req.url === primaryPath) {
     upstreamState.primaryHits += 1;
@@ -133,6 +136,7 @@ const upstream = createServer(async (req, res) => {
       return jsonResponse(res, 503, { message: 'fast lane temporary outage' });
     }
 
+    if (userText === 'cache probe' || userText === 'shared probe') await wait(120);
     const fastText = userText === 'fallback once' ? 'FAST-RECOVERED:fallback once' : `FAST:${userText}`;
     return jsonResponse(res, 200, {
       choices: [{ message: { content: fastText } }],
@@ -224,6 +228,7 @@ try {
   const summary = await summaryResponse.json();
   expect(summaryResponse.ok, 'GET /translate should succeed');
   expect(summary.provider === 'openai-compatible', 'default provider should be openai-compatible');
+  expect(typeof summary.prompt_revision === 'string' && summary.glossary?.officialTerms > 1000, 'public summary should identify the loaded prompt and glossary');
 
   const defaultPublicSiteConfig = await fetchPublicSiteConfig();
   expect(
@@ -304,17 +309,51 @@ try {
     'dota2 prompt should include explicit Dota 2 context',
   );
   expect(
-    upstreamState.lastFastSystemPrompt.includes('Roshan'),
-    'dota2 prompt should mention Dota 2 terminology',
-  );
-  expect(
-    upstreamState.lastFastSystemPrompt.includes('蝴蝶=Butterfly'),
-    'dota2 prompt should disambiguate the Butterfly item',
+    !upstreamState.lastFastSystemPrompt.includes('Relevant glossary'),
+    'unmatched terms should not bloat a greeting prompt',
   );
   expect(
     upstreamState.lastFastSystemPrompt.includes('Style:pro'),
     'pro prompt should include style profile',
   );
+
+  for (const text of ['GG!', 'BKB']) {
+    const previousRequests = upstreamState.requestedModels.length;
+    const result = await translate({ text });
+    expect(result.status === 200 && result.json.translated_text === text, 'invariant tokens should be valid unchanged translations');
+    expect(upstreamState.requestedModels.length === previousRequests + 1, 'invariant tokens must not trigger fallback calls');
+  }
+
+  const cacheStartHits = upstreamState.fastHits;
+  const coldStart = performance.now();
+  const cold = await translate({ text: 'cache probe' });
+  const coldMs = performance.now() - coldStart;
+  const warmStart = performance.now();
+  const warm = await translate({ text: 'cache probe' });
+  const warmMs = performance.now() - warmStart;
+  expect(cold.status === 200 && warm.status === 200, 'cache requests should succeed');
+  expect(cold.json.response_source === 'model', 'first call must reach the model');
+  expect(warm.json.response_source === 'memory-cache', 'repeat must reuse the translation');
+  expect(upstreamState.fastHits === cacheStartHits + 1, 'repeat must not make a model request');
+  expect(warm.json.operation_id === warm.operationId, 'cache must preserve the current operation ID');
+  expect(warm.json.trace_id !== cold.json.trace_id, 'cache must not reuse the previous trace ID');
+  expect(warm.json.attempt_count === 0, 'cache hit must report zero model attempts');
+  console.log(`[perf-smoke] simulated_model_120ms cold=${coldMs.toFixed(1)}ms cache=${warmMs.toFixed(1)}ms`);
+
+  for (const overrides of [
+    { translation_from: 'ru' }, { translation_to: 'ja' },
+    { translation_mode: 'pro' }, { game_scene: 'lol' },
+    { daily_mode: true }, { direction: 'incoming' },
+  ]) {
+    const isolated = await translate({ text: 'cache probe', ...overrides });
+    expect(isolated.json.response_source === 'model', 'changed translation context must not reuse a cached result');
+  }
+
+  const sharedStartHits = upstreamState.fastHits;
+  const shared = await Promise.all([translate({ text: 'shared probe' }), translate({ text: 'shared probe' })]);
+  expect(shared.every(result => result.status === 200), 'shared requests should succeed');
+  expect(upstreamState.fastHits === sharedStartHits + 1, 'concurrent duplicates should share one model request');
+  expect(shared.some(result => result.json.response_source === 'shared-inflight'), 'concurrent request should use in-flight result');
 
   const mixedLanguageResult = await translate({
     text: '你出 Butterfly 吗？',
@@ -343,7 +382,7 @@ try {
     'rewrite prompt should keep rewrite intent',
   );
   expect(
-    upstreamState.lastFastSystemPrompt.includes('Do not force Dota 2, League of Legends, World of Warcraft, or Overwatch terminology.'),
+    upstreamState.lastFastSystemPrompt.includes('Do not force game-specific terminology.'),
     'other game prompt should avoid game-specific terminology',
   );
 
@@ -449,6 +488,11 @@ try {
     'Dota 2 item question should use the canonical Butterfly item name',
   );
 
+  expect(
+    upstreamState.lastPrimarySystemPrompt.includes('"蝴蝶" => "Butterfly"'),
+    'matching Dota 2 item glossary must reach the fallback model',
+  );
+
   const toxicPrimary = await translate({
     text: 'stop feeding and play baron side',
     translation_mode: 'toxic',
@@ -462,7 +506,7 @@ try {
     'lol prompt should include explicit game context',
   );
   expect(
-    upstreamState.lastPrimarySystemPrompt.includes('Baron'),
+    upstreamState.lastPrimarySystemPrompt.includes('"baron" => "纳什男爵"'),
     'lol prompt should mention League of Legends terminology',
   );
   expect(

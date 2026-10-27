@@ -65,10 +65,18 @@ Sensitive values stay in server environment variables.
 Mutable runtime settings are stored in `data/runtime-config.json`.
 The proxy keeps a short in-memory cache for both runtime config reads and recent
 translation results to reduce repeat-request latency without changing deploy
-workflow.
+workflow. Translation results are reusable for 60 seconds with at most 256 entries;
+cache hits do not extend expiry. Language, style, game, daily mode, direction, and
+model route remain part of the cache key. Fallback results are not cached.
 It also adapts prompt length and generation budget based on text length and
 whether the request is a translation or a same-language rewrite, so first-hit
 latency stays lower without requiring separate client logic.
+Game terms now come from a versioned, locally loaded glossary. Only terms matched
+in the current message are included in the prompt. See [glossary maintenance](game-glossary.md)
+for official sources, weekly updates, offline tests and the opt-in live evaluation.
+Deploy the entire `src` directory, including `src/glossary/*.json`, then restart
+the service through the existing deployment process. `GET /translate` reports
+`prompt_revision` and `glossary` metadata to verify which version is loaded.
 If you need a lower-latency model for short new messages, you can optionally
 enable `fast_lane`; the proxy will try that model first for eligible requests
 and fall back to the primary model on failure. By default, both short

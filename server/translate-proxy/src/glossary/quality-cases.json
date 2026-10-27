@@ -1,0 +1,142 @@
+[
+  {
+    "id": "dota-item-question",
+    "game_scene": "dota2",
+    "text": "你出蝴蝶吗？",
+    "translation_from": "zh",
+    "translation_to": "en",
+    "check": "Asks whether the teammate is building Butterfly; must not answer the question."
+  },
+  {
+    "id": "dota-negation-timer",
+    "game_scene": "dota2",
+    "text": "别开雾，我没买活，BKB还有20秒",
+    "translation_from": "zh",
+    "translation_to": "en",
+    "check": "Do not smoke; speaker has no buyback; BKB ready in 20 seconds."
+  },
+  {
+    "id": "dota-monkey",
+    "game_scene": "dota2",
+    "text": "猴子别上高，等我跳刀",
+    "translation_from": "zh",
+    "translation_to": "en",
+    "check": "Addresses Phantom Lancer, asks not to go high ground and to wait for the speaker's Blink Dagger; not Monkey King."
+  },
+  {
+    "id": "lol-monkey",
+    "game_scene": "lol",
+    "text": "猴子别开，瞎子没闪，等20秒打大龙",
+    "translation_from": "zh",
+    "translation_to": "en",
+    "check": "Addresses Wukong, don't engage; Lee Sin has no Flash; wait 20 seconds before Baron."
+  },
+  {
+    "id": "lol-mixed",
+    "game_scene": "lol",
+    "text": "mid no flash，先推线再打小龙",
+    "translation_from": "zh",
+    "translation_to": "en",
+    "check": "Mid has no Flash, push the wave before Dragon; preserve order."
+  },
+  {
+    "id": "overwatch-nano",
+    "game_scene": "overwatch",
+    "text": "大锤别开大，等我激素",
+    "translation_from": "zh",
+    "translation_to": "en",
+    "check": "Reinhardt must hold ultimate and wait for speaker's Nano Boost; no invented ability timing."
+  },
+  {
+    "id": "overwatch-contest",
+    "game_scene": "overwatch",
+    "text": "猎空去续点，天使别拉我",
+    "translation_from": "zh",
+    "translation_to": "en",
+    "check": "Tracer should contest; Mercy must not resurrect the speaker."
+  },
+  {
+    "id": "wow-battle-res",
+    "game_scene": "wow",
+    "text": "DK别开怪，小德战复还有30秒",
+    "translation_from": "zh",
+    "translation_to": "en",
+    "check": "Death Knight must not pull; druid's battle resurrection is on cooldown for 30 seconds."
+  },
+  {
+    "id": "wow-question",
+    "game_scene": "wow",
+    "text": "奶妈没蓝了，能等10秒再开怪吗？",
+    "translation_from": "zh",
+    "translation_to": "en",
+    "check": "Healer is out of mana; asks to wait 10 seconds before pulling. Not an instruction to pull immediately."
+  },
+  {
+    "id": "incoming-no-style",
+    "game_scene": "dota2",
+    "text": "no buyback, BKB in 20, don't go high ground",
+    "translation_from": "en",
+    "translation_to": "zh",
+    "direction": "incoming",
+    "translation_mode": "toxic",
+    "check": "No buyback, BKB in 20, do not go high ground; no added insult despite outgoing Toxic selection."
+  },
+  {
+    "id": "russian-item",
+    "game_scene": "dota2",
+    "text": "等我跳刀，别开雾",
+    "translation_from": "zh",
+    "translation_to": "ru",
+    "check": "Russian output: wait for speaker's Blink Dagger, do not use smoke."
+  },
+  {
+    "id": "russian-baron",
+    "game_scene": "lol",
+    "text": "20秒后打大龙，别先开",
+    "translation_from": "zh",
+    "translation_to": "ru",
+    "check": "Baron after 20 seconds; do not start early."
+  },
+  {
+    "id": "daily-butterfly",
+    "game_scene": "dota2",
+    "text": "我在花园看到一只蝴蝶",
+    "translation_from": "zh",
+    "translation_to": "en",
+    "daily_mode": true,
+    "check": "Ordinary butterfly in a garden; no item, build or hero reference."
+  },
+  {
+    "id": "handle-boundary",
+    "game_scene": "dota2",
+    "text": "@PASTA123 等我20秒再开",
+    "translation_from": "zh",
+    "translation_to": "en",
+    "check": "Preserve @PASTA123 exactly; wait for speaker for 20 seconds before engaging; no Phantom Assassin."
+  },
+  {
+    "id": "toxic-no-invention",
+    "game_scene": "wow",
+    "text": "你为什么不等治疗？",
+    "translation_from": "zh",
+    "translation_to": "en",
+    "translation_mode": "toxic",
+    "check": "Keep the question about not waiting for the healer; no invented personal insult."
+  },
+  {
+    "id": "acronym-only",
+    "game_scene": "dota2",
+    "text": "GG!",
+    "translation_from": "en",
+    "translation_to": "zh",
+    "check": "A conventional equivalent or unchanged GG is acceptable; no explanation."
+  },
+  {
+    "id": "wow-healing-action",
+    "game_scene": "wow",
+    "text": "治疗我，别去开怪",
+    "translation_from": "zh",
+    "translation_to": "en",
+    "check": "Heal the speaker; do not pull. 治疗 is an action here, not a healer role."
+  }
+]
