@@ -85,12 +85,14 @@ WantedBy=multi-user.target
 UNIT
 
 "${elevate[@]}" install -m 0644 "$unit_file" "/etc/systemd/system/$service_name.service"
+"${elevate[@]}" bash "$target_dir/scripts/install-glossary-systemd.sh" "$target_dir"
 "${elevate[@]}" systemctl daemon-reload
 "${elevate[@]}" systemctl enable "$service_name.service"
 "${elevate[@]}" systemctl restart "$service_name.service"
 
 for attempt in {1..20}; do
   if curl -fsS http://127.0.0.1:8787/healthz; then
+    "${elevate[@]}" systemctl start lingo-glossary-update.timer
     exit 0
   fi
   sleep 1

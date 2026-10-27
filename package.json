@@ -11,7 +11,7 @@
     "preview": "vite preview",
     "tauri": "tauri",
     "proxy:dev": "node server/translate-proxy/src/server.mjs",
-    "proxy:smoke": "node --test server/translate-proxy/src/translation-prompt.test.mjs server/translate-proxy/src/translation-cache.test.mjs server/translate-proxy/src/runtime-config.test.mjs server/translate-proxy/src/model-request-options.test.mjs && node server/translate-proxy/scripts/smoke-test.mjs",
+    "proxy:smoke": "node --test server/translate-proxy/scripts/maintain-glossary.test.mjs server/translate-proxy/src/translation-prompt.test.mjs server/translate-proxy/src/translation-cache.test.mjs server/translate-proxy/src/runtime-config.test.mjs server/translate-proxy/src/model-request-options.test.mjs && node server/translate-proxy/scripts/smoke-test.mjs",
     "proxy:analytics-smoke": "node --test server/translate-proxy/src/analytics-store.test.mjs && node server/translate-proxy/scripts/analytics-smoke-test.mjs",
     "proxy:diagnose": "node server/translate-proxy/scripts/diagnose-latency.mjs",
     "proxy:print-deepseek-config": "node server/translate-proxy/scripts/print-deepseek-config.mjs",
@@ -23,7 +23,7 @@
     "build:mac-arm": "tauri build --target aarch64-apple-darwin",
     "glossary:check": "node server/translate-proxy/scripts/update-glossary.mjs --check",
     "glossary:update": "node server/translate-proxy/scripts/update-glossary.mjs --write && npm run glossary:export",
-    "glossary:test": "node --test server/translate-proxy/src/translation-prompt.test.mjs",
+    "glossary:test": "node --test server/translate-proxy/scripts/maintain-glossary.test.mjs server/translate-proxy/src/translation-prompt.test.mjs",
     "glossary:export": "node server/translate-proxy/scripts/export-glossary.mjs"
   },
   "dependencies": {

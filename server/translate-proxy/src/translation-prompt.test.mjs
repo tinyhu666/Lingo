@@ -5,6 +5,7 @@ import { performance } from 'node:perf_hooks';
 import { buildSystemPrompt, PROMPT_REVISION } from './translation-prompt.mjs';
 import { matchGlossary, glossaryPrompt, isInvariantChat, GLOSSARY_LIMITS } from './glossary.mjs';
 import { parseBlizzardCards, mergeLocalized, validateCatalog } from '../scripts/update-glossary.mjs';
+import { officialGlossaryPath } from './glossary-files.mjs';
 
 const payload = { game_scene: 'dota2', translation_from: 'zh', translation_to: 'en' };
 const names = (text, game) => matchGlossary(text, game).map((entry) => entry.names.en);
@@ -67,7 +68,7 @@ test('fidelity and input isolation apply to every mode and direction', () => {
 });
 
 test('glossary context is bounded for large pasted messages', () => {
-  const catalog = JSON.parse(readFileSync(new URL('./glossary/official.json', import.meta.url)));
+  const catalog = JSON.parse(readFileSync(officialGlossaryPath));
   const text = catalog.entries.filter((entry) => entry.game === 'dota2').map((entry) => entry.names.en).join(', ');
   const prompt = glossaryPrompt(text, 'dota2', 'zh');
   const rows = prompt.split('\n').slice(1);
@@ -93,7 +94,7 @@ test('official parsers align IDs, exclude missing locales, decode headings', () 
 });
 
 test('catalog passes shape checks and rejects locale fallback / mass deletions', () => {
-  const catalog = JSON.parse(readFileSync(new URL('./glossary/official.json', import.meta.url)));
+  const catalog = JSON.parse(readFileSync(officialGlossaryPath));
   validateCatalog(catalog, catalog);
   const missing = structuredClone(catalog);
   missing.entries = missing.entries.filter((entry) => entry.game !== 'wow');

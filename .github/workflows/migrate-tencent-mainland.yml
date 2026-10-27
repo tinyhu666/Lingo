@@ -296,6 +296,10 @@ jobs:
           website_dir="${DEPLOY_WEBSITE_DIR:?}"
           mkdir -p "$target_dir/data" "$website_dir"
 
+          if systemctl cat lingo-glossary-update.service >/dev/null 2>&1; then
+            sudo -n systemctl stop lingo-glossary-update.timer lingo-glossary-update.service
+          fi
+
           if [ -f /tmp/lingo-proxy-data.tgz ]; then
             tar -xzf /tmp/lingo-proxy-data.tgz -C "$target_dir"
           fi

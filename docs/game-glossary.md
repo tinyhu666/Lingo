@@ -32,9 +32,27 @@ npm run glossary:test        # 离线词表、提示词、更新校验和语义�
 npm run proxy:smoke          # 真实 HTTP 代理 + 模拟模型，覆盖路由、缓存、回退
 ```
 
-更新时先审查新增、改名、删除清单，再补人工别名和验收样例。抓取失败、语言回退、条目明显减少（相对旧表超过 20%）、必需游戏缺失或现有别名引用失效会终止更新并保留旧文件。没有内容变化时不重写日期和版本。网站改版导致解析失败时应修解析器，不要用猜测的名称补齐。官方更新与人工别名应分别审查。
+官方名称在服务器通过校验和回归后自动更新；人工别名和验收样例仍随代码审查维护，不自动猜测玩家俗称。抓取失败、语言回退、条目明显减少（相对旧表超过 20%）、必需游戏缺失或现有别名引用失效会终止更新并保留旧文件。没有内容变化时不重写日期和版本。网站改版导致解析失败时应修解析器，不要用猜测的名称补齐。官方更新与人工别名应分别审查。
 
-Codex 已启用本聊天的每周维护任务：每周一 10:00，Asia/Shanghai。核对官方源、处理可验证的变化、运行测试并更新本文变更记录；无变化保持安静，有实质变化、失败或需人工判断时报告。任务不会自动部署、重启服务、发布客户端或运行计费模型评测。它是 Codex 的维护任务，不是生产服务器上的 cron。
+维护已迁到生产服务器的 `lingo-glossary-update.timer`：每周一北京时间 10:00 自动执行；服务器启动两分钟后补跑，错过日历任务也会补跑。执行不依赖本地电脑或 Codex。本地同名维护任务停用。
+
+服务器自动流程：抓取官方数据 → 校验语言、数量和别名引用 → 建立隔离候选快照 → 运行全部代理单元测试、翻译 smoke、统计 smoke → 原子切换 `current` → 重启翻译服务 → 检查健康状态与实际加载修订号。测试使用模拟模型和临时数据库，不读取生产密钥或聊天，不产生模型调用费用。有变化才重启；无变化仍校验和测试。任何测试失败均保留旧版本；切换后的健康检查失败则自动切回旧版本并验证恢复。进程异常终止时，systemd 的 `ExecStopPost` 根据待完成记录恢复；恢复未完成时保留记录供下次执行处理。保留最近八份快照及当前/上一份版本。
+
+正式官方词表位于 `/var/lib/lingo-glossary/current/official.json`，同目录有 `game-glossary.csv` 和用于审计的 `curated.json` 快照。运行时的人工别名仍来自 `/opt/lingo-translate-proxy/src/glossary/curated.json`，跟随经过审查的代码发布。独立持久化目录不会被代码部署覆盖。仓库中的官方 JSON/CSV 是开发基线，可能落后于服务器自动维护版本。
+
+查看执行情况和手动补跑：
+
+```bash
+systemctl list-timers lingo-glossary-update.timer
+systemctl start lingo-glossary-update.service
+journalctl -u lingo-glossary-update.service -n 100 --no-pager
+cat /var/lib/lingo-glossary/last-run.json
+curl -fsS http://127.0.0.1:8787/translate
+```
+
+安装入口：`scripts/install-systemd.sh` 会安装和启用该计划。单独迁移既有服务时，以 root 执行 `scripts/install-glossary-systemd.sh /opt/lingo-translate-proxy`，然后重启并检查代理健康，再启动 timer。不要直接修改 `current` 指向的 JSON，也不要对受管路径使用 `update-glossary.mjs --write`。
+
+部署新代码前先停止更新 timer 和 service（两个现有服务器部署工作流已接入），等待恢复步骤结束；部署成功后重新启动 timer。安装器校验保留的官方词表能满足新代码别名引用，遇到新引用缺失时拒绝部署，不用旧仓库数据覆盖服务器词表：先在隔离环境用新代码抓取和测试官方更新，再重试部署。网站解析失败或人工别名失效需要维护代码；失败原因记录在 systemd 日志和 `last-run.json`，不会用猜测的数据继续发布。
 
 ## 提示词约束与速度
 
@@ -55,6 +73,8 @@ Codex 已启用本聊天的每周维护任务：每周一 10:00，Asia/Shanghai�
 
 ## 生效与回滚
 
-本地验收时尚未部署；本次改动纳入 v0.9.16 发布，实际发布状态见 [GitHub Release](https://github.com/tinyhu666/lingo/releases/tag/v0.9.16)。正式词表部署路径为 `/opt/lingo-translate-proxy/src/glossary/`，翻译由服务端读取，本地仓库保留可审查与回滚的版本副本。发布时需连同 `src/translation-prompt.mjs`、`src/glossary.mjs` 和 `src/glossary/*.json` 一起部署；现有 Dockerfile/部署流程复制整个 `src`，已包含这些文件。词表在服务启动时读取，更新生产文件后需要通过既有发布流程重启服务才能生效。无需为词表更新重新发布桌面客户端。
+2026-10-27 迁移验证：服务器 Node 20.20.2 上 31 项单元测试及两套 smoke 通过；官方来源抓取成功，内容无变化。另建隔离 systemd 服务实测候选词表生效，并在切换后主动终止更新进程，确认 `ExecStopPost` 恢复上一版、重启服务、校验实际修订号并清除待完成记录。模拟版本只存在于隔离测试服务，未进入生产词表。
 
-发布前运行上述回归；发布后检查 `/healthz` 与 GET `/translate` 的修订号并做少量实际翻译验收。保留上一版服务包和词表，失败时整体回滚，避免脚本与 JSON 引用不一致。此文档不授权自动生产发布。
+v0.9.16 已完成首次部署。服务器通过 `GLOSSARY_OFFICIAL_PATH=/var/lib/lingo-glossary/current/official.json` 加载独立保存的官方词表；未设置此项的本地开发或容器仍使用随代码打包的词表。显式指定的路径缺失或损坏时启动失败，不静默退回过期数据。源码中的 `glossary-files.mjs`、`glossary.mjs`、提示词和人工别名需随代码一起部署。
+
+词表更新无需重新发布桌面客户端。自动切换通过服务重启加载，因此变化发生时有一次短暂重启；应用内缓存随之重建。每次生效后以 GET `/translate` 的 `glossary.revision` 和 `prompt_revision` 为准。`last-run.json` 保存最近一次状态，systemd 日志保存测试和失败记录。若需要人工回滚，先停 timer/service，再将 `current` 原子指向已保留的快照，重启并核对修订号；恢复健康后再启动 timer。

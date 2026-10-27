@@ -74,7 +74,10 @@ latency stays lower without requiring separate client logic.
 Game terms now come from a versioned, locally loaded glossary. Only terms matched
 in the current message are included in the prompt. See [glossary maintenance](game-glossary.md)
 for official sources, weekly updates, offline tests and the opt-in live evaluation.
-Deploy the entire `src` directory, including `src/glossary/*.json`, then restart
+Systemd deployments maintain the official catalog in `/var/lib/lingo-glossary/current/`
+with a server-side weekly timer and automatic tested activation. See the maintenance
+document for status, recovery, and deployment coordination. Deploy the entire `src`
+directory, including `src/glossary/*.json`, then restart
 the service through the existing deployment process. `GET /translate` reports
 `prompt_revision` and `glossary` metadata to verify which version is loaded.
 If you need a lower-latency model for short new messages, you can optionally
