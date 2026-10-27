@@ -1,9 +1,9 @@
 import { readFileSync } from 'node:fs';
-import { createHash } from 'node:crypto';
+import { officialGlossaryPath, curatedGlossaryPath, glossaryRevision } from './glossary-files.mjs';
 
-const official = JSON.parse(readFileSync(new URL('./glossary/official.json', import.meta.url), 'utf8'));
-const curated = JSON.parse(readFileSync(new URL('./glossary/curated.json', import.meta.url), 'utf8'));
-export const GLOSSARY_REVISION = createHash('sha256').update(JSON.stringify([official.revision, curated])).digest('hex').slice(0, 12);
+const official = JSON.parse(readFileSync(officialGlossaryPath, 'utf8'));
+const curated = JSON.parse(readFileSync(curatedGlossaryPath, 'utf8'));
+export const GLOSSARY_REVISION = glossaryRevision(official, curated);
 export const GLOSSARY_LIMITS = Object.freeze({ terms: 12, characters: 1400 });
 const normalize = (text) => String(text || '').normalize('NFKC').toLowerCase();
 const wordChar = /[\p{Script=Latin}\p{Script=Cyrillic}\p{Number}_]/u;

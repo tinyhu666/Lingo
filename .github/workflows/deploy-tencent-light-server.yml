@@ -129,6 +129,11 @@ jobs:
           mkdir -p "$target_dir/data"
           mkdir -p "$target_dir/public-sites/lingoweb"
 
+          # Finish/rollback a running glossary update before replacing its code.
+          if systemctl cat lingo-glossary-update.service >/dev/null 2>&1; then
+            sudo -n systemctl stop lingo-glossary-update.timer lingo-glossary-update.service
+          fi
+
           find "$target_dir" -mindepth 1 -maxdepth 1 ! -name data ! -name .env ! -name public-sites -exec rm -rf {} +
           tar -xzf /tmp/lingo-translate-proxy.tgz -C "$target_dir" --strip-components=1
           mv /tmp/lingo-translate-proxy.env "$target_dir/.env"

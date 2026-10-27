@@ -2,6 +2,7 @@ import { readFile, writeFile, rename, mkdir } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 import { resolve } from 'node:path';
+import { officialGlossaryPath, curatedGlossaryPath } from '../src/glossary-files.mjs';
 
 export const glossaryDirectory = new URL('../src/glossary/', import.meta.url);
 const locales = { en: 'en_US', zh: 'zh_CN', ru: 'ru_RU' };
@@ -155,19 +156,23 @@ export async function fetchCatalog() {
   return { schemaVersion: 1, revision, updatedAt: new Date().toISOString().slice(0, 10), sources: sortedSources, excluded, entries };
 }
 
+export function validateAliases(catalog, curated) {
+  const ids = new Set(catalog.entries.map((entry) => entry.id));
+  for (const alias of curated.aliases) if (!ids.has(alias.ref)) throw new Error(`Update requires alias review: ${alias.ref}`);
+}
+
 async function main() {
   const args = process.argv.slice(2);
   if (args.some((arg) => !['--check', '--write'].includes(arg)) || args.length > 1) throw new Error('Usage: update-glossary.mjs [--check|--write]');
-  const path = new URL('official.json', glossaryDirectory);
+  const path = officialGlossaryPath;
   let previous;
   try { previous = JSON.parse(await readFile(path, 'utf8')); } catch (error) { if (error.code !== 'ENOENT') throw error; }
   const catalog = await fetchCatalog();
   validateCatalog(catalog, previous);
   // A removed upstream ID must never leave runtime aliases dangling.
   try {
-    const curated = JSON.parse(await readFile(new URL('curated.json', glossaryDirectory), 'utf8'));
-    const ids = new Set(catalog.entries.map((entry) => entry.id));
-    for (const alias of curated.aliases) if (!ids.has(alias.ref)) throw new Error(`Update requires alias review: ${alias.ref}`);
+    const curated = JSON.parse(await readFile(curatedGlossaryPath, 'utf8'));
+    validateAliases(catalog, curated);
   } catch (error) { if (error.code !== 'ENOENT') throw error; }
   const changed = catalog.revision !== previous?.revision;
   const oldEntries = new Map((previous?.entries || []).map((entry) => [entry.id, entry]));
@@ -179,6 +184,7 @@ async function main() {
   };
   const counts = Object.fromEntries(['dota2', 'lol', 'overwatch', 'wow'].map((game) => [game, catalog.entries.filter((entry) => entry.game === game).length]));
   if (changed && args.includes('--write')) {
+    if (process.env.GLOSSARY_OFFICIAL_PATH) throw new Error('Use maintain-glossary.mjs to update a managed production catalog');
     await mkdir(glossaryDirectory, { recursive: true });
     const temporary = new URL(`official.${process.pid}.tmp`, glossaryDirectory);
     await writeFile(temporary, `${JSON.stringify(catalog, null, 2)}\n`);
