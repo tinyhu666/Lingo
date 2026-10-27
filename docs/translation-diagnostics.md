@@ -23,7 +23,7 @@ curl -sS \
 /admin/translation-diagnostics?installation_id=<installation_id>&limit=200
 ```
 
-接口仅接受管理员令牌。诊断记录保留 30 天。
+接口仅接受管理员令牌。诊断记录保留 30 天：启动时、每小时及管理员查询时清理过期记录；超过保留期的离线补报不再写入。清理按发生时间计算，不影响生命周期统计数据。
 
 ## 如何判断问题阶段
 

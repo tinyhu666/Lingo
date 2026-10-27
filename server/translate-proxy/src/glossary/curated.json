@@ -1,0 +1,1447 @@
+{
+  "schemaVersion": 1,
+  "updatedAt": "2026-10-27",
+  "basis": "Project-curated player shorthand and tactical translations. Canonical entity names come from official.json; slang is not claimed to be official. Review context-sensitive aliases against real anonymized examples before expanding.",
+  "invariantTokens": [
+    "GG",
+    "GGWP",
+    "GLHF",
+    "BKB",
+    "MKB",
+    "AFK",
+    "BRB",
+    "DPS",
+    "AOE",
+    "HP",
+    "MP",
+    "CD",
+    "WP"
+  ],
+  "aliases": [
+    {
+      "ref": "dota2:item:item_black_king_bar",
+      "forms": [
+        "BKB",
+        "黑皇",
+        "黑黄",
+        "黑黄杖"
+      ],
+      "note": "Keep BKB shorthand when supplied. A cooldown countdown means ready in N seconds."
+    },
+    {
+      "ref": "dota2:item:item_blink",
+      "forms": [
+        "跳刀"
+      ]
+    },
+    {
+      "ref": "dota2:item:item_butterfly",
+      "forms": [
+        "蝴蝶刀"
+      ]
+    },
+    {
+      "ref": "dota2:item:item_aegis",
+      "forms": [
+        "不朽盾",
+        "肉山盾"
+      ]
+    },
+    {
+      "ref": "dota2:item:item_ultimate_scepter",
+      "forms": [
+        "A杖",
+        "蓝杖"
+      ]
+    },
+    {
+      "ref": "dota2:item:item_aghanims_shard",
+      "forms": [
+        "魔晶",
+        "A片"
+      ]
+    },
+    {
+      "ref": "dota2:item:item_travel_boots",
+      "forms": [
+        "飞鞋"
+      ]
+    },
+    {
+      "ref": "dota2:item:item_power_treads",
+      "forms": [
+        "假腿"
+      ]
+    },
+    {
+      "ref": "dota2:item:item_boots",
+      "forms": [
+        "草鞋"
+      ]
+    },
+    {
+      "ref": "dota2:item:item_rapier",
+      "forms": [
+        "圣剑"
+      ]
+    },
+    {
+      "ref": "dota2:item:item_sheepstick",
+      "forms": [
+        "羊刀"
+      ]
+    },
+    {
+      "ref": "dota2:item:item_invis_sword",
+      "forms": [
+        "隐刀"
+      ]
+    },
+    {
+      "ref": "dota2:item:item_silver_edge",
+      "forms": [
+        "大隐刀"
+      ]
+    },
+    {
+      "ref": "dota2:item:item_skadi",
+      "forms": [
+        "冰眼"
+      ]
+    },
+    {
+      "ref": "dota2:item:item_monkey_king_bar",
+      "forms": [
+        "金箍棒",
+        "MKB"
+      ]
+    },
+    {
+      "ref": "dota2:item:item_greater_crit",
+      "forms": [
+        "大炮"
+      ]
+    },
+    {
+      "ref": "dota2:item:item_heart",
+      "forms": [
+        "龙心"
+      ]
+    },
+    {
+      "ref": "dota2:item:item_desolator",
+      "forms": [
+        "暗灭"
+      ]
+    },
+    {
+      "ref": "dota2:item:item_assault",
+      "forms": [
+        "强袭"
+      ]
+    },
+    {
+      "ref": "dota2:item:item_hand_of_midas",
+      "forms": [
+        "点金",
+        "点金手"
+      ]
+    },
+    {
+      "ref": "dota2:item:item_bottle",
+      "forms": [
+        "瓶子"
+      ]
+    },
+    {
+      "ref": "dota2:item:item_ward_observer",
+      "forms": [
+        "假眼"
+      ]
+    },
+    {
+      "ref": "dota2:item:item_ward_sentry",
+      "forms": [
+        "真眼"
+      ]
+    },
+    {
+      "ref": "dota2:hero:npc_dota_hero_antimage",
+      "forms": [
+        "敌法",
+        "AM"
+      ]
+    },
+    {
+      "ref": "dota2:hero:npc_dota_hero_phantom_assassin",
+      "forms": [
+        "幻刺",
+        "PA"
+      ]
+    },
+    {
+      "ref": "dota2:hero:npc_dota_hero_phantom_lancer",
+      "forms": [
+        "猴子",
+        "PL"
+      ]
+    },
+    {
+      "ref": "dota2:hero:npc_dota_hero_nevermore",
+      "forms": [
+        "影魔",
+        "SF"
+      ]
+    },
+    {
+      "ref": "dota2:hero:npc_dota_hero_crystal_maiden",
+      "forms": [
+        "冰女",
+        "CM"
+      ]
+    },
+    {
+      "ref": "dota2:hero:npc_dota_hero_earthshaker",
+      "forms": [
+        "小牛",
+        "ES"
+      ]
+    },
+    {
+      "ref": "dota2:hero:npc_dota_hero_spirit_breaker",
+      "forms": [
+        "白牛",
+        "SB"
+      ]
+    },
+    {
+      "ref": "dota2:hero:npc_dota_hero_invoker",
+      "forms": [
+        "卡尔"
+      ]
+    },
+    {
+      "ref": "dota2:hero:npc_dota_hero_juggernaut",
+      "forms": [
+        "剑圣",
+        "Jugg"
+      ]
+    },
+    {
+      "ref": "dota2:hero:npc_dota_hero_queenofpain",
+      "forms": [
+        "女王",
+        "QOP"
+      ]
+    },
+    {
+      "ref": "dota2:hero:npc_dota_hero_faceless_void",
+      "forms": [
+        "虚空",
+        "FV"
+      ]
+    },
+    {
+      "ref": "dota2:hero:npc_dota_hero_furion",
+      "forms": [
+        "先知",
+        "NP"
+      ]
+    },
+    {
+      "ref": "dota2:hero:npc_dota_hero_skeleton_king",
+      "forms": [
+        "骷髅王",
+        "WK"
+      ]
+    },
+    {
+      "ref": "dota2:hero:npc_dota_hero_life_stealer",
+      "forms": [
+        "小狗"
+      ]
+    },
+    {
+      "ref": "dota2:hero:npc_dota_hero_obsidian_destroyer",
+      "forms": [
+        "黑鸟",
+        "OD"
+      ]
+    },
+    {
+      "ref": "dota2:hero:npc_dota_hero_templar_assassin",
+      "forms": [
+        "圣堂",
+        "TA"
+      ]
+    },
+    {
+      "ref": "dota2:hero:npc_dota_hero_dragon_knight",
+      "forms": [
+        "龙骑",
+        "DK"
+      ]
+    },
+    {
+      "ref": "dota2:hero:npc_dota_hero_vengefulspirit",
+      "forms": [
+        "复仇之魂",
+        "VS"
+      ]
+    },
+    {
+      "ref": "dota2:hero:npc_dota_hero_keeper_of_the_light",
+      "forms": [
+        "光法"
+      ]
+    },
+    {
+      "ref": "dota2:hero:npc_dota_hero_chaos_knight",
+      "forms": [
+        "混沌",
+        "CK"
+      ]
+    },
+    {
+      "ref": "dota2:hero:npc_dota_hero_ember_spirit",
+      "forms": [
+        "火猫"
+      ]
+    },
+    {
+      "ref": "dota2:hero:npc_dota_hero_storm_spirit",
+      "forms": [
+        "蓝猫"
+      ]
+    },
+    {
+      "ref": "dota2:hero:npc_dota_hero_earth_spirit",
+      "forms": [
+        "土猫"
+      ]
+    },
+    {
+      "ref": "dota2:hero:npc_dota_hero_void_spirit",
+      "forms": [
+        "紫猫"
+      ]
+    },
+    {
+      "ref": "dota2:hero:npc_dota_hero_shredder",
+      "forms": [
+        "伐木机"
+      ]
+    },
+    {
+      "ref": "lol:champion:LeeSin",
+      "forms": [
+        "盲僧",
+        "瞎子"
+      ]
+    },
+    {
+      "ref": "lol:champion:Yasuo",
+      "forms": [
+        "亚索",
+        "快乐风男"
+      ]
+    },
+    {
+      "ref": "lol:champion:Malphite",
+      "forms": [
+        "石头人"
+      ]
+    },
+    {
+      "ref": "lol:champion:Thresh",
+      "forms": [
+        "锤石"
+      ]
+    },
+    {
+      "ref": "lol:champion:Blitzcrank",
+      "forms": [
+        "机器人"
+      ]
+    },
+    {
+      "ref": "lol:champion:MissFortune",
+      "forms": [
+        "女枪",
+        "MF"
+      ]
+    },
+    {
+      "ref": "lol:champion:TwistedFate",
+      "forms": [
+        "卡牌",
+        "TF"
+      ]
+    },
+    {
+      "ref": "lol:champion:MasterYi",
+      "forms": [
+        "剑圣"
+      ]
+    },
+    {
+      "ref": "lol:champion:Ashe",
+      "forms": [
+        "寒冰"
+      ]
+    },
+    {
+      "ref": "lol:champion:JarvanIV",
+      "forms": [
+        "皇子"
+      ]
+    },
+    {
+      "ref": "lol:champion:Vayne",
+      "forms": [
+        "薇恩",
+        "VN"
+      ]
+    },
+    {
+      "ref": "lol:champion:MonkeyKing",
+      "forms": [
+        "猴子"
+      ]
+    },
+    {
+      "ref": "lol:champion:Nidalee",
+      "forms": [
+        "豹女"
+      ]
+    },
+    {
+      "ref": "lol:champion:Renekton",
+      "forms": [
+        "鳄鱼"
+      ]
+    },
+    {
+      "ref": "lol:champion:Nasus",
+      "forms": [
+        "狗头"
+      ]
+    },
+    {
+      "ref": "lol:champion:Hecarim",
+      "forms": [
+        "人马"
+      ]
+    },
+    {
+      "ref": "lol:champion:Alistar",
+      "forms": [
+        "牛头"
+      ]
+    },
+    {
+      "ref": "lol:champion:Graves",
+      "forms": [
+        "男枪"
+      ]
+    },
+    {
+      "ref": "lol:champion:Tristana",
+      "forms": [
+        "小炮"
+      ]
+    },
+    {
+      "ref": "lol:champion:Caitlyn",
+      "forms": [
+        "女警"
+      ]
+    },
+    {
+      "ref": "lol:item:223157",
+      "forms": [
+        "金身",
+        "沙漏"
+      ]
+    },
+    {
+      "ref": "lol:item:223031",
+      "forms": [
+        "无尽"
+      ]
+    },
+    {
+      "ref": "lol:item:223089",
+      "forms": [
+        "帽子",
+        "大帽"
+      ]
+    },
+    {
+      "ref": "lol:item:223153",
+      "forms": [
+        "破败"
+      ]
+    },
+    {
+      "ref": "lol:item:223078",
+      "forms": [
+        "三相"
+      ]
+    },
+    {
+      "ref": "lol:item:2055",
+      "forms": [
+        "真眼"
+      ]
+    },
+    {
+      "ref": "lol:item:3363",
+      "forms": [
+        "蓝饰品"
+      ]
+    },
+    {
+      "ref": "lol:summoner:SummonerCherryFlash",
+      "forms": []
+    },
+    {
+      "ref": "lol:summoner:SummonerTeleport",
+      "forms": [
+        "TP",
+        "传送"
+      ]
+    },
+    {
+      "ref": "lol:summoner:SummonerSmite",
+      "forms": [
+        "惩戒"
+      ]
+    },
+    {
+      "ref": "overwatch:hero:cassidy",
+      "forms": [
+        "麦克雷",
+        "McCree"
+      ]
+    },
+    {
+      "ref": "overwatch:hero:reinhardt",
+      "forms": [
+        "大锤",
+        "莱因哈特"
+      ]
+    },
+    {
+      "ref": "overwatch:hero:winston",
+      "forms": [
+        "猩猩"
+      ]
+    },
+    {
+      "ref": "overwatch:hero:roadhog",
+      "forms": []
+    },
+    {
+      "ref": "overwatch:hero:wrecking-ball",
+      "forms": [
+        "仓鼠"
+      ]
+    },
+    {
+      "ref": "overwatch:hero:soldier-76",
+      "forms": [
+        "士兵76",
+        "76"
+      ]
+    },
+    {
+      "ref": "overwatch:hero:mercy",
+      "forms": [
+        "天使",
+        "奶天使"
+      ]
+    },
+    {
+      "ref": "overwatch:hero:zenyatta",
+      "forms": [
+        "和尚"
+      ]
+    },
+    {
+      "ref": "overwatch:hero:lucio",
+      "forms": [
+        "DJ",
+        "卢西奥"
+      ]
+    },
+    {
+      "ref": "overwatch:hero:dva",
+      "forms": [
+        "DVA",
+        "D.VA"
+      ]
+    },
+    {
+      "ref": "overwatch:hero:widowmaker",
+      "forms": [
+        "黑百合",
+        "寡妇"
+      ]
+    },
+    {
+      "ref": "overwatch:hero:torbjorn",
+      "forms": [
+        "托比昂"
+      ]
+    },
+    {
+      "ref": "overwatch:hero:mei",
+      "forms": [
+        "小美"
+      ]
+    },
+    {
+      "ref": "overwatch:hero:symmetra",
+      "forms": [
+        "秩序之光"
+      ]
+    },
+    {
+      "ref": "wow:class:death-knight",
+      "forms": [
+        "DK",
+        "死骑"
+      ]
+    },
+    {
+      "ref": "wow:class:demon-hunter",
+      "forms": [
+        "DH",
+        "恶魔猎手"
+      ]
+    },
+    {
+      "ref": "wow:class:paladin",
+      "forms": [
+        "骑士",
+        "圣骑"
+      ]
+    },
+    {
+      "ref": "wow:class:druid",
+      "forms": [
+        "小德"
+      ]
+    },
+    {
+      "ref": "wow:class:shaman",
+      "forms": [
+        "萨满"
+      ]
+    },
+    {
+      "ref": "wow:class:priest",
+      "forms": [
+        "牧师"
+      ]
+    },
+    {
+      "ref": "wow:class:warlock",
+      "forms": [
+        "术士"
+      ]
+    },
+    {
+      "ref": "wow:class:evoker",
+      "forms": [
+        "唤魔师"
+      ]
+    }
+  ],
+  "terms": [
+    {
+      "id": "common:curated:cooldown",
+      "game": "common",
+      "kind": "comms",
+      "names": {
+        "zh": "冷却",
+        "en": "cooldown",
+        "ru": "перезарядка"
+      },
+      "aliases": [
+        "CD"
+      ],
+      "note": "Preserve cooldown numbers and units."
+    },
+    {
+      "id": "common:curated:ultimate",
+      "game": "common",
+      "kind": "comms",
+      "names": {
+        "zh": "大招",
+        "en": "ultimate",
+        "ru": "ультимейт"
+      },
+      "aliases": [
+        "ult",
+        "开大"
+      ],
+      "note": "Preserve whether the ultimate is ready, unavailable or should be used."
+    },
+    {
+      "id": "common:curated:focus",
+      "game": "common",
+      "kind": "comms",
+      "names": {
+        "zh": "集火",
+        "en": "focus fire",
+        "ru": "сфокусировать огонь"
+      },
+      "aliases": [
+        "集火打"
+      ]
+    },
+    {
+      "id": "common:curated:retreat",
+      "game": "common",
+      "kind": "comms",
+      "names": {
+        "zh": "撤退",
+        "en": "fall back",
+        "ru": "отступить"
+      },
+      "aliases": [
+        "后撤",
+        "撤一下"
+      ]
+    },
+    {
+      "id": "common:curated:flank",
+      "game": "common",
+      "kind": "comms",
+      "names": {
+        "zh": "绕后",
+        "en": "flank",
+        "ru": "зайти с фланга"
+      },
+      "aliases": [
+        "绕背"
+      ]
+    },
+    {
+      "id": "common:curated:heal",
+      "game": "common",
+      "kind": "comms",
+      "names": {
+        "zh": "治疗",
+        "en": "heal",
+        "ru": "лечение"
+      },
+      "aliases": [
+        "加血"
+      ],
+      "note": "Action or role depends on the sentence."
+    },
+    {
+      "id": "common:curated:respawn",
+      "game": "common",
+      "kind": "comms",
+      "names": {
+        "zh": "复活",
+        "en": "respawn",
+        "ru": "возрождение"
+      },
+      "aliases": [
+        "重生"
+      ]
+    },
+    {
+      "id": "common:curated:lag",
+      "game": "common",
+      "kind": "comms",
+      "names": {
+        "zh": "延迟",
+        "en": "lag",
+        "ru": "задержка"
+      },
+      "aliases": [
+        "卡顿",
+        "网络卡"
+      ]
+    },
+    {
+      "id": "common:curated:afk",
+      "game": "common",
+      "kind": "comms",
+      "names": {
+        "zh": "暂时离开",
+        "en": "AFK",
+        "ru": "АФК"
+      },
+      "aliases": [
+        "挂机"
+      ],
+      "note": "Do not confuse being away with deliberately feeding."
+    },
+    {
+      "id": "common:curated:gg",
+      "game": "common",
+      "kind": "comms",
+      "names": {
+        "zh": "打得不错",
+        "en": "GG",
+        "ru": "GG"
+      },
+      "aliases": [
+        "good game"
+      ],
+      "note": "Keep conventional GG shorthand if appropriate; do not add praise."
+    },
+    {
+      "id": "common:curated:disconnect",
+      "game": "common",
+      "kind": "comms",
+      "names": {
+        "zh": "掉线",
+        "en": "disconnected",
+        "ru": "отключился"
+      },
+      "aliases": [
+        "断线"
+      ]
+    },
+    {
+      "id": "common:curated:hold",
+      "game": "common",
+      "kind": "comms",
+      "names": {
+        "zh": "守住",
+        "en": "hold",
+        "ru": "удерживать"
+      },
+      "aliases": [
+        "守一下"
+      ]
+    },
+    {
+      "id": "dota2:curated:roshan",
+      "game": "dota2",
+      "kind": "comms",
+      "names": {
+        "zh": "肉山",
+        "en": "Roshan",
+        "ru": "Рошан"
+      },
+      "aliases": [
+        "rosh",
+        "打盾"
+      ],
+      "note": "Roshan is the boss; do not confuse it with the Aegis reward."
+    },
+    {
+      "id": "dota2:curated:buyback",
+      "game": "dota2",
+      "kind": "comms",
+      "names": {
+        "zh": "买活",
+        "en": "buyback",
+        "ru": "выкуп"
+      },
+      "aliases": [
+        "BB"
+      ],
+      "note": "Preserve available/unavailable and the negation."
+    },
+    {
+      "id": "dota2:curated:smoke",
+      "game": "dota2",
+      "kind": "comms",
+      "names": {
+        "zh": "开雾",
+        "en": "smoke",
+        "ru": "использовать смок"
+      },
+      "aliases": [
+        "雾一波"
+      ],
+      "note": "Action: use Smoke of Deceit for team movement. Never translate 开 as open."
+    },
+    {
+      "id": "dota2:curated:high-ground",
+      "game": "dota2",
+      "kind": "comms",
+      "names": {
+        "zh": "高地",
+        "en": "high ground",
+        "ru": "возвышенность"
+      },
+      "aliases": [
+        "上高"
+      ]
+    },
+    {
+      "id": "dota2:curated:lane-pull",
+      "game": "dota2",
+      "kind": "comms",
+      "names": {
+        "zh": "拉野",
+        "en": "pull creeps",
+        "ru": "отвод крипов"
+      },
+      "aliases": []
+    },
+    {
+      "id": "dota2:curated:stack",
+      "game": "dota2",
+      "kind": "comms",
+      "names": {
+        "zh": "囤野",
+        "en": "stack camps",
+        "ru": "стакать лагеря"
+      },
+      "aliases": [
+        "屯野",
+        "叠野"
+      ]
+    },
+    {
+      "id": "dota2:curated:deny",
+      "game": "dota2",
+      "kind": "comms",
+      "names": {
+        "zh": "反补",
+        "en": "deny",
+        "ru": "добивание своих крипов"
+      },
+      "aliases": []
+    },
+    {
+      "id": "dota2:curated:courier",
+      "game": "dota2",
+      "kind": "comms",
+      "names": {
+        "zh": "信使",
+        "en": "courier",
+        "ru": "курьер"
+      },
+      "aliases": [
+        "小鸡"
+      ]
+    },
+    {
+      "id": "dota2:curated:rune",
+      "game": "dota2",
+      "kind": "comms",
+      "names": {
+        "zh": "神符",
+        "en": "rune",
+        "ru": "руна"
+      },
+      "aliases": [
+        "控符"
+      ]
+    },
+    {
+      "id": "dota2:curated:barracks",
+      "game": "dota2",
+      "kind": "comms",
+      "names": {
+        "zh": "兵营",
+        "en": "barracks",
+        "ru": "казармы"
+      },
+      "aliases": [
+        "破路"
+      ]
+    },
+    {
+      "id": "dota2:curated:tp",
+      "game": "dota2",
+      "kind": "comms",
+      "names": {
+        "zh": "回城",
+        "en": "TP",
+        "ru": "телепорт"
+      },
+      "aliases": [
+        "TP"
+      ],
+      "note": "Teleport action or scroll depending on context."
+    },
+    {
+      "id": "lol:curated:baron",
+      "game": "lol",
+      "kind": "comms",
+      "names": {
+        "zh": "纳什男爵",
+        "en": "Baron Nashor",
+        "ru": "Барон Нашор"
+      },
+      "aliases": [
+        "大龙",
+        "男爵",
+        "Baron"
+      ]
+    },
+    {
+      "id": "lol:curated:dragon",
+      "game": "lol",
+      "kind": "comms",
+      "names": {
+        "zh": "巨龙",
+        "en": "Dragon",
+        "ru": "дракон"
+      },
+      "aliases": [
+        "小龙",
+        "drake"
+      ]
+    },
+    {
+      "id": "lol:curated:elder",
+      "game": "lol",
+      "kind": "comms",
+      "names": {
+        "zh": "远古巨龙",
+        "en": "Elder Dragon",
+        "ru": "Старший дракон"
+      },
+      "aliases": [
+        "远古龙"
+      ]
+    },
+    {
+      "id": "lol:curated:herald",
+      "game": "lol",
+      "kind": "comms",
+      "names": {
+        "zh": "峡谷先锋",
+        "en": "Rift Herald",
+        "ru": "Герольд Бездны"
+      },
+      "aliases": [
+        "先锋"
+      ]
+    },
+    {
+      "id": "lol:curated:jungler",
+      "game": "lol",
+      "kind": "comms",
+      "names": {
+        "zh": "打野",
+        "en": "jungler",
+        "ru": "лесник"
+      },
+      "aliases": [
+        "JG"
+      ],
+      "note": "Player role, not automatically a command to kill jungle monsters."
+    },
+    {
+      "id": "lol:curated:cs",
+      "game": "lol",
+      "kind": "comms",
+      "names": {
+        "zh": "补刀",
+        "en": "last-hit",
+        "ru": "добивание миньонов"
+      },
+      "aliases": [
+        "CS"
+      ],
+      "note": "CS can also mean the creep-score count; preserve numbers."
+    },
+    {
+      "id": "lol:curated:push",
+      "game": "lol",
+      "kind": "comms",
+      "names": {
+        "zh": "推线",
+        "en": "push the wave",
+        "ru": "пропушить волну"
+      },
+      "aliases": []
+    },
+    {
+      "id": "lol:curated:freeze",
+      "game": "lol",
+      "kind": "comms",
+      "names": {
+        "zh": "控线",
+        "en": "freeze the wave",
+        "ru": "заморозить волну"
+      },
+      "aliases": [
+        "卡线"
+      ]
+    },
+    {
+      "id": "lol:curated:gank",
+      "game": "lol",
+      "kind": "comms",
+      "names": {
+        "zh": "抓人",
+        "en": "gank",
+        "ru": "ганк"
+      },
+      "aliases": [
+        "gank"
+      ]
+    },
+    {
+      "id": "lol:curated:inhibitor",
+      "game": "lol",
+      "kind": "comms",
+      "names": {
+        "zh": "高地水晶",
+        "en": "inhibitor",
+        "ru": "ингибитор"
+      },
+      "aliases": [
+        "兵营",
+        "高地水晶"
+      ],
+      "note": "Inhibitor, not the Nexus. Players often call it 高地水晶."
+    },
+    {
+      "id": "lol:curated:nexus",
+      "game": "lol",
+      "kind": "comms",
+      "names": {
+        "zh": "主水晶",
+        "en": "Nexus",
+        "ru": "Нексус"
+      },
+      "aliases": [
+        "基地水晶"
+      ]
+    },
+    {
+      "id": "lol:curated:adc",
+      "game": "lol",
+      "kind": "comms",
+      "names": {
+        "zh": "射手",
+        "en": "ADC",
+        "ru": "ADC"
+      },
+      "aliases": [
+        "AD位"
+      ],
+      "note": "Role only; AD can also mean attack damage."
+    },
+    {
+      "id": "lol:curated:support",
+      "game": "lol",
+      "kind": "comms",
+      "names": {
+        "zh": "辅助",
+        "en": "support",
+        "ru": "поддержка"
+      },
+      "aliases": [
+        "SUP"
+      ]
+    },
+    {
+      "id": "overwatch:curated:payload",
+      "game": "overwatch",
+      "kind": "comms",
+      "names": {
+        "zh": "运载目标",
+        "en": "payload",
+        "ru": "груз"
+      },
+      "aliases": [
+        "推车"
+      ],
+      "note": "Objective; preserve push/stop/contest action."
+    },
+    {
+      "id": "overwatch:curated:point",
+      "game": "overwatch",
+      "kind": "comms",
+      "names": {
+        "zh": "占点",
+        "en": "capture the point",
+        "ru": "захватить точку"
+      },
+      "aliases": [
+        "踩点"
+      ]
+    },
+    {
+      "id": "overwatch:curated:contest",
+      "game": "overwatch",
+      "kind": "comms",
+      "names": {
+        "zh": "续点",
+        "en": "contest",
+        "ru": "оспаривать точку"
+      },
+      "aliases": [
+        "摸点",
+        "续一下"
+      ]
+    },
+    {
+      "id": "overwatch:curated:dive",
+      "game": "overwatch",
+      "kind": "comms",
+      "names": {
+        "zh": "放狗",
+        "en": "dive",
+        "ru": "дайв"
+      },
+      "aliases": [
+        "狗阵"
+      ],
+      "note": "Team composition/tactic, not literal dogs."
+    },
+    {
+      "id": "overwatch:curated:nano",
+      "game": "overwatch",
+      "kind": "comms",
+      "names": {
+        "zh": "纳米激素",
+        "en": "Nano Boost",
+        "ru": "Наностимулятор"
+      },
+      "aliases": [
+        "激素",
+        "纳米"
+      ],
+      "note": "Ana ultimate only when gameplay context fits."
+    },
+    {
+      "id": "overwatch:curated:beat",
+      "game": "overwatch",
+      "kind": "comms",
+      "names": {
+        "zh": "音障",
+        "en": "Sound Barrier",
+        "ru": "Звуковой барьер"
+      },
+      "aliases": [
+        "开音障"
+      ]
+    },
+    {
+      "id": "overwatch:curated:resurrect",
+      "game": "overwatch",
+      "kind": "comms",
+      "names": {
+        "zh": "复活队友",
+        "en": "Resurrect",
+        "ru": "Воскрешение"
+      },
+      "aliases": [
+        "拉人",
+        "复活我"
+      ],
+      "note": "Mercy ability when context fits; do not confuse with normal respawn."
+    },
+    {
+      "id": "overwatch:curated:overtime",
+      "game": "overwatch",
+      "kind": "comms",
+      "names": {
+        "zh": "加时",
+        "en": "overtime",
+        "ru": "овертайм"
+      },
+      "aliases": [
+        "加时赛"
+      ]
+    },
+    {
+      "id": "wow:curated:dungeon",
+      "game": "wow",
+      "kind": "comms",
+      "names": {
+        "zh": "地下城",
+        "en": "dungeon",
+        "ru": "подземелье"
+      },
+      "aliases": [
+        "副本",
+        "五人本"
+      ],
+      "note": "副本 can also mean a raid; use the party context."
+    },
+    {
+      "id": "wow:curated:raid",
+      "game": "wow",
+      "kind": "comms",
+      "names": {
+        "zh": "团队副本",
+        "en": "raid",
+        "ru": "рейд"
+      },
+      "aliases": [
+        "团本"
+      ]
+    },
+    {
+      "id": "wow:curated:mythic",
+      "game": "wow",
+      "kind": "comms",
+      "names": {
+        "zh": "史诗钥石地下城",
+        "en": "Mythic+",
+        "ru": "Мифический+"
+      },
+      "aliases": [
+        "大秘境",
+        "M+",
+        "钥石本"
+      ]
+    },
+    {
+      "id": "wow:curated:aggro",
+      "game": "wow",
+      "kind": "comms",
+      "names": {
+        "zh": "仇恨",
+        "en": "aggro",
+        "ru": "агро"
+      },
+      "aliases": [
+        "OT"
+      ],
+      "note": "OT means pulling aggro here, not overtime."
+    },
+    {
+      "id": "wow:curated:pull",
+      "game": "wow",
+      "kind": "comms",
+      "names": {
+        "zh": "开怪",
+        "en": "pull",
+        "ru": "пулл"
+      },
+      "aliases": [
+        "开BOSS"
+      ],
+      "note": "Preserve countdown and instructions to wait."
+    },
+    {
+      "id": "wow:curated:wipe",
+      "game": "wow",
+      "kind": "comms",
+      "names": {
+        "zh": "灭团",
+        "en": "wipe",
+        "ru": "вайп"
+      },
+      "aliases": [
+        "团灭"
+      ]
+    },
+    {
+      "id": "wow:curated:interrupt",
+      "game": "wow",
+      "kind": "comms",
+      "names": {
+        "zh": "打断",
+        "en": "interrupt",
+        "ru": "прерывание"
+      },
+      "aliases": [
+        "断条"
+      ]
+    },
+    {
+      "id": "wow:curated:dispel",
+      "game": "wow",
+      "kind": "comms",
+      "names": {
+        "zh": "驱散",
+        "en": "dispel",
+        "ru": "рассеивание"
+      },
+      "aliases": []
+    },
+    {
+      "id": "wow:curated:lust",
+      "game": "wow",
+      "kind": "comms",
+      "names": {
+        "zh": "嗜血",
+        "en": "Bloodlust",
+        "ru": "Жажда крови"
+      },
+      "aliases": [
+        "BL"
+      ],
+      "note": "Shaman raid haste cooldown; do not replace mage Heroism with Bloodlust."
+    },
+    {
+      "id": "wow:curated:battle-res",
+      "game": "wow",
+      "kind": "comms",
+      "names": {
+        "zh": "战复",
+        "en": "battle resurrection",
+        "ru": "боевое воскрешение"
+      },
+      "aliases": [
+        "BR",
+        "战斗复活"
+      ]
+    },
+    {
+      "id": "wow:curated:tank",
+      "game": "wow",
+      "kind": "comms",
+      "names": {
+        "zh": "坦克",
+        "en": "tank",
+        "ru": "танк"
+      },
+      "aliases": []
+    },
+    {
+      "id": "wow:curated:healer",
+      "game": "wow",
+      "kind": "comms",
+      "names": {
+        "zh": "治疗",
+        "en": "healer",
+        "ru": "лекарь"
+      },
+      "aliases": [
+        "奶妈",
+        "治疗者"
+      ],
+      "note": "Player role in 等治疗 (wait for the healer). For an action such as 治疗我, use heal, not healer."
+    },
+    {
+      "id": "wow:curated:adds",
+      "game": "wow",
+      "kind": "comms",
+      "names": {
+        "zh": "小怪",
+        "en": "adds",
+        "ru": "адды"
+      },
+      "aliases": [
+        "ADD"
+      ],
+      "note": "Extra enemies in an encounter."
+    },
+    {
+      "id": "wow:curated:heroism",
+      "game": "wow",
+      "kind": "comms",
+      "names": {
+        "zh": "英勇",
+        "en": "Heroism",
+        "ru": "Героизм"
+      },
+      "aliases": [],
+      "note": "Shared raid haste function with Bloodlust; retain the named spell."
+    }
+  ]
+}

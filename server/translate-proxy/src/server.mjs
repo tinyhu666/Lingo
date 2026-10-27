@@ -3,7 +3,18 @@ import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createTranslationCache } from './translation-cache.mjs';
 import { modelRequestOptions } from './model-request-options.mjs';
+import { glossaryStats, isInvariantChat } from './glossary.mjs';
+import {
+  PROMPT_REVISION,
+  buildSystemPrompt,
+  getTranslationContext,
+  normalizeDirection,
+  isIncomingDirection,
+  normalizeGameScene,
+  normalizeTranslationMode,
+} from './translation-prompt.mjs';
 
 import {
   loadRuntimeConfig,
@@ -30,94 +41,8 @@ const corsHeaders = {
 };
 
 const MAX_BODY_BYTES = 128 * 1024;
-const TRANSLATION_CACHE_TTL_MS = 15_000;
-const TRANSLATION_CACHE_MAX_ENTRIES = 256;
 const FAST_LANE_CIRCUIT_BREAK_MS = 60_000;
-const LANGUAGE_LABELS = {
-  zh: 'Chinese',
-  en: 'English',
-  'en-SEA': 'Southeast Asian English',
-  ko: 'Korean',
-  fr: 'French',
-  ru: 'Russian',
-  es: 'Spanish',
-  ja: 'Japanese',
-  de: 'German',
-  auto: 'the detected source language',
-};
-const DEFAULT_GAME_SCENE = 'dota2';
-const DEFAULT_TRANSLATION_MODE = 'auto';
-const GAME_SCENE_PROFILES = {
-  dota2: {
-    id: 'dota2',
-    label: 'Dota 2',
-    promptInstruction:
-      'Use established Dota 2 terminology. Canonical mappings when context fits: 蝴蝶=Butterfly, 黑皇杖/BKB=Black King Bar/BKB, 跳刀=Blink Dagger, 肉山=Roshan, 不朽盾=Aegis, 买活=buyback, 开雾=smoke, 高地=high ground. Treat these as game entities, not their everyday meanings.',
-  },
-  lol: {
-    id: 'lol',
-    label: 'League of Legends',
-    promptInstruction:
-      'Use established League of Legends terminology. Canonical mappings when context fits: 英雄=champion, 打野=jungler, 闪现=Flash, 传送=Teleport/TP, 大龙=Baron, 小龙=Dragon, 补刀=CS, 推线=push the wave.',
-  },
-  wow: {
-    id: 'wow',
-    label: 'World of Warcraft',
-    promptInstruction:
-      'Use established World of Warcraft terminology. Canonical mappings when context fits: 副本=dungeon, 团本=raid, 治疗=healer, 坦克=tank, 仇恨=aggro, 开怪=pull, 冷却=cooldown, 灭团=wipe.',
-  },
-  overwatch: {
-    id: 'overwatch',
-    label: 'Overwatch',
-    promptInstruction:
-      'Use established Overwatch terminology. Canonical mappings when context fits: 英雄=hero, 大招=ult, 运载目标=payload, 占点=take the point, 绕后=flank, 辅助=support, 放狗=dive, 续点=contest.',
-  },
-  other: {
-    id: 'other',
-    label: 'Other Game',
-    promptInstruction:
-      'Keep the wording generic for multiplayer game chat. Do not force Dota 2, League of Legends, World of Warcraft, or Overwatch terminology.',
-  },
-};
-const STYLE_PROFILES = {
-  auto: {
-    id: 'auto',
-    fastLaneEligible: true,
-    translateTemperatureCap: 0.12,
-    rewriteTemperatureCap: 0.16,
-    translateTokenAdjustment: 0,
-    rewriteTokenAdjustment: 0,
-    translateInstruction:
-      'Sound natural, steady, and clear like a normal teammate speaking plainly. Keep meaning intact and avoid overacting.',
-    rewriteInstruction:
-      'Rewrite into natural, steady, send-ready in-game chat. Keep the meaning intact and avoid sounding theatrical.',
-  },
-  pro: {
-    id: 'pro',
-    fastLaneEligible: true,
-    translateTemperatureCap: 0.05,
-    rewriteTemperatureCap: 0.08,
-    translateTokenAdjustment: -8,
-    rewriteTokenAdjustment: -8,
-    translateInstruction:
-      'Prefer tighter tactical wording, shorter commands, stronger tempo words, and common in-game shorthand when natural.',
-    rewriteInstruction:
-      'Compress the line into sharper teamplay comms. Cut filler, keep tactical intent obvious, and favor crisp call-style wording.',
-  },
-  toxic: {
-    id: 'toxic',
-    fastLaneEligible: false,
-    translateTemperatureCap: 0.18,
-    rewriteTemperatureCap: 0.22,
-    translateTokenAdjustment: 10,
-    rewriteTokenAdjustment: 8,
-    translateInstruction:
-      'Make it sharper, more confrontational, and more pressuring like in-game trash talk, but avoid hate speech, slurs, threats, or extreme abuse.',
-    rewriteInstruction:
-      'Rewrite with more taunting, pressure, and swagger for in-game trash talk, but keep it usable in chat and avoid hate speech, slurs, threats, or extreme abuse.',
-  },
-};
-const translationCache = new Map();
+const translationCache = createTranslationCache();
 const translationInflight = new Map();
 /// Hard cap on simultaneous in-flight translation requests. Beyond this
 /// new requests return 503; a slow upstream can otherwise pin promises
@@ -208,41 +133,6 @@ const readJsonResponse = async (response) => {
   }
 };
 
-const evictExpiredTranslationCache = (now = Date.now()) => {
-  for (const [cacheKey, entry] of translationCache.entries()) {
-    if (entry.expiresAt <= now) {
-      translationCache.delete(cacheKey);
-    }
-  }
-};
-
-const getCachedTranslation = (cacheKey) => {
-  evictExpiredTranslationCache();
-  const entry = translationCache.get(cacheKey);
-  if (!entry) {
-    return null;
-  }
-
-  translationCache.delete(cacheKey);
-  translationCache.set(cacheKey, entry);
-  return entry.value;
-};
-
-const setCachedTranslation = (cacheKey, value) => {
-  evictExpiredTranslationCache();
-  if (translationCache.size >= TRANSLATION_CACHE_MAX_ENTRIES) {
-    const oldestKey = translationCache.keys().next().value;
-    if (oldestKey) {
-      translationCache.delete(oldestKey);
-    }
-  }
-
-  translationCache.set(cacheKey, {
-    value,
-    expiresAt: Date.now() + TRANSLATION_CACHE_TTL_MS,
-  });
-};
-
 const buildModelIdentity = (config) =>
   JSON.stringify({
     provider: config.provider,
@@ -272,15 +162,9 @@ const shouldOpenFastLaneCircuit = (error) => {
   return [400, 401, 403, 404, 405, 422].includes(status);
 };
 
-const normalizeDirection = (value) => {
-  const lowered = String(value || 'outgoing').trim().toLowerCase();
-  return lowered === 'incoming' ? 'incoming' : 'outgoing';
-};
-
-const isIncomingDirection = (payload) => normalizeDirection(payload?.direction) === 'incoming';
-
 const buildTranslationCacheKey = ({ routeConfig, routeName, tuning, payload, text }) =>
   JSON.stringify({
+    prompt_revision: PROMPT_REVISION,
     route_name: routeName,
     provider: routeConfig.provider,
     api_url: routeConfig.api_url,
@@ -328,6 +212,7 @@ const normalizeComparableTranslation = (value) =>
 const assertTranslationChanged = ({ result, text, promptVariant }) => {
   if (
     promptVariant === 'translate' &&
+    !isInvariantChat(text) &&
     normalizeComparableTranslation(result?.translatedText) === normalizeComparableTranslation(text)
   ) {
     const error = new Error('Model returned unchanged source text');
@@ -338,99 +223,6 @@ const assertTranslationChanged = ({ result, text, promptVariant }) => {
     throw error;
   }
   return result;
-};
-
-const describeLanguage = (value, fallback = 'the requested language') => {
-  const normalized = String(value || '').trim();
-  if (!normalized) {
-    return fallback;
-  }
-  return LANGUAGE_LABELS[normalized] || normalized;
-};
-
-const normalizeTranslationMode = (value) => {
-  const normalized = String(value || DEFAULT_TRANSLATION_MODE).trim().toLowerCase();
-  return STYLE_PROFILES[normalized]?.id || DEFAULT_TRANSLATION_MODE;
-};
-
-const normalizeGameScene = (value) => {
-  const normalized = String(value || DEFAULT_GAME_SCENE).trim().toLowerCase();
-  if (GAME_SCENE_PROFILES[normalized]) {
-    return normalized;
-  }
-  if (['general', 'moba', 'fps', 'mmo', ''].includes(normalized)) {
-    return DEFAULT_GAME_SCENE;
-  }
-  return DEFAULT_GAME_SCENE;
-};
-
-const getTranslationContext = (payload) => {
-  const translationFrom = String(payload?.translation_from || 'auto').trim() || 'auto';
-  const translationTo = String(payload?.translation_to || 'en').trim() || 'en';
-  const translationMode = normalizeTranslationMode(payload?.translation_mode);
-  const gameScene = normalizeGameScene(payload?.game_scene);
-  return {
-    translationFrom,
-    translationTo,
-    translationMode,
-    gameScene,
-    isRewrite: translationFrom === translationTo,
-    styleProfile: STYLE_PROFILES[translationMode],
-    gameSceneProfile: GAME_SCENE_PROFILES[gameScene],
-  };
-};
-
-const buildSystemPrompt = (payload) => {
-  const {
-    translationFrom,
-    translationTo,
-    translationMode,
-    isRewrite,
-    styleProfile,
-    gameSceneProfile,
-  } = getTranslationContext(payload);
-  const dailyMode = Boolean(payload?.daily_mode);
-  const sourceLabel = describeLanguage(translationFrom, 'the detected source language');
-  const targetLabel = describeLanguage(translationTo, 'the requested language');
-  const styleInstruction = isRewrite
-    ? styleProfile.rewriteInstruction
-    : styleProfile.translateInstruction;
-  const dailyInstruction = dailyMode
-    ? 'Daily mode:on. Keep it conversational and send-ready.'
-    : 'Daily mode:off. Keep it concise and paced for in-game chat.';
-
-  // Incoming chat: the user is READING what another player typed, not
-  // composing their own message. Style / send-ready instructions become
-  // counter-productive (we must NOT rewrite). Hand-tuned prompt below.
-  if (isIncomingDirection(payload)) {
-    return [
-      `Translate an in-game chat message FROM another player from ${sourceLabel} to ${targetLabel}.`,
-      `Game:${gameSceneProfile.label}. ${gameSceneProfile.promptInstruction}`,
-      'The user is reading this to understand teammates or opponents.',
-      'Preserve player nicknames, hero/ability/item names, callouts, and tactical abbreviations.',
-      'Do not paraphrase, do not soften tone (even toxic content), do not add commentary.',
-      'Output only the translated line. No notes. No quotes. No labels.',
-    ].join(' ');
-  }
-
-  if (isRewrite) {
-    return [
-      `Rewrite in-game chat in ${targetLabel}.`,
-      `Style:${translationMode}. ${styleInstruction}`,
-      `Game:${gameSceneProfile.label}. ${gameSceneProfile.promptInstruction}`,
-      dailyInstruction,
-      'Keep the meaning intact. Output one concise send-ready line only. No notes or quotes.',
-    ].join(' ');
-  }
-
-  return [
-    `Translate in-game chat from ${sourceLabel} to ${targetLabel}.`,
-    `Style:${translationMode}. ${styleInstruction}`,
-    `Game:${gameSceneProfile.label}. ${gameSceneProfile.promptInstruction}`,
-    dailyInstruction,
-    'Mixed-language input is still one message: translate the source-language parts and preserve established game names, abbreviations, and already-correct target-language terms.',
-    'Output one concise send-ready line only. Prefer established in-game terms when they help. No notes or quotes.',
-  ].join(' ');
 };
 
 const resolveRequestTuning = ({ config, payload, text }) => {
@@ -471,7 +263,7 @@ const resolveRequestTuning = ({ config, payload, text }) => {
   const modelOptions = modelRequestOptions(config, effectiveMaxTokens, effectiveTemperature);
   return {
     promptVariant: isRewrite ? 'rewrite' : 'translate',
-    systemPrompt: buildSystemPrompt(payload),
+    systemPrompt: buildSystemPrompt(payload, text),
     effectiveMaxTokens: modelOptions.max_tokens,
     effectiveTemperature: modelOptions.temperature,
     styleProfile: styleProfile.id,
@@ -499,7 +291,7 @@ const canUseFastLane = ({ config, payload, text, promptVariant }) => {
     return getFastLaneCircuitExpiresAt(fastLane) === 0;
   }
 
-  const styleProfile = STYLE_PROFILES[normalizeTranslationMode(payload?.translation_mode)];
+  const { styleProfile } = getTranslationContext(payload);
   if (!styleProfile.fastLaneEligible) {
     return false;
   }
@@ -827,7 +619,7 @@ const requestModel = async ({
 };
 
 const requestTranslatedText = async ({ cacheKey, load }) => {
-  const cachedValue = getCachedTranslation(cacheKey);
+  const cachedValue = translationCache.get(cacheKey);
   if (cachedValue) {
     return {
       ...cachedValue,
@@ -861,7 +653,7 @@ const requestTranslatedText = async ({ cacheKey, load }) => {
   const requestPromise = load().then((result) => {
     const { cacheable = true, ...cacheValue } = result;
     if (cacheable) {
-      setCachedTranslation(cacheKey, cacheValue);
+      translationCache.set(cacheKey, cacheValue);
     }
     return cacheValue;
   });
@@ -936,6 +728,8 @@ const routeTranslate = async (req, res, traceId, clientContext) => {
   if (req.method === 'GET') {
     return jsonResponse(res, 200, {
       ...summarizeRuntimeConfig(config),
+      prompt_revision: PROMPT_REVISION,
+      glossary: glossaryStats,
       trace_id: traceId,
     });
   }
