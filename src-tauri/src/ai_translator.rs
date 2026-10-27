@@ -749,7 +749,7 @@ mod tests {
     use std::collections::HashMap;
     use std::io::{Read, Write};
     use std::net::{TcpListener, TcpStream};
-    use std::sync::{Mutex, OnceLock};
+    use std::sync::{mpsc, Mutex, OnceLock};
     use std::thread;
 
     fn env_lock() -> &'static Mutex<()> {
@@ -887,6 +887,9 @@ mod tests {
     ) -> (Result<TranslationResult>, Duration) {
         let listener = TcpListener::bind("127.0.0.1:0").expect("bind timed proxy");
         let base_url = format!("http://{}", listener.local_addr().unwrap());
+        // The client may exhaust its budget before sending every scripted request.
+        // Completion cancels the mock too; retry coverage is asserted separately.
+        let (finished_tx, finished_rx) = mpsc::channel::<()>();
         let handle = thread::spawn(move || {
             listener.set_nonblocking(true).unwrap();
             for (status, header_delay, body_delay, body) in responses {
@@ -897,9 +900,11 @@ mod tests {
                         Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {
                             assert!(
                                 accept_started.elapsed() < Duration::from_secs(3),
-                                "missing retry"
+                                "client did not finish or send a request"
                             );
-                            thread::sleep(Duration::from_millis(2));
+                            if finished_rx.recv_timeout(Duration::from_millis(2)).is_ok() {
+                                return;
+                            }
                         }
                         Err(error) => panic!("accept timed proxy: {error}"),
                     }
@@ -909,7 +914,12 @@ mod tests {
                     .set_read_timeout(Some(Duration::from_secs(2)))
                     .unwrap();
                 let _ = read_http_request(&mut stream);
-                thread::sleep(Duration::from_millis(header_delay));
+                if finished_rx
+                    .recv_timeout(Duration::from_millis(header_delay))
+                    .is_ok()
+                {
+                    return;
+                }
                 let headers = format!(
                     "HTTP/1.1 {status} Response\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
                     body.len()
@@ -917,7 +927,12 @@ mod tests {
                 // Cancellation intentionally closes slow connections before the write.
                 let _ = stream.write_all(headers.as_bytes());
                 let _ = stream.flush();
-                thread::sleep(Duration::from_millis(body_delay));
+                if finished_rx
+                    .recv_timeout(Duration::from_millis(body_delay))
+                    .is_ok()
+                {
+                    return;
+                }
                 let _ = stream.write_all(body.as_bytes());
             }
         });
@@ -934,6 +949,7 @@ mod tests {
             Duration::from_millis(budget_ms),
         ));
         let elapsed = started.elapsed();
+        let _ = finished_tx.send(());
         handle.join().expect("timed proxy exits");
         (result, elapsed)
     }
@@ -957,16 +973,22 @@ mod tests {
     }
 
     #[test]
-    fn quick_capacity_error_still_retries_successfully() {
-        let (result, _) = run_timed_proxy(
-            vec![
-                (503, 0, 0, r#"{"error":"busy"}"#),
-                (200, 0, 0, r#"{"translated_text":"Hello"}"#),
-            ],
-            1000,
-            "runtime:LINGO_BACKEND_URL",
-        );
-        assert_eq!(result.unwrap().text, "Hello");
+    fn quick_capacity_and_empty_responses_still_retry_successfully() {
+        for (status, body) in [
+            (503, r#"{"error":"busy"}"#),
+            (200, r#"{"translated_text":""}"#),
+        ] {
+            let (result, _) = run_timed_proxy(
+                vec![
+                    (status, 0, 0, body),
+                    (200, 0, 0, r#"{"translated_text":"Hello"}"#),
+                ],
+                1000,
+                "runtime:LINGO_BACKEND_URL",
+            );
+            // Only the second response can succeed, proving the retry occurred.
+            assert_eq!(result.unwrap().text, "Hello");
+        }
     }
 
     #[test]
@@ -991,7 +1013,12 @@ mod tests {
     #[test]
     fn deadline_includes_retry_delay_and_preserves_local_proxy_guidance() {
         let (result, elapsed) = run_timed_proxy(
-            vec![(503, 0, 0, r#"{"error":"busy"}"#)],
+            // The 50ms budget expires during the 120ms retry delay. The mock
+            // must exit even though its second scripted response is never used.
+            vec![
+                (503, 0, 0, r#"{"error":"busy"}"#),
+                (200, 0, 0, r#"{"translated_text":"Hello"}"#),
+            ],
             50,
             "runtime:LINGO_LOCAL_PROXY_URL",
         );
