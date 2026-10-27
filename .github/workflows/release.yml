@@ -387,7 +387,8 @@ jobs:
         run: |
           mkdir .verify-release
           gh release download "$RELEASE_TAG" --dir .verify-release
-          gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" > .verify-release/release.json
+          RELEASE_ID=$(gh release view "$RELEASE_TAG" --json databaseId --jq .databaseId)
+          gh api "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID" > .verify-release/release.json
           node scripts/verify-release-assets.mjs .verify-release "$RELEASE_TAG"
           unzip -t ".verify-release/Lingo_${RELEASE_TAG#v}_x64-portable.zip"
           tar -tzf .verify-release/Lingo_aarch64.app.tar.gz > /dev/null
