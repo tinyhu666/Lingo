@@ -54,12 +54,14 @@ jobs:
       - name: Ensure Caddy serves every public domain
         shell: bash
         run: |
+          set -uo pipefail
+          ssh -p "$DEPLOY_PORT" -o LogLevel=ERROR "${TENCENT_LIGHT_USER}@${TENCENT_LIGHT_HOST}" \
+            "DEPLOY_TARGET_DIR='$DEPLOY_TARGET_DIR' EDGE_DOMAINS='$EDGE_DOMAINS' bash -s" 2> ssh-stderr.log <<'REMOTE'
           set -euo pipefail
-          ssh -p "$DEPLOY_PORT" "${TENCENT_LIGHT_USER}@${TENCENT_LIGHT_HOST}" \
-            "DEPLOY_TARGET_DIR='$DEPLOY_TARGET_DIR' EDGE_DOMAINS='$EDGE_DOMAINS' bash -s" <<'REMOTE'
-          set -euo pipefail
+          trap 'echo "::error::Remote script failed at line $LINENO (exit $?)"' ERR
 
           target_dir="${DEPLOY_TARGET_DIR:?}"
+          echo "::notice::Connected to the server; target dir $target_dir"
           env_file="$target_dir/.env"
           domains="${EDGE_DOMAINS:?}"
 
@@ -123,6 +125,11 @@ jobs:
             echo "::notice::Local HTTPS check for $host via 127.0.0.1: http $code (certificates for lingo.ink are issued automatically once its DNS points here)"
           done
           REMOTE
+          code=$?
+          if [ "$code" -ne 0 ]; then
+            echo "::error::ssh exited with $code: $(tail -c 900 ssh-stderr.log | tr '\n' ' ')"
+            exit "$code"
+          fi
 
       - name: Report public DNS
         shell: bash
