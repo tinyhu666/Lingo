@@ -8,6 +8,9 @@ const CONFIG_CACHE_TTL_MS = 1_000;
 const DEFAULT_TIMEOUT_MS = 12_000;
 const DEFAULT_MAX_TOKENS = 96;
 const DEFAULT_TEMPERATURE = 0.2;
+// Send a duplicate model request when the first one is still pending after
+// this long; whichever answers first wins. 0 disables hedging.
+const DEFAULT_HEDGE_AFTER_MS = 1_200;
 const DEFAULT_MODEL_NAME = 'deepseek-flash';
 const DEFAULT_API_KEY_ENV_NAME = 'DEEPSEEK_API_KEY';
 const DEFAULT_FALLBACK_MODEL_NAME = 'deepseek-v4-pro';
@@ -224,6 +227,7 @@ export const sanitizeRuntimeConfig = (candidate, source = 'environment', updated
   const timeout_ms = clampNumber(record.timeout_ms, DEFAULT_TIMEOUT_MS, 3_000, 120_000);
   const max_tokens = clampNumber(record.max_tokens, DEFAULT_MAX_TOKENS, 1, 4_096);
   const temperature = clampNumber(record.temperature, DEFAULT_TEMPERATURE, 0, 2);
+  const hedge_after_ms = clampNumber(record.hedge_after_ms, DEFAULT_HEDGE_AFTER_MS, 0, 10_000);
   const model_name = String(record.model_name || DEFAULT_MODEL_NAME).trim() || DEFAULT_MODEL_NAME;
 
   const baseConfig = {
@@ -242,6 +246,7 @@ export const sanitizeRuntimeConfig = (candidate, source = 'environment', updated
     timeout_ms,
     max_tokens,
     temperature,
+    hedge_after_ms,
     fallback: sanitizeFallbackConfig(record.fallback, baseConfig),
     secondary_fallback: sanitizeFallbackConfig(record.secondary_fallback, baseConfig, {
       enabled: false,
@@ -267,6 +272,7 @@ export const environmentRuntimeConfig = (env) => {
       timeout_ms: env.MODEL_TIMEOUT_MS || DEFAULT_TIMEOUT_MS,
       max_tokens: env.MODEL_MAX_TOKENS || DEFAULT_MAX_TOKENS,
       temperature: env.MODEL_TEMPERATURE || DEFAULT_TEMPERATURE,
+      hedge_after_ms: env.MODEL_HEDGE_AFTER_MS ?? DEFAULT_HEDGE_AFTER_MS,
       fallback: {
         enabled: env.FALLBACK_MODEL_ENABLED !== 'false',
         provider: env.FALLBACK_MODEL_PROVIDER || env.MODEL_PROVIDER || 'openai-compatible',
@@ -315,6 +321,7 @@ export const createDeepSeekOfficialRuntimeConfig = () => ({
   timeout_ms: DEFAULT_TIMEOUT_MS,
   max_tokens: DEFAULT_MAX_TOKENS,
   temperature: DEFAULT_TEMPERATURE,
+  hedge_after_ms: DEFAULT_HEDGE_AFTER_MS,
   fallback: {
     enabled: true,
     provider: 'openai-compatible',
@@ -482,6 +489,7 @@ export const summarizeRuntimeConfig = (config) => ({
   provider: config.provider,
   model: config.model_name,
   api_url: config.api_url,
+  hedge_after_ms: Number(config.hedge_after_ms ?? DEFAULT_HEDGE_AFTER_MS),
   fallback: {
     enabled: config.fallback?.enabled === true,
     provider: config.fallback?.provider || config.provider,

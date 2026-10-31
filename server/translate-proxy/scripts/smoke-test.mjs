@@ -155,6 +155,7 @@ const child = spawn(process.execPath, ['src/server.mjs'], {
     PORT: String(port),
     ADMIN_TOKEN: 'test-admin-token',
     BACKEND_PUBLIC_KEY: 'test-public-key',
+    MODEL_HEDGE_AFTER_MS: '0',
     PRIMARY_MODEL_API_KEY: 'primary-model-key',
     FAST_MODEL_API_KEY: 'fast-model-key',
     ZHIPU_API_KEY: 'secondary-model-key',
@@ -321,7 +322,8 @@ try {
     const previousRequests = upstreamState.requestedModels.length;
     const result = await translate({ text });
     expect(result.status === 200 && result.json.translated_text === text, 'invariant tokens should be valid unchanged translations');
-    expect(upstreamState.requestedModels.length === previousRequests + 1, 'invariant tokens must not trigger fallback calls');
+    expect(result.json.response_source === 'invariant', 'invariant tokens should be answered without a model');
+    expect(upstreamState.requestedModels.length === previousRequests, 'invariant tokens must not call any model');
   }
 
   const cacheStartHits = upstreamState.fastHits;

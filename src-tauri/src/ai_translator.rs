@@ -3,9 +3,11 @@ use anyhow::{anyhow, Result};
 use reqwest::{Client, StatusCode};
 use serde::Serialize;
 use serde_json::{json, Value};
+use std::collections::VecDeque;
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::OnceLock;
+use std::sync::{Mutex, OnceLock};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+use tauri::AppHandle;
 use tokio::time::{sleep, timeout};
 
 static HTTP_CLIENT: OnceLock<Client> = OnceLock::new();
@@ -15,6 +17,70 @@ const TRANSLATION_TIMEOUT: Duration = Duration::from_secs(15);
 const PROXY_RETRY_DELAY_MS: u64 = 120;
 const PREWARM_COOLDOWN_MS: u64 = 30_000;
 const DEBUG_LOCAL_PROXY_URL: &str = "http://127.0.0.1:8787";
+// Repeated callouts ("go rosh", "care mid") are answered from this process-local
+// memo without a network round-trip. Settings are part of the key, so changing
+// the language, style or game never reuses an old translation.
+const MEMO_TTL: Duration = Duration::from_secs(600);
+const MEMO_MAX_ENTRIES: usize = 128;
+// Idle HTTPS connections through the proxy's edge are dropped after a few
+// minutes; a cheap ping keeps the pooled connection (and TLS session) warm so
+// the first translation after a quiet stretch does not pay a new handshake.
+const KEEPALIVE_INTERVAL: Duration = Duration::from_secs(240);
+const KEEPALIVE_TIMEOUT: Duration = Duration::from_secs(5);
+
+struct MemoEntry {
+    key: String,
+    result: TranslationResult,
+    stored_at: Instant,
+}
+
+static TRANSLATION_MEMO: Mutex<VecDeque<MemoEntry>> = Mutex::new(VecDeque::new());
+
+fn memo_key(text: &str, settings: &AppSettings) -> String {
+    json!({
+        "text": text,
+        "from": settings.translation_from,
+        "to": settings.translation_to,
+        "mode": settings.translation_mode,
+        "scene": settings.game_scene,
+        "daily": settings.daily_mode,
+    })
+    .to_string()
+}
+
+fn memo_get(key: &str) -> Option<TranslationResult> {
+    let mut memo = TRANSLATION_MEMO.lock().ok()?;
+    let now = Instant::now();
+    memo.retain(|entry| now.duration_since(entry.stored_at) < MEMO_TTL);
+    memo.iter()
+        .find(|entry| entry.key == key)
+        .map(|entry| entry.result.clone())
+}
+
+fn memo_put(key: String, result: &TranslationResult) {
+    if result.text.trim().is_empty() {
+        return;
+    }
+    let Ok(mut memo) = TRANSLATION_MEMO.lock() else {
+        return;
+    };
+    memo.retain(|entry| entry.key != key);
+    while memo.len() >= MEMO_MAX_ENTRIES {
+        memo.pop_front();
+    }
+    memo.push_back(MemoEntry {
+        key,
+        result: result.clone(),
+        stored_at: Instant::now(),
+    });
+}
+
+#[cfg(test)]
+fn memo_clear() {
+    if let Ok(mut memo) = TRANSLATION_MEMO.lock() {
+        memo.clear();
+    }
+}
 
 const COMPILED_BACKEND_URL: Option<&str> = option_env!("LINGO_BACKEND_URL");
 const COMPILED_FUNCTIONS_URL: Option<&str> = option_env!("SUPABASE_FUNCTIONS_URL");
@@ -403,7 +469,7 @@ pub async fn warm_translation_backend() -> Result<()> {
     Ok(())
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct TranslationResult {
     pub text: String,
     pub trace_id: Option<String>,
@@ -424,14 +490,65 @@ pub async fn translate_with_gpt(
         });
     }
 
-    translate_with_backend(
+    let key = memo_key(text, settings);
+    if let Some(cached) = memo_get(&key) {
+        println!(
+            "[perf] translate_total elapsed_ms=0 source=client-memo trace_id={}",
+            cached.trace_id.as_deref().unwrap_or("-")
+        );
+        return Ok(cached);
+    }
+
+    let result = translate_with_backend(
         text,
         settings,
         operation_id,
         backend_config()?,
         TRANSLATION_TIMEOUT,
     )
-    .await
+    .await?;
+    memo_put(key, &result);
+    Ok(result)
+}
+
+/// Cheap request that keeps the pooled connection to the proxy alive.
+pub async fn ping_translation_backend() -> Result<()> {
+    let backend = backend_config()?;
+    let base = backend
+        .base_url
+        .trim_end_matches("/translate")
+        .trim_end_matches('/')
+        .to_string();
+    let started = Instant::now();
+    let response = shared_http_client()
+        .get(format!("{}/healthz", base))
+        .timeout(KEEPALIVE_TIMEOUT)
+        .send()
+        .await
+        .map_err(|error| anyhow!(request_error_message(&backend, &error)))?;
+    println!(
+        "[perf] backend_keepalive elapsed_ms={} status={}",
+        started.elapsed().as_millis(),
+        response.status().as_u16()
+    );
+    Ok(())
+}
+
+/// Background loop that pings the proxy while translation is enabled.
+pub fn spawn_backend_keepalive(app: AppHandle) {
+    tauri::async_runtime::spawn(async move {
+        loop {
+            sleep(KEEPALIVE_INTERVAL).await;
+            match crate::store::get_settings(&app) {
+                Ok(settings) if settings.app_enabled => {
+                    if let Err(error) = ping_translation_backend().await {
+                        println!("[translate] keepalive_failed reason={}", error);
+                    }
+                }
+                _ => {}
+            }
+        }
+    });
 }
 
 async fn translate_with_backend(
@@ -838,6 +955,14 @@ mod tests {
     fn start_mock_translate_server(
         response_body: &'static str,
     ) -> (String, thread::JoinHandle<()>) {
+        start_mock_translate_server_for("你好", "test-operation-1", response_body)
+    }
+
+    fn start_mock_translate_server_for(
+        expected_text: &'static str,
+        expected_operation_id: &'static str,
+        response_body: &'static str,
+    ) -> (String, thread::JoinHandle<()>) {
         let listener = TcpListener::bind("127.0.0.1:0").expect("bind mock translate server");
         let address = format!("http://{}", listener.local_addr().expect("mock local addr"));
 
@@ -849,13 +974,13 @@ mod tests {
                 "unexpected request line: {request}"
             );
             assert!(
-                request.contains("\"text\":\"你好\""),
+                request.contains(&format!("\"text\":\"{expected_text}\"")),
                 "request body should include original text: {request}"
             );
             assert!(
                 request
                     .to_ascii_lowercase()
-                    .contains("x-lingo-operation-id: test-operation-1"),
+                    .contains(&format!("x-lingo-operation-id: {expected_operation_id}")),
                 "request should include operation id: {request}"
             );
             assert!(
@@ -1055,6 +1180,87 @@ mod tests {
             .expect("mock translate server should exit cleanly");
         assert_eq!(translated.text, "Hello team");
         assert_eq!(translated.trace_id.as_deref(), Some("test-trace"));
+    }
+
+    #[test]
+    fn translate_with_gpt_serves_repeated_text_from_memo_without_network() {
+        let _guard = env_lock().lock().expect("lock env");
+        memo_clear();
+        let (base_url, handle) = start_mock_translate_server_for(
+            "集合打肉山",
+            "memo-op-1",
+            r#"{"translated_text":"group up, rosh","trace_id":"memo-trace","model":"mock-model"}"#,
+        );
+        let _env = EnvGuard::set(&[
+            ("LINGO_BACKEND_URL", Some(base_url.as_str())),
+            ("LINGO_BACKEND_ANON_KEY", None),
+            ("SUPABASE_FUNCTIONS_URL", None),
+            ("SUPABASE_URL", None),
+            ("SUPABASE_ANON_KEY", None),
+            ("LINGO_LOCAL_PROXY_URL", None),
+        ]);
+
+        let settings = AppSettings::default();
+        let first = tauri::async_runtime::block_on(async {
+            translate_with_gpt("集合打肉山", &settings, "memo-op-1").await
+        })
+        .expect("first translation succeeds");
+        // The mock accepts exactly one connection, so a second network call
+        // would hang; the memo must answer instead.
+        let second = tauri::async_runtime::block_on(async {
+            tokio::time::timeout(
+                Duration::from_millis(500),
+                translate_with_gpt("集合打肉山", &settings, "memo-op-2"),
+            )
+            .await
+        })
+        .expect("memo answers immediately")
+        .expect("second translation succeeds");
+        handle.join().expect("mock server exits");
+        assert_eq!(first.text, "group up, rosh");
+        assert_eq!(second.text, "group up, rosh");
+        assert_eq!(second.trace_id.as_deref(), Some("memo-trace"));
+
+        // A different style must not reuse the memo entry.
+        let other = AppSettings {
+            translation_mode: "pro".to_string(),
+            ..AppSettings::default()
+        };
+        assert_ne!(
+            memo_key("集合打肉山", &settings),
+            memo_key("集合打肉山", &other)
+        );
+        memo_clear();
+    }
+
+    #[test]
+    fn memo_expires_entries_and_stays_bounded() {
+        let _guard = env_lock().lock().expect("lock env");
+        memo_clear();
+        let result = TranslationResult {
+            text: "hi".to_string(),
+            trace_id: None,
+            model: None,
+        };
+        for index in 0..(MEMO_MAX_ENTRIES + 10) {
+            memo_put(format!("key-{index}"), &result);
+        }
+        assert!(memo_get("key-0").is_none(), "oldest entries are evicted");
+        assert!(memo_get(&format!("key-{}", MEMO_MAX_ENTRIES + 9)).is_some());
+        assert_eq!(TRANSLATION_MEMO.lock().unwrap().len(), MEMO_MAX_ENTRIES);
+        memo_put(
+            "empty".to_string(),
+            &TranslationResult {
+                text: "   ".to_string(),
+                trace_id: None,
+                model: None,
+            },
+        );
+        assert!(
+            memo_get("empty").is_none(),
+            "empty results are never memoized"
+        );
+        memo_clear();
     }
 
     #[test]

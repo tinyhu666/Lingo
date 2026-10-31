@@ -939,6 +939,7 @@ pub fn run() {
                 Ok(_) => println!("应用当前处于暂停状态，跳过翻译代理预热"),
                 Err(error) => eprintln!("读取设置以决定是否预热失败: {}", error),
             }
+            ai_translator::spawn_backend_keepalive(app.app_handle().clone());
 
             // Keep the temporarily hidden incoming-translation subsystem off,
             // including for users who previously persisted it as enabled.

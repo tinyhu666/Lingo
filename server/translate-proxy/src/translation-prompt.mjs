@@ -1,6 +1,6 @@
 import { glossaryPrompt, GLOSSARY_REVISION } from './glossary.mjs';
 
-export const PROMPT_REVISION = `2026-10-27.1:${GLOSSARY_REVISION}`;
+export const PROMPT_REVISION = `2026-10-31.1:${GLOSSARY_REVISION}`;
 
 const LANGUAGE_LABELS = {
   zh: 'Chinese',
@@ -109,6 +109,23 @@ export const getTranslationContext = (payload) => {
   };
 };
 
+// Two or three anchors per common direction keep the model's register short and
+// send-ready without a long few-shot block. Pairs outside this table get none.
+const isChinese = (lang) => lang === 'zh';
+const isEnglish = (lang) => lang === 'en' || lang === 'en-SEA';
+const EXAMPLES = {
+  'zh>en': '"兄弟们集合打肉山" => "group up, let\'s do rosh"; "我大招还有20秒" => "my ult is ready in 20s"; "别追了，回去守塔" => "don\'t chase, go back and hold the tower"',
+  'en>zh': '"care mid, missing" => "小心，中路消失了"; "push top after this fight" => "这波打完推上路"; "wait for me, 30s to bkb" => "等我，BKB还要30秒"',
+  'zh>zh': '"兄弟们快点集合一下去打肉山好吗" => "集合打肉山"',
+  'en>en': '"can you guys please come to mid lane right now" => "come mid now"',
+};
+export const exampleLine = (translationFrom, translationTo) => {
+  const from = isChinese(translationFrom) ? 'zh' : isEnglish(translationFrom) ? 'en' : null;
+  const to = isChinese(translationTo) ? 'zh' : isEnglish(translationTo) ? 'en' : null;
+  const examples = from && to ? EXAMPLES[`${from}>${to}`] : null;
+  return examples ? `Examples of the expected register: ${examples}` : '';
+};
+
 export const buildSystemPrompt = (payload, text = '') => {
   const { translationFrom, translationTo, translationMode, gameScene, isRewrite, styleProfile, gameSceneProfile } = getTranslationContext(payload);
   const incoming = isIncomingDirection(payload);
@@ -132,6 +149,7 @@ export const buildSystemPrompt = (payload, text = '') => {
     dailyMode
       ? 'Daily mode:on. Use ordinary conversational meanings unless the sentence clearly refers to gameplay.'
       : 'Daily mode:off. Keep chat concise without losing information.',
+    incoming || dailyMode ? '' : exampleLine(translationFrom, translationTo),
     // Daily conversation must not map everyday words like 蝴蝶 to game items.
     dailyMode ? '' : glossaryPrompt(text, gameScene, translationTo),
   ].filter(Boolean).join('\n');
