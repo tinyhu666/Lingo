@@ -1,15 +1,29 @@
 name: Configure Edge Domains
 
-# Makes sure the Caddy edge on the Tencent light server serves every public
-# website domain (buffpp.com, lingo.ink, www.lingo.ink) and reports what each
-# domain currently resolves to, so a DNS cutover can be prepared and verified
-# without shell access to the server.
+# Manages which public website domains the Nginx edge on the Tencent light
+# server answers for, without shell access to the server.
+#
+#   inspect     report the current Nginx server blocks, certificates and DNS
+#   prepare     add lingo.ink / www.lingo.ink to the buffpp.com server blocks
+#               (run before switching DNS; HTTP works, HTTPS still uses the
+#               buffpp.com certificate until issue-cert runs)
+#   issue-cert  obtain a Let's Encrypt certificate covering all domains with
+#               certbot (run after DNS for lingo.ink points at this server)
 
 on:
   workflow_dispatch:
+    inputs:
+      mode:
+        description: inspect | prepare | issue-cert
+        required: true
+        default: inspect
+      email:
+        description: Contact email for Let's Encrypt (issue-cert only)
+        required: false
+        default: huruiw@outlook.com
 
 env:
-  EDGE_DOMAINS: buffpp.com,lingo.ink,www.lingo.ink
+  EDGE_DOMAINS: buffpp.com www.buffpp.com lingo.ink www.lingo.ink
 
 jobs:
   configure:
@@ -18,9 +32,10 @@ jobs:
       TENCENT_LIGHT_HOST: ${{ secrets.TENCENT_LIGHT_HOST }}
       TENCENT_LIGHT_USER: ${{ secrets.TENCENT_LIGHT_USER }}
       TENCENT_LIGHT_SSH_KEY: ${{ secrets.TENCENT_LIGHT_SSH_KEY }}
-      TENCENT_TRANSLATE_PROXY_ENV: ${{ secrets.TENCENT_TRANSLATE_PROXY_ENV }}
       TENCENT_LIGHT_PORT: ${{ vars.TENCENT_LIGHT_PORT }}
       TENCENT_LIGHT_TARGET_DIR: ${{ vars.TENCENT_LIGHT_TARGET_DIR }}
+      MODE: ${{ inputs.mode }}
+      CERT_EMAIL: ${{ inputs.email }}
     steps:
       - name: Validate settings
         shell: bash
@@ -32,14 +47,12 @@ jobs:
               exit 1
             fi
           done
+          case "$MODE" in
+            inspect|prepare|issue-cert) ;;
+            *) echo "::error::Unknown mode '$MODE'"; exit 1 ;;
+          esac
           echo "DEPLOY_PORT=${TENCENT_LIGHT_PORT:-22}" >> "$GITHUB_ENV"
           echo "DEPLOY_TARGET_DIR=${TENCENT_LIGHT_TARGET_DIR:-/home/ubuntu/lingo-translate-proxy}" >> "$GITHUB_ENV"
-
-          if printf '%s\n' "${TENCENT_TRANSLATE_PROXY_ENV:-}" | grep -q '^CADDY_DOMAIN=.*lingo\.ink'; then
-            echo "::notice::Repository secret TENCENT_TRANSLATE_PROXY_ENV already lists lingo.ink in CADDY_DOMAIN."
-          else
-            echo "::notice::Repository secret TENCENT_TRANSLATE_PROXY_ENV does not list lingo.ink; the proxy deploy workflow now enforces it anyway."
-          fi
 
       - name: Configure SSH
         shell: bash
@@ -51,79 +64,92 @@ jobs:
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -p "$DEPLOY_PORT" "$TENCENT_LIGHT_HOST" >> ~/.ssh/known_hosts
 
-      - name: Ensure Caddy serves every public domain
+      - name: Run on the server
         shell: bash
         run: |
           set -uo pipefail
           ssh -p "$DEPLOY_PORT" -o LogLevel=ERROR "${TENCENT_LIGHT_USER}@${TENCENT_LIGHT_HOST}" \
-            "DEPLOY_TARGET_DIR='$DEPLOY_TARGET_DIR' EDGE_DOMAINS='$EDGE_DOMAINS' bash -s" 2> ssh-stderr.log <<'REMOTE'
+            "MODE='$MODE' EDGE_DOMAINS='$EDGE_DOMAINS' CERT_EMAIL='$CERT_EMAIL' DEPLOY_TARGET_DIR='$DEPLOY_TARGET_DIR' bash -s" 2> ssh-stderr.log <<'REMOTE'
           set -euo pipefail
           trap 'echo "::error::Remote script failed at line $LINENO (exit $?)"' ERR
 
-          target_dir="${DEPLOY_TARGET_DIR:?}"
-          echo "::notice::Connected to the server; target dir $target_dir"
-          env_file="$target_dir/.env"
+          mode="${MODE:?}"
           domains="${EDGE_DOMAINS:?}"
+          website_dir="${DEPLOY_TARGET_DIR:?}/public-sites/lingoweb"
+          echo "::notice::Connected; mode=$mode"
 
-          if [ ! -f "$env_file" ]; then
-            echo "::error::$env_file does not exist on the server."
+          if ! command -v nginx >/dev/null 2>&1; then
+            echo "::error::nginx is not installed on this server; the edge is something else."
             exit 1
           fi
 
-          if command -v docker >/dev/null 2>&1; then
-            docker_cmd=(docker)
-            if ! docker ps >/dev/null 2>&1; then
-              docker_cmd=(sudo -n docker)
-            fi
-          else
-            docker_cmd=()
+          # Locate every enabled Nginx config that mentions buffpp.com.
+          mapfile -t configs < <(sudo -n grep -lE 'server_name[^;]*buffpp\.com' /etc/nginx/sites-enabled/* /etc/nginx/conf.d/* 2>/dev/null || true)
+          if [ "${#configs[@]}" -eq 0 ]; then
+            echo "::error::No enabled Nginx config has a server_name with buffpp.com."
+            sudo -n nginx -T 2>/dev/null | grep -E 'server_name|listen' | sort -u | head -n 20 | sed 's/^/::notice::nginx: /'
+            exit 1
           fi
+          echo "::notice::Nginx configs for buffpp.com: ${configs[*]}"
 
-          sudo_write() {
-            if [ -w "$env_file" ]; then
-              cat > "$env_file"
+          report() {
+            for cfg in "${configs[@]}"; do
+              sudo -n grep -nE 'server_name|listen|ssl_certificate |root ' "$cfg" | tr -s ' ' | paste -sd'|' - | sed "s|^|::notice::$(basename "$cfg"): |"
+            done
+            if command -v certbot >/dev/null 2>&1; then
+              sudo -n certbot certificates 2>/dev/null | grep -E 'Certificate Name|Domains|Expiry' | paste -sd'|' - | sed 's/^/::notice::certbot: /'
             else
-              sudo -n tee "$env_file" >/dev/null
+              echo "::warning::certbot is not installed."
             fi
+            for host in buffpp.com lingo.ink www.lingo.ink; do
+              code="$(curl -sS -k --max-time 15 --resolve "$host:443:127.0.0.1" -o /dev/null -w '%{http_code}' "https://$host/" 2>/dev/null || echo 000)"
+              http="$(curl -sS --max-time 15 -H "Host: $host" -o /dev/null -w '%{http_code}' "http://127.0.0.1/" 2>/dev/null || echo 000)"
+              echo "::notice::Local check $host: http $http, https $code"
+            done
           }
 
-          current="$(grep -E '^CADDY_DOMAIN=' "$env_file" | head -n 1 | cut -d= -f2- || true)"
-          if [ "$current" = "$domains" ]; then
-            echo "::notice::Server .env already has CADDY_DOMAIN=$domains"
-          else
-            tmp="$(mktemp)"
-            grep -vE '^CADDY_DOMAIN=' "$env_file" > "$tmp" || true
-            printf 'CADDY_DOMAIN=%s\n' "$domains" >> "$tmp"
-            sudo_write < "$tmp"
-            rm -f "$tmp"
-            echo "::notice::Server .env CADDY_DOMAIN updated from '${current:-unset}' to '$domains'"
-          fi
-
-          if [ "${#docker_cmd[@]}" -eq 0 ]; then
-            echo "::warning::docker is not installed on the server; the edge is not the Caddy container from docker-compose.yml. Check nginx manually."
+          if [ "$mode" = "inspect" ]; then
+            report
             exit 0
           fi
 
-          caddy_container="$("${docker_cmd[@]}" ps --format '{{.Names}}' | grep -i caddy | head -n 1 || true)"
-          if [ -z "$caddy_container" ]; then
-            echo "::warning::No running Caddy container found; the edge may be nginx. Containers: $("${docker_cmd[@]}" ps --format '{{.Names}}' | paste -sd, -)"
+          if [ "$mode" = "prepare" ]; then
+            changed=0
+            for cfg in "${configs[@]}"; do
+              if sudo -n grep -qE 'server_name[^;]*lingo\.ink' "$cfg"; then
+                echo "::notice::$(basename "$cfg") already lists lingo.ink"
+                continue
+              fi
+              sudo -n cp "$cfg" "$cfg.bak.$(date +%Y%m%d%H%M%S)"
+              # Every server_name line that carries buffpp.com also gets the lingo.ink names.
+              sudo -n sed -i -E 's/^(\s*server_name[^;]*buffpp\.com[^;]*);/\1 lingo.ink www.lingo.ink;/' "$cfg"
+              changed=1
+              echo "::notice::Added lingo.ink and www.lingo.ink to server_name in $(basename "$cfg")"
+            done
+            if [ "$changed" -eq 1 ]; then
+              sudo -n nginx -t
+              sudo -n systemctl reload nginx
+              echo "::notice::Nginx reloaded"
+            fi
+            report
             exit 0
           fi
 
-          compose_dir="$target_dir"
-          if [ -f "$compose_dir/docker-compose.yml" ]; then
-            (cd "$compose_dir" && "${docker_cmd[@]}" compose up -d --force-recreate caddy)
-            echo "::notice::Caddy container $caddy_container recreated with the new domain list."
-          else
-            "${docker_cmd[@]}" restart "$caddy_container" >/dev/null
-            echo "::notice::Caddy container $caddy_container restarted."
+          if [ "$mode" = "issue-cert" ]; then
+            if ! command -v certbot >/dev/null 2>&1; then
+              echo "::error::certbot is not installed; cannot issue a certificate."
+              exit 1
+            fi
+            args=()
+            for d in $domains; do args+=(-d "$d"); done
+            sudo -n certbot --nginx --non-interactive --agree-tos --expand --redirect \
+              --email "${CERT_EMAIL:?}" "${args[@]}"
+            sudo -n nginx -t
+            sudo -n systemctl reload nginx
+            echo "::notice::Certificate issued/expanded for: $domains"
+            report
+            exit 0
           fi
-
-          sleep 5
-          for host in buffpp.com lingo.ink www.lingo.ink; do
-            code="$(curl -sS -k --max-time 15 --resolve "$host:443:127.0.0.1" -o /dev/null -w '%{http_code}' "https://$host/" 2>/dev/null || echo 000)"
-            echo "::notice::Local HTTPS check for $host via 127.0.0.1: http $code (certificates for lingo.ink are issued automatically once its DNS points here)"
-          done
           REMOTE
           code=$?
           if [ "$code" -ne 0 ]; then
