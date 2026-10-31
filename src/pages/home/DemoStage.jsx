@@ -240,8 +240,8 @@ export default function DemoStage({ paused = false }) {
         </div>
         <div className='stage__clock'>34:12</div>
         <div className='stage__feed'>
-          <div><em className='a'>Kuro</em><s /><em className='b'>Dendi</em></div>
-          <div><em className='b'>Puppey</em><s /><em className='a'>Miracle</em></div>
+          <div><em className='a'>lol</em><s /><em className='b'>大福</em></div>
+          <div><em className='b'>power</em><s /><em className='a'>shaosha</em></div>
         </div>
         <div className='stage__map'>
           {assets ? (
