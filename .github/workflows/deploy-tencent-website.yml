@@ -144,13 +144,20 @@ jobs:
           expected="$(grep -o 'index-[A-Za-z0-9_-]*\.js' website-src/dist/index.html | head -n 1)"
           served=0
 
-          for url in https://lingo.ink/ https://buffpp.com/; do
-            body="$(curl -fsSL --max-time 20 --retry 3 --retry-delay 2 "$url" 2>/dev/null || true)"
-            if printf '%s' "$body" | grep -q "$expected"; then
-              echo "::notice::$url serves the new bundle $expected"
+          for host in lingo.ink www.lingo.ink buffpp.com; do
+            url="https://$host/"
+            addresses="$(dig +short A "$host" 2>/dev/null | paste -sd, - || true)"
+            body_file="$(mktemp)"
+            status="$(curl -sSL --max-time 20 --retry 3 --retry-delay 2 -o "$body_file" -w '%{http_code}' "$url" 2>/dev/null || echo "000")"
+            title="$(grep -o '<title>[^<]*</title>' "$body_file" | head -n 1 || true)"
+            bundle="$(grep -o 'index-[A-Za-z0-9_-]*\.js' "$body_file" | head -n 1 || true)"
+            rm -f "$body_file"
+
+            if [ "$bundle" = "$expected" ]; then
+              echo "::notice::$url serves the new bundle $expected (dns ${addresses:-none}, http $status)"
               served=1
             else
-              echo "::warning::$url does not serve $expected yet"
+              echo "::warning::$url does not serve $expected yet (dns ${addresses:-none}, http $status, bundle ${bundle:-none}, ${title:-no title})"
             fi
           done
 
