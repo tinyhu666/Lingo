@@ -458,7 +458,7 @@ export const messages = {
       contactCardTitle: '联系方式',
       contactCardSub: '反馈问题或加入社区',
       openReleasePage: '查看发布页',
-      projectNote: 'Lingo 是 Dota 2 玩家 tiny 利用业余时间做的兴趣项目，想解决的问题很简单：让不同区服的玩家在游戏里顺畅交流。不用登录，也不用配置任何 API，装好就能用。',
+      projectNote: 'Lingo 由 Dota 2 玩家 tiny 在业余时间独立打造。起点是每个跨区服玩家都遇到过的尴尬：队友就在身边，却因为语言说不上话。Lingo 让你用母语打字，按一下快捷键，队友看到的就是他们的语言。不用注册，不用配置，装好就能开黑。',
       update: {
         title: '版本信息',
         summary: '查看版本信息与更新状态。',
@@ -981,7 +981,7 @@ export const messages = {
       contactCardTitle: 'Contact',
       contactCardSub: 'Report an issue or join the community',
       openReleasePage: 'Open release page',
-      projectNote: 'Lingo is a hobby project that tiny, a Dota 2 player, builds in spare time to solve one simple problem: letting players from different regions talk freely in game. No login and no API setup, it just works once installed.',
+      projectNote: 'Lingo is built in spare time by tiny, a Dota 2 player, and it started from a moment every cross-region player knows: a teammate right there, and no shared language to say what matters. With Lingo you type in your own language, press one hotkey, and your team reads it in theirs. No sign-up, no setup. Install and queue.',
       update: {
         title: 'Version Info',
         summary: 'View version info and update status.',
@@ -1504,7 +1504,7 @@ export const messages = {
       contactCardTitle: 'Контакты',
       contactCardSub: 'Сообщить о проблеме или присоединиться к сообществу',
       openReleasePage: 'Открыть страницу релиза',
-      projectNote: 'Lingo — любительский проект, который игрок в Dota 2 tiny делает в свободное время ради одной простой цели: чтобы игроки из разных регионов свободно общались в игре. Без входа и настройки API: установил и пользуешься.',
+      projectNote: 'Lingo создаёт в свободное время tiny, игрок в Dota 2. Всё началось с ситуации, знакомой каждому, кто играет на чужом регионе: тиммейт рядом, а сказать главное нечем. С Lingo вы пишете на родном языке, нажимаете одну клавишу, и команда читает сообщение на своём. Без регистрации и настроек: установил и в бой.',
       update: {
         title: 'Информация о версии',
         summary: 'Информация о версии и статусе обновлений.',
