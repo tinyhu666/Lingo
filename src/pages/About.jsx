@@ -3,18 +3,13 @@ import { openUrl } from '@tauri-apps/plugin-opener';
 import { useI18n } from '../i18n/I18nProvider';
 import { useUpdater } from '../components/UpdateProvider';
 import { Chip, PageHead } from '../components/lg';
-import {
-  ICheck,
-  IChat,
-  IDownload,
-  IInfo,
-  IRefresh,
-} from '../icons';
+import { IChat, IDiscord, IDownload, IExternal, IMail, IRefresh } from '../icons';
 import { APP_VERSION_LABEL, RELEASE_PAGE_URL } from '../constants/version';
 import { hasTauriRuntime } from '../services/tauriRuntime';
 import { DEFAULT_PUBLIC_SITE_CONFIG, loadPublicSiteConfig } from '../services/publicSiteConfig';
 import { showError, showInfo, showSuccess } from '../utils/toast';
 import { toErrorMessage } from '../utils/error';
+import appIcon from '../assets/app-icon.png';
 
 const stripLeadingMarkdownHeading = (value) => {
   if (typeof value !== 'string') return '';
@@ -140,7 +135,7 @@ export default function About() {
   const formatTime = (timestamp) => {
     if (!timestamp) return t('common.notChecked');
     try {
-      return new Date(timestamp).toLocaleString(locale);
+      return new Date(timestamp).toLocaleString(locale, { dateStyle: 'short', timeStyle: 'short' });
     } catch {
       return t('common.notChecked');
     }
@@ -157,8 +152,8 @@ export default function About() {
     }
   };
 
-  const versionLabel = currentVersion ? `V${currentVersion}` : APP_VERSION_LABEL;
-  const latestVersionLabel = latestVersion ? `V${latestVersion}` : t('about.update.latestUnavailable');
+  const versionLabel = currentVersion ? `v${currentVersion}` : APP_VERSION_LABEL.replace(/^V/, 'v');
+  const latestVersionLabel = latestVersion ? `v${latestVersion}` : t('about.update.latestUnavailable');
   const actionLabel = !supportsUpdater
     ? t('about.update.actionUnsupported')
     : checking
@@ -190,6 +185,7 @@ export default function About() {
     return [
       {
         key: 'discord',
+        icon: <IDiscord />,
         label: t('about.project.contactDiscord'),
         value: contact.discordUrl.replace(/^https?:\/\//, ''),
         actionLabel: t('about.project.contactActionOpen'),
@@ -197,6 +193,7 @@ export default function About() {
       },
       {
         key: 'qq-group',
+        icon: <IChat />,
         label: t('about.project.contactQqGroup'),
         value: contact.qqGroup,
         actionLabel: t('about.project.contactActionCopy'),
@@ -204,6 +201,7 @@ export default function About() {
       },
       {
         key: 'email',
+        icon: <IMail />,
         label: t('about.project.contactEmail'),
         value: contact.email,
         actionLabel: t('about.project.contactActionOpen'),
@@ -216,249 +214,124 @@ export default function About() {
     <>
       <PageHead title={t('about.pageTitle')} sub={t('about.pageSub')} />
 
-      {/* Update hero */}
-      <div className='lg-card' style={{ padding: 0, overflow: 'hidden' }}>
-        <div
-          style={{
-            padding: '18px 22px',
-            background: hasUpdate
-              ? 'linear-gradient(135deg, rgba(245,158,11,.10), rgba(245,158,11,.04))'
-              : 'linear-gradient(135deg, rgba(22,163,107,.08), rgba(22,163,107,.02))',
-            borderBottom: '1px solid var(--lg-line-3)',
-          }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div
-              style={{
-                width: 44,
-                height: 44,
-                borderRadius: 12,
-                background: hasUpdate
-                  ? 'linear-gradient(135deg, #f59e0b, #ea7917)'
-                  : 'linear-gradient(135deg, #16a36b, #0c8a55)',
-                color: '#fff',
-                display: 'grid',
-                placeItems: 'center',
-                boxShadow: hasUpdate
-                  ? '0 8px 18px -6px rgba(245,158,11,.5)'
-                  : '0 8px 18px -6px rgba(22,163,107,.5)',
-              }}>
-              {hasUpdate ? (
-                <IDownload style={{ width: 20, height: 20 }} />
-              ) : (
-                <ICheck style={{ width: 20, height: 20 }} />
-              )}
-            </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--lg-ink-0)' }}>
-                  {heroTitle}
-                </div>
+      <div className='about'>
+        <div className='lg-card lg-card--glass about__version lg-rise' style={{ '--i': 1 }}>
+          <div className='about__hero'>
+            <img className='about__logo' src={appIcon} alt='' />
+            <div style={{ minWidth: 0 }}>
+              <h2>
+                Lingo
                 {hasUpdate ? (
-                  <Chip tone='warn-strong' lg dot>
+                  <Chip tone='warn' dot>
                     {t('about.chipUpdateAvailable')}
                   </Chip>
                 ) : (
-                  <Chip tone='success' lg dot>
+                  <Chip tone='success' dot>
                     {t('about.chipLatest')}
                   </Chip>
                 )}
-              </div>
-              <div style={{ fontSize: 12.5, color: 'var(--lg-ink-2)', marginTop: 4 }}>
-                {heroSub}
-              </div>
+              </h2>
+              <p>{heroSub}</p>
             </div>
+          </div>
+
+          <div className='about__meta'>
+            <div>
+              <div className='k'>{t('about.update.currentVersion')}</div>
+              <div className='v'>{versionLabel}</div>
+            </div>
+            <div>
+              <div className='k'>{t('about.update.latestVersion')}</div>
+              <div className={`v${hasUpdate ? ' v--highlight' : ''}`}>{latestVersionLabel}</div>
+            </div>
+            <div>
+              <div className='k'>{t('about.update.releaseDate')}</div>
+              <div className='v'>{formatReleaseDate(releaseDate)}</div>
+            </div>
+            <div>
+              <div className='k'>{t('about.update.checkedAt')}</div>
+              <div className='v'>{formatTime(checkedAt)}</div>
+            </div>
+          </div>
+
+          {downloading ? (
+            <div className='lg-progress' aria-label={t('about.update.downloadProgress')}>
+              <span className='lg-progress__bar' style={{ width: `${progressPercent}%` }} />
+            </div>
+          ) : null}
+
+          <div className='about__actions'>
             {supportsUpdater ? (
               <button
                 type='button'
-                className={`lg-btn ${hasUpdate ? 'lg-btn--warn' : ''}`}
+                className='lg-btn lg-btn--primary'
                 onClick={actionHandler}
-                disabled={actionDisabled}
-                style={actionDisabled ? { opacity: 0.7, cursor: 'not-allowed' } : undefined}>
-                {hasUpdate ? <IDownload /> : <IRefresh />}
+                disabled={actionDisabled}>
+                {checking || downloading ? (
+                  <span className='lg-spin' aria-hidden='true' />
+                ) : hasUpdate ? (
+                  <IDownload aria-hidden='true' />
+                ) : (
+                  <IRefresh aria-hidden='true' />
+                )}
                 {actionLabel}
               </button>
-            ) : (
-              <span style={{ fontSize: 12, color: 'var(--lg-ink-3)' }}>
-                {t('about.update.actionUnsupported')}
-              </span>
-            )}
-          </div>
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 0 }}>
-          {[
-            { l: t('about.update.currentVersion'), v: versionLabel },
-            {
-              l: t('about.update.latestVersion'),
-              v: latestVersionLabel,
-              highlight: hasUpdate,
-            },
-            { l: t('about.update.releaseDate'), v: formatReleaseDate(releaseDate) },
-            { l: t('about.update.checkedAt'), v: formatTime(checkedAt) },
-          ].map((it, i) => (
-            <div
-              key={it.l}
-              style={{
-                padding: '14px 18px',
-                borderRight: i < 3 ? '1px solid var(--lg-line-3)' : 'none',
+            ) : null}
+            <button
+              type='button'
+              className='lg-btn lg-btn--ghost'
+              onClick={() => {
+                void openContactLink(RELEASE_PAGE_URL, t);
               }}>
-              <div
-                style={{
-                  fontSize: 12,
-                  fontWeight: 700,
-                  color: 'var(--lg-ink-3)',
-                  letterSpacing: '.14em',
-                  textTransform: 'uppercase',
-                }}>
-                {it.l}
-              </div>
-              <div
-                style={{
-                  fontSize: 16,
-                  fontWeight: 700,
-                  color: it.highlight ? '#c4651a' : 'var(--lg-ink-0)',
-                  marginTop: 4,
-                  fontFamily: 'var(--lg-mono)',
-                  wordBreak: 'break-word',
-                }}>
-                {it.v}
-              </div>
+              <IExternal aria-hidden='true' />
+              {t('about.openReleasePage')}
+            </button>
+            <span className={`about__msg${errorMessage ? ' about__msg--error' : ''}`}>
+              {errorMessage ||
+                (downloading ? `${t('about.update.downloadProgress')} ${progressPercent}%` : heroTitle)}
+            </span>
+          </div>
+
+          <div>
+            <div className='lg-eyebrow' style={{ marginBottom: 8 }}>
+              {t('about.releaseNotesTitle')}
             </div>
-          ))}
-        </div>
-      </div>
-
-      {downloading ? (
-        <div className='lg-card' style={{ marginTop: 14 }}>
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              fontSize: 12,
-              fontWeight: 600,
-              color: 'var(--lg-info-ink)',
-            }}>
-            <span>{t('about.update.downloadProgress')}</span>
-            <span>{progressPercent}%</span>
-          </div>
-          <div
-            style={{
-              marginTop: 8,
-              height: 6,
-              borderRadius: 3,
-              background: 'var(--lg-info-bg)',
-              overflow: 'hidden',
-            }}>
-            <div
-              style={{
-                width: `${progressPercent}%`,
-                height: '100%',
-                background: 'var(--lg-brand-grad)',
-                transition: 'width var(--lg-dur) var(--lg-ease)',
-              }}
-            />
+            <div className='about__notes'>{releaseNotesBody || t('about.project.featureBody')}</div>
           </div>
         </div>
-      ) : null}
 
-      {errorMessage ? (
-        <div
-          className='lg-card'
-          style={{ marginTop: 14, borderColor: 'rgba(210,58,58,.32)', background: 'var(--lg-danger-bg)' }}>
-          <div style={{ fontSize: 13, color: 'var(--lg-danger-ink)' }}>{errorMessage}</div>
-        </div>
-      ) : null}
-
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: '1.4fr 1fr',
-          gap: 14,
-          marginTop: 14,
-        }}>
-        {/* Release notes */}
-        <div className='lg-card'>
+        <div className='lg-card lg-card--glass lg-rise' style={{ '--i': 2 }}>
           <div className='lg-card__head'>
-            <div className='lg-card__icon'>
-              <IInfo />
-            </div>
-            <div className='lg-card__title'>{t('about.releaseNotesTitle')}</div>
-          </div>
-          {releaseNotesBody ? (
-            <div
-              style={{
-                fontSize: 13,
-                color: 'var(--lg-ink-2)',
-                lineHeight: 1.7,
-                whiteSpace: 'pre-line',
-                wordBreak: 'break-word',
-                marginTop: 4,
-              }}>
-              {releaseNotesBody}
-            </div>
-          ) : (
-            <div style={{ fontSize: 13, color: 'var(--lg-ink-3)' }}>
-              {t('about.project.featureBody')}
-            </div>
-          )}
-        </div>
-
-        {/* Contact */}
-        <div className='lg-card'>
-          <div className='lg-card__head'>
-            <div className='lg-card__icon'>
+            <span className='lg-card__icon'>
               <IChat />
+            </span>
+            <div>
+              <h3 className='lg-card__title'>{t('about.contactCardTitle')}</h3>
+              <p className='lg-card__sub'>{t('about.contactCardSub')}</p>
             </div>
-            <div className='lg-card__title'>{t('about.contactCardTitle')}</div>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {contactItems.map((c) => (
-              <button
-                key={c.key}
-                type='button'
-                onClick={() => {
-                  void c.action();
-                }}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 10,
-                  padding: '10px 12px',
-                  background: 'var(--lg-surf-2)',
-                  border: '1px solid var(--lg-line-1)',
-                  borderRadius: 10,
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                  transition: 'all var(--lg-dur) var(--lg-ease)',
-                }}>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div
-                    style={{
-                      fontSize: 12,
-                      fontWeight: 700,
-                      color: 'var(--lg-ink-3)',
-                      letterSpacing: '.14em',
-                      textTransform: 'uppercase',
-                    }}>
-                    {c.label}
-                  </div>
-                  <div
-                    style={{
-                      fontSize: 13.5,
-                      fontWeight: 600,
-                      color: 'var(--lg-ink-0)',
-                      marginTop: 2,
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                    }}>
-                    {c.value}
-                  </div>
+          <div className='about__contacts'>
+            {contactItems.map((item) => (
+              <div key={item.key} className='about__contact'>
+                <span className='lg-card__icon' aria-hidden='true'>
+                  {item.icon}
+                </span>
+                <div>
+                  <div className='k'>{item.label}</div>
+                  <div className='v'>{item.value}</div>
                 </div>
-                <Chip>{c.actionLabel}</Chip>
-              </button>
+                <button
+                  type='button'
+                  className='lg-btn lg-btn--sm'
+                  onClick={() => {
+                    void item.action();
+                  }}>
+                  {item.actionLabel}
+                </button>
+              </div>
             ))}
           </div>
+          <p className='about__note'>{t('about.openSourceNote')}</p>
         </div>
       </div>
     </>

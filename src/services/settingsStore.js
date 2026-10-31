@@ -148,6 +148,64 @@ export const writeUiLocalePreference = async (locale) => {
   }
 };
 
+export const UI_THEME_STORAGE_KEY = 'lingo.ui_theme';
+const UI_THEME_KEY = 'ui_theme';
+export const DEFAULT_UI_THEME = 'dark';
+
+export const normalizeUiTheme = (value) => (String(value || '').trim() === 'light' ? 'light' : DEFAULT_UI_THEME);
+
+export const readPreviewUiTheme = () => {
+  try {
+    const raw = localStorage.getItem(UI_THEME_STORAGE_KEY);
+    return raw ? normalizeUiTheme(raw) : null;
+  } catch {
+    return null;
+  }
+};
+
+export const readUiThemePreference = async () => {
+  const preview = readPreviewUiTheme();
+  if (!hasTauriRuntime()) {
+    return preview || DEFAULT_UI_THEME;
+  }
+
+  try {
+    const store = await getStore();
+    const stored = await store.get(UI_THEME_KEY);
+    if (stored) {
+      return normalizeUiTheme(stored);
+    }
+  } catch {
+    // fall back to the preview value below
+  }
+
+  return preview || DEFAULT_UI_THEME;
+};
+
+export const writeUiThemePreference = async (theme) => {
+  const normalized = normalizeUiTheme(theme);
+
+  try {
+    localStorage.setItem(UI_THEME_STORAGE_KEY, normalized);
+  } catch {
+    // ignore preview write errors
+  }
+
+  if (!hasTauriRuntime()) {
+    return true;
+  }
+
+  try {
+    const store = await getStore();
+    await store.set(UI_THEME_KEY, normalized);
+    await store.save();
+    return true;
+  } catch (error) {
+    console.warn('Failed to persist UI theme preference:', error);
+    return false;
+  }
+};
+
 export const readSettingsFromBackend = async () => {
   if (!hasTauriRuntime()) {
     return null;

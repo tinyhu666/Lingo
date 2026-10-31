@@ -1,124 +1,27 @@
-<svg xmlns="http://www.w3.org/2000/svg"
-     viewBox="0 0 1024 1024" width="1024" height="1024">
-
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!-- Lingo mark: game controller with two chat bubbles and translation arrows. Flat, azure gradient. -->
   <defs>
-
-    <!-- Controller gradient: cyan → blue → purple -->
-    <linearGradient id="ctrlGrad"
-        x1="172.00" y1="321.52" x2="852.00" y2="741.52"
-        gradientUnits="userSpaceOnUse">
-      <stop offset="0%"   stop-color="rgb(97,235,255)"/>
-      <stop offset="25%"  stop-color="rgb(77,184,255)"/>
-      <stop offset="50%"  stop-color="rgb(112,133,250)"/>
-      <stop offset="75%"  stop-color="rgb(138,97,235)"/>
-      <stop offset="100%" stop-color="rgb(140,71,217)"/>
-    </linearGradient>
-
-    <!-- Top specular highlight -->
-    <linearGradient id="hlGrad"
-        x1="512.00" y1="333.52" x2="512.00" y2="423.52"
-        gradientUnits="userSpaceOnUse">
-      <stop offset="0%"   stop-color="white" stop-opacity="0.24"/>
-      <stop offset="50%"  stop-color="white" stop-opacity="0.06"/>
-      <stop offset="100%" stop-color="white" stop-opacity="0"/>
-    </linearGradient>
-
-    <!-- Bottom darken -->
-    <linearGradient id="blGrad"
-        x1="512.00" y1="621.52" x2="512.00" y2="711.52"
-        gradientUnits="userSpaceOnUse">
-      <stop offset="0%"   stop-color="black" stop-opacity="0"/>
-      <stop offset="100%" stop-color="black" stop-opacity="0.12"/>
-    </linearGradient>
-
-    <!-- Bubble fill gradient (left) -->
-    <linearGradient id="bubGradL"
-        x1="324.00" y1="439.52" x2="324.00" y2="489.52"
-        gradientUnits="userSpaceOnUse">
-      <stop offset="0%"   stop-color="white" stop-opacity="0.34"/>
-      <stop offset="100%" stop-color="white" stop-opacity="0.22"/>
-    </linearGradient>
-
-    <!-- Bubble fill gradient (right) -->
-    <linearGradient id="bubGradR"
-        x1="626.00" y1="435.52" x2="626.00" y2="485.52"
-        gradientUnits="userSpaceOnUse">
-      <stop offset="0%"   stop-color="white" stop-opacity="0.34"/>
-      <stop offset="100%" stop-color="white" stop-opacity="0.22"/>
-    </linearGradient>
-
-    <!-- Controller mask: union of body + two grips -->
-    <mask id="ctrlMask">
-      <!-- Body -->
-      <rect x="207.00" y="350.02"
-            width="610.00" height="255.00"
-            rx="118.00" ry="118.00" fill="white"/>
-      <!-- Right grip -->
-      <rect x="-76.00" y="-65.00"
-            width="152.00" height="235.00"
-            rx="66.00" ry="66.00" fill="white"
-            transform="translate(684.00,513.52) rotate(-3)"/>
-      <!-- Left grip -->
-      <rect x="-76.00" y="-65.00"
-            width="152.00" height="235.00"
-            rx="66.00" ry="66.00" fill="white"
-            transform="translate(340.00,513.52) rotate(3)"/>
-    </mask>
-
+    <linearGradient id="lingoGrad" gradientUnits="userSpaceOnUse" x1="207" y1="330" x2="817" y2="720"><stop offset="0" stop-color="#4da3ff"/><stop offset="1" stop-color="#2b6bff"/></linearGradient>
   </defs>
-
-  <!-- ── Controller body ── -->
-  <g mask="url(#ctrlMask)">
-    <!-- Gradient fill -->
-    <rect x="0" y="0" width="1024" height="1024" fill="url(#ctrlGrad)"/>
-    <!-- Top specular -->
-    <rect x="0" y="0" width="1024" height="1024" fill="url(#hlGrad)"/>
-    <!-- Bottom darken -->
-    <rect x="0" y="0" width="1024" height="1024" fill="url(#blGrad)"/>
-  </g>
-
-  <!-- ── Chat bubble buttons ── -->
-
-  <!-- Left bubble -->
-  <path d="M 340.00,439.52 L 382.00,439.52 A 16.00,16.00 0 0,1 398.00,455.52 L 398.00,473.52 A 16.00,16.00 0 0,1 382.00,489.52 L 350.64,489.52 C 338.80,489.52   331.40,495.52   324.74,504.52 C 329.18,492.52   331.40,489.52   340.00,489.52 A 16.00,16.00 0 0,1 324.00,473.52 L 324.00,455.52 A 16.00,16.00 0 0,1 340.00,439.52 Z"
-        fill="url(#bubGradL)"
-        stroke="white" stroke-opacity="0.18" stroke-width="1.5"/>
-  <!-- Left bubble dots -->
-  <g fill="white" fill-opacity="0.80">
-    <circle cx="343.24" cy="462.52" r="4.50"/>
-    <circle cx="358.24" cy="462.52" r="4.50"/>
-    <circle cx="373.24" cy="462.52" r="4.50"/>
-  </g>
-
-  <!-- Right bubble -->
-  <path d="M 642.00,435.52 L 684.00,435.52 A 16.00,16.00 0 0,1 700.00,451.52 L 700.00,469.52 A 16.00,16.00 0 0,1 684.00,485.52 L 684.00,485.52 C 692.60,485.52   694.82,488.52   699.26,500.52 C 692.60,491.52   685.20,485.52   673.36,485.52 L 642.00,485.52 A 16.00,16.00 0 0,1 626.00,469.52 L 626.00,451.52 A 16.00,16.00 0 0,1 642.00,435.52 Z"
-        fill="url(#bubGradR)"
-        stroke="white" stroke-opacity="0.18" stroke-width="1.5"/>
-  <!-- Right bubble dots -->
-  <g fill="white" fill-opacity="0.80">
-    <circle cx="645.24" cy="458.52" r="4.50"/>
-    <circle cx="660.24" cy="458.52" r="4.50"/>
-    <circle cx="675.24" cy="458.52" r="4.50"/>
-  </g>
-
-  <!-- ── Bidirectional translation arrows ── -->
-  <g stroke="rgba(230,242,255,0.92)" stroke-width="7.00"
-     stroke-linecap="round" stroke-linejoin="round" fill="none">
-
-    <!-- → top arrow -->
-    <line x1="468.00" y1="456.52"
-          x2="556.00" y2="456.52"/>
-    <polyline points="539.00,446.32
-                      556.00,456.52
-                      539.00,466.72"/>
-
-    <!-- ← bottom arrow -->
-    <line x1="556.00" y1="486.52"
-          x2="468.00" y2="486.52"/>
-    <polyline points="485.00,476.32
-                      468.00,486.52
-                      485.00,496.72"/>
-
-  </g>
-
+    <g transform="translate(512 512) scale(1.32) translate(-512 -512)">
+      <g fill="url(#lingoGrad)">
+      <rect x="207" y="350" width="610" height="255" rx="118"/>
+      <rect x="-76" y="-65" width="152" height="235" rx="66" transform="translate(684 513.5) rotate(-3)"/>
+      <rect x="-76" y="-65" width="152" height="235" rx="66" transform="translate(340 513.5) rotate(3)"/>
+      </g>
+      <g transform="translate(512 466) scale(1.22) translate(-512 -466)">
+        <g fill="#ffffff">
+          <path d="M322 420h74a20 20 0 0 1 20 20v30a20 20 0 0 1-20 20h-32l-28 24 6-24h-20a20 20 0 0 1-20-20v-30a20 20 0 0 1 20-20z"/>
+          <path d="M628 416h74a20 20 0 0 1 20 20v30a20 20 0 0 1-20 20h-20l6 24-28-24h-32a20 20 0 0 1-20-20v-30a20 20 0 0 1 20-20z"/>
+        </g>
+        <g fill="#2b6bff">
+          <circle cx="339" cy="455" r="7"/><circle cx="359" cy="455" r="7"/><circle cx="379" cy="455" r="7"/>
+          <circle cx="645" cy="451" r="7"/><circle cx="665" cy="451" r="7"/><circle cx="685" cy="451" r="7"/>
+        </g>
+        <g fill="none" stroke="#ffffff" stroke-width="16" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M462 452h100M536 428l26 24-26 24"/>
+          <path d="M562 500H462M488 476l-26 24 26 24"/>
+        </g>
+      </g>
+    </g>
 </svg>
