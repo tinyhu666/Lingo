@@ -1372,7 +1372,7 @@ button:disabled {
   position: absolute !important;
   inset: 0;
   pointer-events: none;
-  font-family: var(--lg-hud);
+  font-family: var(--lg-font);
 }
 
 .stage__photo {
@@ -1483,8 +1483,9 @@ button:disabled {
   border-radius: 6px;
   background: rgba(6, 8, 14, 0.7);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  font-size: 10px;
-  letter-spacing: 0.06em;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
   color: rgba(255, 255, 255, 0.6);
 }
 
@@ -1592,9 +1593,10 @@ button:disabled {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-family: var(--lg-hud);
-  font-size: 10.5px;
-  letter-spacing: 0.14em;
+  font-family: var(--lg-font);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: rgba(255, 255, 255, 0.42);
 }
@@ -1629,7 +1631,7 @@ button:disabled {
   flex-direction: column;
   justify-content: flex-end;
   gap: 7px;
-  font-family: var(--lg-mono);
+  font-family: var(--lg-font);
   font-size: 13px;
   color: rgba(255, 255, 255, 0.55);
 }
@@ -1673,7 +1675,7 @@ button:disabled {
   height: 50px;
   padding: 0 14px;
   border-radius: 12px;
-  font-family: var(--lg-mono);
+  font-family: var(--lg-font);
   font-size: 15px;
   color: #f3f6fc;
   background: rgba(255, 255, 255, 0.045);
@@ -2276,9 +2278,10 @@ button:disabled {
   right: 18px;
   display: flex;
   justify-content: space-between;
-  font-family: var(--lg-hud);
+  font-family: var(--lg-font);
   font-size: 11px;
-  letter-spacing: 0.1em;
+  font-weight: 600;
+  letter-spacing: 0.08em;
   color: rgba(255, 255, 255, 0.4);
   text-transform: uppercase;
 }
@@ -2288,7 +2291,7 @@ button:disabled {
 }
 
 .tutorial__log {
-  font-family: var(--lg-mono);
+  font-family: var(--lg-font);
   font-size: 12.5px;
   color: rgba(255, 255, 255, 0.55);
   display: flex;
@@ -2307,7 +2310,7 @@ button:disabled {
 
 .tutorial__box {
   position: relative;
-  font-family: var(--lg-mono);
+  font-family: var(--lg-font);
   font-size: 14px;
   color: #eef2fb;
   background: rgba(0, 0, 0, 0.55);
