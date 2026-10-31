@@ -5,6 +5,9 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createTranslationCache } from './translation-cache.mjs';
 import { modelRequestOptions } from './model-request-options.mjs';
+import { createModelClient } from './model-client.mjs';
+import { sanitizeTranslatedText } from './translation-output.mjs';
+import { installUpstreamAgent } from './upstream-agent.mjs';
 import { glossaryStats, isInvariantChat } from './glossary.mjs';
 import {
   PROMPT_REVISION,
@@ -43,6 +46,8 @@ const corsHeaders = {
 const MAX_BODY_BYTES = 128 * 1024;
 const FAST_LANE_CIRCUIT_BREAK_MS = 60_000;
 const translationCache = createTranslationCache();
+const { requestModel } = createModelClient();
+installUpstreamAgent();
 const translationInflight = new Map();
 /// Hard cap on simultaneous in-flight translation requests. Beyond this
 /// new requests return 503; a slow upstream can otherwise pin promises
@@ -99,40 +104,6 @@ const htmlResponse = (res, status, html) => {
   res.end(html);
 };
 
-const summarizeText = (value) => {
-  const compact = String(value || '').replace(/\s+/g, ' ').trim();
-  if (!compact) {
-    return '<empty>';
-  }
-  return compact.length > 180 ? `${compact.slice(0, 180)}...` : compact;
-};
-
-const extractErrorMessage = (payload) => {
-  if (typeof payload?.message === 'string' && payload.message.trim()) {
-    return payload.message.trim();
-  }
-  if (typeof payload?.error === 'string' && payload.error.trim()) {
-    return payload.error.trim();
-  }
-  if (typeof payload?.error?.message === 'string' && payload.error.message.trim()) {
-    return payload.error.message.trim();
-  }
-  return '';
-};
-
-const readJsonResponse = async (response) => {
-  const raw = await response.text();
-  if (!raw.trim()) {
-    return { json: {}, raw };
-  }
-
-  try {
-    return { json: JSON.parse(raw), raw };
-  } catch {
-    return { json: null, raw };
-  }
-};
-
 const buildModelIdentity = (config) =>
   JSON.stringify({
     provider: config.provider,
@@ -180,28 +151,6 @@ const buildTranslationCacheKey = ({ routeConfig, routeName, tuning, payload, tex
     text,
   });
 
-const extractOpenAIContent = (payload) => {
-  const content = payload?.choices?.[0]?.message?.content;
-  if (typeof content === 'string') {
-    return content.trim();
-  }
-  if (Array.isArray(content)) {
-    return content
-      .map((item) => (typeof item?.text === 'string' ? item.text : ''))
-      .join('')
-      .trim();
-  }
-  return '';
-};
-
-const extractAnthropicContent = (payload) =>
-  Array.isArray(payload?.content)
-    ? payload.content
-        .map((item) => (typeof item?.text === 'string' ? item.text : ''))
-        .join('')
-        .trim()
-    : '';
-
 const normalizeComparableTranslation = (value) =>
   String(value || '')
     .normalize('NFKC')
@@ -209,7 +158,8 @@ const normalizeComparableTranslation = (value) =>
     .trim()
     .toLocaleLowerCase();
 
-const assertTranslationChanged = ({ result, text, promptVariant }) => {
+const assertTranslationChanged = ({ result: rawResult, text, promptVariant }) => {
+  const result = { ...rawResult, translatedText: sanitizeTranslatedText(rawResult?.translatedText) };
   if (
     promptVariant === 'translate' &&
     !isInvariantChat(text) &&
@@ -411,129 +361,6 @@ const validateClientKey = (req) => {
   throw error;
 };
 
-const requestModelOnce = async ({
-  config,
-  apiKey,
-  systemPrompt,
-  text,
-  traceId,
-  effectiveMaxTokens,
-  effectiveTemperature,
-}) => {
-  const startedAt = Date.now();
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), config.timeout_ms);
-
-  try {
-    if (config.provider === 'anthropic') {
-      const response = await fetch(config.api_url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01',
-        },
-        signal: controller.signal,
-        body: JSON.stringify({
-          model: config.model_name,
-          system: systemPrompt,
-          max_tokens: effectiveMaxTokens,
-          temperature: effectiveTemperature,
-          messages: [{ role: 'user', content: text }],
-        }),
-      });
-
-      const { json: body, raw } = await readJsonResponse(response);
-      if (!response.ok) {
-        const error = new Error(
-          extractErrorMessage(body) ||
-            `Anthropic request failed (HTTP ${response.status}): ${summarizeText(raw)}`,
-        );
-        error.status = response.status;
-        error.fromUpstream = true;
-        throw error;
-      }
-
-      const translatedText = extractAnthropicContent(body);
-      if (!translatedText) {
-        console.warn(
-          JSON.stringify({
-            trace_id: traceId,
-            provider: config.provider,
-            model: config.model_name,
-            message: 'Anthropic returned empty content',
-            raw_summary: summarizeText(raw),
-          }),
-        );
-        const error = new Error('Empty model response');
-        error.status = 502;
-        error.fromUpstream = true;
-        throw error;
-      }
-
-      return {
-        translatedText,
-        modelLatencyMs: Date.now() - startedAt,
-      };
-    }
-
-    const requestBody = {
-      model: config.model_name,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: text },
-      ],
-      ...modelRequestOptions(config, effectiveMaxTokens, effectiveTemperature),
-    };
-
-    const response = await fetch(config.api_url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`,
-      },
-      signal: controller.signal,
-      body: JSON.stringify(requestBody),
-    });
-
-    const { json: body, raw } = await readJsonResponse(response);
-    if (!response.ok) {
-      const error = new Error(
-        extractErrorMessage(body) ||
-          `Model request failed (HTTP ${response.status}): ${summarizeText(raw)}`,
-      );
-      error.status = response.status;
-      error.fromUpstream = true;
-      throw error;
-    }
-
-    const translatedText = extractOpenAIContent(body);
-    if (!translatedText) {
-      console.warn(
-        JSON.stringify({
-          trace_id: traceId,
-          provider: config.provider,
-          model: config.model_name,
-          message: 'OpenAI-compatible provider returned empty content',
-          raw_summary: summarizeText(raw),
-        }),
-      );
-      const error = new Error('Empty model response');
-      error.status = 502;
-      throw error;
-    }
-
-    return {
-      translatedText,
-      modelLatencyMs: Date.now() - startedAt,
-    };
-  } finally {
-    clearTimeout(timer);
-  }
-};
-
-const shouldRetryModelRequest = (error) => String(error?.message || '').includes('Empty model response');
-
 const shouldUseConfiguredFallback = (error) => {
   const status = Number(error?.status || 0);
   if ([400, 401, 403, 404, 405, 422].includes(status)) {
@@ -545,77 +372,6 @@ const shouldUseConfiguredFallback = (error) => {
   const name = String(error?.name || '').toLowerCase();
   const message = String(error?.message || '').toLowerCase();
   return status === 0 && (name.includes('abort') || message.includes('abort') || message.includes('fetch'));
-};
-
-const requestModel = async ({
-  config,
-  apiKey,
-  systemPrompt,
-  text,
-  traceId,
-  effectiveMaxTokens,
-  effectiveTemperature,
-}) => {
-  const startedAt = Date.now();
-  try {
-    const result = await requestModelOnce({
-      config,
-      apiKey,
-      systemPrompt,
-      text,
-      traceId,
-      effectiveMaxTokens,
-      effectiveTemperature,
-    });
-    return {
-      ...result,
-      attemptCount: 1,
-      modelLatencyMs: Date.now() - startedAt,
-    };
-  } catch (error) {
-    if (!shouldRetryModelRequest(error)) {
-      error.attemptCount = Number(error?.attemptCount || 1);
-      error.modelLatencyMs = Date.now() - startedAt;
-      throw error;
-    }
-
-    const remainingMs = config.timeout_ms - (Date.now() - startedAt);
-    if (remainingMs <= 0) {
-      error.attemptCount = 1;
-      error.modelLatencyMs = Date.now() - startedAt;
-      throw error;
-    }
-
-    console.warn(
-      JSON.stringify({
-        trace_id: traceId,
-        provider: config.provider,
-        model: config.model_name,
-        message: 'Retrying translation after empty model response',
-      }),
-    );
-
-    try {
-      const retryResult = await requestModelOnce({
-        config: { ...config, timeout_ms: remainingMs },
-        apiKey,
-        text,
-        traceId,
-        effectiveMaxTokens,
-        effectiveTemperature,
-        systemPrompt: `${systemPrompt} Never return an empty response.`,
-      });
-      return {
-        ...retryResult,
-        attemptCount: 2,
-        modelLatencyMs: Date.now() - startedAt,
-      };
-    } catch (retryError) {
-      retryError.attemptCount = 2;
-      retryError.modelLatencyMs = Date.now() - startedAt;
-      throw retryError;
-    }
-  }
 };
 
 const requestTranslatedText = async ({ cacheKey, load }) => {
@@ -783,6 +539,63 @@ const routeTranslate = async (req, res, traceId, clientContext) => {
   }
 
   const primaryTuning = resolveRequestTuning({ config, payload, text });
+  if (!isIncomingDirection(payload) && isInvariantChat(text)) {
+    // "gg", "wp", "BKB CD 20": conventional chat tokens are the same in every
+    // language. Answer instantly instead of paying a model round-trip.
+    const latencyMs = Date.now() - startedAt;
+    console.log(
+      JSON.stringify({
+        trace_id: traceId,
+        operation_id: clientContext.operationId,
+        client_version: clientContext.appVersion,
+        client_platform: clientContext.platform,
+        latency_ms: latencyMs,
+        model_latency_ms: 0,
+        proxy_overhead_ms: latencyMs,
+        attempt_count: 0,
+        response_source: 'invariant',
+        model_route: 'none',
+        prompt_variant: primaryTuning.promptVariant,
+        text_length: text.length,
+      }),
+    );
+    persistTranslationServerDiagnostic({
+      operation_id: clientContext.operationId,
+      stage: 'server_response',
+      status: 'succeeded',
+      elapsed_ms: latencyMs,
+      text_length: text.length,
+      translation_from: payload?.translation_from,
+      translation_to: payload?.translation_to,
+      translation_mode: payload?.translation_mode,
+      game_scene: payload?.game_scene,
+      daily_mode: payload?.daily_mode,
+      trace_id: traceId,
+      model: null,
+      model_route: 'none',
+      http_status: 200,
+      app_version: clientContext.appVersion,
+      platform: clientContext.platform,
+    });
+    return jsonResponse(res, 200, {
+      translated_text: text,
+      model: null,
+      provider: null,
+      config_source: config.source,
+      latency_ms: latencyMs,
+      model_latency_ms: 0,
+      proxy_overhead_ms: latencyMs,
+      attempt_count: 0,
+      response_source: 'invariant',
+      model_route: 'none',
+      prompt_variant: primaryTuning.promptVariant,
+      style_profile: primaryTuning.styleProfile,
+      effective_max_tokens: 0,
+      effective_temperature: 0,
+      trace_id: traceId,
+      operation_id: clientContext.operationId,
+    });
+  }
   const useFastLane = canUseFastLane({
     config,
     payload,
@@ -806,6 +619,7 @@ const routeTranslate = async (req, res, traceId, clientContext) => {
     responseSource,
     attemptCount,
     modelLatencyMs,
+    hedged,
     modelRoute,
     modelName,
     modelProvider,
@@ -873,6 +687,8 @@ const routeTranslate = async (req, res, traceId, clientContext) => {
                 traceId,
                 effectiveMaxTokens: fallbackTuning.effectiveMaxTokens,
                 effectiveTemperature: fallbackTuning.effectiveTemperature,
+                hedgeAfterMs: config.hedge_after_ms,
+                maxTokensCeiling: fallbackConfig.max_tokens,
               }),
               text,
               promptVariant: fallbackTuning.promptVariant,
@@ -937,6 +753,8 @@ const routeTranslate = async (req, res, traceId, clientContext) => {
               traceId,
               effectiveMaxTokens: primaryTuning.effectiveMaxTokens,
               effectiveTemperature: primaryTuning.effectiveTemperature,
+              hedgeAfterMs: config.hedge_after_ms,
+              maxTokensCeiling: config.max_tokens,
             }),
             text,
             promptVariant: primaryTuning.promptVariant,
@@ -989,6 +807,8 @@ const routeTranslate = async (req, res, traceId, clientContext) => {
             traceId,
             effectiveMaxTokens: selectedTuning.effectiveMaxTokens,
             effectiveTemperature: selectedTuning.effectiveTemperature,
+            hedgeAfterMs: config.hedge_after_ms,
+            maxTokensCeiling: selectedRouteConfig.max_tokens,
           }),
           text,
           promptVariant: selectedTuning.promptVariant,
@@ -1055,6 +875,7 @@ const routeTranslate = async (req, res, traceId, clientContext) => {
       model_latency_ms: modelLatencyMs,
       proxy_overhead_ms: proxyOverheadMs,
       attempt_count: attemptCount,
+      hedged: Boolean(hedged),
       response_source: responseSource,
       model_route: modelRoute,
       prompt_variant: promptVariant,

@@ -11,6 +11,7 @@
     "print-deepseek-config": "node scripts/print-deepseek-config.mjs"
   },
   "dependencies": {
-    "better-sqlite3": "^12.8.0"
+    "better-sqlite3": "^12.8.0",
+    "undici": "^6.21.0"
   }
 }

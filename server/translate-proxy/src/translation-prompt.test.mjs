@@ -64,7 +64,7 @@ test('fidelity and input isolation apply to every mode and direction', () => {
       if (direction === 'incoming') assert.doesNotMatch(prompt, /Style:toxic|Style:pro/);
     }
   }
-  assert.match(PROMPT_REVISION, /^2026-10-27/);
+  assert.match(PROMPT_REVISION, /^2026-10-31/);
 });
 
 test('glossary context is bounded for large pasted messages', () => {
