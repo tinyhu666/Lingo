@@ -75,6 +75,14 @@ jobs:
             translate-proxy
 
           printf '%s\n' "$TENCENT_TRANSLATE_PROXY_ENV" > translate-proxy.env
+
+          # The Caddy edge must always serve every public website domain,
+          # regardless of what the stored environment secret says.
+          edge_domains="buffpp.com,lingo.ink,www.lingo.ink"
+          grep -vE '^CADDY_DOMAIN=' translate-proxy.env > translate-proxy.env.tmp || true
+          printf 'CADDY_DOMAIN=%s\n' "$edge_domains" >> translate-proxy.env.tmp
+          mv translate-proxy.env.tmp translate-proxy.env
+
           printf '\nDEEPSEEK_API_KEY=%s\n' "$DEEPSEEK_API_KEY" >> translate-proxy.env
           if [ -n "${ZHIPU_API_KEY:-}" ]; then
             printf '\nZHIPU_API_KEY=%s\n' "$ZHIPU_API_KEY" >> translate-proxy.env

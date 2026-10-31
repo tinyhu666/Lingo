@@ -1,0 +1,134 @@
+name: Configure Edge Domains
+
+# Makes sure the Caddy edge on the Tencent light server serves every public
+# website domain (buffpp.com, lingo.ink, www.lingo.ink) and reports what each
+# domain currently resolves to, so a DNS cutover can be prepared and verified
+# without shell access to the server.
+
+on:
+  workflow_dispatch:
+
+env:
+  EDGE_DOMAINS: buffpp.com,lingo.ink,www.lingo.ink
+
+jobs:
+  configure:
+    runs-on: ubuntu-latest
+    env:
+      TENCENT_LIGHT_HOST: ${{ secrets.TENCENT_LIGHT_HOST }}
+      TENCENT_LIGHT_USER: ${{ secrets.TENCENT_LIGHT_USER }}
+      TENCENT_LIGHT_SSH_KEY: ${{ secrets.TENCENT_LIGHT_SSH_KEY }}
+      TENCENT_TRANSLATE_PROXY_ENV: ${{ secrets.TENCENT_TRANSLATE_PROXY_ENV }}
+      TENCENT_LIGHT_PORT: ${{ vars.TENCENT_LIGHT_PORT }}
+      TENCENT_LIGHT_TARGET_DIR: ${{ vars.TENCENT_LIGHT_TARGET_DIR }}
+    steps:
+      - name: Validate settings
+        shell: bash
+        run: |
+          set -euo pipefail
+          for name in TENCENT_LIGHT_HOST TENCENT_LIGHT_USER TENCENT_LIGHT_SSH_KEY; do
+            if [ -z "${!name:-}" ]; then
+              echo "::error::$name secret is required."
+              exit 1
+            fi
+          done
+          echo "DEPLOY_PORT=${TENCENT_LIGHT_PORT:-22}" >> "$GITHUB_ENV"
+          echo "DEPLOY_TARGET_DIR=${TENCENT_LIGHT_TARGET_DIR:-/home/ubuntu/lingo-translate-proxy}" >> "$GITHUB_ENV"
+
+          if printf '%s\n' "${TENCENT_TRANSLATE_PROXY_ENV:-}" | grep -q '^CADDY_DOMAIN=.*lingo\.ink'; then
+            echo "::notice::Repository secret TENCENT_TRANSLATE_PROXY_ENV already lists lingo.ink in CADDY_DOMAIN."
+          else
+            echo "::notice::Repository secret TENCENT_TRANSLATE_PROXY_ENV does not list lingo.ink; the proxy deploy workflow now enforces it anyway."
+          fi
+
+      - name: Configure SSH
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$TENCENT_LIGHT_SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -p "$DEPLOY_PORT" "$TENCENT_LIGHT_HOST" >> ~/.ssh/known_hosts
+
+      - name: Ensure Caddy serves every public domain
+        shell: bash
+        run: |
+          set -euo pipefail
+          ssh -p "$DEPLOY_PORT" "${TENCENT_LIGHT_USER}@${TENCENT_LIGHT_HOST}" \
+            "DEPLOY_TARGET_DIR='$DEPLOY_TARGET_DIR' EDGE_DOMAINS='$EDGE_DOMAINS' bash -s" <<'REMOTE'
+          set -euo pipefail
+
+          target_dir="${DEPLOY_TARGET_DIR:?}"
+          env_file="$target_dir/.env"
+          domains="${EDGE_DOMAINS:?}"
+
+          if [ ! -f "$env_file" ]; then
+            echo "::error::$env_file does not exist on the server."
+            exit 1
+          fi
+
+          if command -v docker >/dev/null 2>&1; then
+            docker_cmd=(docker)
+            if ! docker ps >/dev/null 2>&1; then
+              docker_cmd=(sudo -n docker)
+            fi
+          else
+            docker_cmd=()
+          fi
+
+          sudo_write() {
+            if [ -w "$env_file" ]; then
+              cat > "$env_file"
+            else
+              sudo -n tee "$env_file" >/dev/null
+            fi
+          }
+
+          current="$(grep -E '^CADDY_DOMAIN=' "$env_file" | head -n 1 | cut -d= -f2- || true)"
+          if [ "$current" = "$domains" ]; then
+            echo "::notice::Server .env already has CADDY_DOMAIN=$domains"
+          else
+            tmp="$(mktemp)"
+            grep -vE '^CADDY_DOMAIN=' "$env_file" > "$tmp" || true
+            printf 'CADDY_DOMAIN=%s\n' "$domains" >> "$tmp"
+            sudo_write < "$tmp"
+            rm -f "$tmp"
+            echo "::notice::Server .env CADDY_DOMAIN updated from '${current:-unset}' to '$domains'"
+          fi
+
+          if [ "${#docker_cmd[@]}" -eq 0 ]; then
+            echo "::warning::docker is not installed on the server; the edge is not the Caddy container from docker-compose.yml. Check nginx manually."
+            exit 0
+          fi
+
+          caddy_container="$("${docker_cmd[@]}" ps --format '{{.Names}}' | grep -i caddy | head -n 1 || true)"
+          if [ -z "$caddy_container" ]; then
+            echo "::warning::No running Caddy container found; the edge may be nginx. Containers: $("${docker_cmd[@]}" ps --format '{{.Names}}' | paste -sd, -)"
+            exit 0
+          fi
+
+          compose_dir="$target_dir"
+          if [ -f "$compose_dir/docker-compose.yml" ]; then
+            (cd "$compose_dir" && "${docker_cmd[@]}" compose up -d --force-recreate caddy)
+            echo "::notice::Caddy container $caddy_container recreated with the new domain list."
+          else
+            "${docker_cmd[@]}" restart "$caddy_container" >/dev/null
+            echo "::notice::Caddy container $caddy_container restarted."
+          fi
+
+          sleep 5
+          for host in buffpp.com lingo.ink www.lingo.ink; do
+            code="$(curl -sS -k --max-time 15 --resolve "$host:443:127.0.0.1" -o /dev/null -w '%{http_code}' "https://$host/" 2>/dev/null || echo 000)"
+            echo "::notice::Local HTTPS check for $host via 127.0.0.1: http $code (certificates for lingo.ink are issued automatically once its DNS points here)"
+          done
+          REMOTE
+
+      - name: Report public DNS
+        shell: bash
+        run: |
+          set -euo pipefail
+          for host in lingo.ink www.lingo.ink buffpp.com; do
+            addresses="$(dig +short "$host" 2>/dev/null | paste -sd, - || true)"
+            echo "::notice::$host currently resolves to ${addresses:-nothing}"
+          done
