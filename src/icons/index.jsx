@@ -943,3 +943,45 @@ export function IArrowR(props) {
     </svg>
   );
 }
+
+export function IKeyboard(props) {
+  return (
+    <svg {...LG_SVG_BASE} {...props}>
+      <rect x='3' y='6' width='18' height='12' rx='2' />
+      <path d='M7 10h.01M11 10h.01M15 10h.01M8 14h8' />
+    </svg>
+  );
+}
+
+export function IPlay(props) {
+  return (
+    <svg {...LG_SVG_BASE} {...props} fill='currentColor' stroke='none'>
+      <path d='M7 5l12 7-12 7z' />
+    </svg>
+  );
+}
+
+export function IExternal(props) {
+  return (
+    <svg {...LG_SVG_BASE} {...props}>
+      <path d='M14 4h6v6M20 4l-9 9M19 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5' />
+    </svg>
+  );
+}
+
+export function IMail(props) {
+  return (
+    <svg {...LG_SVG_BASE} {...props}>
+      <rect x='3' y='5' width='18' height='14' rx='2' />
+      <path d='M3 7l9 6 9-6' />
+    </svg>
+  );
+}
+
+export function IDiscord(props) {
+  return (
+    <svg {...LG_SVG_BASE} {...props} fill='currentColor' stroke='none'>
+      <path d='M19.5 5.5A16 16 0 0 0 15.6 4l-.5 1a15 15 0 0 0-6.2 0l-.5-1a16 16 0 0 0-3.9 1.5C2 9.5 1.4 13.4 1.7 17.2A16 16 0 0 0 6.5 19.6l1-1.6a10 10 0 0 1-1.6-.8l.4-.3a11.5 11.5 0 0 0 11.4 0l.4.3a10 10 0 0 1-1.6.8l1 1.6a16 16 0 0 0 4.8-2.4c.4-4.4-.7-8.3-2.8-11.7zM8.7 14.9c-1 0-1.8-.9-1.8-2s.8-2 1.8-2 1.8.9 1.8 2-.8 2-1.8 2zm6.6 0c-1 0-1.8-.9-1.8-2s.8-2 1.8-2 1.8.9 1.8 2-.8 2-1.8 2z' />
+    </svg>
+  );
+}

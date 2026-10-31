@@ -2,32 +2,17 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CN, DE, ES, FR, JP, KR, RU, SG, US } from 'country-flag-icons/react/3x2';
 import { useStore } from '../../components/StoreProvider';
 import { useI18n } from '../../i18n/I18nProvider';
-import { Toggle, Kbd, PageHead } from '../../components/lg';
-import {
-  ITarget,
-  IPower,
-  IBolt,
-  ISwap,
-  IChevDown,
-  IArrowR,
-} from '../../icons';
-import { Spinner } from '../../icons';
-import {
-  LANGUAGE_OPTIONS,
-  getLanguageLabel,
-  getLanguageMeta,
-} from '../../constants/languages';
-import {
-  DEFAULT_GAME_SCENE,
-  GAME_SCENE_OPTIONS,
-  getGameSceneMeta,
-} from '../../constants/gameScenes';
+import { Chip, Kbd, Toggle } from '../../components/lg';
+import { IChevDown, ISwap } from '../../icons';
+import { LANGUAGE_OPTIONS, getLanguageLabel, getLanguageMeta } from '../../constants/languages';
+import { DEFAULT_GAME_SCENE, GAME_SCENE_OPTIONS, getGameSceneMeta } from '../../constants/gameScenes';
 import {
   buildHotkeyFromKeyCodes,
   defaultTranslatorHotkeyCodes,
   defaultTranslatorHotkeyLabel,
   formatMainKeyLabel,
   formatModifierLabel,
+  hotkeyLabelsFromSettings,
   isModifierKeyCode,
   normalizeModifier,
 } from '../../constants/hotkeys';
@@ -35,10 +20,11 @@ import DropdownMenu from '../../components/DropdownMenu';
 import { hasTauriRuntime, invokeCommand } from '../../services/tauriRuntime';
 import { showError, showSuccess } from '../../utils/toast';
 import { toErrorMessage } from '../../utils/error';
+import DemoStage from './DemoStage';
 
 const FLAG_COMPONENTS = { CN, SG, KR, US, FR, RU, ES, JP, DE };
 
-function LangPicker({ value, onClick, expanded, uiLocale }) {
+function LangPicker({ value, onClick, expanded, uiLocale, ariaLabel }) {
   const meta = getLanguageMeta(value, uiLocale);
   const FlagIcon = FLAG_COMPONENTS[meta.countryCode];
   return (
@@ -47,226 +33,34 @@ function LangPicker({ value, onClick, expanded, uiLocale }) {
       onClick={onClick}
       aria-haspopup='menu'
       aria-expanded={expanded}
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 8,
-        flex: 1,
-        padding: '8px 10px',
-        borderRadius: 10,
-        background: 'var(--lg-surf-2)',
-        border: '1px solid var(--lg-line-1)',
-        cursor: 'pointer',
-        minWidth: 0,
-      }}>
-      <span
-        style={{
-          width: 20,
-          height: 20,
-          borderRadius: '50%',
-          overflow: 'hidden',
-          flex: '0 0 20px',
-          display: 'inline-flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          background: '#eef2f7',
-        }}>
-        {FlagIcon ? <FlagIcon style={{ width: 28, height: 28, transform: 'scale(1.6)' }} /> : null}
+      aria-label={ariaLabel}
+      className='lg-select__trigger'>
+      <span className='lg-flag' aria-hidden='true'>
+        {FlagIcon ? <FlagIcon /> : null}
       </span>
-      <div style={{ textAlign: 'left', minWidth: 0, flex: 1 }}>
-        <div
-          style={{
-            fontSize: 13,
-            fontWeight: 700,
-            color: 'var(--lg-ink-0)',
-            whiteSpace: 'nowrap',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-          }}>
-          {meta.label}
-        </div>
-        <div style={{ fontSize: 12, color: 'var(--lg-ink-3)', fontFamily: 'var(--lg-mono)' }}>
-          {meta.id}
-        </div>
-      </div>
-      <IChevDown style={{ width: 12, height: 12, marginLeft: 'auto', color: 'var(--lg-ink-3)' }} />
+      <span className='lg-select__label'>{meta.label}</span>
+      <IChevDown className='lg-select__chevron' aria-hidden='true' />
     </button>
   );
 }
 
-function DirectionCard() {
-  const { settings, updateSettings } = useStore();
-  const { locale, t } = useI18n();
-  const [activeMenu, setActiveMenu] = useState(null);
-  const fromTriggerRef = useRef(null);
-  const toTriggerRef = useRef(null);
-
-  const from = settings?.translation_from || 'zh';
-  const to = settings?.translation_to || 'en';
-
-  const options = useMemo(
-    () =>
-      Object.fromEntries(
-        LANGUAGE_OPTIONS.map((item) => [item.id, getLanguageLabel(item.id, locale)]),
-      ),
-    [locale],
-  );
-
-  const handleSelect = async (lang, field) => {
-    setActiveMenu(null);
-    try {
-      await updateSettings({ [field]: lang });
-    } catch (error) {
-      showError(t('home.translationLanguage.updateFailed', { error: toErrorMessage(error) }));
-    }
-  };
-
+function renderLanguageOption(value, label, uiLocale) {
+  const meta = getLanguageMeta(value, uiLocale);
+  const FlagIcon = FLAG_COMPONENTS[meta.countryCode];
   return (
-    <div className='lg-card home-direction-card'>
-      <div className='lg-card__head'>
-        <div className='lg-card__icon'>
-          <ISwap />
-        </div>
-        <div className='lg-card__title'>{t('home.cardDirectionTitle')}</div>
-      </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        <div ref={fromTriggerRef} style={{ position: 'relative', flex: 1, minWidth: 0 }}>
-          <LangPicker
-            value={from}
-            uiLocale={locale}
-            expanded={activeMenu === 'from'}
-            onClick={() => setActiveMenu(activeMenu === 'from' ? null : 'from')}
-          />
-          <DropdownMenu
-            show={activeMenu === 'from'}
-            onClose={() => setActiveMenu(null)}
-            options={options}
-            currentValue={from}
-            onSelect={(lang) => handleSelect(lang, 'translation_from')}
-            direction='down'
-            anchorRef={fromTriggerRef}
-          />
-        </div>
-        <div
-          style={{
-            display: 'grid',
-            placeItems: 'center',
-            width: 28,
-            height: 28,
-            borderRadius: 8,
-            background: 'var(--lg-surf-2)',
-            color: 'var(--lg-ink-3)',
-          }}>
-          <IArrowR style={{ width: 14, height: 14 }} />
-        </div>
-        <div ref={toTriggerRef} style={{ position: 'relative', flex: 1, minWidth: 0 }}>
-          <LangPicker
-            value={to}
-            uiLocale={locale}
-            expanded={activeMenu === 'to'}
-            onClick={() => setActiveMenu(activeMenu === 'to' ? null : 'to')}
-          />
-          <DropdownMenu
-            show={activeMenu === 'to'}
-            onClose={() => setActiveMenu(null)}
-            options={options}
-            currentValue={to}
-            onSelect={(lang) => handleSelect(lang, 'translation_to')}
-            anchorPosition='right-0'
-            direction='down'
-            anchorRef={toTriggerRef}
-          />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function GameSceneCard() {
-  const { settings, updateSettings } = useStore();
-  const { locale, t } = useI18n();
-  const [menuOpen, setMenuOpen] = useState(false);
-  const triggerRef = useRef(null);
-  const selected = settings?.game_scene || DEFAULT_GAME_SCENE;
-  const selectedMeta = getGameSceneMeta(selected, locale);
-  const options = useMemo(
-    () =>
-      Object.fromEntries(
-        GAME_SCENE_OPTIONS.map((item) => [
-          item.id,
-          getGameSceneMeta(item.id, locale).label,
-        ]),
-      ),
-    [locale],
-  );
-
-  const handleSelect = async (gameScene) => {
-    setMenuOpen(false);
-    try {
-      await updateSettings({ game_scene: gameScene });
-    } catch (error) {
-      showError(t('home.gameScene.updateFailed', { error: toErrorMessage(error) }));
-    }
-  };
-
-  const renderGame = (value, label) => {
-    const meta = getGameSceneMeta(value, locale);
-    return (
-      <span className='game-picker__option'>
-        <span className='game-picker__icon' aria-hidden='true'>
-          {meta.icon ? (
-            <img
-              src={meta.icon}
-              alt=''
-              className={`game-picker__image game-picker__image--${meta.iconFit}`}
-            />
-          ) : (
-            <span className='game-picker__fallback'>G</span>
-          )}
-        </span>
-        <span>{label}</span>
+    <span>
+      <span className='lg-flag' aria-hidden='true'>
+        {FlagIcon ? <FlagIcon /> : null}
       </span>
-    );
-  };
-
-  return (
-    <div className='lg-card home-game-card'>
-      <div className='lg-card__head'>
-        <div className='lg-card__icon'>
-          <ITarget />
-        </div>
-        <div>
-          <div className='lg-card__title'>{t('home.gameScene.title')}</div>
-          <div className='lg-card__sub'>{t('home.cardGameSub')}</div>
-        </div>
-      </div>
-      <div ref={triggerRef} className='game-picker'>
-        <button
-          type='button'
-          className='game-picker__trigger'
-          aria-haspopup='menu'
-          aria-expanded={menuOpen}
-          onClick={() => setMenuOpen((open) => !open)}>
-          {renderGame(selectedMeta.id, selectedMeta.label)}
-          <IChevDown className='game-picker__chevron' />
-        </button>
-        <DropdownMenu
-          show={menuOpen}
-          onClose={() => setMenuOpen(false)}
-          options={options}
-          currentValue={selectedMeta.id}
-          onSelect={handleSelect}
-          direction='down'
-          anchorRef={triggerRef}
-          className='game-picker__menu'
-          renderOption={renderGame}
-        />
-      </div>
-    </div>
+      <span>{label}</span>
+    </span>
   );
 }
 
-function EnableCard() {
+/* ------------------------------------------------------------------ */
+/* Enable toggle (top status bar)                                      */
+/* ------------------------------------------------------------------ */
+function EnableCard({ onChange }) {
   const { settings, updateSettings, syncSettings } = useStore();
   const { t } = useI18n();
   const [pending, setPending] = useState(false);
@@ -278,6 +72,10 @@ function EnableCard() {
   useEffect(() => {
     setDraftState(null);
   }, [persistedEnabled]);
+
+  useEffect(() => {
+    onChange?.(isEnabled);
+  }, [isEnabled, onChange]);
 
   const handleToggle = async () => {
     if (pending) return;
@@ -307,12 +105,12 @@ function EnableCard() {
   };
 
   return (
-    <div className='lg-card home-enable-card'>
-      <div className='lg-card__head home-enable-card__head'>
-        <div className='lg-card__icon'>
-          <IPower />
-        </div>
-        <div className='lg-card__title'>{t('home.enableStatus.title')}</div>
+    <div className='home__top lg-rise' style={{ '--i': 0 }}>
+      <Chip tone={isEnabled ? 'success' : 'warn'} dot>
+        {isEnabled ? t('home.status.running') : t('home.status.paused')}
+      </Chip>
+      <div className='home__master'>
+        <span>{t('home.enableStatus.title')}</span>
         <Toggle
           on={isEnabled}
           onClick={handleToggle}
@@ -324,12 +122,188 @@ function EnableCard() {
   );
 }
 
+/* ------------------------------------------------------------------ */
+/* Game selector                                                       */
+/* ------------------------------------------------------------------ */
+function GameSceneCard() {
+  const { settings, updateSettings } = useStore();
+  const { locale, t } = useI18n();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const triggerRef = useRef(null);
+  const selected = settings?.game_scene || DEFAULT_GAME_SCENE;
+  const selectedMeta = getGameSceneMeta(selected, locale);
+  const options = useMemo(
+    () =>
+      Object.fromEntries(
+        GAME_SCENE_OPTIONS.map((item) => [item.id, getGameSceneMeta(item.id, locale).label]),
+      ),
+    [locale],
+  );
+
+  const handleSelect = async (gameScene) => {
+    setMenuOpen(false);
+    try {
+      await updateSettings({ game_scene: gameScene });
+    } catch (error) {
+      showError(t('home.gameScene.updateFailed', { error: toErrorMessage(error) }));
+    }
+  };
+
+  const renderBadge = (meta) => (
+    <span className='lg-gamebadge' aria-hidden='true'>
+      {meta.icon ? (
+        <img src={meta.icon} alt='' className={meta.iconFit === 'cover' ? 'is-cover' : 'is-contain'} />
+      ) : (
+        '··'
+      )}
+    </span>
+  );
+
+  const renderGame = (value, label) => {
+    const meta = getGameSceneMeta(value, locale);
+    return (
+      <span>
+        {renderBadge(meta)}
+        <span>{label}</span>
+      </span>
+    );
+  };
+
+  return (
+    <div className='home__group'>
+      <span className='lg-eyebrow'>{t('home.gameScene.label')}</span>
+      <div ref={triggerRef} className='lg-select lg-select--lg' style={{ width: 200 }}>
+        <button
+          type='button'
+          className='lg-select__trigger'
+          aria-haspopup='menu'
+          aria-expanded={menuOpen}
+          aria-label={t('home.gameScene.title')}
+          onClick={() => setMenuOpen((open) => !open)}>
+          {renderBadge(selectedMeta)}
+          <span className='lg-select__label'>{selectedMeta.label}</span>
+          <IChevDown className='lg-select__chevron' aria-hidden='true' />
+        </button>
+        <DropdownMenu
+          show={menuOpen}
+          onClose={() => setMenuOpen(false)}
+          options={options}
+          currentValue={selectedMeta.id}
+          onSelect={handleSelect}
+          direction='up'
+          anchorRef={triggerRef}
+          renderOption={renderGame}
+        />
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Language direction                                                  */
+/* ------------------------------------------------------------------ */
+function DirectionCard() {
+  const { settings, updateSettings } = useStore();
+  const { locale, t } = useI18n();
+  const [activeMenu, setActiveMenu] = useState(null);
+  const [spun, setSpun] = useState(false);
+  const fromTriggerRef = useRef(null);
+  const toTriggerRef = useRef(null);
+
+  const from = settings?.translation_from || 'zh';
+  const to = settings?.translation_to || 'en';
+
+  const options = useMemo(
+    () =>
+      Object.fromEntries(
+        LANGUAGE_OPTIONS.map((item) => [item.id, getLanguageLabel(item.id, locale)]),
+      ),
+    [locale],
+  );
+
+  const handleSelect = async (lang, field) => {
+    setActiveMenu(null);
+    try {
+      await updateSettings({ [field]: lang });
+    } catch (error) {
+      showError(t('home.translationLanguage.updateFailed', { error: toErrorMessage(error) }));
+    }
+  };
+
+  const handleSwap = async () => {
+    setSpun((value) => !value);
+    try {
+      await updateSettings({ translation_from: to, translation_to: from });
+    } catch (error) {
+      showError(t('home.translationLanguage.updateFailed', { error: toErrorMessage(error) }));
+    }
+  };
+
+  const renderOption = (value, label) => renderLanguageOption(value, label, locale);
+
+  return (
+    <div className='home__group'>
+      <span className='lg-eyebrow'>{t('home.translationLanguage.title')}</span>
+      <div className='home__row'>
+        <div ref={fromTriggerRef} className='lg-select lg-select--lg' style={{ width: 168 }}>
+          <LangPicker
+            value={from}
+            uiLocale={locale}
+            ariaLabel={t('home.translationLanguage.from')}
+            expanded={activeMenu === 'from'}
+            onClick={() => setActiveMenu(activeMenu === 'from' ? null : 'from')}
+          />
+          <DropdownMenu
+            show={activeMenu === 'from'}
+            onClose={() => setActiveMenu(null)}
+            options={options}
+            currentValue={from}
+            onSelect={(lang) => handleSelect(lang, 'translation_from')}
+            direction='up'
+            anchorRef={fromTriggerRef}
+            renderOption={renderOption}
+          />
+        </div>
+        <button
+          type='button'
+          className={`lg-swap lg-swap--lg${spun ? ' lg-swap--spin' : ''}`}
+          onClick={handleSwap}
+          aria-label={t('home.translationLanguage.swap')}
+          title={t('home.translationLanguage.swap')}>
+          <ISwap aria-hidden='true' />
+        </button>
+        <div ref={toTriggerRef} className='lg-select lg-select--lg' style={{ width: 168 }}>
+          <LangPicker
+            value={to}
+            uiLocale={locale}
+            ariaLabel={t('home.translationLanguage.to')}
+            expanded={activeMenu === 'to'}
+            onClick={() => setActiveMenu(activeMenu === 'to' ? null : 'to')}
+          />
+          <DropdownMenu
+            show={activeMenu === 'to'}
+            onClose={() => setActiveMenu(null)}
+            options={options}
+            currentValue={to}
+            onSelect={(lang) => handleSelect(lang, 'translation_to')}
+            anchorPosition='right-0'
+            direction='up'
+            anchorRef={toTriggerRef}
+            renderOption={renderOption}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Hotkey recorder                                                     */
+/* ------------------------------------------------------------------ */
 const formatPreview = (codes) =>
-  codes
-    .map((code) =>
-      isModifierKeyCode(code) ? formatModifierLabel(normalizeModifier(code)) : formatMainKeyLabel(code),
-    )
-    .join(' + ');
+  codes.map((code) =>
+    isModifierKeyCode(code) ? formatModifierLabel(normalizeModifier(code)) : formatMainKeyLabel(code),
+  );
 
 function HotkeyCard() {
   const { settings, updateSettings, syncSettings } = useStore();
@@ -337,6 +311,7 @@ function HotkeyCard() {
   const [recorderState, setRecorderState] = useState('idle');
   const [capturedCodes, setCapturedCodes] = useState([]);
   const [inlineError, setInlineError] = useState('');
+  const [flash, setFlash] = useState(false);
 
   const codesRef = useRef([]);
   const committingRef = useRef(false);
@@ -355,40 +330,49 @@ function HotkeyCard() {
     resetRecorder('idle');
   }, [resetRecorder]);
 
-  const persistHotkey = useCallback(async (keys, successMessageKey = 'setSuccess') => {
-    if (committingRef.current) return;
-    let hotkey;
-    try {
-      hotkey = buildHotkeyFromKeyCodes(keys);
-    } catch {
-      setInlineError(t('home.hotkey.invalidCombo'));
-      resetRecorder('error');
-      return;
-    }
+  const flashOk = useCallback(() => {
+    setFlash(true);
+    setTimeout(() => setFlash(false), 900);
+  }, []);
 
-    committingRef.current = true;
-    setRecorderState('saving');
-    setInlineError('');
-    try {
-      if (hasTauriRuntime()) {
-        const latest = await invokeCommand('update_translator_shortcut', { keys });
-        await syncSettings(latest);
-      } else {
-        await updateSettings({ trans_hotkey: hotkey });
+  const persistHotkey = useCallback(
+    async (keys, successMessageKey = 'setSuccess') => {
+      if (committingRef.current) return;
+      let hotkey;
+      try {
+        hotkey = buildHotkeyFromKeyCodes(keys);
+      } catch {
+        setInlineError(t('home.hotkey.invalidCombo'));
+        resetRecorder('error');
+        return;
       }
-      showSuccess(t(`home.hotkey.${hasTauriRuntime() ? successMessageKey : 'previewSuccess'}`));
-      resetRecorder('idle');
-    } catch (error) {
-      const message = t('home.hotkey.setFailed', { error: toErrorMessage(error) });
-      setInlineError(message);
-      setRecorderState('error');
-      showError(message);
-    } finally {
-      codesRef.current = [];
-      setCapturedCodes([]);
-      committingRef.current = false;
-    }
-  }, [resetRecorder, syncSettings, updateSettings, t]);
+
+      committingRef.current = true;
+      setRecorderState('saving');
+      setInlineError('');
+      try {
+        if (hasTauriRuntime()) {
+          const latest = await invokeCommand('update_translator_shortcut', { keys });
+          await syncSettings(latest);
+        } else {
+          await updateSettings({ trans_hotkey: hotkey });
+        }
+        showSuccess(t(`home.hotkey.${hasTauriRuntime() ? successMessageKey : 'previewSuccess'}`));
+        resetRecorder('idle');
+        flashOk();
+      } catch (error) {
+        const message = t('home.hotkey.setFailed', { error: toErrorMessage(error) });
+        setInlineError(message);
+        setRecorderState('error');
+        showError(message);
+      } finally {
+        codesRef.current = [];
+        setCapturedCodes([]);
+        committingRef.current = false;
+      }
+    },
+    [resetRecorder, syncSettings, updateSettings, t, flashOk],
+  );
 
   const handleKeyDown = useCallback(
     (event) => {
@@ -439,188 +423,95 @@ function HotkeyCard() {
     setCapturedCodes([]);
   };
 
-  const currentKeys = useMemo(() => {
-    const storedHotkey = settings?.trans_hotkey;
-    if (storedHotkey?.key) {
-      const labels = [
-        ...(storedHotkey.modifiers || []).map((m) => formatModifierLabel(normalizeModifier(m))),
-        formatMainKeyLabel(storedHotkey.key),
-      ].filter(Boolean);
-      if (labels.length > 0) return labels;
-    }
-    return defaultTranslatorHotkeyLabel().split('+');
-  }, [settings?.trans_hotkey]);
-
-  const previewKeys = capturedCodes.length > 0 ? formatPreview(capturedCodes).split(' + ') : [];
+  const currentKeys = useMemo(() => hotkeyLabelsFromSettings(settings), [settings]);
+  const defaultKeys = useMemo(() => defaultTranslatorHotkeyLabel().split('+'), []);
+  const isDefault = currentKeys.join('+') === defaultKeys.join('+');
+  const previewKeys = capturedCodes.length > 0 ? formatPreview(capturedCodes) : [];
+  const displayKeys = recording ? (previewKeys.length > 0 ? [...previewKeys, '…'] : ['…']) : currentKeys;
 
   const restoreDefault = () => {
     void persistHotkey(defaultTranslatorHotkeyCodes(), 'restoreDefaultSuccess');
   };
 
+  const hint = saving
+    ? t('home.hotkey.saving')
+    : recording
+      ? t('home.hotkey.pressCombo')
+      : inlineError || t('home.hotkey.clickToChange');
+
+  const recorderClass = [
+    'hotkey-rec',
+    recording ? 'hotkey-rec--recording' : '',
+    flash ? 'hotkey-rec--ok' : '',
+    recorderState === 'error' ? 'hotkey-rec--error' : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+
   return (
-    <div className='lg-card'>
-      <div className='lg-card__head'>
-        <div className='lg-card__icon'>
-          <IBolt />
-        </div>
-        <div>
-          <div className='lg-card__title'>{t('home.cardHotkeyTitle')}</div>
-          <div className='lg-card__sub'>
-            {recording ? t('home.hotkey.recordingHint') : t('home.cardHotkeySub')}
-          </div>
-        </div>
-      </div>
-      <div className={`hotkey-setting${recording ? ' hotkey-setting--recording' : ''}`}>
-        <div className='hotkey-setting__label'>{t('home.hotkey.currentLabel')}</div>
-        <div className='hotkey-setting__controls'>
-          <div className='hotkey-setting__status' aria-live='polite' aria-atomic='true'>
-            {recording ? (
-              previewKeys.length > 0 ? (
-                <Kbd keys={previewKeys} />
-              ) : (
-                <span className='hotkey-setting__listening'>{t('home.hotkey.pressCombo')}</span>
-              )
-            ) : (
-              <Kbd keys={currentKeys} />
-            )}
-          </div>
+    <div className='home__group'>
+      <span className='lg-eyebrow'>{t('home.cardHotkeyTitle')}</span>
+      <div className='home__row'>
+        <button
+          type='button'
+          className={recorderClass}
+          onClick={recording ? cancelRecording : beginRecording}
+          disabled={saving}
+          aria-label={t('home.hotkey.recorderAria')}
+          aria-describedby='translator-hotkey-help'
+          title={recording ? t('home.hotkey.escapeHint') : t('home.hotkey.clickToChange')}>
+          <Kbd keys={displayKeys} recording={recording} />
+          <span className='hotkey-rec__hint'>{hint}</span>
+        </button>
+        {!isDefault && !recording ? (
           <button
             type='button'
-            className={`lg-btn lg-btn--sm${recording ? ' lg-btn--warn' : ' lg-btn--primary'}`}
-            onClick={recording ? cancelRecording : beginRecording}
-            disabled={saving}
-            aria-describedby={inlineError || recording ? 'translator-hotkey-help' : undefined}>
-            {saving ? <Spinner style={{ width: 14, height: 14 }} /> : null}
-            {saving
-              ? t('home.hotkey.saving')
-              : recording
-                ? t('home.hotkey.cancel')
-                : t('home.hotkey.change')}
-          </button>
-          <button
-            type='button'
-            className='lg-btn lg-btn--sm lg-btn--ghost'
+            className='lg-btn lg-btn--ghost lg-btn--sm'
             onClick={restoreDefault}
-            disabled={recording || saving}>
+            disabled={saving}>
             {t('home.cardHotkeyResetDefault')}
           </button>
-        </div>
+        ) : null}
       </div>
-      {inlineError || recording ? (
-        <div
-          id='translator-hotkey-help'
-          className={`hotkey-setting__message${inlineError ? ' hotkey-setting__message--error' : ''}`}
-          role={inlineError ? 'alert' : 'status'}>
-          {inlineError || t('home.hotkey.escapeHint')}
-        </div>
-      ) : null}
+      <span id='translator-hotkey-help' className='sr-only' role={inlineError ? 'alert' : 'status'}>
+        {inlineError || (recording ? t('home.hotkey.escapeHint') : t('home.hotkey.currentHint'))}
+      </span>
     </div>
   );
 }
 
-function WorkflowCard() {
-  const { t } = useI18n();
-  const steps = [
-    {
-      number: '1',
-      title: t('home.workflowStep1Title'),
-      desc: t('home.workflowStep1Desc'),
-    },
-    {
-      number: '2',
-      title: t('home.workflowStep2Title'),
-      desc: t('home.workflowStep2Desc'),
-    },
-    {
-      number: '3',
-      title: t('home.workflowStep3Title'),
-      desc: t('home.workflowStep3Desc'),
-    },
-  ];
-
-  return (
-    <div className='lg-card home-tutorial-card'>
-      <div className='lg-card__head' style={{ marginBottom: 12 }}>
-        <div className='lg-card__icon'>
-          <ITarget />
-        </div>
-        <div className='lg-card__title'>{t('home.cardWorkflowTitle')}</div>
-      </div>
-      <div style={{ display: 'flex', alignItems: 'stretch', gap: 8 }}>
-        {steps.map((step, index) => (
-          <div key={step.number} style={{ display: 'contents' }}>
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 10,
-                flex: 1,
-                minWidth: 0,
-                padding: '10px 12px',
-                borderRadius: 10,
-                background: 'var(--lg-surf-2)',
-                border: '1px solid var(--lg-line-1)',
-              }}>
-              <div
-                style={{
-                  display: 'grid',
-                  placeItems: 'center',
-                  width: 26,
-                  height: 26,
-                  flex: '0 0 26px',
-                  borderRadius: 8,
-                  background: '#3158d4',
-                  color: '#fff',
-                  fontSize: 12,
-                  fontWeight: 800,
-                  fontFamily: 'var(--lg-mono)',
-                }}>
-                {step.number}
-              </div>
-              <div style={{ minWidth: 0 }}>
-                <div style={{ fontSize: 13, fontWeight: 750, color: 'var(--lg-ink-0)' }}>
-                  {step.title}
-                </div>
-                <div style={{ fontSize: 12, color: 'var(--lg-ink-2)', marginTop: 2 }}>
-                  {step.desc}
-                </div>
-              </div>
-            </div>
-            {index < steps.length - 1 ? (
-              <div
-                aria-hidden='true'
-                style={{
-                  display: 'grid',
-                  placeItems: 'center',
-                  flex: '0 0 18px',
-                  color: 'var(--lg-ink-3)',
-                }}>
-                <IArrowR style={{ width: 13, height: 13 }} />
-              </div>
-            ) : null}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
+/* ------------------------------------------------------------------ */
+/* Page                                                                */
+/* ------------------------------------------------------------------ */
 export default function Home() {
   const { t } = useI18n();
+  const { settings } = useStore();
+  const [enabled, setEnabled] = useState(settings?.app_enabled ?? true);
+  const hotkeyKeys = useMemo(() => hotkeyLabelsFromSettings(settings), [settings]);
 
   return (
-    <>
-      <PageHead
-        title={t('home.pageTitle')}
-        sub={t('home.pageSub')}
-      />
-      <div className='home-main-grid'>
-        <EnableCard />
-        <GameSceneCard />
-        <DirectionCard />
-        <HotkeyCard />
-        <WorkflowCard />
+    <div className='home'>
+      <EnableCard onChange={setEnabled} />
+
+      <div className={`home__focus lg-rise${enabled ? '' : ' home__focus--off'}`} style={{ '--i': 1 }}>
+        <div className='home__copy'>
+          <h1>{t('home.hero.title')}</h1>
+          <p>
+            {t('home.hero.before')}
+            <Kbd keys={hotkeyKeys} size='sm' />
+            {t('home.hero.after')}
+          </p>
+        </div>
+        <DemoStage paused={!enabled} />
       </div>
-    </>
+
+      <div className='home__quick lg-rise' style={{ '--i': 2 }}>
+        <GameSceneCard />
+        <div className='home__divider' aria-hidden='true' />
+        <DirectionCard />
+        <div className='home__divider' aria-hidden='true' />
+        <HotkeyCard />
+      </div>
+    </div>
   );
 }

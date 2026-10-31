@@ -40,6 +40,24 @@ export const defaultPhraseModifier = () => (detectMac() ? 'Meta' : 'Alt');
 
 export const defaultPhraseModifierLabel = () => (detectMac() ? '⌘' : 'Alt');
 
+/**
+ * Human-readable key labels for the stored translator hotkey, falling back to
+ * the platform default when nothing is stored yet.
+ */
+export const hotkeyLabelsFromSettings = (settings) => {
+  const storedHotkey = settings?.trans_hotkey;
+  if (storedHotkey?.key) {
+    const labels = [
+      ...(storedHotkey.modifiers || []).map((m) => formatModifierLabel(normalizeModifier(m))),
+      formatMainKeyLabel(storedHotkey.key),
+    ].filter(Boolean);
+    if (labels.length > 0) {
+      return labels;
+    }
+  }
+  return defaultTranslatorHotkeyLabel().split('+');
+};
+
 export const buildHotkeyFromKeyCodes = (keyCodes) => {
   const modifiers = [...new Set(keyCodes.filter(isModifierKeyCode).map(normalizeModifier))].sort();
   const mainKeys = [...new Set(keyCodes.filter((item) => !isModifierKeyCode(item)))];

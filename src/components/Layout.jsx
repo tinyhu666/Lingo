@@ -6,17 +6,20 @@ import DropdownMenu from './DropdownMenu';
 import { AnalyticsProvider } from './AnalyticsProvider';
 import { StoreProvider } from './StoreProvider';
 import { UpdateProvider } from './UpdateProvider';
+import { ThemeProvider } from './ThemeProvider';
 import appIcon from '../assets/app-icon.png';
 import { ChevronRight, Globe, Minus, XClose } from '../icons';
+import { APP_VERSION } from '../constants/version';
 import { hasTauriRuntime } from '../services/tauriRuntime';
 import { showError, showInfo } from '../utils/toast';
 import { useI18n } from '../i18n/I18nProvider';
 
-function LayoutShell({ children, activeItem, setActiveItem }) {
+function LayoutShell({ children, activeItem, setActiveItem, backdrop }) {
   const { locale, setLocale, t, localeOptions } = useI18n();
   const [showLocaleMenu, setShowLocaleMenu] = useState(false);
   const localeTriggerRef = useRef(null);
   const busyToastAtRef = useRef(0);
+  const workspaceRef = useRef(null);
 
   const localeMap = useMemo(
     () =>
@@ -31,6 +34,10 @@ function LayoutShell({ children, activeItem, setActiveItem }) {
     const matched = localeOptions.find((item) => item.value === locale);
     return matched?.label || locale;
   }, [locale, localeOptions]);
+
+  useEffect(() => {
+    workspaceRef.current?.scrollTo?.({ top: 0 });
+  }, [activeItem]);
 
   const handleWindowAction = async (action) => {
     if (!hasTauriRuntime()) {
@@ -117,6 +124,14 @@ function LayoutShell({ children, activeItem, setActiveItem }) {
     };
   }, []);
 
+  const workspaceStyle = backdrop
+    ? {
+        '--lg-backdrop': `url(${backdrop.image})`,
+        '--lg-backdrop-pos': backdrop.position || 'center 30%',
+        '--lg-backdrop-strength': backdrop.strength ?? 1,
+      }
+    : undefined;
+
   return (
     <div className='lg-win'>
       <header className='lg-titlebar'>
@@ -125,6 +140,7 @@ function LayoutShell({ children, activeItem, setActiveItem }) {
             <img src={appIcon} alt='' />
           </div>
           <span className='lg-titlebar__title'>Lingo</span>
+          <span className='lg-titlebar__version'>v{APP_VERSION}</span>
         </div>
 
         <div className='lg-titlebar__drag' data-tauri-drag-region />
@@ -191,22 +207,30 @@ function LayoutShell({ children, activeItem, setActiveItem }) {
 
       <div className='lg-shell'>
         <Sidebar activeItem={activeItem} setActiveItem={setActiveItem} />
-        <section className='lg-workspace'>{children}</section>
+        <section
+          ref={workspaceRef}
+          className='lg-workspace'
+          data-backdrop={backdrop ? activeItem : undefined}
+          style={workspaceStyle}>
+          {children}
+        </section>
       </div>
     </div>
   );
 }
 
-export default function Layout({ children, activeItem, setActiveItem }) {
+export default function Layout({ children, activeItem, setActiveItem, backdrop }) {
   return (
-    <StoreProvider>
-      <AnalyticsProvider>
-        <UpdateProvider>
-          <LayoutShell activeItem={activeItem} setActiveItem={setActiveItem}>
-            {children}
-          </LayoutShell>
-        </UpdateProvider>
-      </AnalyticsProvider>
-    </StoreProvider>
+    <ThemeProvider>
+      <StoreProvider>
+        <AnalyticsProvider>
+          <UpdateProvider>
+            <LayoutShell activeItem={activeItem} setActiveItem={setActiveItem} backdrop={backdrop}>
+              {children}
+            </LayoutShell>
+          </UpdateProvider>
+        </AnalyticsProvider>
+      </StoreProvider>
+    </ThemeProvider>
   );
 }

@@ -167,7 +167,7 @@ export default function Phrases() {
     }
   };
 
-  const GRID_COLS = '1.6fr 1fr 0.6fr 44px';
+  const quotaPercent = Math.round((rows.length / MAX_PHRASE_COUNT) * 100);
 
   return (
     <>
@@ -175,87 +175,54 @@ export default function Phrases() {
         title={t('phrases.pageTitle')}
         sub={t('phrases.pageSub', { max: MAX_PHRASE_COUNT })}
         right={
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <Chip dot tone='info'>
-              {t('phrases.pageQuotaChip', { used: rows.length, max: MAX_PHRASE_COUNT })}
-            </Chip>
-            <button
-              type='button'
-              className='lg-btn lg-btn--sm'
-              onClick={saveRows}
-              disabled={saving}>
+          <div className='home__row' style={{ gap: 10 }}>
+            <div
+              className='phrases__quota'
+              style={{ '--p': quotaPercent }}
+              title={t('phrases.pageQuotaChip', { used: rows.length, max: MAX_PHRASE_COUNT })}>
+              <b>
+                {rows.length}/{MAX_PHRASE_COUNT}
+              </b>
+            </div>
+            <button type='button' className='lg-btn' onClick={saveRows} disabled={saving}>
               {saving ? t('phrases.saving') : t('phrases.save')}
             </button>
-            <button
-              type='button'
-              className='lg-btn lg-btn--sm lg-btn--primary'
-              onClick={addRow}>
-              <IPlus /> {t('phrases.add')}
+            <button type='button' className='lg-btn lg-btn--primary' onClick={addRow}>
+              <IPlus aria-hidden='true' /> {t('phrases.add')}
             </button>
           </div>
         }
       />
-      <div className='lg-card' style={{ padding: 0 }}>
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: GRID_COLS,
-            gap: 0,
-            padding: '10px 16px',
-            fontSize: 12,
-            fontWeight: 700,
-            color: 'var(--lg-ink-3)',
-            letterSpacing: '.14em',
-            textTransform: 'uppercase',
-            borderBottom: '1px solid var(--lg-line-3)',
-            background: 'var(--lg-surf-2)',
-          }}>
+      <div className='phrases__table lg-rise' style={{ '--i': 1 }}>
+        <div className='phrases__head'>
           <span>{t('phrases.table.content')}</span>
           <span>{t('phrases.table.hotkey')}</span>
-          <span>{t('phrases.table.usage')}</span>
           <span style={{ textAlign: 'right' }}>{t('phrases.table.action')}</span>
         </div>
 
         {rows.length === 0 ? (
-          <div
-            style={{
-              padding: '36px 16px',
-              textAlign: 'center',
-              color: 'var(--lg-ink-3)',
-              fontSize: 13,
-            }}>
-            <div style={{ fontWeight: 700, color: 'var(--lg-ink-1)', marginBottom: 6 }}>
-              {t('phrases.empty.title')}
-            </div>
-            <div style={{ fontSize: 12 }}>{t('phrases.empty.summary')}</div>
+          <div className='phrases__empty'>
+            <b>{t('phrases.empty.title')}</b>
+            <span>{t('phrases.empty.summary')}</span>
           </div>
         ) : (
-          rows.map((row, i) => (
-            <div
-              key={row.id}
-              style={{
-                display: 'grid',
-                gridTemplateColumns: GRID_COLS,
-                alignItems: 'center',
-                gap: 0,
-                padding: '8px 16px',
-                borderBottom: i === rows.length - 1 ? 'none' : '1px solid var(--lg-line-3)',
-              }}>
+          rows.map((row) => (
+            <div key={row.id} className='phrases__row'>
               <input
-                className='lg-input'
+                className='lg-input lg-input--inline'
                 value={row.phrase}
                 onChange={(event) => patchRow(row.id, { phrase: event.target.value })}
                 placeholder={t('phrases.contentPlaceholder')}
                 maxLength={MAX_PHRASE_LENGTH}
-                style={{ width: '92%' }}
+                aria-label={t('phrases.table.content')}
               />
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <Kbd keys={phraseHotkeyKeys(row.keyCode)} />
+              <div className='phrases__hotkey'>
+                <Kbd keys={phraseHotkeyKeys(row.keyCode)} size='sm' />
                 <select
                   value={row.keyCode}
                   onChange={(event) => patchRow(row.id, { keyCode: event.target.value })}
-                  className='lg-input'
-                  style={{ width: 64, padding: '0 6px', height: 26 }}>
+                  className='phrases__keyselect'
+                  aria-label={t('phrases.table.hotkey')}>
                   {KEY_OPTIONS.map((option) => (
                     <option key={option.code} value={option.code}>
                       {option.label}
@@ -263,16 +230,13 @@ export default function Phrases() {
                   ))}
                 </select>
               </div>
-              <span style={{ fontSize: 12, color: 'var(--lg-ink-2)', fontFamily: 'var(--lg-mono)' }}>
-                —
-              </span>
-              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <div className='phrases__actions'>
                 <button
                   type='button'
-                  className='lg-btn lg-btn--sm lg-btn--ghost'
-                  style={{ color: 'var(--lg-danger-ink)' }}
+                  className='lg-iconbtn lg-iconbtn--danger'
                   onClick={() => removeRow(row.id)}
-                  aria-label={t('common.remove')}>
+                  aria-label={t('common.remove')}
+                  title={t('common.remove')}>
                   <ITrash />
                 </button>
               </div>
@@ -280,17 +244,11 @@ export default function Phrases() {
           ))
         )}
 
-        <div
-          style={{
-            padding: '12px 16px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 10,
-            background: 'var(--lg-surf-2)',
-            borderTop: '1px solid var(--lg-line-3)',
-          }}>
-          <span style={{ fontSize: 12, color: 'var(--lg-ink-3)' }}>{t('phrases.footerHint')}</span>
-          <span style={{ fontSize: 12, color: 'var(--lg-ink-2)' }}>{t('phrases.footerBody')}</span>
+        <div className='phrases__foot'>
+          <Chip tone='brand' className='lg-chip--hud'>
+            {t('phrases.footerHint')}
+          </Chip>
+          <span>{t('phrases.footerBody')}</span>
         </div>
       </div>
     </>

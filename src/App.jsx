@@ -3,6 +3,7 @@ import Layout from './components/Layout';
 import Home from './pages/home';
 import { useI18n } from './i18n/I18nProvider';
 import { getDesktopPlatform } from './utils/platform';
+import { PAGE_BACKDROPS } from './constants/backdrops';
 
 const TranslatePage = lazy(() => import('./pages/Translate'));
 const TutorialPage = lazy(() => import('./pages/Tutorial'));
@@ -20,11 +21,7 @@ const pages = {
 function PageFallback() {
   const { t } = useI18n();
 
-  return (
-    <div className='lg-card flex h-full items-center justify-center p-6'>
-      <span style={{ color: 'var(--lg-ink-3)', fontSize: 13 }}>{t('app.pageLoading')}</span>
-    </div>
-  );
+  return <div className='lg-fallback'>{t('app.pageLoading')}</div>;
 }
 
 function App() {
@@ -69,10 +66,15 @@ function App() {
 
   return (
     <div
-      className={`lingo-theme h-full text-zinc-100 ${desktopClient ? 'lingo-theme--desktop' : ''} ${windowsClient ? 'lingo-theme--windows' : ''}`}>
-      <Layout activeItem={activeItem} setActiveItem={setActiveItem}>
+      className={`lingo-theme h-full ${desktopClient ? 'lingo-theme--desktop' : ''} ${windowsClient ? 'lingo-theme--windows' : ''}`}>
+      <Layout
+        activeItem={activeItem}
+        setActiveItem={setActiveItem}
+        backdrop={PAGE_BACKDROPS[activeItem] || null}>
         <Suspense fallback={<PageFallback />}>
-          <CurrentPage onNavigate={setActiveItem} />
+          <div className='lg-page' key={activeItem}>
+            <CurrentPage onNavigate={setActiveItem} />
+          </div>
         </Suspense>
       </Layout>
     </div>

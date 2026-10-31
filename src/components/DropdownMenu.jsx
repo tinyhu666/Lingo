@@ -203,7 +203,7 @@ export default function DropdownMenu({
                 onSelect(value);
               }}>
               {renderOption ? renderOption(value, label) : label}
-              {isActive ? <CheckTick className='ml-auto h-5 w-5 stroke-zinc-900' /> : null}
+              {isActive ? <CheckTick className='shell-menu__check' aria-hidden='true' /> : null}
             </button>
           );
         })}

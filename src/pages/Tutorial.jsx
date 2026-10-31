@@ -1,196 +1,177 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useI18n } from '../i18n/I18nProvider';
-import { Chip, Kbd, PageHead } from '../components/lg';
-import { IArrowR, IShield } from '../icons';
-import { defaultTranslatorHotkeyLabel } from '../constants/hotkeys';
+import { useStore } from '../components/StoreProvider';
+import { Kbd, PageHead } from '../components/lg';
+import { IPlay, IShield } from '../icons';
+import { hotkeyLabelsFromSettings } from '../constants/hotkeys';
+import { TUTORIAL_PANORAMA } from '../constants/backdrops';
 
-function Mock({ children, accent }) {
-  return (
-    <div
-      style={{
-        background: '#0b1430',
-        color: '#dfe6f5',
-        padding: '8px 10px',
-        borderRadius: 8,
-        fontFamily: 'var(--lg-mono)',
-        fontSize: 12,
-        border: `1px solid ${accent || 'rgba(97,235,255,.22)'}`,
-      }}>
-      {children}
-    </div>
-  );
-}
+const prefersReducedMotion = () =>
+  typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 
 export default function Tutorial() {
   const { t } = useI18n();
+  const { settings } = useStore();
+  const hotkeyKeys = useMemo(() => hotkeyLabelsFromSettings(settings), [settings]);
 
-  const hotkeyLabel = defaultTranslatorHotkeyLabel();
-  const hotkeyKeys = hotkeyLabel.split('+');
+  const [activeStep, setActiveStep] = useState(0);
+  const [doneSteps, setDoneSteps] = useState(0);
+  const [playing, setPlaying] = useState(false);
+  const [typed, setTyped] = useState('');
+  const [boxState, setBoxState] = useState('');
+  const [keysVisible, setKeysVisible] = useState(false);
+  const [keyMessage, setKeyMessage] = useState('');
+  const [pressed, setPressed] = useState([]);
+  const runRef = useRef(0);
 
   const steps = [
-    {
-      n: '01',
-      title: t('tutorial.step1Title'),
-      desc: t('tutorial.step1Desc'),
-      mock: (
-        <Mock>
-          <span style={{ color: '#61ebff' }}>{t('tutorial.step1MockChannel')} </span>
-          {t('tutorial.step1MockText')}
-          <span
-            style={{
-              borderLeft: '2px solid #61ebff',
-              marginLeft: 1,
-              animation: 'lg-pulse-ring 1s steps(2) infinite',
-            }}>
-            &nbsp;
-          </span>
-        </Mock>
-      ),
-    },
-    {
-      n: '02',
-      title: t('tutorial.step2Title'),
-      desc: t('tutorial.step2Desc'),
-      mock: (
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-            padding: '8px 10px',
-            background: 'var(--lg-surf-2)',
-            borderRadius: 8,
-          }}>
-          <Kbd keys={hotkeyKeys} />
-          <IArrowR style={{ color: 'var(--lg-ink-4)', width: 14, height: 14 }} />
-          <span style={{ fontSize: 12, color: 'var(--lg-ink-2)' }}>{t('tutorial.step2InProgress')}</span>
-          <div
-            style={{
-              marginLeft: 'auto',
-              width: 28,
-              height: 4,
-              borderRadius: 2,
-              background: 'var(--lg-surf-3)',
-              overflow: 'hidden',
-            }}>
-            <div style={{ width: '60%', height: '100%', background: 'var(--lg-brand-grad)' }} />
-          </div>
-        </div>
-      ),
-    },
-    {
-      n: '03',
-      title: t('tutorial.step3Title'),
-      desc: t('tutorial.step3Desc'),
-      mock: (
-        <Mock accent='rgba(22,163,107,.35)'>
-          <span style={{ color: '#61ebff' }}>{t('tutorial.step3MockChannel')} </span>
-          {t('tutorial.step3MockText')}
-          <span style={{ color: 'rgba(255,255,255,.4)' }}> ⏎</span>
-        </Mock>
-      ),
-    },
+    { title: t('tutorial.step1Title'), desc: t('tutorial.step1Desc') },
+    { title: t('tutorial.step2Title'), desc: t('tutorial.step2Desc') },
+    { title: t('tutorial.step3Title'), desc: t('tutorial.step3Desc') },
   ];
+
+  const play = useCallback(async () => {
+    if (playing) return;
+    const token = runRef.current + 1;
+    runRef.current = token;
+    const alive = () => runRef.current === token;
+    const reduce = prefersReducedMotion();
+    const wait = (ms) => new Promise((resolve) => setTimeout(resolve, reduce ? 0 : ms));
+    const typeText = async (text, ms) => {
+      setTyped('');
+      for (let i = 1; i <= text.length; i += 1) {
+        if (!alive()) return;
+        setTyped(text.slice(0, i));
+        await wait(ms);
+      }
+    };
+
+    setPlaying(true);
+    setDoneSteps(0);
+    setBoxState('');
+    setKeysVisible(false);
+    setPressed([]);
+
+    try {
+      setActiveStep(0);
+      await wait(400);
+      await typeText(t('tutorial.step1MockText'), 80);
+      if (!alive()) return;
+      await wait(700);
+
+      setActiveStep(1);
+      setDoneSteps(1);
+      setKeyMessage(t('tutorial.pressingKeys'));
+      setKeysVisible(true);
+      await wait(400);
+      setPressed([0]);
+      await wait(120);
+      setPressed([0, hotkeyKeys.length - 1]);
+      await wait(260);
+      setPressed([]);
+      setKeyMessage(t('tutorial.step2InProgress'));
+      setBoxState('rec shimmer');
+      await wait(1400);
+      if (!alive()) return;
+
+      setActiveStep(2);
+      setDoneSteps(2);
+      setBoxState('rec flash');
+      setKeyMessage(t('tutorial.doneSend'));
+      await typeText(t('tutorial.step3MockText'), 20);
+      if (!alive()) return;
+      await wait(600);
+      setBoxState('');
+      await wait(1400);
+      setKeysVisible(false);
+      setDoneSteps(3);
+      setActiveStep(-1);
+    } finally {
+      if (alive()) setPlaying(false);
+    }
+  }, [playing, t, hotkeyKeys]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      void play();
+    }, 500);
+    return () => {
+      clearTimeout(timer);
+      runRef.current += 1;
+    };
+    // Autoplay once on mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const boxClass = ['tutorial__box', ...boxState.split(' ').filter(Boolean).map((s) => `tutorial__box--${s}`)].join(' ');
 
   return (
     <>
       <PageHead
         title={t('tutorial.pageTitle')}
         sub={t('tutorial.pageSub')}
-        right={<Chip tone='info'>{t('tutorial.pageRightChip')}</Chip>}
+        right={
+          <button type='button' className='lg-btn lg-btn--primary' onClick={play} disabled={playing}>
+            <IPlay aria-hidden='true' />
+            {t('tutorial.play')}
+          </button>
+        }
       />
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
-        {steps.map((s, i) => (
-          <div key={s.n} className='lg-card' style={{ padding: 18, position: 'relative' }}>
+      <div className='tutorial'>
+        <div className='tutorial__steps lg-rise' style={{ '--i': 1 }}>
+          {steps.map((step, index) => (
             <div
-              style={{
-                position: 'absolute',
-                top: 14,
-                right: 14,
-                fontSize: 28,
-                fontWeight: 800,
-                color: 'var(--lg-line-2)',
-                fontFamily: 'var(--lg-mono)',
-                letterSpacing: '-0.03em',
-              }}>
-              {s.n}
-            </div>
-            <div
-              style={{
-                width: 28,
-                height: 28,
-                borderRadius: 8,
-                background: 'var(--lg-brand-grad)',
-                color: '#fff',
-                display: 'grid',
-                placeItems: 'center',
-                fontWeight: 700,
-                fontSize: 12,
-              }}>
-              {i + 1}
-            </div>
-            <div
-              style={{
-                fontSize: 15,
-                fontWeight: 700,
-                color: 'var(--lg-ink-0)',
-                marginTop: 12,
-              }}>
-              {s.title}
-            </div>
-            <p
-              style={{
-                fontSize: 12.5,
-                color: 'var(--lg-ink-2)',
-                lineHeight: 1.55,
-                marginTop: 6,
-                marginBottom: 14,
-              }}>
-              {s.desc}
-            </p>
-            {s.mock}
-            {i < steps.length - 1 ? (
-              <div
-                style={{
-                  position: 'absolute',
-                  right: -14,
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  width: 28,
-                  height: 28,
-                  borderRadius: '50%',
-                  background: '#fff',
-                  border: '1px solid var(--lg-line-1)',
-                  display: 'grid',
-                  placeItems: 'center',
-                  color: 'var(--lg-ink-3)',
-                  boxShadow: 'var(--lg-sh-card)',
-                  zIndex: 2,
-                }}>
-                <IArrowR style={{ width: 14, height: 14 }} />
+              key={step.title}
+              className={`tutorial__step${activeStep === index ? ' tutorial__step--on' : ''}${
+                doneSteps > index && activeStep !== index ? ' tutorial__step--done' : ''
+              }`}>
+              <span className='tutorial__num'>{index + 1}</span>
+              <div>
+                <h4>{step.title}</h4>
+                <p>{step.desc}</p>
               </div>
-            ) : null}
+            </div>
+          ))}
+          <div className='tutorial__safety'>
+            <span className='lg-card__icon'>
+              <IShield />
+            </span>
+            <div>
+              <b>{t('tutorial.safetyTitle')}</b>
+              <span>{t('tutorial.safetyDesc')}</span>
+            </div>
           </div>
-        ))}
-      </div>
-
-      <div
-        className='lg-card lg-card--inset'
-        style={{ marginTop: 18, display: 'flex', gap: 16, alignItems: 'center' }}>
-        <div className='lg-card__icon' style={{ flex: '0 0 32px' }}>
-          <IShield />
         </div>
-        <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--lg-ink-0)' }}>
-            {t('tutorial.safetyTitle')}
+
+        <div
+          className='tutorial__stage lg-rise'
+          style={{ '--i': 2, backgroundImage: `url(${TUTORIAL_PANORAMA})` }}
+          aria-hidden='true'>
+          <div className='tutorial__hud'>
+            <span>Radiant 23 : 19 Dire</span>
+            <span>
+              34:12 · <b>Roshan alive</b>
+            </span>
           </div>
-          <div
-            style={{
-              fontSize: 12,
-              color: 'var(--lg-ink-2)',
-              lineHeight: 1.55,
-              marginTop: 4,
-            }}>
-            {t('tutorial.safetyDesc')}
+          <div className='tutorial__log'>
+            <div>
+              <span className='ally'>[ALLIES] Kuro:</span> push top after this
+            </div>
+            <div>
+              <span className='enemy'>[ALL] Dendi:</span> gg ez mid
+            </div>
+            <div>
+              <span className='ally'>[ALLIES] Miracle:</span> ward river pls
+            </div>
+          </div>
+          <div className={boxClass}>
+            <span className='ch'>{t('tutorial.step1MockChannel')}</span>
+            <span className='stage__text'>{typed}</span>
+            <span className='stage__caret' />
+          </div>
+          <div className={`tutorial__keys${keysVisible ? ' tutorial__keys--on' : ''}`}>
+            <Kbd keys={hotkeyKeys} size='sm' pressed={pressed} />
+            <span>{keyMessage}</span>
           </div>
         </div>
       </div>
