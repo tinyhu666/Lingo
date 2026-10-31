@@ -84,7 +84,7 @@ jobs:
           fi
 
           # Locate every enabled Nginx config that mentions buffpp.com.
-          mapfile -t configs < <(sudo -n grep -lE 'server_name[^;]*buffpp\.com' /etc/nginx/sites-enabled/* /etc/nginx/conf.d/* 2>/dev/null || true)
+          mapfile -t configs < <(sudo -n grep -lE 'server_name([^;]*\s)?buffpp\.com(\s|;)' /etc/nginx/sites-enabled/* /etc/nginx/conf.d/* 2>/dev/null || true)
           if [ "${#configs[@]}" -eq 0 ]; then
             echo "::error::No enabled Nginx config has a server_name with buffpp.com."
             sudo -n nginx -T 2>/dev/null | grep -E 'server_name|listen' | sort -u | head -n 20 | sed 's/^/::notice::nginx: /'
@@ -122,7 +122,7 @@ jobs:
               fi
               sudo -n cp "$cfg" "$cfg.bak.$(date +%Y%m%d%H%M%S)"
               # Every server_name line that carries buffpp.com also gets the lingo.ink names.
-              sudo -n sed -i -E 's/^(\s*server_name[^;]*buffpp\.com[^;]*);/\1 lingo.ink www.lingo.ink;/' "$cfg"
+              sudo -n sed -i -E '/^\s*server_name([^;]*\s)?buffpp\.com(\s|;)/ s/;/ lingo.ink www.lingo.ink;/' "$cfg"
               changed=1
               echo "::notice::Added lingo.ink and www.lingo.ink to server_name in $(basename "$cfg")"
             done
