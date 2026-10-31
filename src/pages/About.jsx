@@ -178,7 +178,6 @@ export default function About() {
   const heroTitle = hasUpdate
     ? t('about.heroTitleAvailable', { version: latestVersionLabel })
     : t('about.heroTitleLatest');
-  const heroSub = hasUpdate ? t('about.heroSubAvailable') : t('about.heroSubLatest');
 
   const contactItems = useMemo(() => {
     const contact = publicSiteConfig?.contact || DEFAULT_PUBLIC_SITE_CONFIG.contact;
@@ -231,7 +230,6 @@ export default function About() {
                   </Chip>
                 )}
               </h2>
-              <p>{heroSub}</p>
             </div>
           </div>
 
@@ -331,7 +329,7 @@ export default function About() {
               </div>
             ))}
           </div>
-          <p className='about__note'>{t('about.openSourceNote')}</p>
+          <p className='about__note'>{t('about.projectNote')}</p>
         </div>
       </div>
     </>
