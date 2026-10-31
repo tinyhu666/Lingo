@@ -138,12 +138,16 @@ function formatNotes(input) {
     return DEFAULT_RELEASE_NOTES;
   }
 
+  // One entry per line, numbered straight through, categories in fixed order.
   const lines = [`### ${LABEL_UPDATE_LOG}`, ''];
+  let number = 0;
 
-  visibleCategories.forEach(([category, items], index) => {
-    const summary = items.map(normalizeSummaryItem).join('\uff1b');
-    lines.push(`${index + 1}. ${category}\uff1a${ensureSentenceEnd(summary)}`);
-  });
+  for (const [category, items] of visibleCategories) {
+    for (const item of items) {
+      number += 1;
+      lines.push(`${number}. ${category}\uff1a${ensureSentenceEnd(normalizeSummaryItem(item))}`);
+    }
+  }
 
   return lines.join('\n');
 }
