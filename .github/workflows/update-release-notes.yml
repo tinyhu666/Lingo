@@ -1,0 +1,43 @@
+name: Update Release Notes
+
+# Re-syncs a published GitHub Release's notes from the matching CHANGELOG.md
+# section, for when the changelog is reworded after the release was built.
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Release tag whose notes should be regenerated from CHANGELOG.md (e.g. v1.0.0)
+        required: true
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      RELEASE_TAG: ${{ inputs.release_tag }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      - name: Render Notes From CHANGELOG.md
+        id: release_notes
+        run: node ./scripts/get-release-notes.mjs "${RELEASE_TAG#v}"
+
+      - name: Update Release
+        env:
+          NOTES: ${{ steps.release_notes.outputs.body }}
+        run: |
+          set -euo pipefail
+          gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json tagName > /dev/null
+          printf '%s\n' "$NOTES" > "$RUNNER_TEMP/release-notes.md"
+          gh release edit "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --notes-file "$RUNNER_TEMP/release-notes.md"
+          echo "Updated notes for $RELEASE_TAG:"
+          cat "$RUNNER_TEMP/release-notes.md"
